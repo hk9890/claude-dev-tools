@@ -1,0 +1,26 @@
+{
+  "name": "claude-dev-tools",
+  "owner": {
+    "name": "Hans Kohlreiter",
+    "email": "hans.kohlreiter@dynatrace.com"
+  },
+  "metadata": {
+    "description": "Personal Marketplace for development with claude code",
+    "version": "1.0.0",
+    "pluginRoot": "./plugins"
+  },
+  "plugins": [
+    {
+      "name": "hello-world",
+      "source": "./plugins/hello-world",
+      "description": "A simple example plugin that demonstrates slash command creation",
+      "version": "1.0.0",
+      "author": {
+        "name": "Hans"
+      },
+      "category": "examples",
+      "keywords": ["example", "hello-world", "getting-started"],
+      "strict": false
+    }
+  ]
+}
