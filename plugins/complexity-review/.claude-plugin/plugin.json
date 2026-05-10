@@ -1,0 +1,13 @@
+{
+  "name": "complexity-review",
+  "description": "Skeptical complexity review for requirements, architecture, and code — bias toward simplicity",
+  "version": "1.0.0",
+  "author": {
+    "name": "Hans Kohlreiter",
+    "email": "hans.kohlreiter@dynatrace.com"
+  },
+  "homepage": "https://github.com/hanskohlreiter/claude-dev-tools",
+  "repository": "https://github.com/hanskohlreiter/claude-dev-tools",
+  "license": "MIT",
+  "keywords": ["review", "complexity", "architecture", "simplicity", "code-review"]
+}

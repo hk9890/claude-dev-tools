@@ -1,0 +1,55 @@
+# Beads Acceptance Review Patterns
+
+Acceptance review is a blocking gate that verifies the epic outcome, not just task completion count.
+
+## Gate task requirements
+
+Create a dedicated task per epic:
+
+- `Acceptance Review: <Epic Name>`
+
+Required checks:
+
+- all implementation tasks are closed
+- required tests/checks were run and passed
+- discovered defects are tracked as bugs/tasks
+- scope-level outcome matches epic success criteria
+
+## Reviewer behavior
+
+Reviewer should:
+
+1. read epic plus all child task outcomes
+2. verify acceptance criteria against actual evidence
+3. create follow-up bugs/tasks for defects or missing coverage
+4. close acceptance task only when gate is satisfied
+
+Reviewer should **not** silently reopen scope without a tracked issue.
+
+## Example acceptance-review task body
+
+```markdown
+## Description
+Verify the epic outcome before closure.
+
+## Acceptance Criteria
+- [ ] All child implementation tasks closed
+- [ ] Required tests/checks completed and passing
+- [ ] No unresolved critical defects
+- [ ] Follow-up issues filed for non-blocking gaps
+```
+
+## If acceptance fails
+
+File follow-up issues and keep acceptance-review task open/blocked until resolved.
+
+```bash
+bd create --title="Found: <acceptance gap>" --type=bug --priority=1 --description="Discovered during acceptance review of <epic-id>. <details>"
+```
+
+## Epic closure rule
+
+Close epic only when:
+
+1. implementation tasks are complete
+2. acceptance-review task is closed
