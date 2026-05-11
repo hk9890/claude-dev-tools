@@ -1,5 +1,6 @@
 ---
 description: Review and validate project docs in read-only mode (no file edits)
+argument-hint: "[doc file or area to review]"
 ---
 
 Load the `coder-docs` skill.

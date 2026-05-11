@@ -15,11 +15,6 @@ Generate a compact AGENTS file that routes tasks to canonical docs and installed
 - Target style: routing table, not handbook
 - Keep inline content minimal (project identity + session completion rules if required by project policy)
 
-## Path placeholders
-
-- `{agents_md}`: mode-correct AGENTS location
-- `{docs}`: mode-correct docs directory
-
 ## Section pattern
 
 Recommended sections (conditionally included by relevance):
@@ -32,7 +27,7 @@ Recommended sections (conditionally included by relevance):
 - Change Workflow
 - Landing the Plane
 
-For change-landing topics, route to `{docs}CHANGE-WORKFLOW.md` when present.
+For change-landing topics, route to `docs/CHANGE-WORKFLOW.md` when present.
 
 ## Generation workflow
 
@@ -40,7 +35,7 @@ For change-landing topics, route to `{docs}CHANGE-WORKFLOW.md` when present.
 2. Map discovered docs/skills to section coverage.
 3. Propose consolidation for non-standard docs before routing finalization.
 4. Create missing standard docs only when local guidance exists.
-5. Generate or refresh AGENTS using mode-correct paths.
+5. Generate or refresh `AGENTS.md` at project root.
 6. Verify all routes resolve.
 
 ## Verification checklist
@@ -49,5 +44,4 @@ For change-landing topics, route to `{docs}CHANGE-WORKFLOW.md` when present.
 - Skill references are installed/available.
 - No section implies a missing doc is required when topic is skill-only.
 - No duplicate long-form guidance is inlined.
-- Mode-specific paths are correct.
 - Canonical routes are current after consolidation actions.

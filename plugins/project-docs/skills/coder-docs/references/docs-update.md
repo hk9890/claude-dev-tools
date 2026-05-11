@@ -13,14 +13,17 @@ Use this when docs already exist but are stale, inaccurate, or misrouted and nee
 ## Required references
 
 - Canonical doc set + ownership boundaries: [project-setup.md](project-setup.md)
-- Mode/path and structural constraints: [project-structure.md](project-structure.md)
+- Structural constraints: [project-structure.md](project-structure.md)
 - Authoring quality rules: [project-doc-guidelines.md](project-doc-guidelines.md)
 - Shared lifecycle procedures and verification: [project-docs-lifecycle.md](project-docs-lifecycle.md)
 
 ## Update workflow
 
-1. Resolve mode/path rules with [project-structure.md](project-structure.md).
-2. Inspect canonical docs + non-standard docs and gather stale/inaccurate claims.
+1. Inspect canonical docs + non-standard docs and gather stale/inaccurate claims.
+2. Ensure `CLAUDE.md` exists at project root with `@AGENTS.md` as its first non-empty line:
+   - Missing: create with `@AGENTS.md` as the only content.
+   - Exists, first non-empty line is already `@AGENTS.md`: no change.
+   - Exists without `@AGENTS.md`: prepend `@AGENTS.md` + blank line; preserve all existing content unchanged below. Never overwrite custom content.
 3. Map each claim to canonical destination using [project-setup.md](project-setup.md).
 4. Apply factual updates in docs files only.
 5. Refresh AGENTS routes if doc paths/ownership changed.

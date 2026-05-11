@@ -11,7 +11,8 @@ This file owns:
 ## Baseline model
 
 - `README.md`: user-facing project entrypoint
-- `AGENTS.md` (or mode-correct equivalent): routing layer
+- `AGENTS.md`: routing layer (routing table for all AI tools)
+- `CLAUDE.md`: Claude Code entrypoint — contains `@AGENTS.md` and any Claude-specific overrides
 - `docs/` topic files: durable repo-specific operating guidance
 
 Create topic docs only when the repository has real local guidance for that topic.
@@ -36,6 +37,12 @@ Notes:
 - If a reusable skill fully covers a topic and there is no local delta, do not create a hollow doc for that topic.
 
 ## File ownership boundaries
+
+### `CLAUDE.md`
+
+- Claude Code entrypoint: `@AGENTS.md` as first line
+- May include Claude-specific session rules or overrides below the import
+- Keep minimal; delegate routing to `AGENTS.md`
 
 ### `README.md`
 
@@ -78,6 +85,5 @@ Notes:
 
 Use [project-structure.md](project-structure.md) for:
 
-- mode-aware paths (`team` vs `stealth`)
 - structural constraints
 - AGENTS routing structure rules

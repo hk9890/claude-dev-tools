@@ -1,6 +1,7 @@
 ---
 name: coder-docs
-description: "Use this skill whenever the user wants to create, refresh, review, reorganize, audit, slim, standardize, or fix project documentation; define canonical docs taxonomy; update AGENTS.md routing; or clean up stale, confusing, misrouted, or hollow docs. Trigger even when the user says things like 'our docs are messy,' 'does AGENTS still match the repo?,' 'help standardize the docs,' or 'review the docs before changing anything.'"
+version: 1.0.0
+description: "This skill should be used when the user wants to create, refresh, review, reorganize, audit, slim, standardize, or fix project documentation; define canonical docs taxonomy; update AGENTS.md routing; or clean up stale, confusing, misrouted, or hollow docs. Trigger even when the user says things like 'our docs are messy,' 'does AGENTS still match the repo?,' 'help standardize the docs,' or 'review the docs before changing anything.'"
 ---
 
 ## Standalone workflow contract
@@ -27,10 +28,19 @@ Scope:
 Supporting references:
 
 - Setup/taxonomy ownership baseline: [references/project-setup.md](references/project-setup.md)
-- Mode/path and structural constraints: [references/project-structure.md](references/project-structure.md)
+- Structural constraints: [references/project-structure.md](references/project-structure.md)
 - Shared deep lifecycle procedures: [references/project-docs-lifecycle.md](references/project-docs-lifecycle.md)
 - Authoring standards: [references/project-doc-guidelines.md](references/project-doc-guidelines.md)
 - AGENTS specialized route (secondary unless explicitly requested): [references/agents-md-template.md](references/agents-md-template.md)
+
+## Input contract
+
+Commands in this plugin accept optional free-text arguments (the `[focus area or file]` hint).
+
+- If empty: run the flow against the full canonical doc set.
+- If a doc filename or path is provided (e.g., `docs/TESTING.md`): scope the flow to that file and its routing.
+- If a topic or area is provided (e.g., `testing`, `releases`, `api`): prioritize docs and routes for that area; still run mandatory verification across the whole baseline.
+- Arguments are advisory. They do not permit skipping mandatory lifecycle checks (paths exist, routes resolve, `CLAUDE.md` carries `@AGENTS.md`).
 
 ## Decision rules
 
@@ -44,10 +54,14 @@ Supporting references:
 - Create topic docs only when the repository has real local guidance for that topic.
 - If a topic is fully covered by an installed skill and there is no local delta, route to the skill instead of creating a hollow doc.
 - Use AGENTS-only guidance as a specialized secondary path unless the user explicitly asks for AGENTS-only work.
+- In create and update flows: ensure `CLAUDE.md` exists at project root with `@AGENTS.md` as its first line. This makes the routing table available to Claude Code automatically. Handling:
+  - If `CLAUDE.md` is missing: create it with `@AGENTS.md` as the only content.
+  - If `CLAUDE.md` exists and first non-empty line is `@AGENTS.md`: no change.
+  - If `CLAUDE.md` exists without `@AGENTS.md`: prepend `@AGENTS.md` and a blank line; preserve all existing content unchanged below. Never overwrite custom content.
 
 ## Response contract
 
-- For create flow, report baseline decisions, mode/path resolution, created files, skipped files with reasons, and verification output.
+- For create flow, report baseline decisions, created files, skipped files with reasons, and verification output.
 - For update flow, explicitly state docs-only scope and no source-file edits, then report what was corrected and how claims were verified.
 - For improve flow, report proposed/selected structural improvements, requested confirmations, and post-change verification.
 - For review flow, explicitly state read-only behavior and return findings with severity, evidence, and suggested fixes.

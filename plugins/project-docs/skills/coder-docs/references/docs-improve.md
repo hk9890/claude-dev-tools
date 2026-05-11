@@ -13,7 +13,7 @@ Use this when the docs need better structure, taxonomy clarity, consolidation, s
 ## Required references
 
 - Canonical doc set + ownership baseline: [project-setup.md](project-setup.md)
-- Mode/path and structural constraints: [project-structure.md](project-structure.md)
+- Structural constraints: [project-structure.md](project-structure.md)
 - Authoring standards: [project-doc-guidelines.md](project-doc-guidelines.md)
 - Shared lifecycle procedures: [project-docs-lifecycle.md](project-docs-lifecycle.md)
 

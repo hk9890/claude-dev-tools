@@ -1,5 +1,6 @@
 ---
 description: Improve docs structure and quality; may propose or apply docs edits (not read-only)
+argument-hint: "[doc file or area to improve]"
 ---
 
 Load the `coder-docs` skill.

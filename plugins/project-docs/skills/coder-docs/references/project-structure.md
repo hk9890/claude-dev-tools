@@ -4,25 +4,22 @@ This reference defines structure and routing constraints.
 
 This file owns:
 
-- mode/path rules
 - structural constraints
-- AGENTS routing structure
+- AGENTS routing structure rules
 
 It does **not** own canonical doc-set definition or file ownership taxonomy; those live in [project-setup.md](project-setup.md).
 
-## Mode-aware locations
+## Canonical locations
 
-Determine active mode/path rules before writing docs.
+All docs live at the project root or in `docs/`:
 
-| Concern | Team mode | Stealth mode |
-|---|---|---|
-| AGENTS file | `AGENTS.md` | `.coder/AGENTS.md` |
-| Topic docs directory | `docs/` | `.coder/docs/` |
+| File | Location |
+|---|---|
+| `CLAUDE.md` | project root |
+| `AGENTS.md` | project root |
+| Topic docs | `docs/` |
 
-Use placeholders during planning:
-
-- `{agents_md}` for mode-correct AGENTS file
-- `{docs}` for mode-correct docs directory
+`CLAUDE.md` must contain `@AGENTS.md` as its first line so Claude Code automatically loads the routing table at session start.
 
 ## Structural constraints
 

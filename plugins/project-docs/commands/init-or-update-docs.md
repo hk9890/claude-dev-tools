@@ -1,5 +1,6 @@
 ---
 description: Refresh or update existing project docs lifecycle guidance (create fallback only when missing)
+argument-hint: "[focus area or file]"
 ---
 
 Load the `coder-docs` skill.

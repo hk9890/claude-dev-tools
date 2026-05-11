@@ -16,12 +16,11 @@ Use with:
 
 ## Review workflow
 
-1. Resolve mode/path rules via [project-structure.md](project-structure.md).
-2. Load target docs and AGENTS routes.
-3. Confirm file-role fit using [project-setup.md](project-setup.md).
-4. Apply authoring rules from [project-doc-guidelines.md](project-doc-guidelines.md).
-5. Verify repository facts (paths, commands, workflows, links) in read-only manner.
-6. Produce findings and recommended next flow (`docs-update` for factual fixes, `docs-improve` for structural fixes).
+1. Load target docs and AGENTS routes; verify `CLAUDE.md` exists at project root with `@AGENTS.md` as first line.
+2. Confirm file-role fit using [project-setup.md](project-setup.md).
+3. Apply authoring rules from [project-doc-guidelines.md](project-doc-guidelines.md).
+4. Verify repository facts (paths, commands, workflows, links) in read-only manner.
+5. Produce findings and recommended next flow (`docs-update` for factual fixes, `docs-improve` for structural fixes).
 
 ## Required checks
 
@@ -44,14 +43,18 @@ Severity:
 - `MAJOR`: high-impact scope/actionability gap
 - `MINOR`: clarity/scanability improvement
 
-Suggested rule IDs:
+Rule IDs and default severity:
 
-- `R1` repo-local anchor requirement
-- `R2` scan-first structure
-- `R3` topic boundary
-- `R4` skill-aware local delta
-- `R5` project actionability
-- `V1` validation coverage
+| Rule | Meaning | Default severity |
+|---|---|---|
+| `R1` | Repo-local anchor requirement (commands/paths/checklists/decision tables) | MAJOR |
+| `R2` | Scan-first structure (short sections, headings, bullets) | MINOR |
+| `R3` | Topic boundary (content lives in correct canonical file) | MAJOR |
+| `R4` | Skill-aware local delta (no duplicating full skill content) | MAJOR |
+| `R5` | Project actionability (commands/paths real and current) | MAJOR |
+| `V1` | Validation coverage (links/anchors/paths resolve) | BLOCKER |
+
+Severity may be raised one level when the violation directly causes wrong behavior in real workflows (e.g., a stale command in `RELEASING.md` is R5/BLOCKER, not R5/MAJOR).
 
 ## Validation safety model
 
