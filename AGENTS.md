@@ -4,32 +4,13 @@
 
 Plugin marketplace for Claude Code. Each subdirectory under `plugins/` is a self-contained plugin.
 
-## Plugin locations
+## Use-case routing
 
-| Plugin | README | Purpose |
-|---|---|---|
-| `plugins/beads-tasks` | [README](plugins/beads-tasks/README.md) | Beads task tracking agents |
-| `plugins/complexity-review` | [README](plugins/complexity-review/README.md) | Complexity review commands and skill |
-| `plugins/github-releases` | [README](plugins/github-releases/README.md) | GitHub release workflow |
-| `plugins/project-docs` | [README](plugins/project-docs/README.md) | Project docs lifecycle commands and skill |
+### Research, planning, understanding the repo
 
-## Repo docs
+Load [docs/OVERVIEW.md](docs/OVERVIEW.md) to understand the architecture and how plugins are structured.
 
-- Architecture and plugin layout: [docs/OVERVIEW.md](docs/OVERVIEW.md)
-- Commit and change workflow: [docs/CHANGE-WORKFLOW.md](docs/CHANGE-WORKFLOW.md)
+### Making changes, commits, PRs
 
-## Plugin structure contract
+Load [docs/CHANGE-WORKFLOW.md](docs/CHANGE-WORKFLOW.md) before making commits or opening a PR.
 
-Every plugin must have:
-
-- `.claude-plugin/plugin.json` — manifest (name, description, version, author)
-- `README.md` — purpose, commands table, plugin structure diagram
-
-Optional:
-- `commands/` — slash command definitions (`*.md` with frontmatter)
-- `skills/` — skill definitions (`SKILL.md` + `references/`)
-- `agents/` — subagent definitions (`*.md`)
-
-## Change workflow
-
-Task tracking uses the beads (`bd`) CLI. See [docs/CHANGE-WORKFLOW.md](docs/CHANGE-WORKFLOW.md).

@@ -31,7 +31,6 @@ Supporting references:
 - Structural constraints: [references/project-structure.md](references/project-structure.md)
 - Shared deep lifecycle procedures: [references/project-docs-lifecycle.md](references/project-docs-lifecycle.md)
 - Authoring standards: [references/project-doc-guidelines.md](references/project-doc-guidelines.md)
-- AGENTS specialized route (secondary unless explicitly requested): [references/agents-md-template.md](references/agents-md-template.md)
 
 ## Input contract
 
@@ -50,27 +49,6 @@ Commands in this plugin accept optional free-text arguments (the `[focus area or
 - If the user wants structural quality changes, use the improve flow.
 - Ask before aggressive removals, merges, splits, or consolidations.
 - Keep `AGENTS.md` as a routing surface, not a handbook.
-- Route change-landing guidance to `CHANGE-WORKFLOW.md`.
 - Create topic docs only when the repository has real local guidance for that topic.
 - If a topic is fully covered by an installed skill and there is no local delta, route to the skill instead of creating a hollow doc.
 - Use AGENTS-only guidance as a specialized secondary path unless the user explicitly asks for AGENTS-only work.
-- In create and update flows: ensure `CLAUDE.md` exists at project root with `@AGENTS.md` as its first line. This makes the routing table available to Claude Code automatically. Handling:
-  - If `CLAUDE.md` is missing: create it with `@AGENTS.md` as the only content.
-  - If `CLAUDE.md` exists and first non-empty line is `@AGENTS.md`: no change.
-  - If `CLAUDE.md` exists without `@AGENTS.md`: prepend `@AGENTS.md` and a blank line; preserve all existing content unchanged below. Never overwrite custom content.
-
-## Response contract
-
-- For create flow, report baseline decisions, created files, skipped files with reasons, and verification output.
-- For update flow, explicitly state docs-only scope and no source-file edits, then report what was corrected and how claims were verified.
-- For improve flow, report proposed/selected structural improvements, requested confirmations, and post-change verification.
-- For review flow, explicitly state read-only behavior and return findings with severity, evidence, and suggested fixes.
-- For AGENTS guidance, keep output concise and routing-oriented; do not inline full procedures that belong in docs or skills.
-
-## Runtime routing guardrails
-
-Use `coder-docs` for docs lifecycle work (create, update, improve, review) and AGENTS routing alignment.
-
-If the request is primarily about non-doc workflows, route directly:
-
-- external tracker synchronization (GitHub/Jira) → task-sync skill if installed
