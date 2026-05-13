@@ -9,4 +9,4 @@
 ## Branching
 
 - `master` is the main branch.
-- we do not do branched but directly push to master
+- we push directly to master; no feature branches

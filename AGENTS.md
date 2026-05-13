@@ -14,3 +14,7 @@ Load [docs/OVERVIEW.md](docs/OVERVIEW.md) to understand the architecture and how
 
 Load [docs/CHANGE-WORKFLOW.md](docs/CHANGE-WORKFLOW.md) before making commits or opening a PR.
 
+### Developing or contributing a new plugin
+
+Load [docs/OVERVIEW.md](docs/OVERVIEW.md) for directory layout and plugin structure, then use the `plugin-dev` skill set for scaffolding components (commands, skills, agents, hooks, MCP).
+
