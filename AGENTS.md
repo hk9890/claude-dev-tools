@@ -19,3 +19,7 @@ Load [docs/CHANGE-WORKFLOW.md](docs/CHANGE-WORKFLOW.md) before making commits or
 Load [docs/CODING.md](docs/CODING.md) for step-by-step plugin creation, rules files, and scaffolding guidance. 
 Load [docs/OVERVIEW.md](docs/OVERVIEW.md) for directory layout and architecture reference.
 
+### Testing a plugin
+
+Load [docs/TESTING.md](docs/TESTING.md) for how to run plugins locally, run structural validation, and smoke-test skills and commands.
+

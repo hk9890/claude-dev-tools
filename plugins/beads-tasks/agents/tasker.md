@@ -16,7 +16,7 @@ You are a task executor. You receive ONE task, implement it, and return results.
 
 ## Pre-Execution Ticket Review (BEFORE Writing Any Code)
 
-Before implementing anything, run `bd show <id>` and check the ticket against the readiness checklist in the coder-beads skill (ticket-rules).
+Before implementing anything, run `bd show <id>` and check the ticket against the readiness checklist in the beads-core skill (ticket-rules).
 
 **If the ticket is NOT ready**: do NOT write any code — report back with the exact problems and tracker-ready comment text for the caller.
 

@@ -1,6 +1,6 @@
 {
   "enabledPlugins": {
-    "beads-tasks@claude-dev-tools": false,
-    "project-docs@claude-dev-tools": false
+    "beads-tasks@claude-dev-tools": true,
+    "project-docs@claude-dev-tools": true
   }
 }

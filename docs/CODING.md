@@ -12,12 +12,8 @@ Implementation guide for contributing to this plugin marketplace.
 
 ## Plugin rules files
 
-Every plugin has a rules file at `docs/rules/<plugin-name>.md`. These record facts, constraints, and design decisions that are not derivable from the code — deliberate feature exclusions, chosen approaches, known tradeoffs.
+Rules files live at `docs/rules/<plugin-name>.md`. They record facts, constraints, and design decisions that are not derivable from the code — deliberate feature exclusions, chosen approaches, known tradeoffs.
 
 **Before making decisions or changes for a plugin, read its rules file.** Rules override general best-practice suggestions.
 
-Current rules files:
-- [docs/rules/beads-tasks.md](rules/beads-tasks.md)
-- [docs/rules/complexity-review.md](rules/complexity-review.md)
-- [docs/rules/github-releases.md](rules/github-releases.md)
-- [docs/rules/project-docs.md](rules/project-docs.md)
+Rules files follow the pattern `docs/rules/<plugin-name>.md`. Not every plugin has one — only create a file when there is a real decision or constraint to record.

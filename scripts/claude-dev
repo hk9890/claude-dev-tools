@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Launch Claude Code with all local plugins loaded for development testing.
+# Usage: ./scripts/claude-dev [claude args...]
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+plugin_args=()
+for dir in "$REPO_ROOT/plugins"/*/; do
+  plugin_args+=(--plugin-dir "$dir")
+done
+
+exec claude "${plugin_args[@]}" "$@"
