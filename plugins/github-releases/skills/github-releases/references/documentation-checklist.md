@@ -1,9 +1,5 @@
 # Documentation Checklist
 
-**YOU MUST follow the rules in the documentation skill if available.**
-
-Load a skill that fixes and validates documentation to automate these checks. Only use manual validation if no skill is available.
-
 ## Version Consistency
 
 Check all files that reference the version number:

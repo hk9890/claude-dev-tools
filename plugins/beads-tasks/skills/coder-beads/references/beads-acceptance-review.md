@@ -8,6 +8,8 @@ Create a dedicated task per epic:
 
 - `Acceptance Review: <Epic Name>`
 
+Do **not** use a native beads `gate` issue type — model acceptance checks as normal tasks.
+
 Required checks:
 
 - all implementation tasks are closed
@@ -15,16 +17,16 @@ Required checks:
 - discovered defects are tracked as bugs/tasks
 - scope-level outcome matches epic success criteria
 
-## Reviewer behavior
+## Verifier behavior
 
-Reviewer should:
+Verifier should:
 
 1. read epic plus all child task outcomes
 2. verify acceptance criteria against actual evidence
 3. create follow-up bugs/tasks for defects or missing coverage
 4. close acceptance task only when gate is satisfied
 
-Reviewer should **not** silently reopen scope without a tracked issue.
+Verifier should **not** silently reopen scope without a tracked issue.
 
 ## Example acceptance-review task body
 

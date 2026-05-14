@@ -91,7 +91,7 @@ Reviewer and verifier output should remain actionable and evidence-backed.
 
 ## Phase 6 — AGENTS refresh
 
-Use [agents-md-template.md](agents-md-template.md) for template constraints.
+Use [agents-md-template.md](agents-md-template.md) for structural constraints.
 
 - Regenerate or update AGENTS routes from inspected state.
 - Preserve custom sections unless obsolete.
@@ -115,23 +115,4 @@ Final report should include:
 - created/updated/skipped docs with reasons
 - verification outcome and unresolved follow-ups
 
-## Improve-doc execution modes
-
-### Discussion-first mode (default without strong incident context)
-
-1. Analyze current structure.
-2. Propose improvements.
-3. Ask user which proposals to apply.
-4. Require explicit confirmation before aggressive removals/consolidations.
-5. Execute selected improvements with lifecycle consistency.
-
-### Incident-driven mode
-
-Use when a failure shows missing/unclear/stale guidance.
-
-1. Capture incident context.
-2. Map destination(s): project docs, AGENTS, or both.
-3. Identify prevention gap.
-4. Propose recurrence-prevention edits.
-5. Confirm high-impact changes.
-6. Apply updates and run verification loop.
+For improve-doc execution modes (discussion-first and incident-driven), see [docs-improve.md](docs-improve.md).

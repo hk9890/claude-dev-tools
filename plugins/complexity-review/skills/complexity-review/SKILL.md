@@ -1,6 +1,6 @@
 ---
 name: complexity-review
-description: "Use this skill whenever the user wants a skeptical complexity review of requirements, architecture or design proposals, pull requests, or code changes through principles of simplicity, justified abstraction, intellectual manageability, compatibility discipline, and hostility to accidental complexity. Use it when the task is to challenge complexity, justify abstractions, dependencies, or features, identify accidental complexity, or propose simplifications. Do not use it for implementation work, tracker workflows, or generic style-only review."
+description: "This skill should be used when the user wants a skeptical complexity review of requirements, architecture or design proposals, pull requests, or code changes. Also applies when the user says things like 'review this for complexity', 'is this over-engineered?', 'challenge these requirements', 'does this architecture earn its complexity?', or 'simplicity review of this PR'. Does not apply to implementation work, tracker workflows, or style-only linting reviews."
 ---
 
 ## Workflow routing

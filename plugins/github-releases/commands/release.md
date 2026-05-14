@@ -1,5 +1,6 @@
 ---
 description: Create a new GitHub release — runs quality gates, version bump, and release creation
+argument-hint: "[version]"
 ---
 
 Load the `github-releases` skill.

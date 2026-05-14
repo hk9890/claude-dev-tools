@@ -1,5 +1,6 @@
 ---
 description: Skeptical complexity review of requirements, architecture, or code — challenges every abstraction and dependency
+argument-hint: "<requirements / architecture description / code or PR>"
 ---
 
 Load the `complexity-review` skill.

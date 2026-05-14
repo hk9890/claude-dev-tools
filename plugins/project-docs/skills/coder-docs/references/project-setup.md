@@ -4,7 +4,7 @@
 
 - `README.md`: user-facing project entrypoint
 - `AGENTS.md`: routing layer (routing table for all AI tools)
-- `CLAUDE.md`: Claude Code entrypoint — contains `@AGENTS.md` and any Claude-specific overrides
+- `CLAUDE.md`: Claude Code entrypoint — contains only `@AGENTS.md`
 - `docs/` topic files: durable repo-specific operating guidance
 
 Create topic docs only when the repository has real local guidance for that topic.
@@ -31,7 +31,7 @@ Notes:
 
 ### `CLAUDE.md`
 - Claude Code entrypoint: `@AGENTS.md` as first line
-- MUST NOT CONTAIN ANYTHING ELSE. All the instruction always go to `AGENTS.md 
+- MUST NOT CONTAIN ANYTHING ELSE. All instructions always go to `AGENTS.md`.
 
 ### `README.md`
 

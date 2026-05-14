@@ -1,6 +1,6 @@
 ---
 name: github-releases
-description: "GitHub release workflow for any project. Use when: (1) User wants to create a GitHub release, (2) User asks about release process or versioning, (3) User mentions 'release', 'publish', 'ship', or 'version bump'. Handles quality gates, documentation validation, version management, and GitHub release creation."
+description: "This skill should be used when the user wants to create or publish a GitHub release, asks about the release process, needs a version bump, wants to ship a new version, or wants to set up or update a project's release guide. Also applies when the user says things like 'cut a release', 'ship version X', 'bump the version', 'create a GitHub release', or 'set up our release workflow'. Does not apply to deployment pipelines, CI configuration, or non-GitHub release systems."
 ---
 
 # GitHub Releases

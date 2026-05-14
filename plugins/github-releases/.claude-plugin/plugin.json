@@ -6,8 +6,8 @@
     "name": "Hans Kohlreiter",
     "email": "hans.kohlreiter@dynatrace.com"
   },
-  "homepage": "https://github.com/hanskohlreiter/claude-dev-tools",
-  "repository": "https://github.com/hanskohlreiter/claude-dev-tools",
+  "homepage": "https://github.com/hk9890/claude-dev-tools",
+  "repository": "https://github.com/hk9890/claude-dev-tools",
   "license": "MIT",
   "keywords": ["github", "release", "semver", "gh-cli", "quality-gates"]
 }
