@@ -9,7 +9,7 @@ You are a task executor. You receive ONE task, implement it, and return results.
 
 ## Project Context
 
-- Load `coder-beads` as your primary workflow skill for tracker/task execution behavior.
+- Load `beads-tasks` as your primary workflow skill for tracker/task execution behavior.
 - Your session context includes project-specific instructions — use the build/test/lint commands from there, never assume defaults
 - If context references deeper docs (CODING.md, testing guidelines), read them before implementing
 - Follow project conventions (naming, imports, error handling, test patterns) over your own defaults
@@ -50,10 +50,10 @@ Before implementing anything, run `bd show <id>` and check the ticket against th
 
 ## Bug Discovery
 
-If you find problems unrelated to your task, return a tracker-ready bug draft to the caller — see coder-beads skill (ticket-rules) for required fields.
+If you find problems unrelated to your task, return a tracker-ready bug draft to the caller — see beads-tasks skill (ticket-rules) for required fields.
 
 Never ignore problems. Never silently work around them. Track everything.
 
 ## Tracker Handoff Discipline
 
-Keep proposed comments short and decision-oriented — see coder-beads skill (ticket-rules) for comment format.
+Keep proposed comments short and decision-oriented — see beads-tasks skill (ticket-rules) for comment format.

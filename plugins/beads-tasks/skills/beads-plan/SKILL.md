@@ -1,4 +1,11 @@
-You are the main agent for the beads workflow. You handle everything: discussion, planning, execution trigger, and simple ad-hoc work.
+---
+name: beads-plan
+description: "Do beads planning"
+user-invocable: true
+disable-model-invocation: true
+---
+
+We do now task planning using beads
 
 ## Core Rules
 
@@ -7,12 +14,8 @@ You are the main agent for the beads workflow. You handle everything: discussion
 - **Do NOT use TodoWrite, TaskCreate, or markdown files** for task tracking when beads is active
 - **Issue before execution** — ensure a beads issue exists before spawning a tasker (create it or confirm it exists)
 - **Priority is numeric** — use 0-4 (P0-P4), NOT "high"/"medium"/"low"
-- **Load the `coder-beads` skill before touching beads (NON-NEGOTIABLE)** — Before creating OR updating ANY beads issue (`bd create`, `bd update`), you MUST load the `coder-beads` skill and follow its instructions for creating and managing issues. This applies everywhere — formal planning, ad-hoc work, discussion follow-ups, bug filing, ALL of it. Issues created without following the skill's instructions are garbage: vague descriptions, missing acceptance criteria, no file lists. No exceptions.
+- **Load the `beads-tasks` skill before touching beads (NON-NEGOTIABLE)** — Before creating OR updating ANY beads issue (`bd create`, `bd update`), you MUST load the `coder-beads` skill and follow its instructions for creating and managing issues. This applies everywhere — formal planning, ad-hoc work, discussion follow-ups, bug filing, ALL of it. Issues created without following the skill's instructions are garbage: vague descriptions, missing acceptance criteria, no file lists. No exceptions.
 - **Beads MUST reflect reality (NON-NEGOTIABLE)** — Every decision, scope change, new insight, or shifted direction MUST be immediately reflected in the relevant tasks, bugs, and epics. If a discussion changes the approach, UPDATE the task description. If scope grows, CREATE new tasks. If a task becomes irrelevant, CLOSE it. Stale tickets are lies — they mislead every agent that reads them. There is NO acceptable reason for a beads issue to be out of date.
-
-## Project Context
-
-Your session context includes project-specific instructions (build, test, lint commands). Use them for ad-hoc work and session close.
 
 ## Four Use Cases
 
@@ -27,7 +30,7 @@ User wants to discuss, explore, think through an approach, or refine existing wo
 
 ### 2. Beads Planning
 User explicitly wants a structured plan.
-- Load the `coder-beads` skill — you MUST follow its instructions for how to create and structure beads issues. Do NOT create issues from memory or improvisation.
+- Load the `beads-tasks` skill — you MUST follow its instructions for how to create and structure beads issues. Do NOT create issues from memory or improvisation.
 - Create epic + tasks + acceptance review task, set dependencies
 - Do NOT use a native beads `gate` issue type here. Model acceptance checks as normal tasks (for example `Acceptance Review: <epic title>`).
 - Optionally spawn reviewer for critical feedback
@@ -81,19 +84,6 @@ When in doubt, ask the user.
 
 **After agents complete:** First apply tracker updates serially, then check `bd ready` for newly unblocked tasks and continue until done.
 
-## Session Close Protocol
-
-Before ending a session where work was done:
-
-```bash
-git status                      # 1. Check what changed
-git add <files>                 # 2. Stage code changes
-git commit -m "..."             # 3. Commit code (pre-commit hook exports beads state)
-git push                        # 4. Push to remote
-```
-
-Work is NOT done until `git push` succeeds. Never stop before pushing.
-
 ## Git Safety Rules
 
 When committing (you or tasker):
@@ -113,9 +103,7 @@ When committing (you or tasker):
 - **History is immutable** — agents are predictable
 - **Respect agent outputs** — when reviewer/tasker/verifier return findings or proposed tracker changes, record them in beads yourself without dropping information
 
-## Constraints During Planning
-
-When in planning mode (creating epics, structuring work):
+## Beads Planning Guidelines
 - Read and search the codebase (don't edit during planning)
 - Create and manage beads issues
 - Spawn subagents for execution, review, verification

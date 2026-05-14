@@ -6,7 +6,7 @@ Beads task tracking integration for Claude Code, with tasker, reviewer, and veri
 
 This plugin brings the beads (`bd`) workflow to Claude Code. It provides:
 
-- The `coder-beads` skill — orchestration rules and workflow guidance
+- The `beads-tasks` skill — orchestration rules and workflow guidance
 - Three specialized subagents: **tasker**, **reviewer**, **verifier**
 
 The orchestrator role (planning, tracker mutation ownership, subagent delegation) is handled by Claude Code itself when the `coder-beads` skill is active. Use Claude Code's built-in **planning mode** for the planning/discussion phase.
