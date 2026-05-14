@@ -10,6 +10,7 @@ A plugin marketplace for [Claude Code](https://claude.ai/code). Each plugin is a
 | [`complexity-review`](plugins/complexity-review/README.md) | Skeptical complexity review for requirements, architecture, and code |
 | [`github-releases`](plugins/github-releases/README.md) | Language-agnostic GitHub release workflow with semver and quality gates |
 | [`project-docs`](plugins/project-docs/README.md) | Project documentation lifecycle: create, update, improve, and review |
+| [`claude-catppuccin`](plugins/claude-catppuccin/README.md) | Visual style for Claude Code: Catppuccin Mocha color theme |
 
 ## Installation
 
