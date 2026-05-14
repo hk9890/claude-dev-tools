@@ -23,3 +23,7 @@ Load [docs/OVERVIEW.md](docs/OVERVIEW.md) for directory layout and architecture 
 
 Load [docs/TESTING.md](docs/TESTING.md) for how to run plugins locally, run structural validation, and smoke-test skills and commands.
 
+### Releasing plugins
+
+Load [docs/RELEASING.md](docs/RELEASING.md) for the version bump, quality gates, and release process.
+
