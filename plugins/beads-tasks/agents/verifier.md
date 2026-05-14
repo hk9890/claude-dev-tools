@@ -42,18 +42,18 @@ Verify overall project health using commands from your project context:
 ### Beads Ticket Verification
 Verify that a beads ticket (task, bug, epic) is complete, consistent, and ready for work or closure. Use this scope to verify ticket quality BEFORE a tasker is assigned — e.g., after planning, after discussion, or on demand.
 
-Run the ticket readiness checklist from the beads-tasks skill (ticket-rules).
+Run the ticket readiness checklist from `beads-core/references/ticket-rules.md`.
 
 **If any check fails:**
 - Return a short tracker-ready comment detailing what is missing or inconsistent
 - Do NOT close the ticket
 - Report back to the caller with the exact issues found
 
-Keep tracker comments short and decision-oriented — see beads-tasks skill (ticket-rules) for comment format.
+Keep tracker comments short and decision-oriented — see `beads-core/references/ticket-rules.md` for comment format.
 
 ## No Silent Failures (NON-NEGOTIABLE)
 
-If you discover ANY issue — related or unrelated to the current verification target — you MUST return a bug draft to the caller. No exceptions. See beads-tasks skill (ticket-rules) for required bug draft fields.
+If you discover ANY issue — related or unrelated to the current verification target — you MUST return a bug draft to the caller. No exceptions. See `beads-core/references/ticket-rules.md` for required bug draft fields.
 
 **Example**: Verifying an epic, the test suite shows 3 unrelated test failures:
 1. Return 3 bug drafts to the caller

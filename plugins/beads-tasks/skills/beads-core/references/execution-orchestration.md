@@ -2,7 +2,7 @@
 
 Run planned work safely using the ready queue, dependency graph, and explicit verification gates.
 
-In this repo, subagents may read tracker state, but the orchestrator owns all tracker mutations. Apply `bd create`, `bd update`, `bd close`, `bd comments add`, and `bd dep add` serially per workspace.
+See core-rules.md — serialized writes rule.
 
 ## Execution loop
 
@@ -16,11 +16,7 @@ In this repo, subagents may read tracker state, but the orchestrator owns all tr
 
 ## Parallelization rule
 
-Parallelize only when tasks do **not** share mutable files or hidden sequencing constraints.
-
-Parallelize implementation and verification work, not tracker writes. Do not treat lock failure as a correctness signal.
-
-Use dependencies instead of assumptions.
+See core-rules.md — parallel execution and after-agents protocol.
 
 ## Pre-execution ticket review (mandatory)
 

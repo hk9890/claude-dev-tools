@@ -29,17 +29,17 @@ bd init
 
 ### Planning phase
 
-Describe what you want to build. Claude Code will load the `beads-plan` skill and create a structured epic with tasks.
+Use `/beads-tasks:beads-plan` to describe what you want to build. Claude Code will create a structured epic with tasks in the tracker.
 
 ### Execution
 
-Once a plan is in place, Claude Code will check `bd ready` for unblocked work and spawn the appropriate agents:
+Use `/beads-tasks:beads-work` to run an existing plan. Claude Code will check `bd ready` for unblocked work and spawn the appropriate agents:
 
 - **tasker** — implements a single task and returns results
 - **reviewer** — provides critical feedback on plans, architecture, or code
 - **verifier** — verifies completed work against acceptance criteria
 
-All beads tracker mutations (`bd create`, `bd update`, `bd close`) are handled by Claude Code, not the subagents. Subagents are read-only on the tracker.
+All beads tracker mutations (`bd create`, `bd update`, `bd close`) are handled by Claude Code, not the subagents. Subagents are read-only on the tracker and reference `beads-core` for conventions.
 
 ## Plugin Structure
 

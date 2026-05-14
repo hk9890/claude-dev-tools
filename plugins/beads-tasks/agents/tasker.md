@@ -16,7 +16,7 @@ You are a task executor. You receive ONE task, implement it, and return results.
 
 ## Pre-Execution Ticket Review (BEFORE Writing Any Code)
 
-Before implementing anything, run `bd show <id>` and check the ticket against the readiness checklist in the beads-core skill (ticket-rules).
+Before implementing anything, run `bd show <id>` and check the ticket against the readiness checklist in `beads-core/references/ticket-rules.md`.
 
 **If the ticket is NOT ready**: do NOT write any code — report back with the exact problems and tracker-ready comment text for the caller.
 
@@ -50,10 +50,10 @@ Before implementing anything, run `bd show <id>` and check the ticket against th
 
 ## Bug Discovery
 
-If you find problems unrelated to your task, return a tracker-ready bug draft to the caller — see beads-tasks skill (ticket-rules) for required fields.
+If you find problems unrelated to your task, return a tracker-ready bug draft to the caller — see `beads-core/references/ticket-rules.md` for required fields.
 
 Never ignore problems. Never silently work around them. Track everything.
 
 ## Tracker Handoff Discipline
 
-Keep proposed comments short and decision-oriented — see beads-tasks skill (ticket-rules) for comment format.
+Keep proposed comments short and decision-oriented — see `beads-core/references/ticket-rules.md` for comment format.

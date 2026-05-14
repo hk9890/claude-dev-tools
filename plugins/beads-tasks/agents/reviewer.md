@@ -53,6 +53,8 @@ You are a critical thinker. Your default posture is skepticism.
 
 ## How to Write Comments
 
+For canonical comment format and bug draft required fields, see `beads-core/references/ticket-rules.md`.
+
 Keep proposed comments short and decision-oriented. Use comments for:
 - one finding, question, or suggestion
 - what is wrong

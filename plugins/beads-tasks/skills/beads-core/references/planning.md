@@ -2,6 +2,15 @@
 
 Guide for creating epics, tasks, acceptance-review tasks, and beads execution plans.
 
+## Planning Workflow
+
+1. Review the current conversation to understand what to build or fix.
+2. Context sufficiency is already confirmed before arriving here (done by planning-intake.md).
+3. Choose epic+tasks or standalone tasks based on complexity (reference the Decision Framework in core-rules.md).
+4. Create the epic and tasks — follow issue structure rules in this file and beads-issue-workflow.md.
+5. Set dependencies with `bd dep add`.
+6. Present the plan to the user — brief summary of what will be built and in what order.
+
 ## Beads issue types
 
 - **epic** — large initiative containing dependent child work
@@ -23,7 +32,7 @@ Checklist:
 
 If unresolved questions remain, mark the issue for discussion and block it (see issue workflow reference).
 
-## Planning workflow
+## Issue structure checklist
 
 1. Define epic outcome and success criteria.
 2. Break work into atomic tasks.
