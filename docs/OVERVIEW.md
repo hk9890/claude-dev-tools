@@ -16,10 +16,5 @@ plugins/<plugin-name>/
 
 Not all component types are required — a plugin may have only commands, only skills, or a mix.
 
-## Adding a new plugin
-
-1. Create `plugins/<plugin-name>/` with the layout above.
-2. Write `.claude-plugin/plugin.json` (required fields: `name`, `version`, `description`).
-3. Add plugin to the table in `README.md`.
-4. Use the `plugin-dev` skill set for scaffolding components: commands, skills, agents, hooks, and MCP integration.
+For implementation steps (adding a plugin, rules files, scaffolding) see [CODING.md](CODING.md).
 

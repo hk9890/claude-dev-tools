@@ -16,5 +16,6 @@ Load [docs/CHANGE-WORKFLOW.md](docs/CHANGE-WORKFLOW.md) before making commits or
 
 ### Developing or contributing a new plugin
 
-Load [docs/OVERVIEW.md](docs/OVERVIEW.md) for directory layout and plugin structure, then use the `plugin-dev` skill set for scaffolding components (commands, skills, agents, hooks, MCP).
+Load [docs/CODING.md](docs/CODING.md) for step-by-step plugin creation, rules files, and scaffolding guidance. 
+Load [docs/OVERVIEW.md](docs/OVERVIEW.md) for directory layout and architecture reference.
 

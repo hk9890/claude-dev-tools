@@ -1,6 +1,6 @@
 ---
 name: coder-beads
-description: "Use this skill for beads-centric planning, issue structure, execution orchestration, acceptance review gates, beads setup/runtime troubleshooting, beads health checks, and beads follow-up bug/task filing when users ask to capture tracker bugs/tasks (for example with repro and expected vs actual), even without explicitly saying beads. Trigger only for beads tracker workflow requests. Do not trigger for external task-sync/import-export workflows (GitHub issues/Jira), docs lifecycle/taxonomy cleanup, GitHub releases, or general coding tasks."
+description: "Use this skill for beads-centric planning, issue structure, execution orchestration, and acceptance review gates. Trigger only for beads tracker workflow requests. Do not trigger for external task-sync/import-export workflows (GitHub issues/Jira), docs lifecycle/taxonomy cleanup, GitHub releases, or general coding tasks."
 ---
 
 # coder-beads
@@ -49,11 +49,6 @@ Never force-push, skip hooks, or amend published commits.
 | Structure issues, labels, dependencies | [references/beads-issue-workflow.md](references/beads-issue-workflow.md) |
 | Run execution orchestration (ready queue, parallelization) | [references/execution-orchestration.md](references/execution-orchestration.md) |
 | Run acceptance-review and close criteria | [references/beads-acceptance-review.md](references/beads-acceptance-review.md) |
-| Initialize and set up beads | [references/beads-init.md](references/beads-init.md) |
-| Troubleshoot broken beads setup/runtime | [references/beads-setup-troubleshooting.md](references/beads-setup-troubleshooting.md) |
-| Diagnose runtime/beads database failures | [references/beads-runtime-troubleshooting.md](references/beads-runtime-troubleshooting.md) |
-| Quick status/health verification | [references/beads-status-health.md](references/beads-status-health.md) |
-| File tracker follow-ups / bug reports with evidence | [references/beads-bug-reporting.md](references/beads-bug-reporting.md) |
 
 ## Additional routing
 
