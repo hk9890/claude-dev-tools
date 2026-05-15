@@ -6,18 +6,18 @@ Project documentation lifecycle management for Claude Code.
 
 This plugin provides structured workflows for creating, updating, improving, and reviewing project documentation. It establishes canonical doc taxonomy and keeps AGENTS.md routing aligned with the repository.
 
-## Commands
+## Skills
 
-| Command | Description |
-|---|---|
-| `/create-docs` | Create or initialize project docs baseline from scratch |
-| `/init-or-update-docs` | Refresh or update existing project docs |
-| `/improve-doc` | Improve docs structure and quality |
-| `/review-docs` | Review and validate docs in read-only mode |
+| Skill | Invocation | Description |
+|---|---|---|
+| create-docs | `/project-docs:create-docs` | Create or initialize project docs baseline from scratch |
+| init-or-update-docs | `/project-docs:init-or-update-docs` | Refresh or update existing project docs |
+| improve-doc | `/project-docs:improve-doc` | Improve docs structure and quality |
+| review-docs | `/project-docs:review-docs` | Review and validate docs in read-only mode |
 
 ## Usage
 
-Run any command from the list above. Each routes to the appropriate workflow in the `coder-docs` skill:
+Run any skill from the list above. Each routes to the appropriate workflow in the `project-docs` skill:
 
 - **create** — first-time setup, establishes canonical taxonomy
 - **update** — corrects stale/inaccurate docs without touching source code
@@ -30,13 +30,17 @@ Run any command from the list above. Each routes to the appropriate workflow in 
 project-docs/
 ├── .claude-plugin/
 │   └── plugin.json
-├── commands/
-│   ├── create-docs.md
-│   ├── init-or-update-docs.md
-│   ├── improve-doc.md
-│   └── review-docs.md
 └── skills/
-    └── coder-docs/
+    ├── create-docs/
+    │   └── SKILL.md
+    ├── init-or-update-docs/
+    │   └── SKILL.md
+    ├── improve-doc/
+    │   └── SKILL.md
+    ├── review-docs/
+    │   └── SKILL.md
+    └── project-docs/
         ├── SKILL.md
+        ├── examples/
         └── references/     (docs-init, docs-update, docs-improve, guidelines, etc.)
 ```
