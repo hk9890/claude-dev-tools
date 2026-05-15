@@ -1,13 +1,13 @@
 ---
 name: create-docs
-description: "Create or initialize project docs baseline from scratch for the current repository."
+description: "Use this when starting a project with no AGENTS.md or docs baseline — creates canonical docs structure from scratch."
 user-invocable: true
 disable-model-invocation: true
 ---
 
 Load the `project-docs` skill.
 
-Treat this as optional focus guidance:
+Optional scope argument (advisory only — does not override lifecycle checks):
 
 $ARGUMENTS
 
