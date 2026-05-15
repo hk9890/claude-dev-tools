@@ -39,6 +39,8 @@ When possible, recommend in this order:
 5. accept
 
 ## Output emphasis
+These items supplement the Required review output in SKILL.md (Verdict, Principle pressure points, Findings, Open questions, What to remove/defer/simplify, What is justified); all standard sections still apply.
+
 The review must explicitly include:
 - the minimal acceptable scope
 - the non-goals that should stay out

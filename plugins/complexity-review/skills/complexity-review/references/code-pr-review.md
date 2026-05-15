@@ -1,6 +1,6 @@
 # Code / PR review workflow
 
-Use this workflow when reviewing a diff, pull request, implementation plan, or a concrete code change.
+Use this workflow when reviewing a diff, pull request, or a concrete code change.
 
 ## Review goal
 Judge whether the implementation solves the problem with obvious, minimal, maintainable code and without unjustified abstraction, dependency growth, or compatibility damage.
@@ -41,6 +41,8 @@ When possible, recommend in this order:
 5. accept
 
 ## Output emphasis
+These items supplement the Required review output in SKILL.md (Verdict, Principle pressure points, Findings, Open questions, What to remove/defer/simplify, What is justified); all standard sections still apply.
+
 The review must explicitly include:
 - abstraction and dependency impact
 - compatibility impact

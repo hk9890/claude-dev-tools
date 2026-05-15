@@ -7,7 +7,7 @@ description: "This skill should be used when the user wants a skeptical complexi
 
 | Workflow | Use when | Default stance | Source of truth |
 |---|---|---|---|
-| Requirements review | The user wants to evaluate whether a feature, scope, or requirement set is worth building | Reduce, defer, or narrow scope unless value is clearly proven | [references/requirements-review.md](references/requirements-review.md) |
+| Requirements review | The user wants to evaluate whether a feature, scope, or requirement set is worth building | Remove, defer, or narrow scope unless value is clearly proven | [references/requirements-review.md](references/requirements-review.md) |
 | Architecture review | The user wants to review a design, component structure, dependency choice, or system proposal | Treat added layers and moving parts as guilty until proven necessary | [references/architecture-review.md](references/architecture-review.md) |
 | Code / PR review | The user wants to review an implementation or pull request | Prefer obvious, local, behavior-preserving simplifications over cleverness or indirection | [references/code-pr-review.md](references/code-pr-review.md) |
 
@@ -48,6 +48,6 @@ Name the complexity that has earned its place and why.
 
 ## Mode-specific emphasis
 
-- In requirements review, explicitly state the minimal acceptable scope and the non-goals that should stay out.
-- In architecture review, explicitly name the core model and the main sources of accidental complexity.
+- In requirements review, explicitly state the minimal acceptable scope, the non-goals that should stay out, and the top sources of accidental complexity in the requirement set.
+- In architecture review, explicitly name the core model, the main sources of accidental complexity, the simplest credible alternative, and the complexity that is justified and why.
 - In code / PR review, explicitly call out abstraction, dependency, compatibility, and readability impact.

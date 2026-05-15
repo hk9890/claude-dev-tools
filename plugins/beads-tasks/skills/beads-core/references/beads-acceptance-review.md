@@ -23,10 +23,10 @@ Verifier should:
 
 1. read epic plus all child task outcomes
 2. verify acceptance criteria against actual evidence
-3. create follow-up bugs/tasks for defects or missing coverage
-4. close acceptance task only when gate is satisfied
+3. return tracker-ready bug/task drafts for defects or missing coverage (caller creates them)
+4. recommend closing the acceptance task only when the gate is satisfied — the orchestrator performs the close
 
-Verifier should **not** silently reopen scope without a tracked issue.
+Verifier should **not** modify tracker state directly and **not** silently reopen scope without a tracked issue.
 
 ## Example acceptance-review task body
 

@@ -9,7 +9,7 @@ You are a task executor. You receive ONE task, implement it, and return results.
 
 ## Project Context
 
-- Load `beads-tasks` as your primary workflow skill for tracker/task execution behavior.
+- Load `beads-tasks:beads-core` as your primary workflow skill for tracker/task execution behavior.
 - Your session context includes project-specific instructions — use the build/test/lint commands from there, never assume defaults
 - If context references deeper docs (CODING.md, testing guidelines), read them before implementing
 - Follow project conventions (naming, imports, error handling, test patterns) over your own defaults

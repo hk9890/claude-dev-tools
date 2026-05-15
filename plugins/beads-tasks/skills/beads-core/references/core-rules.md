@@ -1,6 +1,6 @@
 # Beads Core Rules
 
-Shared operational rules for all beads workflows. These apply to the orchestrator (beads-plan), taskers (beads-work), reviewers, and verifiers alike.
+Shared operational rules for all beads workflows. These apply to the planning orchestrator (beads-plan), the execution orchestrator (beads-work), and the spawned taskers, reviewers, and verifiers alike.
 
 ## Beads is the tracker
 

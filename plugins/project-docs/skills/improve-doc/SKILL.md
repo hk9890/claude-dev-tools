@@ -13,8 +13,8 @@ $ARGUMENTS
 
 Run the improve-doc workflow from the `project-docs` skill:
 
-- If the user supplies a specific doc file and a concrete problem to fix, run the targeted single-doc path directly.
-- Otherwise, run discussion-first analysis (positives, negatives, proposals), ask what to improve before edits, and require explicit confirmation before aggressive removals, consolidation, or deletion.
+- If the user provides a concrete docs failure or incident context, run incident-driven mode (capture incident, propose recurrence-prevention edits, confirm high-impact changes, then implement and verify).
+- Otherwise, run discussion-first mode (summarize strengths, gaps, and options; ask which options to apply; then implement with verification).
 - This skill is not read-only by default; it can propose and then apply docs changes based on user direction.
 
 Primary procedure: `references/docs-improve.md` in the `project-docs` skill.
