@@ -51,8 +51,13 @@ See [version-management.md](version-management.md) for semver rules and which fi
 git tag v<version>
 git push origin v<version>
 
-# Create GitHub release with release notes
-gh release create v<version> --title "v<version>" --notes-file <release-notes-file>
+# Write release notes to a temp file — never create it inside the repo
+NOTES=$(mktemp /tmp/release-notes-XXXXXX.md)
+# ... write structured notes per release-notes-guide.md ...
+
+# Create GitHub release
+gh release create v<version> --title "v<version>" --notes-file "$NOTES"
+rm "$NOTES"
 ```
 
 See [release-notes-guide.md](release-notes-guide.md) for the required release notes format.
