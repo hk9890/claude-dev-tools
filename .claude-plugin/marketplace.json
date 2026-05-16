@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Personal Marketplace for development with claude code",
-    "version": "1.6.1",
+    "version": "1.6.2",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -69,7 +69,7 @@
       "name": "keep-awake-linux",
       "source": "./plugins/keep-awake-linux",
       "description": "Prevents Linux system sleep while Claude Code is actively working — releases automatically when idle or on session exit",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "author": {
         "name": "Hans Kohlreiter"
       },
