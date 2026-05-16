@@ -4,20 +4,19 @@ description: "Shared reference library for beads workflows — loaded by beads-p
 user-invocable: false
 ---
 
-Routing reference for beads workflows. Load the relevant document for the task at hand.
+## How to use
+
+This skill is a routing table. Load the reference doc whose "When you need to" phrase matches what you are about to do; the actual workflow content lives in the references.
 
 ## Workflow routing
 
-| Need | Source of truth |
+| When you need to | Load |
 |---|---|
-| Shared operational rules, git safety, agent delegation | [references/core-rules.md](references/core-rules.md) |
-| Build an epic + tasks plan | [references/planning.md](references/planning.md) |
-| Structure issues, labels, dependencies | [references/beads-issue-workflow.md](references/beads-issue-workflow.md) |
-| Run execution orchestration (ready queue, parallelization) | [references/execution-orchestration.md](references/execution-orchestration.md) |
-| Run acceptance-review and close criteria | [references/beads-acceptance-review.md](references/beads-acceptance-review.md) |
-| Tracker comment format, bug draft fields, ticket readiness | [references/ticket-rules.md](references/ticket-rules.md) |
-| Planning intake decision logic | [references/planning-intake.md](references/planning-intake.md) |
-
-## Additional routing
-
-- For docs lifecycle or AGENTS authoring work, use the `project-docs` plugin if installed.
+| Decide whether to discuss intent with the user or propose a plan — **planning intake** | [references/planning-intake.md](references/planning-intake.md) |
+| Decide what to work on (conversation refs first, tracker discovery second) — **work intake** | [references/work-intake.md](references/work-intake.md) |
+| Create epics, tasks, and the acceptance-review task after intent is confirmed — **planning workflow** | [references/planning.md](references/planning.md) |
+| Run the execution loop — plan-review gate, tasker/verifier delegation, parallel rules, closure — **execution orchestration** | [references/execution-orchestration.md](references/execution-orchestration.md) |
+| Structure beads issues — labels, dependencies, blocked discussion tasks — **issue workflow** | [references/beads-issue-workflow.md](references/beads-issue-workflow.md) |
+| Run acceptance review and apply close criteria — **acceptance review** | [references/beads-acceptance-review.md](references/beads-acceptance-review.md) |
+| Format tracker comments, draft bugs, check ticket readiness — **subagent conventions** | [references/ticket-rules.md](references/ticket-rules.md) |
+| Apply shared operational rules — serialized writes, agent delegation, git safety — **core rules** | [references/core-rules.md](references/core-rules.md) |

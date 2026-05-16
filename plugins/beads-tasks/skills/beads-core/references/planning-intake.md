@@ -1,35 +1,52 @@
 # Planning Intake Decision Logic
 
-Applies when `/beads-tasks:beads-plan` is invoked. Invocation IS the declaration of planning intent — there is no discussion or exploration branch. The only question is whether enough context already exists in the conversation to proceed.
+Contract:
+
+1. Understand what the user wants to build before creating anything.
+2. Propose a concrete plan back to the user.
+3. Get explicit confirmation before any `bd create`, `bd update`, or `bd dep add`.
 
 ## Section 1: Decision algorithm
 
-Scan the conversation for the following signals before asking any questions.
+Scan the conversation for signals before asking any questions.
 
-**Sufficient context — proceed to planning immediately if any of these are present:**
+**Clear intent — proceed to Section 3 (propose) directly if all of these are present:**
 
-- A feature, improvement, or change the user wants to build, described with enough specificity to write a ticket title and description
-- A bug or problem to fix, with observable symptoms or reproduction steps
-- An explicit scope statement ("rewrite X", "add Y to Z", "fix the issue where…")
-- Both what-to-build AND what-done-looks-like are already answerable from the conversation
+- A feature, improvement, change, or bug the user wants addressed, described with enough specificity to write a ticket title and description
+- A desired outcome or "done" state that can become testable acceptance criteria
+- No unresolved open questions that would block a tasker from executing
 
-**Insufficient context — ask questions when these are missing:**
+**Unclear intent — go to Section 2 (discuss) when any of these are true:**
 
 - What to build or fix is vague or absent
 - The desired outcome is unclear
 - There is no basis yet for writing testable acceptance criteria
+- The conversation contains conflicting directions or unresolved decisions
 
-If the conversation already provides sufficient context, skip Section 2 entirely and proceed to planning.
+## Section 2: Discussion branch
 
-## Section 2: Intake questions
+When intent is unclear, enter a focused discussion with the user. Do NOT create any beads issues during this phase.
 
-Ask only the questions whose answers are not already present in the conversation. Do not ask questions whose answers are already clear from context.
+Ask only the questions whose answers are not already present in the conversation:
 
 1. What do you want to build or fix? *(scope — required)*
 2. What is the desired outcome, or what problem does this solve? *(required)*
 3. Are there known constraints, files, or systems involved? *(optional — ask only if scope is still ambiguous after questions 1 and 2)*
-4. How would you verify it works — what does "done" look like? *(optional — ask if acceptance criteria cannot be inferred; the answer should satisfy the planner quality bar in [references/planning.md](planning.md))*
+4. How would you verify it works — what does "done" look like? *(optional — ask if acceptance criteria cannot be inferred; the answer should satisfy the planner quality bar in [planning.md](planning.md))*
 
-## Section 3: When to stop asking
+Stop asking as soon as questions 1 and 2 are answered with enough specificity that a ticket description can be written. Then proceed to Section 3.
 
-Stop asking as soon as questions 1 and 2 are answered with enough specificity that a ticket description can be written. At that point, proceed to planning immediately — do not ask further questions.
+If the user wants to brainstorm or explore options before committing to a shape, stay in discussion. Do not jump to proposing a plan until the user signals readiness ("ok, let's plan this", "go ahead", a concrete scope statement, etc.).
+
+## Section 3: Propose and confirm
+
+Before any `bd create`, present the proposed plan to the user:
+
+- The epic title and outcome (or, for small work, the standalone task title)
+- The list of implementation tasks with one-line summaries
+- The acceptance-review task
+- Any dependencies or known blockers
+
+Get explicit confirmation ("yes", "go ahead", "create them") before writing to the tracker. If the user requests changes, revise and re-propose — do NOT partially create issues and then ask.
+
+Once confirmed, hand off to the **Planning Workflow** in [planning.md](planning.md) to do the actual `bd create` calls.
