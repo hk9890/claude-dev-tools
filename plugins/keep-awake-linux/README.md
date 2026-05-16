@@ -86,6 +86,25 @@ Fallback when `XDG_RUNTIME_DIR` is unset:
 
 Each active session is tracked by a `<session_id>.pid` file in that directory.
 
+**Activity log:** every hook fire and every spawn/refresh/release writes one line to `keep-awake.log` in the state directory. Useful for debugging whether hooks are wired correctly after install:
+
+```
+tail -f "$XDG_RUNTIME_DIR/claude-keep-awake/keep-awake.log"
+```
+
+Sample lines:
+
+```
+2026-05-16T19:00:11+0200 hook=UserPromptSubmit sid=abc12345 verb=- outcome=routed-to-start
+2026-05-16T19:00:11+0200 hook=- sid=abc12345 verb=start outcome=spawned new_pid=981437 old_pid=-
+2026-05-16T19:00:14+0200 hook=PreToolUse sid=abc12345 verb=- outcome=routed-to-start
+2026-05-16T19:00:14+0200 hook=- sid=abc12345 verb=start outcome=refreshed new_pid=981502 old_pid=981437
+2026-05-16T19:00:45+0200 hook=SessionEnd sid=abc12345 verb=- outcome=routed-to-stop
+2026-05-16T19:00:45+0200 hook=- sid=abc12345 verb=stop outcome=killed pid=981502
+```
+
+The log auto-rotates at 1 MiB (one archive kept as `keep-awake.log.1`). Disable with `KEEP_AWAKE_LOG=0`.
+
 ## Configuration & limits
 
 **`KEEP_AWAKE_TTL`** — inhibitor lifetime in seconds (default `1800`). Increase this if you have very long turns with no hook events; decrease it for faster crash recovery.

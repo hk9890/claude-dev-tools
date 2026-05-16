@@ -1,7 +1,7 @@
 {
   "name": "keep-awake-linux",
   "description": "Prevents Linux system sleep while Claude Code is actively working — releases automatically when idle or on session exit",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": {
     "name": "Hans Kohlreiter",
     "email": "hans.kohlreiter@dynatrace.com"

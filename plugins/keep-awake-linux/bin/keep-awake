@@ -22,10 +22,33 @@ else
 fi
 
 SESSIONS_DIR="$STATE_DIR/sessions"
+LOG_FILE="$STATE_DIR/keep-awake.log"
+LOG_MAX=1048576   # 1 MiB
+
+# ── Logging ───────────────────────────────────────────────────────────────────
+
+log_event() {
+  [[ "${KEEP_AWAKE_LOG:-1}" == "0" ]] && return 0
+  if [ ! -d "$STATE_DIR" ]; then
+    mkdir -p "$STATE_DIR" 2>/dev/null || return 0
+    chmod 0700 "$STATE_DIR" 2>/dev/null || true
+  fi
+  if [ -f "$LOG_FILE" ]; then
+    local size
+    size=$(stat -c %s "$LOG_FILE" 2>/dev/null || echo 0)
+    if [ "$size" -ge "$LOG_MAX" ]; then
+      mv -f "$LOG_FILE" "$LOG_FILE.1" 2>/dev/null || true
+    fi
+  fi
+  local ts
+  ts=$(date -Iseconds 2>/dev/null || date +%Y-%m-%dT%H:%M:%S%z)
+  printf '%s %s\n' "$ts" "$*" >> "$LOG_FILE" 2>/dev/null || true
+}
 
 # ── Dependency check ──────────────────────────────────────────────────────────
 
 if ! command -v systemd-inhibit >/dev/null 2>&1; then
+  log_event "hook=- sid=- verb=${1:-?} outcome=no-op-systemd-inhibit-missing"
   echo "keep-awake: systemd-inhibit not available, no-op" >&2
   exit 0
 fi
@@ -78,7 +101,10 @@ gc() {
 
 do_start() {
   local SID=$1
-  validate_sid "$SID" || exit 0
+  if ! validate_sid "$SID"; then
+    log_event "hook=- sid=- verb=start outcome=no-op-invalid-sid"
+    exit 0
+  fi
   ensure_dirs
   gc
 
@@ -104,12 +130,18 @@ do_start() {
   # Verify-then-kill the old inhibitor (zero-gap: new one is already live)
   if [ -n "$OLD_PID" ] && [ "$OLD_PID" != "$NEW_PID" ] && verify_our_inhibitor "$OLD_PID"; then
     kill "$OLD_PID" 2>/dev/null || true
+    log_event "hook=- sid=${SID:0:8} verb=start outcome=refreshed new_pid=$NEW_PID old_pid=$OLD_PID"
+  else
+    log_event "hook=- sid=${SID:0:8} verb=start outcome=spawned new_pid=$NEW_PID old_pid=${OLD_PID:--}"
   fi
 }
 
 do_stop() {
   local SID=$1
-  validate_sid "$SID" || exit 0
+  if ! validate_sid "$SID"; then
+    log_event "hook=- sid=- verb=stop outcome=no-op-invalid-sid"
+    exit 0
+  fi
   ensure_dirs
 
   if [ -f "$SESSIONS_DIR/$SID.pid" ]; then
@@ -117,8 +149,15 @@ do_stop() {
     PID=$(cat "$SESSIONS_DIR/$SID.pid" 2>/dev/null || true)
     if [ -n "$PID" ] && verify_our_inhibitor "$PID"; then
       kill "$PID" 2>/dev/null || true
+      log_event "hook=- sid=${SID:0:8} verb=stop outcome=killed pid=$PID"
+    elif [ -n "$PID" ]; then
+      log_event "hook=- sid=${SID:0:8} verb=stop outcome=skipped-pid-not-ours pid=$PID"
+    else
+      log_event "hook=- sid=${SID:0:8} verb=stop outcome=no-op-empty-marker"
     fi
     rm -f "$SESSIONS_DIR/$SID.pid"
+  else
+    log_event "hook=- sid=${SID:0:8} verb=stop outcome=no-op-no-marker"
   fi
 
   gc
@@ -152,6 +191,7 @@ do_hook() {
 
   # jq required for hook verb
   if ! command -v jq >/dev/null 2>&1; then
+    log_event "hook=$EVENT sid=- verb=- outcome=no-op-jq-missing"
     echo "keep-awake: jq not available, hook no-op" >&2
     exit 0
   fi
@@ -159,19 +199,22 @@ do_hook() {
   local SID
   SID=$(jq -r '.session_id // empty' 2>/dev/null || true)
   if [ -z "$SID" ]; then
+    log_event "hook=$EVENT sid=- verb=- outcome=no-op-missing-sid"
     echo "keep-awake: missing session_id in stdin" >&2
     exit 0
   fi
 
   case "$EVENT" in
     SessionStart|UserPromptSubmit|PreToolUse|PostToolUse)
+      log_event "hook=$EVENT sid=${SID:0:8} verb=- outcome=routed-to-start"
       do_start "$SID"
       ;;
     SessionEnd)
+      log_event "hook=$EVENT sid=${SID:0:8} verb=- outcome=routed-to-stop"
       do_stop "$SID"
       ;;
     *)
-      # Unknown event — silent no-op
+      log_event "hook=$EVENT sid=${SID:0:8} verb=- outcome=no-op-unknown-event"
       exit 0
       ;;
   esac
