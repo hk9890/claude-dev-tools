@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Personal Marketplace for development with claude code",
-    "version": "1.5.0",
+    "version": "1.6.0",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -64,6 +64,17 @@
       },
       "category": "theme",
       "keywords": ["theme", "catppuccin", "mocha", "style", "visual"]
+    },
+    {
+      "name": "keep-awake-linux",
+      "source": "./plugins/keep-awake-linux",
+      "description": "Prevents Linux system sleep while Claude Code is actively working — releases automatically when idle or on session exit",
+      "version": "0.1.0",
+      "author": {
+        "name": "Hans Kohlreiter"
+      },
+      "category": "workflow",
+      "keywords": ["linux", "systemd", "sleep", "keep-awake", "inhibit", "hooks"]
     }
   ]
 }
