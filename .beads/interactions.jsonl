@@ -60,3 +60,4 @@
 {"id":"int-205b4460","kind":"field_change","created_at":"2026-05-15T22:55:09.959416899Z","actor":"Hans Kohlreiter","issue_id":"claude-dev-tools-0n0","extra":{"field":"status","new_value":"closed","old_value":"open"}}
 {"id":"int-7e499843","kind":"field_change","created_at":"2026-05-15T22:55:10.430505392Z","actor":"Hans Kohlreiter","issue_id":"claude-dev-tools-b2e","extra":{"field":"status","new_value":"closed","old_value":"open"}}
 {"id":"int-fc3f7b52","kind":"field_change","created_at":"2026-05-15T22:55:10.903708433Z","actor":"Hans Kohlreiter","issue_id":"claude-dev-tools-282","extra":{"field":"status","new_value":"closed","old_value":"open"}}
+{"id":"int-430dd3b5","kind":"field_change","created_at":"2026-05-16T14:14:14.703517274Z","actor":"Hans Kohlreiter","issue_id":"claude-dev-tools-5kg","extra":{"field":"status","new_value":"closed","old_value":"open","reason":"Closed"}}
