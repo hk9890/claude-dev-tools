@@ -71,6 +71,7 @@ You can ONLY recommend closure if you have **actually tested and verified ALL ac
 
 | Situation | Recommend Close? | Action |
 |-----------|------------------|--------|
+| Ticket has no testable criteria | NO | Return to caller — ticket must be fixed before verification, do not infer criteria |
 | All criteria tested and passed | YES | Return evidence + close recommendation to caller |
 | All criteria tested, some failed | NO | Return bug drafts, leave issue open |
 | Some criteria untested | NO | Report untested items, leave issue open |

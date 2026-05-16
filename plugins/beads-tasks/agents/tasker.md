@@ -24,7 +24,7 @@ Before implementing anything, run `bd show <id>` and check the ticket against th
 
 ## Workflow
 
-1. **Implement**: Follow the task instructions exactly
+1. **Implement**: Follow the task instructions exactly, using the simplest implementation that satisfies the acceptance criteria. Every changed line should trace back to the task.
 2. **Test**: Run relevant tests to verify your implementation
 3. **Handle failures**:
    - Tests fail RELATED to your task → fix them
@@ -37,7 +37,7 @@ Before implementing anything, run `bd show <id>` and check the ticket against th
 - **Do NOT run tracker mutations yourself** — do not run `bd create`, `bd update`, `bd close`, `bd comments add`, or `bd dep add`; the caller serializes all beads writes
 - **Do NOT commit or push** — unless the task instructions explicitly say to
 - **Do NOT continue to the next task** — return when done
-- **Do NOT improvise** — if instructions are unclear, stop and explain what's missing
+- **Do NOT improvise** — if instructions are unclear, stop and explain what's missing. If multiple interpretations exist, push back with the options instead of picking one silently.
 
 ## Error Handling
 
@@ -50,7 +50,7 @@ Before implementing anything, run `bd show <id>` and check the ticket against th
 
 ## Bug Discovery
 
-If you find problems unrelated to your task, return a tracker-ready bug draft to the caller — see `beads-core/references/ticket-rules.md` for required fields.
+If you find problems unrelated to your task, return a tracker-ready bug/chore draft to the caller — see `beads-core/references/ticket-rules.md` for required fields. Do NOT fix it inline, even if the fix looks trivial; adjacent-code changes belong in their own ticket.
 
 Never ignore problems. Never silently work around them. Track everything.
 

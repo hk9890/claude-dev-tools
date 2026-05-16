@@ -27,7 +27,8 @@ Checklist:
 - clear implementation intent and scope
 - concrete instructions (ordered steps)
 - explicit file targets when known
-- testable acceptance criteria
+- testable success criteria (see `ticket-rules.md`)
+- prefer the simplest design that satisfies the goal — no speculative abstractions
 - no unresolved open questions
 
 If unresolved questions remain, mark the issue for discussion and block it (see issue workflow reference).

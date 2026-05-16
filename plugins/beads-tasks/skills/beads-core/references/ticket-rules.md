@@ -26,7 +26,7 @@ Before acting on a ticket, verify it is ready:
 
 1. **No orphaned comments** — if any comment contains decisions, scope changes, or clarifications NOT reflected in the description, the ticket is stale
 2. **No open questions** — no `has:open-questions` or `needs:discussion` label; no unresolved questions in description or comments
-3. **Testable acceptance criteria** — every task/bug must have binary, verifiable criteria; "works" or "is done" is not acceptable
+3. **Testable success criteria** — every task, bug, and epic must state how success will be verified: a concrete command, observation, or check. "Works", "is done", or "looks correct" are not acceptable.
 4. **Actionable instructions** — a tasker should be able to execute without guessing
 
 If any check fails: do NOT proceed — report back to the caller with the exact issues found and tracker-ready comment text.

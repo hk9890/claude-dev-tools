@@ -43,9 +43,11 @@ If the user wants to brainstorm or explore options before committing to a shape,
 Before any `bd create`, present the proposed plan to the user:
 
 - The epic title and outcome (or, for small work, the standalone task title)
-- The list of implementation tasks with one-line summaries
+- The list of implementation tasks with one-line summaries — each with a one-line "how success is verified"
 - The acceptance-review task
 - Any dependencies or known blockers
+
+Keep the plan as simple as possible — fewer tasks, no speculative abstractions.
 
 Get explicit confirmation ("yes", "go ahead", "create them") before writing to the tracker. If the user requests changes, revise and re-propose — do NOT partially create issues and then ask.
 

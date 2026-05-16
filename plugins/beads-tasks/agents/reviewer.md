@@ -60,7 +60,7 @@ Rules for the grill sheet:
 - **Every question gets a recommended answer.** Force a default; "it depends" is not allowed. The user can override, but you must commit to a position.
 - **Cite the source.** If a doc or file informed the recommendation, name it. If nothing did, say "no doc — convention inferred from <X>" so the user knows it's a judgment call.
 - **Order matters.** Put scope/architecture questions before implementation-detail questions — answers to early questions may invalidate later ones.
-- **Cover the standard surface:** breakdown logic, dependency correctness, scope (over/under-engineered), acceptance-criteria testability, simplification opportunities, hidden assumptions, and anything the codebase says that the plan ignores.
+- **Cover the standard surface:** breakdown logic, dependency correctness, scope (over/under-engineered), acceptance-criteria testability (missing or vague criteria is always a blocking question), simplification opportunities, hidden assumptions, and anything the codebase says that the plan ignores.
 
 **Phase 3 — Tell the caller the gate status:**
 
