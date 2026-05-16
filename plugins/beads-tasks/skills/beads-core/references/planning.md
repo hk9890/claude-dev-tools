@@ -6,17 +6,22 @@ Guide for creating epics, tasks, acceptance-review tasks, and beads execution pl
 
 1. Review the current conversation to understand what to build or fix.
 2. Context sufficiency is already confirmed before arriving here (done by planning-intake.md).
-3. Choose epic+tasks or standalone tasks based on complexity (reference the Decision Framework in core-rules.md).
+3. Choose epic+tasks or standalone tasks. Use an **epic** when any of these are true: (a) the work needs an acceptance-review gate, (b) it splits into 2+ implementation tasks that could run independently, or (c) it involves multiple agent types (e.g. tasker + reviewer + verifier). Otherwise use a **standalone task**.
 4. Create the epic and tasks — follow issue structure rules in this file and beads-issue-workflow.md.
 5. Set dependencies with `bd dep add`.
 6. Present the plan to the user — brief summary of what will be built and in what order.
 
 ## Beads issue types
 
-- **epic** — large initiative containing dependent child work
-- **task** — atomic implementation or review work
-- **bug** — defect to fix
-- **feature/chore** — optional project-defined types if enabled
+| Type    | Use when                                                                |
+|---------|-------------------------------------------------------------------------|
+| epic    | Initiative spanning multiple dependent issues                           |
+| task    | Atomic work that doesn't fit a more specific type (default)             |
+| bug     | Something is broken vs. documented/intended behavior                    |
+| feature | New user-visible capability                                             |
+| chore   | Maintenance, refactor, tech debt, dependency bumps, cleanup — no user-visible behavior change |
+
+We do not use the `decision` type — record decisions as comments on the relevant task or epic.
 
 ## Planner quality bar
 
