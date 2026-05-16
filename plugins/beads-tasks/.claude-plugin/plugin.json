@@ -1,7 +1,7 @@
 {
   "name": "beads-tasks",
   "description": "Beads task tracking with tasker, reviewer, and verifier agents — use with planning mode for full orchestration",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "author": {
     "name": "Hans Kohlreiter",
     "email": "hans.kohlreiter@dynatrace.com"
