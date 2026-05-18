@@ -22,12 +22,12 @@ Use this file for lifecycle phases, deep procedures, and verification standards 
 
 ## Phase 1 — Inspect
 
-1. Inventory canonical docs (`CLAUDE.md`, `AGENTS.md`, `docs/`) and non-standard docs.
+1. Run `scripts/inventory.py <repo-root>` to enumerate canonical docs (`CLAUDE.md`, `AGENTS.md`, `docs/`), non-canonical `docs/*.md` files, non-canonical subdirs under `docs/`, and location violations as structured JSON.
 2. Classify topics as:
    - doc-backed
    - skill-only
    - neither
-3. Identify consolidation candidates.
+3. Identify consolidation candidates from the `non_canonical_docs` and `non_canonical_subdirs` lists.
 
 For change-landing guidance, treat `CHANGE-WORKFLOW.md` as canonical destination.
 
@@ -99,15 +99,17 @@ Use [agents-md-template.md](agents-md-template.md) for structural constraints.
 
 ## Phase 7 — Verify/report (mandatory)
 
-Before completion verify:
+Run `scripts/verify.sh <repo-root>` — it implements checks 1, 2, 4, 5, 6 automatically. Checks 3 and 7 remain agent-only.
 
-1. Referenced paths exist.
-2. AGENTS routes resolve to real docs/skills.
-3. Skill-only topics do not create hollow docs.
-4. `CLAUDE.md` exists at project root with `@AGENTS.md` as first line.
-5. Links/anchors resolve for lifecycle-touched docs.
-6. No stale references remain.
-7. If canonical docs changed, Phase 3.5 loop completed blocker-free.
+What each check covers:
+
+1. Referenced paths exist. *(automated by verify.sh)*
+2. AGENTS routes resolve to real docs/skills. *(automated by verify.sh)*
+3. Skill-only topics do not create hollow docs. *(agent-only)*
+4. `CLAUDE.md` exists at project root with `@AGENTS.md` as first line. *(automated by verify.sh)*
+5. Links/anchors resolve for lifecycle-touched docs. *(automated by verify.sh)*
+6. No stale references remain. *(automated by verify.sh)*
+7. If canonical docs changed, Phase 3.5 loop completed blocker-free. *(agent-only)*
 
 Final report should include:
 

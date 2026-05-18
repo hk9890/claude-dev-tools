@@ -23,11 +23,8 @@ Use this when a project needs first-time docs baseline creation or a baseline re
 2. Establish canonical docs set and file ownership boundaries from [project-setup.md](project-setup.md).
 3. Create only needed canonical files for topics that have real local guidance.
 4. Create or refresh `AGENTS.md` using [agents-md-template.md](agents-md-template.md) as the structural template, keeping it concise and pointer-based.
-5. Ensure `CLAUDE.md` exists at project root with `@AGENTS.md` as its first non-empty line:
-   - Missing: create with `@AGENTS.md` as the only content.
-   - Exists, first non-empty line is already `@AGENTS.md`: no change.
-   - Exists without `@AGENTS.md`: prepend `@AGENTS.md` + blank line; preserve all existing content unchanged below. Never overwrite custom content.
-6. Run lifecycle verification checks from [project-docs-lifecycle.md](project-docs-lifecycle.md) Phase 7.
+5. Run `scripts/claude-md.sh init <repo-root>` to ensure `CLAUDE.md` exists with `@AGENTS.md` as its first non-empty line; the script handles all three states (missing, correct, needs prepend) atomically and never overwrites or moves existing content.
+6. Run `scripts/verify.sh <repo-root>` to execute all Phase 7 mandatory checks (see [project-docs-lifecycle.md](project-docs-lifecycle.md) Phase 7 for what each check verifies).
 
 ## Output requirements
 

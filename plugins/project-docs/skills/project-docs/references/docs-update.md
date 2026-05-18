@@ -20,14 +20,11 @@ Use this when docs already exist but are stale, inaccurate, or misrouted and nee
 ## Update workflow
 
 1. Inspect canonical docs + non-standard docs and gather stale/inaccurate claims.
-2. Ensure `CLAUDE.md` exists at project root with `@AGENTS.md` as its first non-empty line:
-   - Missing: create with `@AGENTS.md` as the only content.
-   - Exists, first non-empty line is already `@AGENTS.md`: no change.
-   - Exists without `@AGENTS.md`: prepend `@AGENTS.md` + blank line; preserve all existing content unchanged below. Never overwrite custom content.
+2. Run `scripts/claude-md.sh init <repo-root>` to ensure `CLAUDE.md` exists with `@AGENTS.md` as its first non-empty line; the script handles all three states (missing, correct, needs prepend) atomically and never overwrites or moves existing content.
 3. Map each claim to canonical destination using [project-setup.md](project-setup.md).
 4. Apply factual updates in docs files only.
 5. Refresh AGENTS routes if doc paths/ownership changed.
-6. Run lifecycle verification checks (Phase 7 in [project-docs-lifecycle.md](project-docs-lifecycle.md)).
+6. Run `scripts/verify.sh <repo-root>` to execute all Phase 7 mandatory checks (see [project-docs-lifecycle.md](project-docs-lifecycle.md) Phase 7 for what each check verifies).
 
 ## Output requirements
 

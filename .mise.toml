@@ -1,0 +1,4 @@
+[tasks.test]
+description = "Run all script tests across all plugins"
+dir = "{{config_root}}"
+run = "bash tests/run-all.sh"
