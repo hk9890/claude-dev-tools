@@ -14,6 +14,7 @@ This plugin provides structured workflows for creating, updating, improving, and
 | init-or-update-docs | `/project-docs:init-or-update-docs` | Refresh or update existing project docs |
 | improve-doc | `/project-docs:improve-doc` | Improve docs structure and quality |
 | review-docs | `/project-docs:review-docs` | Review and validate docs in read-only mode |
+| revise-docs | `/project-docs:revise-docs` | Capture session learnings into canonical docs and AGENTS routing |
 
 ## Usage
 
@@ -23,6 +24,7 @@ Run any skill from the list above. Each routes to the appropriate workflow in th
 - **update** — corrects stale/inaccurate docs without touching source code
 - **improve** — structural quality changes (split/merge/slim/consolidate) with user confirmation
 - **review** — read-only findings with severity and suggested fixes
+- **revise** — capture session learnings into the correct canonical doc or AGENTS routing entry (team-shared; never writes to `CLAUDE.md` or `.claude.local.md`)
 
 ## Plugin Structure
 
@@ -39,8 +41,10 @@ project-docs/
     │   └── SKILL.md
     ├── review-docs/
     │   └── SKILL.md
+    ├── revise-docs/
+    │   └── SKILL.md
     └── project-docs/
         ├── SKILL.md
         ├── examples/
-        └── references/     (docs-init, docs-update, docs-improve, guidelines, etc.)
+        └── references/     (docs-init, docs-update, docs-improve, docs-revise, guidelines, etc.)
 ```

@@ -31,6 +31,19 @@ Use with:
 - No stale routes after merge/split/delete actions.
 - `CHANGE-WORKFLOW.md` is the canonical destination for change-landing guidance.
 
+## Top-line summary
+
+Lead the report with a single-line headline so readers can triage at a glance:
+
+`Findings: <N> BLOCKER · <N> MAJOR · <N> MINOR — <verdict>`
+
+Verdict:
+
+- `clean` — no findings
+- `minor only` — no BLOCKER or MAJOR
+- `needs work` — MAJOR present, no BLOCKER
+- `fails` — at least one BLOCKER
+
 ## Findings format
 
 Return findings as:

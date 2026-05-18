@@ -10,6 +10,7 @@ Exits 0 on success; exits 1 on bad invocation.
 
 import json
 import os
+import re
 import sys
 
 # ---------------------------------------------------------------------------
@@ -26,6 +27,67 @@ CANONICAL_DOCS = [
     "MONITORING.md",
     "CHANGE-WORKFLOW.md",
 ]
+
+# Personal/local files — optional, gitignored, never written by canonical doc
+# flows. Surfaced so authors know they exist but not counted as missing.
+PERSONAL_LOCAL = [".claude.local.md"]
+
+
+# ---------------------------------------------------------------------------
+# Injected-block detection
+# ---------------------------------------------------------------------------
+# Steering docs (CLAUDE.md, AGENTS.md) should be hand-authored and small. Some
+# external tools (e.g. `bd`) auto-inject content between HTML-comment markers:
+#
+#   <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:7510c1e2 -->
+#   ... 47 lines of generated content ...
+#   <!-- END BEADS INTEGRATION -->
+#
+# Detection is generic: any matching BEGIN/END pair flagged regardless of name.
+
+_BEGIN_RE = re.compile(r'^\s*<!--\s*BEGIN\s+(.+?)\s*-->\s*$')
+_END_RE = re.compile(r'^\s*<!--\s*END\s+(.+?)\s*-->\s*$')
+# Trailing metadata pairs like "v:1 profile:minimal hash:abc" — strip to normalize
+_META_SUFFIX_RE = re.compile(r'(?:\s+\w+:\S+)+\s*$')
+
+
+def _normalize_marker_name(raw):
+    return _META_SUFFIX_RE.sub('', raw).strip()
+
+
+def detect_injected_blocks(filepath):
+    """Detect `<!-- BEGIN X -->` ... `<!-- END X -->` blocks in *filepath*.
+
+    Returns a list of dicts: {name, begin_line, end_line, lines}.
+    Pairs are matched by normalized marker name; unmatched BEGIN/END are ignored.
+    """
+    try:
+        with open(filepath, encoding='utf-8', errors='replace') as fh:
+            lines = fh.readlines()
+    except OSError:
+        return []
+
+    open_blocks = {}  # name -> begin_line
+    found = []
+    for lineno, line in enumerate(lines, 1):
+        m = _BEGIN_RE.match(line)
+        if m:
+            name = _normalize_marker_name(m.group(1))
+            if name and name not in open_blocks:
+                open_blocks[name] = lineno
+            continue
+        m = _END_RE.match(line)
+        if m:
+            name = _normalize_marker_name(m.group(1))
+            if name in open_blocks:
+                begin = open_blocks.pop(name)
+                found.append({
+                    'name': name,
+                    'begin_line': begin,
+                    'end_line': lineno,
+                    'lines': lineno - begin + 1,
+                })
+    return found
 
 
 # ---------------------------------------------------------------------------
@@ -99,6 +161,26 @@ def inventory(repo_root):
             "non_heading_lines": nhl,
         }
 
+    # ── personal/local files (optional) ────────────────────────────────────
+
+    personal_local = {}
+    for name in PERSONAL_LOCAL:
+        path = os.path.join(repo_root, name)
+        present = os.path.isfile(path)
+        if present:
+            rel = name
+            lines, nhl = count_lines(path)
+        else:
+            rel = None
+            lines = None
+            nhl = None
+        personal_local[name] = {
+            "present": present,
+            "path": rel,
+            "lines": lines,
+            "non_heading_lines": nhl,
+        }
+
     # ── walk docs/ non-recursively ──────────────────────────────────────────
 
     docs_dir = os.path.join(repo_root, "docs")
@@ -149,19 +231,36 @@ def inventory(repo_root):
     canonical_present = sum(1 for v in canonical.values() if v["present"])
     canonical_missing = len(canonical) - canonical_present
 
+    personal_local_present = sum(1 for v in personal_local.values() if v["present"])
+
+    # ── injected blocks in steering docs (CLAUDE.md + AGENTS.md only) ──────
+
+    injected_blocks = []
+    for name in ("CLAUDE.md", "AGENTS.md"):
+        path = os.path.join(repo_root, name)
+        if not os.path.isfile(path):
+            continue
+        for blk in detect_injected_blocks(path):
+            blk["file"] = name
+            injected_blocks.append(blk)
+
     summary = {
         "canonical_present": canonical_present,
         "canonical_missing": canonical_missing,
         "non_canonical_count": len(non_canonical_docs),
         "non_canonical_subdir_count": len(non_canonical_subdirs),
         "violation_count": len(location_violations),
+        "personal_local_present": personal_local_present,
+        "injected_block_count": len(injected_blocks),
     }
 
     return {
         "canonical": canonical,
+        "personal_local": personal_local,
         "non_canonical_docs": non_canonical_docs,
         "non_canonical_subdirs": non_canonical_subdirs,
         "location_violations": location_violations,
+        "injected_blocks": injected_blocks,
         "summary": summary,
     }
 
@@ -186,6 +285,14 @@ def format_text(data):
     lines.append("=== Canonical docs ===")
     for name, entry in data["canonical"].items():
         lines.append(_fmt_doc(name, entry))
+
+    lines.append("")
+    lines.append("=== Personal/local files (optional, gitignored) ===")
+    for name, entry in data["personal_local"].items():
+        if entry["present"]:
+            lines.append(_fmt_doc(name, entry))
+        else:
+            lines.append(f"  {name}: (none)")
 
     lines.append("")
     lines.append("=== Non-canonical docs/ files ===")
@@ -217,13 +324,25 @@ def format_text(data):
         lines.append("  (none)")
 
     lines.append("")
+    lines.append("=== Injected blocks in steering docs ===")
+    if data["injected_blocks"]:
+        for b in data["injected_blocks"]:
+            lines.append(
+                f"  {b['file']}: '{b['name']}' lines {b['begin_line']}-{b['end_line']} ({b['lines']} lines)"
+            )
+    else:
+        lines.append("  (none)")
+
+    lines.append("")
     lines.append("=== Summary ===")
     s = data["summary"]
-    lines.append(f"  canonical_present:         {s['canonical_present']}")
+    lines.append(f"  canonical_present:          {s['canonical_present']}")
     lines.append(f"  canonical_missing:          {s['canonical_missing']}")
+    lines.append(f"  personal_local_present:     {s['personal_local_present']}")
     lines.append(f"  non_canonical_count:        {s['non_canonical_count']}")
     lines.append(f"  non_canonical_subdir_count: {s['non_canonical_subdir_count']}")
     lines.append(f"  violation_count:            {s['violation_count']}")
+    lines.append(f"  injected_block_count:       {s['injected_block_count']}")
 
     return "\n".join(lines)
 

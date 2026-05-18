@@ -31,6 +31,21 @@ Use this when docs already exist but are stale, inaccurate, or misrouted and nee
 Report:
 
 - explicit statement that scope stayed docs-only with no source-file edits
-- docs updated and why
+- docs updated, each shown using the [per-edit format](#per-edit-format) below
 - claims verified (paths/commands/routes)
 - unresolved gaps or follow-up suggestions
+
+## Per-edit format
+
+Every proposed change must be presented as:
+
+```
+### Update: <file>:<section>
+**Why:** <one-line — what gap this closes or what fact this corrects>
+
+```diff
+<minimal diff>
+```
+```
+
+Rationale: the `**Why:**` line acts as a self-check (if the change can't be justified in one line, it shouldn't be made) and lets reviewers accept or reject without re-deriving the rationale.

@@ -15,7 +15,10 @@ set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-USAGE="Usage: verify.sh <repo-root>"
+USAGE="Usage: verify.sh [--quick] <repo-root>
+
+  --quick   Skip docs/*.md route validation; only check CLAUDE.md + AGENTS.md
+            references. Faster on large repos but misses broken links in docs/."
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -25,9 +28,24 @@ section() { printf '\n=== %s ===\n' "$*"; }
 
 # ── argument handling ─────────────────────────────────────────────────────────
 
+INCLUDE_DOCS=1   # default: validate docs/*.md routes too
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --quick)   INCLUDE_DOCS=0; shift ;;
+    -h|--help) printf '%s\n' "$USAGE"; exit 0 ;;
+    --)        shift; break ;;
+    -*)        die "Unknown option: $1"$'\n'"$USAGE" ;;
+    *)         break ;;
+  esac
+done
+
 [[ $# -eq 1 ]] || die "$USAGE"
 REPO_ROOT="$1"
 [[ -d "$REPO_ROOT" ]] || die "repo-root '$REPO_ROOT' is not a directory"
+
+VALIDATE_FLAGS=""
+[[ "$INCLUDE_DOCS" -eq 1 ]] && VALIDATE_FLAGS="--include-docs"
 
 # ── state ─────────────────────────────────────────────────────────────────────
 
@@ -46,7 +64,7 @@ fi
 # ── Check 2: route resolution (hard) ─────────────────────────────────────────
 
 section "Check 2: route resolution (validate-routes.py)"
-if python3 "$SCRIPT_DIR/validate-routes.py" "$REPO_ROOT"; then
+if python3 "$SCRIPT_DIR/validate-routes.py" "$REPO_ROOT" $VALIDATE_FLAGS; then
   printf 'RESULT: PASS\n'
 else
   printf 'RESULT: FAIL\n'
@@ -96,6 +114,14 @@ violations = data.get('location_violations', [])
 if violations:
     for v in violations:
         print('WARNING: location violation -- {}: found at {}, expected at {}'.format(v['file'], v['found_at'], v['expected_at']))
+    warned = True
+
+# Injected blocks (auto-generated content from external tools in steering docs)
+injected = data.get('injected_blocks', [])
+if injected:
+    for b in injected:
+        print(\"WARNING: injected block in {}: '{}' at lines {}-{} ({} lines) -- steering docs should be hand-authored\".format(
+            b['file'], b['name'], b['begin_line'], b['end_line'], b['lines']))
     warned = True
 
 if not warned:

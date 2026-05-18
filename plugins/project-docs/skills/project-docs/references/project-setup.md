@@ -6,6 +6,7 @@
 - `AGENTS.md`: routing layer (routing table for all AI tools)
 - `CLAUDE.md`: Claude Code entrypoint — starts with `@AGENTS.md` as the first non-empty line; existing content below is preserved
 - `docs/` topic files: durable repo-specific operating guidance
+- `.claude.local.md` (optional, personal): per-user local context — gitignored; never written by canonical doc flows (create/update/improve/revise); surfaced by `scripts/inventory.py` so authors know it exists
 
 Create topic docs only when the repository has real local guidance for that topic.
 
@@ -33,6 +34,13 @@ Notes:
 - `@AGENTS.md` MUST be the first non-empty line
 - New instructions/routing always go to `AGENTS.md`, never directly to `CLAUDE.md`
 - Existing content below `@AGENTS.md` is preserved (never overwrite custom content); see docs-init.md / docs-update.md for the exact procedure
+
+### `.claude.local.md` (optional, personal)
+
+- Personal/local context only; gitignored, never shared with the team
+- Never written by canonical doc flows (create/update/improve/revise) — the user edits this file directly
+- Surfaced by `scripts/inventory.py` under `personal_local` so authors know it exists
+- Use for: personal Claude preferences, machine-specific paths, in-progress scratch notes that should not land in shared docs
 
 ### `README.md`
 

@@ -398,6 +398,29 @@ def main():
     else:
         if unresolved:
             print(format_human(unresolved))
+        elif checked == 0:
+            # Distinguish "nothing to check" from "all references resolved".
+            # Same exit code (0), but the human output makes it clear that no
+            # validation actually happened — preventing false reassurance.
+            scanned = []
+            for name in ("CLAUDE.md", "AGENTS.md"):
+                p = os.path.join(repo_root, name)
+                scanned.append(
+                    f"{name} ({'present, no refs' if os.path.isfile(p) else 'missing'})"
+                )
+            if include_docs:
+                docs_dir = os.path.join(repo_root, "docs")
+                if os.path.isdir(docs_dir):
+                    md_count = sum(
+                        1 for f in os.listdir(docs_dir) if f.endswith(".md")
+                    )
+                    if md_count:
+                        scanned.append(f"docs/ ({md_count} .md file(s), no refs)")
+                    else:
+                        scanned.append("docs/ (no .md files)")
+                else:
+                    scanned.append("docs/ (missing)")
+            print(f"No references found — nothing to check. Scanned: {', '.join(scanned)}")
         else:
             print(f"All {checked} reference(s) resolved OK.")
 

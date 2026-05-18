@@ -49,6 +49,21 @@ Use when a concrete docs failure/incident is provided.
 Report:
 
 - selected mode (discussion-first or incident-driven)
-- structural changes proposed/applied
+- structural changes proposed/applied, each shown using the [per-edit format](#per-edit-format) below
 - confirmations requested/received for aggressive changes
 - verification results and remaining follow-ups
+
+## Per-edit format
+
+Every proposed structural change (split/merge/slim/consolidate/retire/route-fix) must be presented as:
+
+```
+### <Verb>: <file>:<section>
+**Why:** <one-line — what structural problem this fixes>
+
+```diff
+<minimal diff>
+```
+```
+
+Rationale: the `**Why:**` line forces each structural change to justify itself against your authoring rules, preventing churn that doesn't earn its place.

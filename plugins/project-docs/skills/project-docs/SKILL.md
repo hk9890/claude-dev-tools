@@ -24,6 +24,7 @@ Scope:
 | 2) Update docs to match project truth | Docs exist but are stale/inaccurate and should be corrected without changing source code | [references/docs-update.md](references/docs-update.md) |
 | 3) Improve docs structure/quality | Taxonomy, structure, clarity, split/merge/slim/consolidation quality needs improvement | [references/docs-improve.md](references/docs-improve.md) |
 | 4) Review/validate without editing | User wants findings only before any edits | [references/project-doc-review-guidelines.md](references/project-doc-review-guidelines.md) |
+| 5) Revise docs from session learnings | End of session — capture what was learned into canonical docs and AGENTS routing | [references/docs-revise.md](references/docs-revise.md) |
 
 Supporting references:
 
@@ -43,10 +44,11 @@ Commands in this plugin accept optional free-text arguments (the `[focus area or
 
 ## Decision rules
 
-- Route to exactly one primary flow first (create, update, improve, or review), then load supporting references as needed.
+- Route to exactly one primary flow first (create, update, improve, review, or revise), then load supporting references as needed.
 - If the user wants findings before edits, use the review flow and keep the session read-only.
 - If the user wants factual correction of existing docs, use the update flow and keep edits docs-only.
 - If the user wants structural quality changes, use the improve flow.
+- If the user wants to capture session learnings, use the revise flow; route additions to canonical docs or AGENTS routing only — never `CLAUDE.md` or `.claude.local.md`.
 - Ask before aggressive removals, merges, splits, or consolidations.
 - Keep `AGENTS.md` as a routing surface, not a handbook.
 - Create topic docs only when the repository has real local guidance for that topic.
