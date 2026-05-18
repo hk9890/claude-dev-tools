@@ -1,8 +1,9 @@
 {
+  "hooks": {},
   "enabledPlugins": {
     "beads-tasks@claude-dev-tools": true,
     "plugin-dev@claude-code-plugins": true,
-    "project-docs@claude-dev-tools": true
-  },
-  "hooks": {}
+    "project-docs@claude-dev-tools": true,
+    "skill-creator@claude-plugins-official": true
+  }
 }
