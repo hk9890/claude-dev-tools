@@ -285,6 +285,194 @@ test_no_docs_dir() {
   rm -rf "$dir"
 }
 
+# 13. .claude.local.md present → personal_local tracked
+test_personal_local_present() {
+  local dir; dir=$(tmpdir)
+  printf '# Local\nSome personal notes.\n' > "$dir/.claude.local.md"
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  local present
+  present=$(json_val "$out" "d['personal_local']['.claude.local.md']['present']")
+  assert_eq "personal-local: present=True" "True" "$present"
+
+  local count
+  count=$(json_val "$out" "d['summary']['personal_local_present']")
+  assert_eq "personal-local: summary count=1" "1" "$count"
+
+  # personal-local files are NOT counted as canonical missing
+  local missing
+  missing=$(json_val "$out" "d['summary']['canonical_missing']")
+  assert_eq "personal-local: not counted as canonical_missing (=9)" "9" "$missing"
+
+  rm -rf "$dir"
+}
+
+# 14. .claude.local.md absent → personal_local tracked but absent
+test_personal_local_absent() {
+  local dir; dir=$(tmpdir)
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  local present
+  present=$(json_val "$out" "d['personal_local']['.claude.local.md']['present']")
+  assert_eq "personal-local-absent: present=False" "False" "$present"
+
+  local count
+  count=$(json_val "$out" "d['summary']['personal_local_present']")
+  assert_eq "personal-local-absent: summary count=0" "0" "$count"
+
+  rm -rf "$dir"
+}
+
+# 15. Injected block in AGENTS.md detected
+test_injected_block_agents() {
+  local dir; dir=$(tmpdir)
+  printf '@AGENTS.md\n' > "$dir/CLAUDE.md"
+  {
+    printf '# Agents\n\nNormal routing.\n\n'
+    printf '<!-- BEGIN BEADS INTEGRATION v:1 hash:abc -->\n'
+    printf '## Beads\nGenerated content here.\nMore lines.\n'
+    printf '<!-- END BEADS INTEGRATION -->\n'
+  } > "$dir/AGENTS.md"
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  local count
+  count=$(json_val "$out" "d['summary']['injected_block_count']")
+  assert_eq "injected-block: count=1" "1" "$count"
+
+  local name
+  name=$(json_val "$out" "d['injected_blocks'][0]['name']")
+  assert_eq "injected-block: name normalized (metadata stripped)" "BEADS INTEGRATION" "$name"
+
+  local file
+  file=$(json_val "$out" "d['injected_blocks'][0]['file']")
+  assert_eq "injected-block: file=AGENTS.md" "AGENTS.md" "$file"
+
+  rm -rf "$dir"
+}
+
+# 16. Injected block in CLAUDE.md detected
+test_injected_block_claude() {
+  local dir; dir=$(tmpdir)
+  {
+    printf '@AGENTS.md\n\n'
+    printf '<!-- BEGIN TOOL X -->\n'
+    printf 'auto-generated\n'
+    printf '<!-- END TOOL X -->\n'
+  } > "$dir/CLAUDE.md"
+  printf '# Agents\n' > "$dir/AGENTS.md"
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  local count
+  count=$(json_val "$out" "d['summary']['injected_block_count']")
+  assert_eq "injected-block-claude: count=1" "1" "$count"
+
+  local file
+  file=$(json_val "$out" "d['injected_blocks'][0]['file']")
+  assert_eq "injected-block-claude: file=CLAUDE.md" "CLAUDE.md" "$file"
+
+  rm -rf "$dir"
+}
+
+# 17. Injected block detection is generic (any name, any metadata)
+test_injected_block_generic() {
+  local dir; dir=$(tmpdir)
+  printf '@AGENTS.md\n' > "$dir/CLAUDE.md"
+  {
+    printf '# Agents\n\n'
+    printf '<!-- BEGIN MYTOOL v:2 profile:full hash:xyz -->\n'
+    printf 'content\n'
+    printf '<!-- END MYTOOL -->\n\n'
+    printf '<!-- BEGIN ANOTHER -->\n'
+    printf 'more content\n'
+    printf '<!-- END ANOTHER -->\n'
+  } > "$dir/AGENTS.md"
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  local count
+  count=$(json_val "$out" "d['summary']['injected_block_count']")
+  assert_eq "injected-block-generic: count=2" "2" "$count"
+
+  rm -rf "$dir"
+}
+
+# 18. Unmatched BEGIN (no END) — not counted
+test_injected_block_unmatched() {
+  local dir; dir=$(tmpdir)
+  printf '@AGENTS.md\n' > "$dir/CLAUDE.md"
+  {
+    printf '# Agents\n\n'
+    printf '<!-- BEGIN ORPHAN -->\n'
+    printf 'no matching end\n'
+  } > "$dir/AGENTS.md"
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  local count
+  count=$(json_val "$out" "d['summary']['injected_block_count']")
+  assert_eq "injected-block-unmatched: orphan BEGIN ignored, count=0" "0" "$count"
+
+  rm -rf "$dir"
+}
+
+# 19. Injected blocks reported in --format=text output
+test_injected_block_text_format() {
+  local dir; dir=$(tmpdir)
+  printf '@AGENTS.md\n' > "$dir/CLAUDE.md"
+  {
+    printf '# Agents\n\n'
+    printf '<!-- BEGIN SOMETHING -->\n'
+    printf 'x\n'
+    printf '<!-- END SOMETHING -->\n'
+  } > "$dir/AGENTS.md"
+  local out
+  out=$("$SCRIPT" "$dir" --format=text)
+
+  assert_contains "injected-block-text: section header" "=== Injected blocks in steering docs ===" "$out"
+  assert_contains "injected-block-text: block name shown" "SOMETHING" "$out"
+
+  rm -rf "$dir"
+}
+
+# 20. Injected blocks NOT scanned in regular docs (only CLAUDE.md + AGENTS.md)
+test_injected_block_scope() {
+  local dir; dir=$(tmpdir)
+  printf '@AGENTS.md\n' > "$dir/CLAUDE.md"
+  printf '# Agents\n' > "$dir/AGENTS.md"
+  mkdir -p "$dir/docs"
+  {
+    printf '# Overview\n\n'
+    printf '<!-- BEGIN IGNORED -->\n'
+    printf 'this should not be flagged in a non-steering doc\n'
+    printf '<!-- END IGNORED -->\n'
+  } > "$dir/docs/OVERVIEW.md"
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  local count
+  count=$(json_val "$out" "d['summary']['injected_block_count']")
+  assert_eq "injected-block-scope: docs/*.md not scanned, count=0" "0" "$count"
+
+  rm -rf "$dir"
+}
+
+# 21. Personal-local file shown in --format=text output
+test_personal_local_text_format() {
+  local dir; dir=$(tmpdir)
+  printf '# Local\nx\n' > "$dir/.claude.local.md"
+  local out
+  out=$("$SCRIPT" "$dir" --format=text)
+
+  assert_contains "personal-local-text: section header" "=== Personal/local files" "$out"
+  assert_contains "personal-local-text: file shown" ".claude.local.md" "$out"
+
+  rm -rf "$dir"
+}
+
 # ── run all tests ─────────────────────────────────────────────────────────────
 
 test_no_args
@@ -299,6 +487,15 @@ test_non_heading_lines
 test_format_text
 test_partial_presence
 test_no_docs_dir
+test_personal_local_present
+test_personal_local_absent
+test_injected_block_agents
+test_injected_block_claude
+test_injected_block_generic
+test_injected_block_unmatched
+test_injected_block_text_format
+test_injected_block_scope
+test_personal_local_text_format
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"

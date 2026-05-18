@@ -229,6 +229,86 @@ test_fail_summary_line() {
   rm -rf "$dir"
 }
 
+# 14. --quick flag: still passes on a clean repo
+test_quick_clean_pass() {
+  local dir; dir=$(make_clean_repo)
+  assert_exit "quick-clean: exit 0" 0 "$SCRIPT" --quick "$dir"
+  rm -rf "$dir"
+}
+
+# 15. --quick flag: skips docs/ route validation (broken docs/ link → still passes)
+test_quick_skips_docs_routes() {
+  local dir; dir=$(make_clean_repo)
+  mkdir -p "$dir/docs"
+  # Broken link inside docs/ — would fail with --include-docs, but --quick omits that
+  printf '# Overview\n\n[bad](missing/file.md)\n' > "$dir/docs/OVERVIEW.md"
+
+  # Without --quick: full mode does include docs/ → fails
+  assert_exit "quick-vs-full: full mode fails on broken docs/ link" 1 "$SCRIPT" "$dir"
+  # With --quick: docs/ skipped → passes
+  assert_exit "quick-vs-full: --quick skips docs/ → exit 0" 0 "$SCRIPT" --quick "$dir"
+
+  rm -rf "$dir"
+}
+
+# 16. --quick flag: AGENTS.md route still checked (CLAUDE.md + AGENTS.md always validated)
+test_quick_still_checks_agents() {
+  local dir; dir=$(tmpdir)
+  printf '@AGENTS.md\n' > "$dir/CLAUDE.md"
+  printf '# Agents\n\n[broken](does/not/exist.md)\n' > "$dir/AGENTS.md"
+  assert_exit "quick-still-agents: broken AGENTS.md link → exit 1 even with --quick" 1 \
+    "$SCRIPT" --quick "$dir"
+  rm -rf "$dir"
+}
+
+# 17. --help flag prints usage and exits 0
+test_help_flag() {
+  local out code=0
+  out=$("$SCRIPT" --help 2>&1) || code=$?
+  if [[ "$code" -eq 0 ]]; then
+    ok "help-flag: exit 0"
+  else
+    fail "help-flag: expected exit 0, got $code"
+  fi
+  assert_contains "help-flag: shows Usage" "Usage:" "$out"
+  # Avoid passing a leading-dash needle to grep — match the help body for --quick instead
+  assert_contains "help-flag: documents --quick mode" "Skip docs/*.md route validation" "$out"
+}
+
+# 18. Unknown flag → exit 1 with helpful message
+test_unknown_flag() {
+  local out code=0
+  out=$("$SCRIPT" --bogus /tmp 2>&1) || code=$?
+  if [[ "$code" -eq 1 ]]; then
+    ok "unknown-flag: exit 1"
+  else
+    fail "unknown-flag: expected exit 1, got $code"
+  fi
+  assert_contains "unknown-flag: explains unknown option" "Unknown option" "$out"
+}
+
+# 19. Injected block in AGENTS.md → soft warning, exit 0
+test_soft_warning_injected_block() {
+  local dir; dir=$(make_clean_repo)
+  # Append an injected block to the clean AGENTS.md
+  {
+    cat "$dir/AGENTS.md"
+    printf '\n<!-- BEGIN MYTOOL -->\nauto-generated\n<!-- END MYTOOL -->\n'
+  } > "$dir/AGENTS.md.tmp" && mv "$dir/AGENTS.md.tmp" "$dir/AGENTS.md"
+
+  local out code=0
+  out=$("$SCRIPT" "$dir" 2>&1) || code=$?
+  if [[ "$code" -eq 0 ]]; then
+    ok "soft-injected-block: exit 0 (non-fatal)"
+  else
+    fail "soft-injected-block: expected exit 0, got $code"
+  fi
+  assert_contains "soft-injected-block: WARNING emitted" "WARNING: injected block" "$out"
+  assert_contains "soft-injected-block: names the block" "MYTOOL" "$out"
+
+  rm -rf "$dir"
+}
+
 # ── run all tests ─────────────────────────────────────────────────────────────
 
 test_no_args
@@ -244,6 +324,12 @@ test_no_short_circuit
 test_arbitrary_cwd
 test_pass_summary_line
 test_fail_summary_line
+test_quick_clean_pass
+test_quick_skips_docs_routes
+test_quick_still_checks_agents
+test_help_flag
+test_unknown_flag
+test_soft_warning_injected_block
 
 printf '\n'
 printf 'Results: %d passed, %d failed\n' "$PASS" "$FAIL"

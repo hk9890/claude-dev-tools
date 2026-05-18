@@ -284,6 +284,69 @@ test_at_in_tilde_fence() {
   rm -rf "$dir"
 }
 
+# 19. Nothing-to-check: empty CLAUDE.md/AGENTS.md emits explicit message
+#     (prevents false reassurance from a silent "all 0 references resolved")
+test_nothing_to_check_message() {
+  local dir; dir=$(tmpdir)
+  touch "$dir/CLAUDE.md"
+  printf '# Agents\n\nNo links at all.\n' > "$dir/AGENTS.md"
+  local out
+  out=$(python3 "$SCRIPT" "$dir" 2>&1)
+
+  # Exit code stays 0 — same as "all references resolved"
+  assert_exit "nothing-to-check: exit 0" 0 python3 "$SCRIPT" "$dir"
+
+  # But output must say so explicitly, not just "All N resolved OK"
+  assert_contains "nothing-to-check: explicit message" "No references found" "$out"
+  assert_not_contains "nothing-to-check: does NOT claim resolved" "All 0 reference" "$out"
+
+  rm -rf "$dir"
+}
+
+# 20. Nothing-to-check: scanned-files context shown so author knows what was checked
+test_nothing_to_check_scanned_context() {
+  local dir; dir=$(tmpdir)
+  touch "$dir/CLAUDE.md"
+  printf '# Agents\nNo links.\n' > "$dir/AGENTS.md"
+  local out
+  out=$(python3 "$SCRIPT" "$dir" 2>&1)
+
+  assert_contains "nothing-to-check: CLAUDE.md mentioned" "CLAUDE.md" "$out"
+  assert_contains "nothing-to-check: AGENTS.md mentioned" "AGENTS.md" "$out"
+
+  rm -rf "$dir"
+}
+
+# 21. Nothing-to-check with --include-docs: docs/ presence reflected in message
+test_nothing_to_check_include_docs() {
+  local dir; dir=$(tmpdir)
+  touch "$dir/CLAUDE.md"
+  printf '# Agents\nNo links.\n' > "$dir/AGENTS.md"
+  mkdir -p "$dir/docs"
+  printf '# Overview\nNo links here either.\n' > "$dir/docs/OVERVIEW.md"
+  printf '# Coding\nAlso none.\n' > "$dir/docs/CODING.md"
+  local out
+  out=$(python3 "$SCRIPT" "$dir" --include-docs 2>&1)
+
+  assert_contains "nothing-to-check-docs: 'No references found'" "No references found" "$out"
+  assert_contains "nothing-to-check-docs: docs/ count shown" "docs/ (2 .md file(s)" "$out"
+
+  rm -rf "$dir"
+}
+
+# 22. Nothing-to-check with --include-docs and no docs/ dir
+test_nothing_to_check_no_docs_dir() {
+  local dir; dir=$(tmpdir)
+  touch "$dir/CLAUDE.md"
+  printf '# Agents\n' > "$dir/AGENTS.md"
+  local out
+  out=$(python3 "$SCRIPT" "$dir" --include-docs 2>&1)
+
+  assert_contains "nothing-to-check-no-docs: 'docs/ (missing)'" "docs/ (missing)" "$out"
+
+  rm -rf "$dir"
+}
+
 # ── run all tests ─────────────────────────────────────────────────────────────
 
 test_no_args
@@ -304,6 +367,10 @@ test_include_docs
 test_json_output
 test_link_in_fenced_block
 test_at_in_tilde_fence
+test_nothing_to_check_message
+test_nothing_to_check_scanned_context
+test_nothing_to_check_include_docs
+test_nothing_to_check_no_docs_dir
 
 printf '\n'
 printf 'Results: %d passed, %d failed\n' "$PASS" "$FAIL"
