@@ -20,7 +20,7 @@ Use this when docs already exist but are stale, inaccurate, or misrouted and nee
 ## Update workflow
 
 1. Inspect canonical docs + non-standard docs and gather stale/inaccurate claims.
-2. Run `scripts/claude-md.sh init <repo-root>` to ensure `CLAUDE.md` exists with `@AGENTS.md` as its first non-empty line; the script handles all three states (missing, correct, needs prepend) atomically and never overwrites or moves existing content.
+2. **CLAUDE collapse step** — run the migration in [docs-init.md#claude-migration-step](docs-init.md#claude-migration-step). CLAUDE.md must end this step as exactly `@AGENTS.md` (one line); any extra content gets migrated to AGENTS.md / topic docs / `.claude.local.md` first, then the file is collapsed with `scripts/claude-md.sh init --rewrite`.
 3. Map each claim to canonical destination using [project-setup.md](project-setup.md).
 4. Apply factual updates in docs files only.
 5. Refresh AGENTS routes if doc paths/ownership changed.

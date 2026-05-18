@@ -21,6 +21,10 @@ Use this at the end of a session to capture learnings about working with this re
 
 ## Revise workflow
 
+### 0. CLAUDE.md collapse precheck
+
+Before reflecting, run `scripts/claude-md.sh check <repo-root>`. If it reports extra content, run the [CLAUDE migration step](docs-init.md#claude-migration-step) from docs-init.md first — the revise flow assumes CLAUDE.md is already the canonical one-line file. Mixing migration into a revise session bloats the change set and hides what was learned this session.
+
 ### 1. Reflect
 
 Identify what would have helped Claude work more effectively in this session.

@@ -16,7 +16,7 @@ Use with:
 
 ## Review workflow
 
-1. Run `scripts/claude-md.sh check <repo-root>` to verify `CLAUDE.md` exists with `@AGENTS.md` as first line (read-only; do not run `init` during review). Run `scripts/inventory.py <repo-root>` to surface missing canonical docs, non-canonical docs, non-canonical subdirs, and location violations as structured findings. Run `scripts/validate-routes.py <repo-root> --include-docs --json` to surface unresolved references as structured findings.
+1. Run `scripts/claude-md.sh check <repo-root>` to verify `CLAUDE.md` is exactly `@AGENTS.md` (one line — any extra content is a BLOCKER finding) (read-only; do not run `init` during review). Run `scripts/inventory.py <repo-root>` to surface missing canonical docs, non-canonical docs, non-canonical subdirs, and location violations as structured findings. Run `scripts/validate-routes.py <repo-root> --include-docs --json` to surface unresolved references as structured findings.
 2. Confirm file-role fit using [project-setup.md](project-setup.md).
 3. Apply authoring rules from [project-doc-guidelines.md](project-doc-guidelines.md).
 4. Verify repository facts (paths, commands, workflows, links) in read-only manner.

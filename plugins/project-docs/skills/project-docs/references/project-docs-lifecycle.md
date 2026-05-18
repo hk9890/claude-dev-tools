@@ -95,7 +95,7 @@ Use [agents-md-template.md](agents-md-template.md) for structural constraints.
 
 - Regenerate or update AGENTS routes from inspected state.
 - Preserve custom sections unless obsolete.
-- Verify `CLAUDE.md` exists at project root with `@AGENTS.md` as first line.
+- Verify `CLAUDE.md` is exactly `@AGENTS.md` (one line, optional trailing newline). If extra content is present, run the [CLAUDE migration step](docs-init.md#claude-migration-step) before continuing.
 
 ## Phase 7 — Verify/report (mandatory)
 
@@ -106,7 +106,7 @@ What each check covers:
 1. Referenced paths exist. *(automated by verify.sh)*
 2. AGENTS routes resolve to real docs/skills. *(automated by verify.sh)*
 3. Skill-only topics do not create hollow docs. *(agent-only)*
-4. `CLAUDE.md` exists at project root with `@AGENTS.md` as first line. *(automated by verify.sh)*
+4. `CLAUDE.md` is exactly `@AGENTS.md` (one line). Extra content is a hard failure. *(automated by verify.sh → claude-md.sh check)*
 5. Links/anchors resolve for lifecycle-touched docs. *(automated by verify.sh)*
 6. No stale references remain. *(automated by verify.sh)*
 7. If canonical docs changed, Phase 3.5 loop completed blocker-free. *(agent-only)*

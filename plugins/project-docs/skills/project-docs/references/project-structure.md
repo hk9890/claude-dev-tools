@@ -19,7 +19,7 @@ All docs live at the project root or in `docs/`:
 | `AGENTS.md` | project root |
 | Topic docs | `docs/` |
 
-`CLAUDE.md` must contain `@AGENTS.md` as its first line so Claude Code automatically loads the routing table at session start.
+`CLAUDE.md` must contain **exactly** `@AGENTS.md` and nothing else (one line, optional trailing newline). The `@`-import triggers Claude Code to load the routing table at session start; any additional content belongs in `AGENTS.md` (routing) or a topic doc under `docs/`. See [project-setup.md#claude-md](project-setup.md) for the full ownership contract.
 
 ## Structural constraints
 

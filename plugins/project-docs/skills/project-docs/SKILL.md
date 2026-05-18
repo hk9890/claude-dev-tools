@@ -40,7 +40,7 @@ Commands in this plugin accept optional free-text arguments (the `[focus area or
 - If empty: run the flow against the full canonical doc set.
 - If a doc filename or path is provided (e.g., `docs/TESTING.md`): scope the flow to that file and its routing.
 - If a topic or area is provided (e.g., `testing`, `releases`, `api`): prioritize docs and routes for that area; still run mandatory verification across the whole baseline.
-- Arguments are advisory. They do not permit skipping mandatory lifecycle checks (paths exist, routes resolve, `CLAUDE.md` carries `@AGENTS.md`).
+- Arguments are advisory. They do not permit skipping mandatory lifecycle checks (paths exist, routes resolve, `CLAUDE.md` is exactly `@AGENTS.md` — one line, nothing else).
 
 ## Decision rules
 

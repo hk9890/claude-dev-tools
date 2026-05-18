@@ -4,7 +4,7 @@
 
 - `README.md`: user-facing project entrypoint
 - `AGENTS.md`: routing layer (routing table for all AI tools)
-- `CLAUDE.md`: Claude Code entrypoint — starts with `@AGENTS.md` as the first non-empty line; existing content below is preserved
+- `CLAUDE.md`: Claude Code entrypoint — **must contain exactly `@AGENTS.md` and nothing else** (one line, optional trailing newline). Any other content is a bug to migrate into AGENTS.md (for routing) or a topic doc under `docs/`. Enforced by `scripts/claude-md.sh check` and by the project-docs skill flows (which migrate content before collapsing the file).
 - `docs/` topic files: durable repo-specific operating guidance
 - `.claude.local.md` (optional, personal): per-user local context — gitignored; never written by canonical doc flows (create/update/improve/revise); surfaced by `scripts/inventory.py` so authors know it exists
 
@@ -31,9 +31,16 @@ Notes:
 ## File ownership boundaries
 
 ### `CLAUDE.md`
-- `@AGENTS.md` MUST be the first non-empty line
-- New instructions/routing always go to `AGENTS.md`, never directly to `CLAUDE.md`
-- Existing content below `@AGENTS.md` is preserved (never overwrite custom content); see docs-init.md / docs-update.md for the exact procedure
+
+- **Hard contract**: CLAUDE.md is exactly `@AGENTS.md` (one line, optional trailing newline). Anything else is a bug.
+- New instructions/routing always go to `AGENTS.md`, never to `CLAUDE.md`.
+- Existing non-canonical CLAUDE.md content (framing text, embedded handbooks, injected tool blocks, personal notes) MUST be migrated before the file is collapsed:
+  - routing → `AGENTS.md`
+  - topic procedures → the matching `docs/<TOPIC>.md`
+  - personal/local notes → `.claude.local.md`
+  - auto-injected tool blocks → topic doc under `docs/` or `.claude.local.md` (never in steering docs)
+- Enforcement: `scripts/claude-md.sh check` hard-fails on extra content; `scripts/claude-md.sh init` aborts (exit 2) if the file has extra content. The destructive collapse `init --rewrite` is invoked by skill workflows *after* migration, not directly.
+- Skill flows that perform the migration: `docs-init`, `docs-update`, `docs-revise`. See each flow's "CLAUDE.md migration step".
 
 ### `.claude.local.md` (optional, personal)
 
