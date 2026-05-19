@@ -47,30 +47,9 @@ If unresolved questions remain, mark the issue for discussion and block it (see 
 5. Label discussion/risk/review cases.
 6. Show actionable state (`bd ready`) and blocked state (`bd blocked`).
 
-## Create an epic + acceptance-review gate
+## Create an epic and acceptance-review gate
 
-```bash
-cat << 'EOF' | bd create --title="User Authentication" --type=epic --priority=1 --body-file -
-## Description
-Implement user authentication with JWT tokens.
-
-## Success Criteria
-- [ ] Child implementation tasks complete
-- [ ] Acceptance review task complete
-EOF
-
-cat << 'EOF' | bd create --title="Acceptance Review: User Authentication" --type=task --priority=1 --body-file -
-## Description
-Verify epic outcomes before closing the epic.
-
-## Acceptance Criteria
-- [ ] All child tasks closed
-- [ ] Required tests run and pass
-- [ ] Any discovered defects tracked
-EOF
-
-bd dep add <epic-id> <acceptance-review-id>
-```
+Create the epic with `bd create --type=epic ...`, then run `scripts/new-ar-task.sh <epic-id>` to create the canonical Acceptance Review task and link it parent-child. The script enforces the 4 required AC checkboxes.
 
 ## Create executable implementation tasks
 

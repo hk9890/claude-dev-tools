@@ -10,6 +10,8 @@ Create a dedicated task per epic:
 
 Do **not** use a native beads `gate` issue type — model acceptance checks as normal tasks.
 
+Create via `scripts/new-ar-task.sh <epic-id>` — the script generates the canonical body and links the parent-child dep.
+
 Required checks:
 
 - all implementation tasks are closed
@@ -27,19 +29,6 @@ Verifier should:
 4. recommend closing the acceptance task only when the gate is satisfied — the orchestrator performs the close
 
 Verifier should **not** modify tracker state directly and **not** silently reopen scope without a tracked issue.
-
-## Example acceptance-review task body
-
-```markdown
-## Description
-Verify the epic outcome before closure.
-
-## Acceptance Criteria
-- [ ] All child implementation tasks closed
-- [ ] Required tests/checks completed and passing
-- [ ] No unresolved critical defects
-- [ ] Follow-up issues filed for non-blocking gaps
-```
 
 ## If acceptance fails
 
