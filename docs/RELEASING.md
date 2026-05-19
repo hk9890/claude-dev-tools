@@ -4,11 +4,14 @@ Project-specific release guide for the `github-releases` skill.
 
 ## Build
 
-No build step — this repo contains only markdown and JSON files.
+No build step — this repo contains markdown, JSON, shell scripts, and plugin binaries, but none require compilation.
 
 ## Tests
 
-Run `plugin-dev:plugin-validator` on every plugin. All must pass with zero errors before releasing.
+Two gates, both required before releasing:
+
+1. **In-repo script tests** — `bash tests/run-all.sh` must pass.
+2. **Structural validation** — Run `plugin-dev:plugin-validator` on every plugin. All must pass with zero errors. This agent ships in the external `plugin-dev` plugin (see [TESTING.md](TESTING.md) for install instructions); skip this gate only if `plugin-dev` cannot be installed. (`plugin-dev:skill-reviewer` is a dev-time quality tool, not a release gate — see TESTING.md.)
 
 See [TESTING.md](TESTING.md) for full validation details.
 
