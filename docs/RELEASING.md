@@ -10,7 +10,7 @@ No build step — this repo contains markdown, JSON, shell scripts, and plugin b
 
 Two gates, both required before releasing:
 
-1. **In-repo script tests** — `bash tests/run-all.sh` must pass.
+1. **In-repo script tests** — `bash tests/run-all.sh` must pass. This gate includes `scripts/check-internal-consistency.py`, which mechanically enforces both section-level cross-reference integrity and version mirror consistency between `plugin.json` and `marketplace.json`. The Script tests section in TESTING.md covers local test execution.
 2. **Structural validation** — Run `plugin-dev:plugin-validator` on every plugin. All must pass with zero errors. This agent ships in the external `plugin-dev` plugin (see [TESTING.md](TESTING.md) for install instructions); skip this gate only if `plugin-dev` cannot be installed. (`plugin-dev:skill-reviewer` is a dev-time quality tool, not a release gate — see TESTING.md.)
 
 See [TESTING.md](TESTING.md) for full validation details.
@@ -32,7 +32,7 @@ find plugins -name plugin.json -path "*/.claude-plugin/*"
 
 1. Bump `"version"` in all `plugin.json` files found above.
 2. Bump every `"version"` in `.claude-plugin/marketplace.json` to the same new version.
-3. Verify they match: `diff <(jq -r '.plugins[] | "\(.name) \(.version)"' .claude-plugin/marketplace.json | sort) <(find plugins -name plugin.json -path "*/.claude-plugin/*" -exec jq -r '"\(.name) \(.version)"' {} \; | sort)` — should print nothing.
+3. Verify they match: `bash tests/run-all.sh` will catch any version mismatch via `scripts/check-internal-consistency.py`. As a quick manual check: `diff <(jq -r '.plugins[] | "\(.name) \(.version)"' .claude-plugin/marketplace.json | sort) <(find plugins -name plugin.json -path "*/.claude-plugin/*" -exec jq -r '"\(.name) \(.version)"' {} \; | sort)` — should print nothing.
 4. Commit: `git commit -m "Bump all plugins to vX.Y.Z"`
 5. Create the GitHub release with `gh release create vX.Y.Z --title "vX.Y.Z" --generate-notes`
 
