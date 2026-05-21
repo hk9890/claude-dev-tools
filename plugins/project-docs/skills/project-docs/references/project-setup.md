@@ -65,6 +65,7 @@ Notes:
 ### `docs/OVERVIEW.md`
 
 - Architecture and domain orientation
+- MUST NOT duplicate `AGENTS.md` — no re-listing of the docs/skills it already routes to (see [project-doc-guidelines.md](project-doc-guidelines.md), rule A7)
 - Example: [../examples/docs/OVERVIEW.md](../examples/docs/OVERVIEW.md)
 
 ### `docs/CODING.md`

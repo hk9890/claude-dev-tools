@@ -53,6 +53,19 @@ When a skill covers a generic workflow, local docs should only add repository-sp
 
 Change-landing guidance belongs in `CHANGE-WORKFLOW.md`.
 
+### A7 — No duplication of AGENTS.md content
+
+`AGENTS.md` is the single routing surface. Canonical `docs/` files MUST NOT restate
+what `AGENTS.md` already provides:
+
+- MUST NOT re-list files, directories, docs, or skills that `AGENTS.md` already routes to.
+- MUST NOT duplicate the project summary, routing table, or task-to-doc/skill mappings.
+- When a doc needs context that lives in `AGENTS.md`, link to it instead of copying it.
+
+This applies with particular force to `docs/OVERVIEW.md`: its repository-layout and
+resource sections describe structure and domain, not the routes already declared in
+`AGENTS.md`.
+
 ## Hard prohibitions
 
 Canonical docs should avoid:
