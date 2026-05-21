@@ -1,5 +1,5 @@
 ---
-name: trigger-release
+name: project-trigger-release
 description: "Cut a new release — discovers and loads any installed release skills, follows docs/RELEASING.md, then runs the release process and reports the outcome."
 user-invocable: true
 disable-model-invocation: true

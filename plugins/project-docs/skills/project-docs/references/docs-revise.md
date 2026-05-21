@@ -64,7 +64,7 @@ If a learning fits a canonical doc that doesn't exist yet:
 
 1. Check the learning is substantive — at least 2–3 concrete items, not a single bullet.
 2. If yes: offer to create the doc inline with the learning as initial content. Ask for explicit confirmation before creating; use the topic's role from [project-setup.md](project-setup.md) to scope the new file.
-3. If no: skip the learning and suggest the user run `/project-docs:create-docs` if they want the topic doc set up.
+3. If no: skip the learning and suggest the user run `/project-docs:project-create-docs` if they want the topic doc set up.
 4. After creation, refresh AGENTS routing to include the new doc.
 
 ### 4. Present each addition

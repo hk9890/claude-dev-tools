@@ -18,17 +18,17 @@ The skills make no assumptions about how a project works — they derive everyth
 
 | Skill | Invocation | Description |
 |---|---|---|
-| executes-tests | `/project-ops:executes-tests` | Run the project's tests, guided by testing skills and `docs/TESTING.md` |
-| trigger-release | `/project-ops:trigger-release` | Cut a new release, guided by release skills and `docs/RELEASING.md` |
-| analyze-monitoring-data | `/project-ops:analyze-monitoring-data` | Analyze monitoring data, guided by monitoring skills and `docs/MONITORING.md` |
+| project-executes-tests | `/project-ops:project-executes-tests` | Run the project's tests, guided by testing skills and `docs/TESTING.md` |
+| project-trigger-release | `/project-ops:project-trigger-release` | Cut a new release, guided by release skills and `docs/RELEASING.md` |
+| project-analyze-monitoring-data | `/project-ops:project-analyze-monitoring-data` | Analyze monitoring data, guided by monitoring skills and `docs/MONITORING.md` |
 
 ## Usage
 
 Run any skill from the list above. Each takes an optional advisory argument:
 
-- **executes-tests** — runs the tests the docs and skills define; asks which to run when several kinds of tests are defined; optional argument resolves that ambiguity.
-- **trigger-release** — runs the release process the docs and skills define; asks when the release type or version bump is ambiguous; confirms before outward-facing steps.
-- **analyze-monitoring-data** — analyzes monitoring data (read-only) for the last 24 hours; asks which sources to cover when several are defined; optional argument sets the window or scope.
+- **project-executes-tests** — runs the tests the docs and skills define; asks which to run when several kinds of tests are defined; optional argument resolves that ambiguity.
+- **project-trigger-release** — runs the release process the docs and skills define; asks when the release type or version bump is ambiguous; confirms before outward-facing steps.
+- **project-analyze-monitoring-data** — analyzes monitoring data (read-only) for the last 24 hours; asks which sources to cover when several are defined; optional argument sets the window or scope.
 
 ## Plugin Structure
 
@@ -37,10 +37,10 @@ project-ops/
 ├── .claude-plugin/
 │   └── plugin.json
 └── skills/
-    ├── executes-tests/
+    ├── project-executes-tests/
     │   └── SKILL.md
-    ├── trigger-release/
+    ├── project-trigger-release/
     │   └── SKILL.md
-    └── analyze-monitoring-data/
+    └── project-analyze-monitoring-data/
         └── SKILL.md
 ```

@@ -10,11 +10,11 @@ This plugin provides structured workflows for creating, updating, improving, and
 
 | Skill | Invocation | Description |
 |---|---|---|
-| create-docs | `/project-docs:create-docs` | Create or initialize project docs baseline from scratch |
-| init-or-update-docs | `/project-docs:init-or-update-docs` | Refresh or update existing project docs |
-| improve-doc | `/project-docs:improve-doc` | Improve docs structure and quality |
-| review-docs | `/project-docs:review-docs` | Review and validate docs in read-only mode |
-| revise-docs | `/project-docs:revise-docs` | Capture session learnings into canonical docs and AGENTS routing |
+| project-create-docs | `/project-docs:project-create-docs` | Create or initialize project docs baseline from scratch |
+| project-init-or-update-docs | `/project-docs:project-init-or-update-docs` | Refresh or update existing project docs |
+| project-improve-doc | `/project-docs:project-improve-doc` | Improve docs structure and quality |
+| project-review-docs | `/project-docs:project-review-docs` | Review and validate docs in read-only mode |
+| project-revise-docs | `/project-docs:project-revise-docs` | Capture session learnings into canonical docs and AGENTS routing |
 
 ## Usage
 
@@ -33,15 +33,15 @@ project-docs/
 ├── .claude-plugin/
 │   └── plugin.json
 └── skills/
-    ├── create-docs/
+    ├── project-create-docs/
     │   └── SKILL.md
-    ├── init-or-update-docs/
+    ├── project-init-or-update-docs/
     │   └── SKILL.md
-    ├── improve-doc/
+    ├── project-improve-doc/
     │   └── SKILL.md
-    ├── review-docs/
+    ├── project-review-docs/
     │   └── SKILL.md
-    ├── revise-docs/
+    ├── project-revise-docs/
     │   └── SKILL.md
     └── project-docs/
         ├── SKILL.md

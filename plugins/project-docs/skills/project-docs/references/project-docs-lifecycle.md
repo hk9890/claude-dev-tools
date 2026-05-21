@@ -117,4 +117,4 @@ Final report should include:
 - created/updated/skipped docs with reasons
 - verification outcome and unresolved follow-ups
 
-For improve-doc execution modes (discussion-first and incident-driven), see [docs-improve.md](docs-improve.md).
+For project-improve-doc execution modes (discussion-first and incident-driven), see [docs-improve.md](docs-improve.md).

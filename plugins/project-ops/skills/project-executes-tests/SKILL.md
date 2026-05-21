@@ -1,5 +1,5 @@
 ---
-name: executes-tests
+name: project-executes-tests
 description: "Run the project's test suite — discovers and loads any installed testing skills, follows docs/TESTING.md, then executes the tests and reports results."
 user-invocable: true
 disable-model-invocation: true

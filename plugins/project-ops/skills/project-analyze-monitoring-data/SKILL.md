@@ -1,5 +1,5 @@
 ---
-name: analyze-monitoring-data
+name: project-analyze-monitoring-data
 description: "Analyze the project's recent monitoring data — discovers and loads any installed monitoring skills, follows docs/MONITORING.md, then reviews the data and reports findings."
 user-invocable: true
 disable-model-invocation: true

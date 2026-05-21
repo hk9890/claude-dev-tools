@@ -1,5 +1,5 @@
 ---
-name: review-docs
+name: project-review-docs
 description: "Review and validate project docs in read-only mode — reports findings by severity with suggested fixes, no file edits."
 user-invocable: true
 disable-model-invocation: true
