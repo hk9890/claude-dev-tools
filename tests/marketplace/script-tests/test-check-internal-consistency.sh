@@ -52,6 +52,19 @@ assert_output_contains() {
   fi
 }
 
+assert_output_matches() {
+  local label="$1" pattern="$2"
+  shift 2
+  local out code=0
+  out=$("$@" 2>&1) || code=$?
+  if printf '%s' "$out" | grep -qE "$pattern"; then
+    ok "$label"
+  else
+    fail "$label — expected output to match $(printf '%q' "$pattern")"
+    printf '  actual output:\n%s\n' "$out"
+  fi
+}
+
 # ── test cases ────────────────────────────────────────────────────────────────
 
 # 1. Live repo: full scan exits 0 on current main
@@ -62,9 +75,9 @@ test_live_repo_passes() {
 
 # 2. Live repo: scanner resolves at least one real reference (not a no-op)
 test_live_repo_resolves_refs() {
-  assert_output_contains \
+  assert_output_matches \
     "live-repo: scanner resolves >=1 real section reference" \
-    "PASS (1" \
+    'PASS \([1-9][0-9]* ' \
     python3 "$SCRIPT" --repo-root "$REPO_ROOT"
 }
 
