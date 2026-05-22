@@ -114,7 +114,7 @@ it scale; set `width="100%"` and a fixed `height` (or `height="auto"` with an
 aspect ratio). Keep coordinates round numbers — precision beyond a pixel is noise.
 
 For colour, use the CSS custom properties already defined in the `<style>` block:
-`var(--vis-accent)`, `var(--vis-muted)`, etc. This ensures the SVG respects the
+`var(--hv-accent)`, `var(--hv-muted)`, etc. This ensures the SVG respects the
 dark/light theme.
 
 ### CDN chart library (acceptable for complex or interactive charts)
@@ -159,9 +159,9 @@ the local filesystem — the page must render correctly even when saved and open
 as a `file://` URL.
 
 **Theme-aware colours.** When you add chart colours or diagram fills, use the
-template's CSS custom properties (`--vis-bg`, `--vis-text`, `--vis-card`,
-`--vis-accent`, `--vis-muted`) so the page follows the light/dark theme. For SVG
-fills and strokes, prefer `currentColor` or `var(--vis-accent)`.
+template's CSS custom properties (`--hv-bg`, `--hv-text`, `--hv-surface`,
+`--hv-accent`, `--hv-muted`) so the page follows the light/dark theme. For SVG
+fills and strokes, prefer `currentColor` or `var(--hv-accent)`.
 
 **Responsive visuals.** Keep `max-width: 900px; margin: 0 auto` on the content
 container (already in the template). For SVGs, set `width="100%"` plus a

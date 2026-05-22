@@ -3,6 +3,8 @@
  * Theme: "Editorial" — warm paper, ink text, a single terracotta accent,
  * a serif display face paired with a refined sans body. Light + dark.
  *
+ * Design tokens are sourced from /assets/shared/tokens.css (--hv-* variables).
+ *
  * This file is CSS-only chrome. assets/ask/app.js reads the class names, ids
  * and data-attributes below as a contract — restyle freely, but do not expect
  * to rename them here without also changing app.js.
@@ -38,60 +40,7 @@
  *   [data-anchor-id]     — CSS id used as the comment anchor selector (#value)
  */
 
-/* ── Design tokens ────────────────────────────────────────────────────────── */
-
-:root {
-  color-scheme: light dark;
-
-  --paper:       #f4efe3;
-  --surface:     #fffdf7;
-  --surface-2:   #faf5e9;
-  --ink:         #2a251d;
-  --ink-soft:    #6c6353;
-  --ink-faint:   #9a9078;
-  --line:        #e2dac6;
-  --line-soft:   #ece5d4;
-
-  --accent:      #b1492a;
-  --accent-deep: #8d3a20;
-  --accent-tint: #f2e2d8;
-
-  --ok:    #51762f;  --ok-tint:   #e7efd9;  --ok-deep:   #3d5b21;
-  --warn:  #a9781a;  --warn-tint: #f4eccd;  --warn-deep: #846010;
-  --bad:   #a33324;  --bad-tint:  #f3e0da;  --bad-deep:  #7e271b;
-
-  --shadow:    0 1px 2px rgba(42,32,14,.05), 0 7px 22px -10px rgba(42,32,14,.16);
-  --shadow-lg: 0 2px 4px rgba(42,32,14,.06), 0 16px 38px -14px rgba(42,32,14,.26);
-  --radius: 11px;
-
-  --font-display: "Charter", "Bitstream Charter", "Sitka Text", "Iowan Old Style", Cambria, Georgia, serif;
-  --font-body: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --paper:       #15130e;
-    --surface:     #211e16;
-    --surface-2:   #1b1812;
-    --ink:         #ece5d6;
-    --ink-soft:    #a89d86;
-    --ink-faint:   #7c735e;
-    --line:        #352f23;
-    --line-soft:   #2a251c;
-
-    --accent:      #e3895f;
-    --accent-deep: #efa17c;
-    --accent-tint: #3a291f;
-
-    --ok:    #95bd6c;  --ok-tint:   #2a331f;  --ok-deep:   #abce84;
-    --warn:  #d8aa50;  --warn-tint: #352c16;  --warn-deep: #e8bf6c;
-    --bad:   #e3897a;  --bad-tint:  #382220;  --bad-deep:  #ed9f90;
-
-    --shadow:    0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.7);
-    --shadow-lg: 0 2px 6px rgba(0,0,0,.5), 0 18px 40px -16px rgba(0,0,0,.8);
-  }
-}
+@import "/assets/shared/tokens.css";
 
 /* ── Reset / base ─────────────────────────────────────────────────────────── */
 
@@ -102,22 +51,22 @@
 body {
   margin: 0;
   padding: 0;
-  font-family: var(--font-body);
+  font-family: var(--hv-font-body);
   font-size: 16px;
   line-height: 1.5;
-  color: var(--ink);
+  color: var(--hv-text);
   background:
-    radial-gradient(1200px 620px at 100% -8%, rgba(177,73,42,.06), transparent 62%),
+    radial-gradient(1200px 620px at 100% -8%, rgba(var(--hv-accent-rgb),.06), transparent 62%),
     radial-gradient(900px 520px at -5% 8%, rgba(169,120,26,.05), transparent 60%),
-    var(--paper);
+    var(--hv-bg);
   background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
 ::selection {
-  background: var(--accent-tint);
-  color: var(--ink);
+  background: var(--hv-accent-tint);
+  color: var(--hv-text);
 }
 
 /* ── Motion ───────────────────────────────────────────────────────────────── */
@@ -147,7 +96,7 @@ body {
   position: relative;
   margin-bottom: 30px;
   padding-bottom: 20px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--hv-border);
   animation: rise 0.5s ease both;
 }
 
@@ -158,27 +107,27 @@ body {
   bottom: -1px;
   width: 58px;
   height: 3px;
-  background: var(--accent);
+  background: var(--hv-accent);
   border-radius: 2px;
 }
 
 .page-header h1 {
   margin: 0 0 7px;
-  font-family: var(--font-display);
+  font-family: var(--hv-font-display);
   font-size: 2.1rem;
   font-weight: 600;
   line-height: 1.14;
   letter-spacing: -0.018em;
-  color: var(--ink);
+  color: var(--hv-text);
 }
 
 .page-header .subtitle {
   margin: 0;
-  font-family: var(--font-display);
+  font-family: var(--hv-font-display);
   font-style: italic;
   font-size: 1.08rem;
   line-height: 1.45;
-  color: var(--ink-soft);
+  color: var(--hv-muted);
 }
 
 /* Staggered entrance for the form body. */
@@ -197,18 +146,18 @@ body {
 
 .widget {
   position: relative;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
+  background: var(--hv-surface);
+  border: 1px solid var(--hv-border);
+  border-radius: var(--hv-radius);
   padding: 22px 26px;
   margin-bottom: 18px;
-  box-shadow: var(--shadow);
+  box-shadow: var(--hv-shadow);
   transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .widget:focus-within {
-  border-color: var(--accent);
-  box-shadow: var(--shadow-lg);
+  border-color: var(--hv-accent);
+  box-shadow: var(--hv-shadow-lg);
 }
 
 .widget-label {
@@ -218,7 +167,7 @@ body {
   letter-spacing: -0.01em;
   line-height: 1.4;
   margin-bottom: 7px;
-  color: var(--ink);
+  color: var(--hv-text);
 }
 
 /* Editorial accent dash before each question. */
@@ -228,7 +177,7 @@ body {
   width: 15px;
   height: 2px;
   margin: 0 9px 4px 0;
-  background: var(--accent);
+  background: var(--hv-accent);
   border-radius: 1px;
   vertical-align: middle;
 }
@@ -237,7 +186,7 @@ body {
   display: block;
   font-size: 0.875rem;
   line-height: 1.45;
-  color: var(--ink-soft);
+  color: var(--hv-muted);
   margin: -1px 0 12px;
 }
 
@@ -247,24 +196,24 @@ body {
   width: 100%;
   min-height: 96px;
   padding: 11px 13px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--hv-border);
   border-radius: 8px;
   font-family: inherit;
   font-size: 0.95rem;
   line-height: 1.55;
   resize: vertical;
-  color: var(--ink);
-  background: var(--surface-2);
+  color: var(--hv-text);
+  background: var(--hv-surface-2);
   transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 
-.widget-text textarea::placeholder { color: var(--ink-faint); }
+.widget-text textarea::placeholder { color: var(--hv-faint); }
 
 .widget-text textarea:focus {
   outline: none;
-  border-color: var(--accent);
-  background: var(--surface);
-  box-shadow: 0 0 0 3px var(--accent-tint);
+  border-color: var(--hv-accent);
+  background: var(--hv-surface);
+  box-shadow: 0 0 0 3px var(--hv-accent-tint);
 }
 
 /* ── Radio + checkbox widgets ─────────────────────────────────────────────── */
@@ -283,30 +232,30 @@ body {
   align-items: flex-start;
   gap: 11px;
   padding: 10px 13px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--hv-border);
   border-radius: 8px;
-  background: var(--surface-2);
+  background: var(--hv-surface-2);
   cursor: pointer;
   transition: background 0.14s ease, border-color 0.14s ease, transform 0.14s ease;
 }
 
 .widget-radio .radio-option:hover,
 .widget-checkbox .checkbox-option:hover {
-  border-color: var(--accent);
+  border-color: var(--hv-accent);
   transform: translateX(2px);
 }
 
 .widget-radio .radio-option:has(input:checked),
 .widget-checkbox .checkbox-option:has(input:checked) {
-  background: var(--accent-tint);
-  border-color: var(--accent);
+  background: var(--hv-accent-tint);
+  border-color: var(--hv-accent);
 }
 
 .widget-radio .radio-option input,
 .widget-checkbox .checkbox-option input {
   margin-top: 2px;
   flex-shrink: 0;
-  accent-color: var(--accent);
+  accent-color: var(--hv-accent);
   cursor: pointer;
 }
 
@@ -317,7 +266,7 @@ body {
   font-size: 0.95rem;
   line-height: 1.45;
   cursor: pointer;
-  color: var(--ink);
+  color: var(--hv-text);
   flex: 1;
 }
 
@@ -337,36 +286,36 @@ body {
 }
 
 .approach-col {
-  border: 1px solid var(--line);
+  border: 1px solid var(--hv-border);
   border-radius: 9px;
   padding: 16px 18px;
-  background: var(--surface-2);
+  background: var(--hv-surface-2);
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 
 .approach-col:has(input[value="approve"]:checked) {
-  border-color: var(--ok);
-  background: var(--ok-tint);
+  border-color: var(--hv-ok);
+  background: var(--hv-ok-tint);
 }
 
 .approach-col:has(input[value="reject"]:checked) {
-  border-color: var(--bad);
-  background: var(--bad-tint);
+  border-color: var(--hv-bad);
+  background: var(--hv-bad-tint);
 }
 
 .approach-header {
-  font-family: var(--font-display);
+  font-family: var(--hv-font-display);
   font-weight: 600;
   font-size: 1.05rem;
   letter-spacing: -0.01em;
   margin-bottom: 9px;
-  color: var(--ink);
+  color: var(--hv-text);
 }
 
 .approach-col p {
   font-size: 0.9rem;
   line-height: 1.55;
-  color: var(--ink-soft);
+  color: var(--hv-muted);
   margin: 0 0 14px;
 }
 
@@ -374,7 +323,7 @@ body {
   display: flex;
   gap: 14px;
   padding-top: 12px;
-  border-top: 1px dashed var(--line);
+  border-top: 1px dashed var(--hv-border);
 }
 
 .approach-verdict label {
@@ -383,33 +332,33 @@ body {
   gap: 6px;
   font-size: 0.89rem;
   cursor: pointer;
-  color: var(--ink);
+  color: var(--hv-text);
 }
 
 .approach-verdict input[type="radio"] {
-  accent-color: var(--accent);
+  accent-color: var(--hv-accent);
   cursor: pointer;
 }
 
 /* ── Verdict section ──────────────────────────────────────────────────────── */
 
 .verdict-section {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
+  background: var(--hv-surface);
+  border: 1px solid var(--hv-border);
+  border-radius: var(--hv-radius);
   padding: 22px 26px;
   margin-bottom: 18px;
-  box-shadow: var(--shadow);
+  box-shadow: var(--hv-shadow);
 }
 
 .verdict-section h2,
 .freeform-section h2 {
   margin: 0 0 14px;
-  font-family: var(--font-display);
+  font-family: var(--hv-font-display);
   font-size: 1.3rem;
   font-weight: 600;
   letter-spacing: -0.015em;
-  color: var(--ink);
+  color: var(--hv-text);
 }
 
 .widget-verdict .verdict-options {
@@ -423,9 +372,9 @@ body {
   align-items: flex-start;
   gap: 13px;
   padding: 13px 16px;
-  border: 1.5px solid var(--line);
+  border: 1.5px solid var(--hv-border);
   border-radius: 9px;
-  background: var(--surface-2);
+  background: var(--hv-surface-2);
   cursor: pointer;
   transition: background 0.14s ease, border-color 0.14s ease, transform 0.14s ease;
 }
@@ -434,29 +383,29 @@ body {
   transform: translateX(2px);
 }
 
-.widget-verdict .verdict-option.verdict-approve:hover { border-color: var(--ok); }
-.widget-verdict .verdict-option.verdict-approve-with-changes:hover { border-color: var(--warn); }
-.widget-verdict .verdict-option.verdict-reject:hover { border-color: var(--bad); }
+.widget-verdict .verdict-option.verdict-approve:hover { border-color: var(--hv-ok); }
+.widget-verdict .verdict-option.verdict-approve-with-changes:hover { border-color: var(--hv-warn); }
+.widget-verdict .verdict-option.verdict-reject:hover { border-color: var(--hv-bad); }
 
 .widget-verdict .verdict-option.verdict-approve:has(input:checked) {
-  background: var(--ok-tint);
-  border-color: var(--ok);
+  background: var(--hv-ok-tint);
+  border-color: var(--hv-ok);
 }
 
 .widget-verdict .verdict-option.verdict-approve-with-changes:has(input:checked) {
-  background: var(--warn-tint);
-  border-color: var(--warn);
+  background: var(--hv-warn-tint);
+  border-color: var(--hv-warn);
 }
 
 .widget-verdict .verdict-option.verdict-reject:has(input:checked) {
-  background: var(--bad-tint);
-  border-color: var(--bad);
+  background: var(--hv-bad-tint);
+  border-color: var(--hv-bad);
 }
 
 .widget-verdict .verdict-option input[type="radio"] {
   margin-top: 3px;
   flex-shrink: 0;
-  accent-color: var(--accent);
+  accent-color: var(--hv-accent);
   cursor: pointer;
 }
 
@@ -469,48 +418,48 @@ body {
 .widget-verdict .verdict-option .verdict-label strong {
   font-size: 0.98rem;
   font-weight: 600;
-  color: var(--ink);
+  color: var(--hv-text);
 }
 
 .widget-verdict .verdict-option .verdict-label span {
   font-size: 0.86rem;
   line-height: 1.45;
-  color: var(--ink-soft);
+  color: var(--hv-muted);
 }
 
 /* ── Freeform section ─────────────────────────────────────────────────────── */
 
 .freeform-section {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
+  background: var(--hv-surface);
+  border: 1px solid var(--hv-border);
+  border-radius: var(--hv-radius);
   padding: 22px 26px;
   margin-bottom: 18px;
-  box-shadow: var(--shadow);
+  box-shadow: var(--hv-shadow);
 }
 
 .freeform-section textarea {
   width: 100%;
   min-height: 104px;
   padding: 11px 13px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--hv-border);
   border-radius: 8px;
   font-family: inherit;
   font-size: 0.95rem;
   line-height: 1.55;
   resize: vertical;
-  color: var(--ink);
-  background: var(--surface-2);
+  color: var(--hv-text);
+  background: var(--hv-surface-2);
   transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 
-.freeform-section textarea::placeholder { color: var(--ink-faint); }
+.freeform-section textarea::placeholder { color: var(--hv-faint); }
 
 .freeform-section textarea:focus {
   outline: none;
-  border-color: var(--accent);
-  background: var(--surface);
-  box-shadow: 0 0 0 3px var(--accent-tint);
+  border-color: var(--hv-accent);
+  background: var(--hv-surface);
+  box-shadow: 0 0 0 3px var(--hv-accent-tint);
 }
 
 /* ── Submit row ───────────────────────────────────────────────────────────── */
@@ -525,7 +474,7 @@ body {
 
 .submit-btn {
   padding: 12px 30px;
-  background: var(--accent);
+  background: var(--hv-accent);
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -534,14 +483,14 @@ body {
   font-weight: 600;
   letter-spacing: 0.005em;
   cursor: pointer;
-  box-shadow: 0 6px 16px -8px rgba(177,73,42,.7);
+  box-shadow: 0 6px 16px -8px rgba(var(--hv-accent-rgb),.7);
   transition: background 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease, opacity 0.15s ease;
 }
 
 .submit-btn:hover:not(:disabled) {
-  background: var(--accent-deep);
+  background: var(--hv-accent-deep);
   transform: translateY(-1px);
-  box-shadow: 0 10px 22px -8px rgba(177,73,42,.75);
+  box-shadow: 0 10px 22px -8px rgba(var(--hv-accent-rgb),.75);
 }
 
 .submit-btn:active:not(:disabled) { transform: translateY(0); }
@@ -555,8 +504,8 @@ body {
 .copy-btn {
   padding: 11px 21px;
   background: transparent;
-  color: var(--ink-soft);
-  border: 1px solid var(--line);
+  color: var(--hv-muted);
+  border: 1px solid var(--hv-border);
   border-radius: 8px;
   font-family: inherit;
   font-size: 0.9rem;
@@ -566,21 +515,21 @@ body {
 }
 
 .copy-btn:hover {
-  background: var(--surface);
-  border-color: var(--accent);
-  color: var(--ink);
+  background: var(--hv-surface);
+  border-color: var(--hv-accent);
+  color: var(--hv-text);
 }
 
 .copy-btn.copied {
-  color: var(--ok-deep);
-  border-color: var(--ok);
-  background: var(--ok-tint);
+  color: var(--hv-ok-deep);
+  border-color: var(--hv-ok);
+  background: var(--hv-ok-tint);
 }
 
 .submit-error {
-  color: var(--bad-deep);
-  background: var(--bad-tint);
-  border: 1px solid var(--bad);
+  color: var(--hv-bad-deep);
+  background: var(--hv-bad-tint);
+  border: 1px solid var(--hv-bad);
   border-radius: 8px;
   padding: 10px 14px;
   font-size: 0.9rem;
@@ -593,34 +542,34 @@ body {
 .state-submitted,
 .state-already-submitted {
   display: none;
-  border-radius: var(--radius);
+  border-radius: var(--hv-radius);
   padding: 34px 30px;
   text-align: center;
   margin-top: 24px;
-  box-shadow: var(--shadow);
+  box-shadow: var(--hv-shadow);
   animation: rise 0.45s ease both;
 }
 
 .state-submitted {
-  background: var(--ok-tint);
-  border: 1px solid var(--ok);
+  background: var(--hv-ok-tint);
+  border: 1px solid var(--hv-ok);
 }
 
 .state-already-submitted {
-  background: var(--warn-tint);
-  border: 1px solid var(--warn);
+  background: var(--hv-warn-tint);
+  border: 1px solid var(--hv-warn);
 }
 
 .state-submitted h2,
 .state-already-submitted h2 {
   margin: 0 0 8px;
-  font-family: var(--font-display);
+  font-family: var(--hv-font-display);
   font-size: 1.4rem;
   font-weight: 600;
 }
 
-.state-submitted h2 { color: var(--ok-deep); }
-.state-already-submitted h2 { color: var(--warn-deep); }
+.state-submitted h2 { color: var(--hv-ok-deep); }
+.state-already-submitted h2 { color: var(--hv-warn-deep); }
 
 .state-submitted p,
 .state-already-submitted p {
@@ -628,8 +577,8 @@ body {
   font-size: 0.95rem;
 }
 
-.state-submitted p { color: var(--ok-deep); }
-.state-already-submitted p { color: var(--warn-deep); }
+.state-submitted p { color: var(--hv-ok-deep); }
+.state-already-submitted p { color: var(--hv-warn-deep); }
 
 /* ── Per-question note field ─────────────────────────────────────────────── */
 /* Injected by app.js into every .annotatable widget — always visible, so the
@@ -638,7 +587,7 @@ body {
 .widget-note {
   margin-top: 16px;
   padding-top: 14px;
-  border-top: 1px dashed var(--line);
+  border-top: 1px dashed var(--hv-border);
 }
 
 .widget-note-label {
@@ -647,7 +596,7 @@ body {
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--ink-faint);
+  color: var(--hv-faint);
   margin-bottom: 7px;
 }
 
@@ -655,24 +604,24 @@ body {
   width: 100%;
   min-height: 58px;
   padding: 9px 11px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--hv-border);
   border-radius: 7px;
   font-family: inherit;
   font-size: 0.9rem;
   line-height: 1.5;
   resize: vertical;
-  color: var(--ink);
-  background: var(--surface-2);
+  color: var(--hv-text);
+  background: var(--hv-surface-2);
   transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 
-.widget-note-input::placeholder { color: var(--ink-faint); }
+.widget-note-input::placeholder { color: var(--hv-faint); }
 
 .widget-note-input:focus {
   outline: none;
-  border-color: var(--accent);
-  background: var(--surface);
-  box-shadow: 0 0 0 3px var(--accent-tint);
+  border-color: var(--hv-accent);
+  background: var(--hv-surface);
+  box-shadow: 0 0 0 3px var(--hv-accent-tint);
 }
 
 /* ── Responsive tweaks ────────────────────────────────────────────────────── */

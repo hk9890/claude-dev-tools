@@ -20,7 +20,7 @@ visualize — is the content to render. Carry it into the mode reference's
 | Mode | Invoked by | Load and follow |
 |---|---|---|
 | `ask` — question/decision form with a blocking submit round-trip | `html-visualize-ask` | [references/ask.md](references/ask.md) |
-| `feedback` — existing content for inline commenting, with an Apply loop | `html-visualize-feedback` | [references/feedback.md](references/feedback.md) |
+| `feedback` — content (document, plan, or brainstormed options) for inline commenting, with an Apply loop | `html-visualize-feedback` | [references/feedback.md](references/feedback.md) |
 | `visualize` — display-only page, non-blocking `--no-wait` serve | `html-visualize-demo` | [references/visualize.md](references/visualize.md) |
 
 ## Authoring guidelines — all modes

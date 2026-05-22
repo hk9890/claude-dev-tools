@@ -15,9 +15,11 @@ read-back.
 ## Scope of feedback mode
 
 The user invoked feedback mode explicitly — render the content for markup.
-Feedback mode shows the user a piece of content — a document, draft, or any
-substantial prose — and lets them attach inline comments to specific parts of it,
-then iterate via an Apply loop.
+Feedback mode shows the user a piece of content — a document, draft, plan,
+proposal, or set of brainstormed options — and lets them attach inline comments
+to specific parts of it, then iterate via an Apply loop. The content may be
+pre-existing user prose *or* a plan or set of ideas Claude authored during the
+conversation (no backing file required).
 
 Fall back to plain chat in only two cases:
 
@@ -67,7 +69,8 @@ Before writing any HTML, decide:
   and what kind of feedback you want.
 - **Blocks**: each paragraph, heading, list, code block, and blockquote becomes
   one commentable block with a stable `data-block-id`. Decide the block breakdown
-  now — one logical passage per block.
+  now — one logical passage per block. For plans and brainstormed content, each
+  plan section, idea, or option becomes its own block.
 
 ---
 
@@ -176,12 +179,16 @@ Interpret the comment fields:
 | Field | How to use it |
 |---|---|
 | `comments` | Each is one located piece of feedback. `blockId` + `blockText` tell you which passage; `quote` (when non-empty) narrows it to the exact phrase; `text` is what they want changed. |
-| `freeform` | Feedback not tied to a block — overall direction, tone, what is missing. May be empty. |
+| `freeform` | Feedback not tied to a block — overall direction, tone, what is missing, or new ideas to add. May be empty. During brainstorming, `freeform` and "what is missing" comments are the primary way the user adds new ideas; an Apply round may therefore introduce new options, not only edit existing ones. |
 
-**Apply every comment to the underlying source** of the content (e.g. the
-markdown file) — not just to the rendered HTML. Acknowledge each comment as you
-apply it. If a comment is ambiguous, apply your best interpretation and say so.
-If both `comments` and `freeform` are empty, ask in chat what to change.
+**Apply every comment to the underlying source** of the content. If the content
+originated from a file (e.g. a markdown document), apply to that file. If the
+plan or ideas exist only in the conversation (no backing file), the conversation
+content IS the source — apply the comments to it in context and regenerate the
+HTML from the revised version. Do not apply to the rendered HTML only.
+Acknowledge each comment as you apply it. If a comment is ambiguous, apply your
+best interpretation and say so. If both `comments` and `freeform` are empty, ask
+in chat what to change.
 
 Then branch on `action`:
 

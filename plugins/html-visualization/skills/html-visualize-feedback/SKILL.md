@@ -1,6 +1,6 @@
 ---
 name: html-visualize-feedback
-description: "Render existing content as a browser HTML page the user marks up with inline comments — feedback mode of the html-visualize workflow."
+description: "Render content — a document, draft, plan, or set of brainstormed options — as a browser HTML page the user marks up with inline comments — feedback mode of the html-visualize workflow."
 argument-hint: "[content-to-review]"
 user-invocable: true
 disable-model-invocation: true
@@ -8,8 +8,10 @@ disable-model-invocation: true
 
 ## Workflow
 
-What to render for review — a document, draft, article, plan write-up, or any
-prose, given as the text itself or a path to it:
+What to render for review — a document, draft, article, plan, proposal, or set
+of brainstormed options (including ideas Claude authored in the conversation),
+given as the text itself, a path to it, or nothing when the source is the
+conversation itself:
 
 $ARGUMENTS
 
