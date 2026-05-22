@@ -5,8 +5,8 @@ This document is the single source of truth for the HTML vocabulary Claude must 
 ## How it works
 
 1. Claude writes a complete HTML file based on `template.html` (also in this references directory).
-2. The file is served by `bin/server.js`, which injects a CSRF token and serves shared assets from `assets/`.
-3. `assets/app.js` reads the widget DOM and assembles the `/submit` payload.
+2. The file is served by `bin/server.js`, which injects a CSRF token and serves the skill's assets from `assets/ask/`.
+3. `assets/ask/app.js` reads the widget DOM and assembles the `/submit` payload.
 4. On submit, the server writes a feedback file and exits — re-invoking Claude.
 
 The `/submit` payload schema is defined in `submit-schema.md` (same directory). The markup contract here describes only what Claude needs to author HTML correctly.
@@ -24,7 +24,7 @@ Every document must have this top-level structure:
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Feedback — [descriptive title]</title>
-  <link rel="stylesheet" href="/assets/style.css">
+  <link rel="stylesheet" href="/assets/ask/style.css">
 </head>
 <body>
   <div class="page-chrome">
@@ -33,7 +33,7 @@ Every document must have this top-level structure:
     <div id="state-submitted" class="state-submitted"> … </div>
     <div id="state-already-submitted" class="state-already-submitted"> … </div>
   </div>
-  <script src="/assets/app.js"></script>
+  <script src="/assets/ask/app.js"></script>
 </body>
 </html>
 ```
@@ -190,5 +190,5 @@ Before finalising an html-ask document:
 - [ ] The verdict section contains all three radio options with the exact values above.
 - [ ] `id="freeform-input"` is on the freeform textarea.
 - [ ] `id="submit-btn"`, `id="copy-btn"`, `id="submit-error"`, `id="main-form"`, `id="state-submitted"`, `id="state-already-submitted"` are all present once.
-- [ ] `<link>` to `/assets/style.css` is in `<head>`; `<script>` for `/assets/app.js` is before `</body>`.
+- [ ] `<link>` to `/assets/ask/style.css` is in `<head>`; `<script>` for `/assets/ask/app.js` is before `</body>`.
 - [ ] No `<script>const CSRF_TOKEN = …</script>` block — the server injects this.

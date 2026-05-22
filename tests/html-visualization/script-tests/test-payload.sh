@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# test-payload.sh — unit tests for buildFeedbackPayload in app.js
+# test-payload.sh — unit tests for buildFeedbackPayload in the html-ask app.js
 #
 # Loads the pure function via Node require() (no DOM, no CSRF_TOKEN global)
-# and asserts it produces an object matching the submit-schema.md shape
-# for representative widget states.
+# and asserts it produces an object matching the html-ask submit-schema.md
+# shape for representative widget states.
 #
-# Part of the html-ask plugin test harness; auto-discovered by run-all.sh.
+# Part of the html-visualization plugin test harness; auto-discovered by run-all.sh.
 
 set -uo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-APP_JS="$REPO_ROOT/plugins/html-ask/assets/app.js"
+APP_JS="$REPO_ROOT/plugins/html-visualization/assets/ask/app.js"
 
 PASS=0
 FAIL=0

@@ -1,6 +1,6 @@
 ---
 name: html-ask
-description: "This skill should be used when Claude is about to present a multi-section plan, a batch of decisions, or a set of open questions to the user AND the count crosses the trigger bar: 3 or more separately-numbered open questions, OR 3 or more approve/reject decision points, OR the user explicitly requests an HTML feedback form. Triggers on phrases like 'I have several questions before proceeding', 'here is my plan — please review each section', 'let me present the options for your approval', 'can you send me an HTML form for this'. Does not apply when there are 2 or fewer questions, when a single yes/no answer is sufficient, when the user wants a fast in-chat back-and-forth, or when the content is a short factual answer. When unsure, bias toward NOT triggering — ask in chat instead."
+description: "This skill should be used when Claude is about to present a multi-section plan, a batch of decisions, or a set of open questions to the user AND the count crosses the trigger bar: 3 or more separately-numbered open questions, OR 3 or more approve/reject decision points, OR the user explicitly requests an HTML feedback form. Triggers on phrases like 'I have several questions before proceeding', 'here is my plan — please review each section', 'let me present the options for your approval', 'can you send me an HTML form for this'. Does not apply when there are 2 or fewer questions, when a single yes/no answer is sufficient, when the user wants a fast in-chat back-and-forth, when the content is a short factual answer, or when the user wants to comment on or annotate a piece of existing content such as a document or draft rather than answer questions — use html-feedback for that. When unsure, bias toward NOT triggering — ask in chat instead."
 ---
 
 ## What this skill does
@@ -89,11 +89,22 @@ Edit the copied file per the markup contract in `${CLAUDE_PLUGIN_ROOT}/skills/ht
 - Every widget `<div>` must have `data-qid` (your question slug), `data-qtype` (`text`|`radio`|`checkbox`|`approaches`), and `class="widget widget-<type>"`.
 - Add `annotatable` and `data-anchor-id="<qid>"` to every `radio`/`checkbox`/`approaches` widget — this gives that question an always-visible free-text note field, so the user can always write something in. Do NOT add it to `text` widgets; their `<textarea>` is already the free-text field.
 - Do NOT add `<script>const CSRF_TOKEN = "...";</script>` — the server injects it.
-- The `/assets/style.css` link and `/assets/app.js` script are correct as-is; do not change the paths.
+- The `/assets/ask/style.css` link and `/assets/ask/app.js` script are correct as-is; do not change the paths.
 
 Consult `${CLAUDE_PLUGIN_ROOT}/skills/html-ask/references/markup.md` for the full vocabulary (classes, data attributes, required IDs, verdict radio values).
 
-### 2d. Compute and record the feedback file path
+### 2d. Use HTML to make the content clear
+
+This is a browser document, not a chat message — use HTML's visual power wherever it makes the questions or context easier to judge. Plain `<p>` prose is the floor, not the ceiling:
+
+- **Tables** for comparing options, costs, or tradeoffs across questions.
+- **Colour and badges** — wrap inline `<span>`s with background colour to flag risk, status, or "recommended" — so the user can scan at a glance.
+- **Code blocks** (`<pre><code>`) for snippets, file paths, or diffs the user must review.
+- **Inline SVG or styled `<div>`s** for a small diagram, timeline, or before/after sketch when a picture decides the question faster than a sentence.
+
+Keep it purposeful: every visual element must help the user answer. Do not decorate. Author any extra styling inline or in a `<style>` block in `<head>` — never edit the shared `/assets/ask/style.css`.
+
+### 2e. Compute and record the feedback file path
 
 The feedback file path is deterministic. Compute it now and remember it:
 
@@ -120,8 +131,8 @@ Optional flags:
 On startup the server prints two lines to stdout:
 
 ```
-[html-ask] URL: http://127.0.0.1:<port>/
-[html-ask] Feedback file: /tmp/html-ask-.../feedback.feedback.json
+[html-visualization] URL: http://127.0.0.1:<port>/
+[html-visualization] Feedback file: /tmp/html-ask-.../feedback.feedback.json
 ```
 
 Wait until you see these lines, then surface the URL to the user. Render it as a
@@ -141,7 +152,7 @@ The server exits with code 0 after the first successful submit, which causes the
 When the harness re-invokes Claude after server exit, read the feedback file:
 
 ```
-FEEDBACK_FILE  (the path you computed in Step 2d)
+FEEDBACK_FILE  (the path you computed in Step 2e)
 ```
 
 The file contains:
