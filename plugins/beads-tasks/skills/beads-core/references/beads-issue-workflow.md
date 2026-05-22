@@ -61,6 +61,7 @@ Guideline:
 
 - dependency only for true execution order constraints
 - avoid over-linking unrelated tasks
+- block edges must connect same-type issues: an epic can only block another epic, and a task can only block another task. Linking across types fails with `epics can only block other epics, not tasks` (or the task equivalent). To order a task against an epic, depend on a task inside that epic instead.
 
 ## Acceptance-review task pattern
 

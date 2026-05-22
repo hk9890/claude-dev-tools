@@ -6,9 +6,11 @@ This repo is a collection of Claude Code plugins. Each plugin lives under `plugi
 
 ```
 claude-dev-tools/
+  .beads/                # beads task database for this repo (the bd issue store)
   .claude-plugin/        # repo-level marketplace manifest
     marketplace.json     # lists all plugins, their versions, and descriptions
   docs/                  # developer guides (OVERVIEW, CODING, TESTING, RELEASING, …)
+  notes/                 # working notes and captured feedback
   plugins/               # one subdirectory per plugin
   scripts/               # repo maintenance scripts
   tests/                 # structural validation and smoke tests

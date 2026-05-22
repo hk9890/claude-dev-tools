@@ -1,6 +1,6 @@
 # Releasing
 
-Project-specific release guide for the `github-releases` skill.
+Release process for this plugin marketplace. All plugins ship together under a single repo-level version tag.
 
 ## Build
 

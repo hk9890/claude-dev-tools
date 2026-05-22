@@ -23,7 +23,7 @@ Run these gates before pushing to master:
    ```
    Hard failures (broken routes, malformed CLAUDE.md) must be fixed before pushing. Soft warnings are informational.
 
-See [RELEASING.md](RELEASING.md) for the full release gate list (same gates, plus version-bump steps).
+See [RELEASING.md](RELEASING.md) for the release process — it runs gates 1 and 2 above against every plugin, plus version-bump steps. Gate 3 (docs validation) is pre-push only.
 
 ## Pull requests
 

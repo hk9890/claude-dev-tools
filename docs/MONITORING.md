@@ -70,7 +70,7 @@ RENAME_ALIASES = {
 }
 ```
 
-Both the old name and the new name resolve to the canonical current plugin directory name. This keeps historical transcript data from falling into the unmatched bucket after a plugin is renamed.
+Both the old name and the new name resolve to the canonical current plugin directory name — here, `complexity-review` is the former name of the `project-review` plugin. This keeps historical transcript data from falling into the unmatched bucket after a plugin is renamed.
 
 ### Friction-score formula
 

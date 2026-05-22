@@ -8,9 +8,11 @@ A plugin marketplace for [Claude Code](https://claude.ai/code). Each plugin is a
 |---|---|
 | `plugins/` | One subdirectory per plugin (independently installable) |
 | `.claude-plugin/` | Repo-level marketplace manifest (`marketplace.json`) |
-| `docs/` | Developer guides (OVERVIEW, CODING, TESTING, RELEASING) |
+| `docs/` | Developer guides (OVERVIEW, CODING, TESTING, RELEASING, MONITORING, CHANGE-WORKFLOW) |
 | `scripts/` | Repo maintenance scripts |
 | `tests/` | Structural validation and smoke tests |
+| `notes/` | Working notes and captured feedback |
+| `.beads/` | Beads task database for this repo (the `bd` issue store) |
 
 See [docs/OVERVIEW.md](docs/OVERVIEW.md) for the full layout and architecture details.
 
@@ -33,7 +35,7 @@ See [docs/OVERVIEW.md](docs/OVERVIEW.md) for the full layout and architecture de
 This repo is a Claude Code marketplace. Inside Claude Code, add the marketplace and install plugins from it:
 
 ```
-/plugin marketplace add hanskohlreiter/claude-dev-tools
+/plugin marketplace add hk9890/claude-dev-tools
 /plugin install <plugin-name>@claude-dev-tools
 ```
 
@@ -49,4 +51,4 @@ After installing, the plugin is recorded in your `.claude/settings.json`:
 
 ## Contributing
 
-See [docs/CODING.md](docs/CODING.md) for how to add a new plugin, and [docs/CHANGE-WORKFLOW.md](docs/CHANGE-WORKFLOW.md) for the commit and task-tracking workflow used in this repo.
+See [docs/CODING.md](docs/CODING.md) for how to add a new plugin and [docs/OVERVIEW.md](docs/OVERVIEW.md) for the repo layout, and [docs/CHANGE-WORKFLOW.md](docs/CHANGE-WORKFLOW.md) for the commit and task-tracking workflow used in this repo.

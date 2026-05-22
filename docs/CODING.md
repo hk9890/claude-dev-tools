@@ -9,7 +9,7 @@ Implementation guide for contributing to this plugin marketplace.
 3. Register the plugin in `.claude-plugin/marketplace.json` under the `plugins` array with fields: `name`, `source`, `description`, `version`, `author`, `category`, `keywords`.
 4. If your plugin has non-obvious conventions not captured in code, create `plugins/<plugin-name>/RULES.md` for plugin-specific rules and design decisions.
 5. Add the plugin to the table in `README.md`.
-6. Use the `plugin-dev` skill set to scaffold components: commands, skills, agents, hooks, MCP integration.
+6. Use the `plugin-dev` skill set to scaffold components: commands, skills, agents, hooks, MCP integration. `plugin-dev` ships in an external plugin and must be installed separately — see [TESTING.md](TESTING.md) for install instructions.
 
 ## Plugin rules files
 
