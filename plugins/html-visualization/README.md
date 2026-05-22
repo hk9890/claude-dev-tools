@@ -32,12 +32,13 @@ them. The free-text intent travels in as the slash-command argument.
 | `html-visualize` | — (loaded by the commands) | Core: mode references, shared serve procedure, templates. `user-invocable: false`. |
 | `html-visualize-ask` | `/html-visualization:html-visualize-ask` | **ask** — question/decision form (text, single/multi choice, approach widgets, overall verdict). |
 | `html-visualize-feedback` | `/html-visualization:html-visualize-feedback` | **feedback** — content for inline commenting (user selects text, attaches comment, iterates with Apply). |
-| `html-visualize-demo` | `/html-visualization:html-visualize-demo` | **visualize** — display-only HTML page; no submit. |
+| `html-visualize-demo` | `/html-visualization:html-visualize-demo` | **visualize** — HTML page served non-blocking; always-on footer lets the user optionally send a message back. |
 
 Rule of thumb: **ask mode asks the user questions; feedback mode shows the user
-content to react to; visualize mode renders content without expecting a
-response.** Each command skill is `disable-model-invocation: true` — only the user
-invokes them, by slash command.
+content to react to; visualize mode renders content and continues immediately —
+the user may optionally send a follow-up message via the footer.** Each command
+skill is `disable-model-invocation: true` — only the user invokes them, by slash
+command.
 
 ## Runtime requirements
 

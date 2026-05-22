@@ -87,11 +87,12 @@ record it when you start the server so you can read it back without globbing.
 
 **Optional flags**: `--port N` (fixed port), `--timeout-sec N` (default 1800 s).
 
-### Cycle B — Non-blocking serve-and-continue (visualize mode)
+### Cycle B — Non-blocking serve-and-continue with optional submit (visualize mode)
 
-Used by **visualize** mode. The server serves the HTML page and returns
-immediately; Claude continues without waiting for any submit. The `--no-wait` flag
-activates this cycle. In this mode POST `/submit` is not accepted (405).
+Used by **visualize** mode. The server serves the HTML page; Claude continues
+immediately without waiting for any submit. The `--no-wait` flag activates this
+cycle. The page has an always-on footer (Send / Save buttons) — the user may
+optionally send a message back, but Claude does not block on it.
 
 **Start the server as a background process (`run_in_background: true`)**:
 
@@ -106,7 +107,19 @@ On startup the server prints one line (no Feedback file line in `--no-wait` mode
 ```
 
 Surface the URL to the user as a markdown link, then continue immediately — do
-not wait for a submit. The server self-terminates on timeout (default 1800 s).
+not block waiting for a submit.
+
+**Optional submit / close round-trip.** After Claude continues, one of three things
+happens:
+
+| Outcome | What the server does |
+|---|---|
+| User types a non-empty message and clicks **Send** | Writes `<basename>.feedback.json`, exits 0 → harness re-invokes Claude with the feedback file |
+| User clicks **Send** with an empty message, closes the tab, or navigates away | Exits 0 silently — no feedback file written, Claude is not re-invoked |
+| Timeout (default 1800 s) is reached with no submit | Exits 0 silently — no feedback file written, Claude is not re-invoked |
+
+All three paths exit 0. The only path that produces a feedback file (and a harness
+re-invocation of Claude) is a non-empty `freeform` field in the POST payload.
 
 **Optional flags**: `--timeout-sec N`.
 
@@ -219,9 +232,13 @@ Do NOT delete on an Apply round — the directory holds the `.port` file and the
 
 ### visualize mode (Cycle B)
 
-The server self-terminates on timeout. No cleanup step is needed unless you want
-to proactively remove the HTML file:
+The server self-terminates on timeout (or after a non-empty submit). No cleanup
+step is needed unless you want to proactively remove the HTML file:
 
 ```bash
-rm -rf "$HTML_DIR"   # optional; the server has already exited after timeout
+rm -rf "$HTML_DIR"   # optional; the server has already exited after timeout or submit
 ```
+
+If the user sent a non-empty message, a `<basename>.feedback.json` is present in
+`$HTML_DIR` when the server exits. The harness passes its path to Claude on
+re-invocation; Claude may delete `$HTML_DIR` after reading the file.
