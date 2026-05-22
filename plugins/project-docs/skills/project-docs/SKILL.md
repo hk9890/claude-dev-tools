@@ -1,6 +1,7 @@
 ---
 name: project-docs
-description: "This skill should be used when the user wants to create, refresh, review, reorganize, audit, slim, standardize, or fix project documentation; define canonical docs taxonomy; update AGENTS.md routing; or clean up stale, confusing, misrouted, or hollow docs. Also applies when the user says things like 'our docs are messy,' 'does AGENTS still match the repo?,' 'help standardize the docs,' 'review the docs before changing anything,' 'set up docs for this repo,' or 'create an AGENTS.md.'"
+description: "Create, refresh, review, reorganize, or fix project documentation and AGENTS.md routing."
+when_to_use: "Use when the user wants to create, refresh, review, reorganize, audit, slim, standardize, or fix project documentation; define canonical docs taxonomy; update AGENTS.md routing; or clean up stale, confusing, misrouted, or hollow docs. Triggers on 'our docs are messy', 'does AGENTS still match the repo?', 'help standardize the docs', 'review the docs before changing anything', 'set up docs for this repo', 'create an AGENTS.md'."
 user-invocable: false
 ---
 

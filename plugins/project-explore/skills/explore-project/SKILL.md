@@ -2,6 +2,7 @@
 name: explore-project
 description: "Research the project and explore it one action at a time, filing findings and questions as beads tasks under a dedicated exploration epic."
 user-invocable: true
+disable-model-invocation: true
 ---
 
 Perform an assisted exploratory session on this project. Work through four phases in order. Stop cleanly if a prerequisite is missing — do not proceed to the next phase on an assumption.

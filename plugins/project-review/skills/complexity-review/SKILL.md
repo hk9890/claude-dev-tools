@@ -1,6 +1,7 @@
 ---
 name: complexity-review
-description: "This skill should be used when the user wants a skeptical complexity review of requirements, architecture or design proposals, pull requests, or code changes. Also applies when the user says things like 'review this for complexity', 'is this over-engineered?', 'challenge these requirements', 'does this architecture earn its complexity?', or 'simplicity review of this PR'. Does not apply to implementation work, tracker workflows, or style-only linting reviews. Invoke with a single argument describing what to review (a path, a PR or diff reference, or the proposal text itself); the review runs in an isolated context and cannot see this conversation, so include inline anything that exists only here. With no argument it reviews the whole project."
+description: "Skeptical complexity review of requirements, architecture, design proposals, PRs, or code changes — flags accidental complexity and unjustified abstractions."
+when_to_use: "Use when the user wants a complexity or simplicity review of requirements, architecture, design proposals, PRs, or code changes. Triggers on 'review this for complexity', 'is this over-engineered?', 'challenge these requirements', 'does this architecture earn its complexity?', 'simplicity review of this PR'. Does not apply to implementation work, tracker workflows, or style-only linting reviews. Invoke with a single argument naming what to review (a path, a PR or diff reference, or the proposal text itself); the review runs in an isolated context and cannot see this conversation, so include inline anything that exists only here. With no argument it reviews the whole project."
 argument-hint: "[what-to-review]"
 context: fork
 agent: project-reviewer

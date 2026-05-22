@@ -6,7 +6,8 @@ Beads task tracking integration for Claude Code, with tasker, reviewer, and veri
 
 This plugin brings the beads (`bd`) workflow to Claude Code. It provides:
 
-- Three skills covering routing, planning, and execution
+- Two user-facing skills — **beads-plan** (planning) and **beads-work** (execution)
+- One internal skill — **beads-core**, a shared reference library loaded by the other two; not invoked directly
 - Three specialized subagents: **tasker**, **reviewer**, **verifier**
 
 The orchestrator role (planning, tracker mutation ownership, subagent delegation) is handled by Claude Code itself when a beads skill is active.
@@ -26,6 +27,10 @@ bd init
 ```
 
 ## Usage
+
+The two entry points are `beads-plan` and `beads-work`. `beads-core` is an
+internal reference library — it is loaded automatically by the other skills and
+agents, and is not meant to be invoked directly by users.
 
 ### Planning phase
 
@@ -52,7 +57,7 @@ beads-tasks/
 │   ├── reviewer.md
 │   └── verifier.md
 └── skills/
-    ├── beads-core/
+    ├── beads-core/         (internal reference library — not invoked directly)
     │   ├── SKILL.md
     │   └── references/     (planning, issue workflow, execution, acceptance review, ticket rules)
     ├── beads-plan/

@@ -1,6 +1,7 @@
 ---
 name: github-releases
-description: "This skill should be used when the user wants to create or publish a GitHub release, asks about the release process, needs a version bump, wants to ship a new version, or wants to set up or update a project's release guide. Also applies when the user says things like 'cut a release', 'ship version X', 'bump the version', 'create a GitHub release', or 'set up our release workflow'. Does not apply to deployment pipelines, CI configuration, or non-GitHub release systems."
+description: "Create or publish a GitHub release — runs quality gates, version bump, and release creation; also sets up a project's release guide."
+when_to_use: "Use when the user wants to create or publish a GitHub release, asks about the release process, needs a version bump, wants to ship a new version, or wants to set up or update a project's release guide. Triggers on 'cut a release', 'ship version X', 'bump the version', 'create a GitHub release', 'set up our release workflow'. Does not apply to deployment pipelines, CI configuration, or non-GitHub release systems."
 ---
 
 # GitHub Releases

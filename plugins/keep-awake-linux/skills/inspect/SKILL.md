@@ -1,6 +1,7 @@
 ---
 name: inspect
-description: "This skill should be used when the user wants to inspect, diagnose, or analyze the keep-awake-linux plugin. Triggers on questions like 'what is keep-awake doing', 'show me keep-awake state', 'analyze the keep-awake log', 'is keep-awake working', 'why didn't keep-awake fire', 'is keep-awake holding an inhibitor', 'show recent keep-awake activity', 'inspect keep-awake', 'keep-awake-linux status', 'are there orphaned keep-awake inhibitors'. Does not apply to installing, uninstalling, or modifying the plugin itself, and does not apply to general 'why is my machine staying awake' questions that are not about this plugin."
+description: "Inspect, diagnose, and analyze the keep-awake-linux plugin — its state, log, inhibitors, and recent activity."
+when_to_use: "Use when the user wants to inspect, diagnose, or analyze the keep-awake-linux plugin. Triggers on 'what is keep-awake doing', 'show me keep-awake state', 'analyze the keep-awake log', 'is keep-awake working', 'why didn't keep-awake fire', 'is keep-awake holding an inhibitor', 'show recent keep-awake activity', 'inspect keep-awake', 'keep-awake-linux status', 'are there orphaned keep-awake inhibitors'. Does not apply to installing, uninstalling, or modifying the plugin itself, nor to general 'why is my machine staying awake' questions unrelated to this plugin."
 ---
 
 ## What this skill does
