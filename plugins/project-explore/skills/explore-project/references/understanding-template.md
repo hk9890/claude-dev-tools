@@ -1,6 +1,6 @@
 # Project understanding — <name>
 
-Fill all six sections. Leave a section empty only if the information genuinely does not exist after reading all available sources — do not skip for brevity.
+Fill all seven sections. Leave a section empty only if the information genuinely does not exist after reading all available sources — do not skip for brevity.
 
 ---
 
@@ -41,3 +41,14 @@ Concrete claims from docs, README, or end-user documentation that the exploratio
 ## General context / history
 
 Why the project exists, who it is for, notable architectural decisions, and anything that helps the explorer behave like an informed user rather than a stranger. Include: major pivots, known constraints, the intended deployment environment, and any "this is intentional" explanations that explain otherwise-surprising behaviour.
+
+---
+
+## Prior exploration
+
+What recent `explore-project` sessions (within the last 14 days) already covered, so this session avoids re-treading ground and re-filing known issues.
+
+- Areas and user flows already exercised, each with the session date.
+- Finding and question task IDs still open from those sessions — these are the dedup targets when filing in Phase 2.
+
+Write "No recent exploration sessions" if no exploration epic falls within the last 14 days.

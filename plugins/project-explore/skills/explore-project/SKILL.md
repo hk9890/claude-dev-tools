@@ -85,9 +85,33 @@ Read these sources to understand trajectory and risk:
 - `CHANGELOG.md` or `HISTORY.md` if present
 - Recent commits: `git log --oneline -20`
 
-### 1.4 Write the understanding file
+### 1.4 Read prior exploration sessions
 
-Write the result to a throwaway temp file using the six-section schema from `references/understanding-template.md`:
+Each past `explore-project` session leaves an epic titled `Explore <project> — <YYYY-MM-DD>`. Pull recent ones so this session does not re-tread covered ground or re-file known issues.
+
+```bash
+bd list --type epic
+```
+
+From the results, keep only exploration epics whose **title date is within the last 14 days**. Ignore older epics — their findings may be stale and the project has likely moved on.
+
+For each recent exploration epic, read its wrap-up summary and its still-open children:
+
+```bash
+bd comments <recent-epic-id>
+bd list --parent <recent-epic-id> --status open
+```
+
+Record, for the understanding file's "Prior exploration" section:
+
+- which areas / flows recent sessions already exercised, and on what date
+- finding and question task IDs still open from those sessions
+
+If no exploration epic falls within the last 14 days, note "No recent exploration sessions" and continue.
+
+### 1.5 Write the understanding file
+
+Write the result to a throwaway temp file using the seven-section schema from `references/understanding-template.md`:
 
 ```bash
 UNDERSTANDING_FILE=$(mktemp --suffix=".md")
@@ -96,7 +120,7 @@ UNDERSTANDING_FILE=$(mktemp --suffix=".md")
 
 The file is ephemeral — do not commit it or attach it to the epic.
 
-### 1.5 Close the research task
+### 1.6 Close the research task
 
 ```bash
 bd close <research-task-id> --reason done \
@@ -157,7 +181,9 @@ Load `references/break-it.md` before the first iteration. Use it as instinct-pro
    bd list --parent <epic-id> --status open
    ```
 
-   If an existing task already covers the same issue, add a comment to that task instead of creating a duplicate.
+   Also check the open findings and questions from recent sessions recorded in the understanding file's "Prior exploration" section.
+
+   If an existing task — in this epic or a recent prior one — already covers the same issue, add a comment to that task instead of creating a duplicate.
 
    **Filing a finding** (broken or rough behaviour):
 
