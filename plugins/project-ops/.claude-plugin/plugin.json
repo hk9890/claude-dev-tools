@@ -1,7 +1,7 @@
 {
   "name": "project-ops",
   "description": "Operational skills for a project: run the full test suite, cut a release, and analyze monitoring data — driven by installed topic skills and the canonical docs taxonomy",
-  "version": "1.13.0",
+  "version": "1.14.0",
   "author": {
     "name": "Hans Kohlreiter",
     "email": "hans.kohlreiter@dynatrace.com"
