@@ -1,0 +1,605 @@
+/* style.css — shared styles for html-ask interactive feedback pages
+ *
+ * Widget vocabulary:
+ *   .page-chrome         — outer page layout (max-width container)
+ *   .page-header         — top header with title + subtitle
+ *   .page-footer         — bottom area containing .verdict-section and .submit-row
+ *   .widget              — base class for every question widget
+ *   .widget-text         — free-text (textarea) question
+ *   .widget-radio        — single-choice (radio button) question
+ *   .widget-checkbox     — multi-choice (checkbox) question
+ *   .widget-approaches   — side-by-side approach comparison (two columns)
+ *   .widget-verdict      — overall verdict radio group (approve/approve-with-changes/reject)
+ *   .widget-label        — <label> wrapping question text
+ *   .widget-hint         — supplementary hint text below a label
+ *   .annotatable         — marks any element that can receive an inline comment
+ *   .annotation-trigger  — the small "+" button shown on annotatable elements
+ *   .annotation-bubble   — the inline-comment entry form
+ *   .annotations-list    — list of already-entered inline comments for a widget
+ *   .approach-col        — one column in a .widget-approaches layout
+ *   .approach-header     — heading row in a .widget-approaches column
+ *   .approach-verdict    — per-column approve/reject within .widget-approaches
+ *   .verdict-section     — wraps the overall .widget-verdict
+ *   .freeform-section    — wraps the global free-text textarea
+ *   .submit-row          — wraps the submit button and copy-feedback button
+ *   .submit-btn          — the primary submit button
+ *   .copy-btn            — "Copy feedback" fallback button
+ *   .state-submitted     — shown after successful submit (hidden by default)
+ *   .state-already-submitted — shown after 410 response
+ *   [data-qid]           — identifies a question widget by its question ID
+ *   [data-qtype]         — declares widget type: text | radio | checkbox | approaches
+ *   [data-anchor-id]     — CSS id used as the comment anchor selector (#value)
+ */
+
+/* ── Reset / base ─────────────────────────────────────────────────────────── */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color: #1a1a1a;
+  background: #f4f4f5;
+}
+
+/* ── Page chrome ──────────────────────────────────────────────────────────── */
+
+.page-chrome {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 24px 20px 48px;
+}
+
+.page-header {
+  margin-bottom: 32px;
+}
+
+.page-header h1 {
+  margin: 0 0 6px;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #111;
+}
+
+.page-header .subtitle {
+  margin: 0;
+  color: #555;
+  font-size: 0.95rem;
+}
+
+/* ── Base widget ──────────────────────────────────────────────────────────── */
+
+.widget {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+}
+
+.widget-label {
+  display: block;
+  font-weight: 600;
+  font-size: 0.97rem;
+  margin-bottom: 6px;
+  color: #222;
+}
+
+.widget-hint {
+  display: block;
+  font-size: 0.875rem;
+  color: #666;
+  margin-bottom: 10px;
+  margin-top: -2px;
+}
+
+/* ── Text widget ──────────────────────────────────────────────────────────── */
+
+.widget-text textarea {
+  width: 100%;
+  min-height: 90px;
+  padding: 10px 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  resize: vertical;
+  color: #1a1a1a;
+  background: #fafafa;
+  transition: border-color 0.15s;
+}
+
+.widget-text textarea:focus {
+  outline: none;
+  border-color: #4f6ef7;
+  background: #fff;
+}
+
+/* ── Radio widget ─────────────────────────────────────────────────────────── */
+
+.widget-radio .radio-options,
+.widget-checkbox .checkbox-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.widget-radio .radio-option,
+.widget-checkbox .checkbox-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid #e8e8e8;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.widget-radio .radio-option:hover,
+.widget-checkbox .checkbox-option:hover {
+  background: #f7f8ff;
+  border-color: #b8c4f8;
+}
+
+.widget-radio .radio-option input,
+.widget-checkbox .checkbox-option input {
+  margin-top: 2px;
+  flex-shrink: 0;
+  accent-color: #4f6ef7;
+  cursor: pointer;
+}
+
+.widget-radio .radio-option label,
+.widget-checkbox .checkbox-option label {
+  font-size: 0.95rem;
+  cursor: pointer;
+  color: #222;
+  flex: 1;
+}
+
+/* ── Checkbox widget ──────────────────────────────────────────────────────── */
+/* (shares most styles with .widget-radio above) */
+
+/* ── Approaches widget ────────────────────────────────────────────────────── */
+
+.widget-approaches .approaches-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+@media (max-width: 580px) {
+  .widget-approaches .approaches-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.approach-col {
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 14px 16px;
+  background: #fafafa;
+}
+
+.approach-header {
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin-bottom: 8px;
+  color: #222;
+}
+
+.approach-col p {
+  font-size: 0.9rem;
+  color: #444;
+  margin: 0 0 12px;
+}
+
+.approach-verdict {
+  display: flex;
+  gap: 10px;
+}
+
+.approach-verdict label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  color: #333;
+}
+
+.approach-verdict input[type="radio"] {
+  accent-color: #4f6ef7;
+  cursor: pointer;
+}
+
+/* ── Verdict section ──────────────────────────────────────────────────────── */
+
+.verdict-section {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+}
+
+.verdict-section h2 {
+  margin: 0 0 14px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #111;
+}
+
+.widget-verdict .verdict-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.widget-verdict .verdict-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.widget-verdict .verdict-option:hover {
+  background: #f7f8ff;
+}
+
+.widget-verdict .verdict-option.verdict-approve {
+  border-color: #d1fae5;
+}
+
+.widget-verdict .verdict-option.verdict-approve:has(input:checked) {
+  background: #ecfdf5;
+  border-color: #10b981;
+}
+
+.widget-verdict .verdict-option.verdict-approve-with-changes {
+  border-color: #fef3c7;
+}
+
+.widget-verdict .verdict-option.verdict-approve-with-changes:has(input:checked) {
+  background: #fffbeb;
+  border-color: #f59e0b;
+}
+
+.widget-verdict .verdict-option.verdict-reject {
+  border-color: #fee2e2;
+}
+
+.widget-verdict .verdict-option.verdict-reject:has(input:checked) {
+  background: #fef2f2;
+  border-color: #ef4444;
+}
+
+.widget-verdict .verdict-option input[type="radio"] {
+  margin-top: 3px;
+  flex-shrink: 0;
+  accent-color: #4f6ef7;
+  cursor: pointer;
+}
+
+.widget-verdict .verdict-option .verdict-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.widget-verdict .verdict-option .verdict-label strong {
+  font-size: 0.97rem;
+  color: #222;
+}
+
+.widget-verdict .verdict-option .verdict-label span {
+  font-size: 0.85rem;
+  color: #666;
+}
+
+/* ── Freeform section ─────────────────────────────────────────────────────── */
+
+.freeform-section {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+}
+
+.freeform-section h2 {
+  margin: 0 0 10px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #111;
+}
+
+.freeform-section textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 10px 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  resize: vertical;
+  color: #1a1a1a;
+  background: #fafafa;
+  transition: border-color 0.15s;
+}
+
+.freeform-section textarea:focus {
+  outline: none;
+  border-color: #4f6ef7;
+  background: #fff;
+}
+
+/* ── Submit row ───────────────────────────────────────────────────────────── */
+
+.submit-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.submit-btn {
+  padding: 11px 28px;
+  background: #4f6ef7;
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  font-family: inherit;
+  font-size: 0.97rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.submit-btn:hover:not(:disabled) {
+  background: #3b57e0;
+}
+
+.submit-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.copy-btn {
+  padding: 10px 20px;
+  background: transparent;
+  color: #555;
+  border: 1px solid #ccc;
+  border-radius: 7px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.copy-btn:hover {
+  background: #f4f4f5;
+  border-color: #aaa;
+}
+
+.copy-btn.copied {
+  color: #10b981;
+  border-color: #10b981;
+}
+
+.submit-error {
+  color: #dc2626;
+  font-size: 0.9rem;
+  margin-top: 8px;
+  width: 100%;
+}
+
+/* ── Submitted state ──────────────────────────────────────────────────────── */
+
+.state-submitted,
+.state-already-submitted {
+  display: none;
+  background: #ecfdf5;
+  border: 1px solid #10b981;
+  border-radius: 8px;
+  padding: 28px 28px;
+  text-align: center;
+  margin-top: 24px;
+}
+
+.state-already-submitted {
+  background: #fffbeb;
+  border-color: #f59e0b;
+}
+
+.state-submitted h2,
+.state-already-submitted h2 {
+  margin: 0 0 8px;
+  font-size: 1.2rem;
+  color: #065f46;
+}
+
+.state-already-submitted h2 {
+  color: #92400e;
+}
+
+.state-submitted p,
+.state-already-submitted p {
+  margin: 0;
+  color: #047857;
+  font-size: 0.95rem;
+}
+
+.state-already-submitted p {
+  color: #b45309;
+}
+
+/* ── Annotatable / inline comments ───────────────────────────────────────── */
+
+.annotatable {
+  position: relative;
+}
+
+.annotation-trigger {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 26px;
+  height: 26px;
+  border: 1px solid #ccc;
+  border-radius: 50%;
+  background: #fff;
+  color: #888;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  z-index: 1;
+}
+
+.annotation-trigger:hover,
+.annotation-trigger.has-comment {
+  background: #f0f4ff;
+  color: #4f6ef7;
+  border-color: #4f6ef7;
+}
+
+.annotation-bubble {
+  display: none;
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: #f8f9fe;
+  border: 1px solid #d0d8f8;
+  border-radius: 6px;
+}
+
+.annotation-bubble.open {
+  display: block;
+}
+
+.annotation-bubble textarea {
+  width: 100%;
+  min-height: 60px;
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 0.88rem;
+  resize: vertical;
+  background: #fff;
+}
+
+.annotation-bubble textarea:focus {
+  outline: none;
+  border-color: #4f6ef7;
+}
+
+.annotation-bubble .bubble-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.annotation-bubble .bubble-save,
+.annotation-bubble .bubble-cancel {
+  padding: 5px 14px;
+  border-radius: 5px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  font-family: inherit;
+  border: 1px solid #ccc;
+  background: #fff;
+}
+
+.annotation-bubble .bubble-save {
+  background: #4f6ef7;
+  color: #fff;
+  border-color: #4f6ef7;
+}
+
+.annotation-bubble .bubble-save:hover {
+  background: #3b57e0;
+}
+
+.annotation-bubble .bubble-cancel:hover {
+  background: #f0f0f0;
+}
+
+.annotations-list {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.annotation-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  background: #f0f4ff;
+  border: 1px solid #d0d8f8;
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 0.88rem;
+  color: #333;
+}
+
+.annotation-item .annotation-text {
+  flex: 1;
+}
+
+.annotation-item .annotation-remove {
+  background: none;
+  border: none;
+  color: #aaa;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0 4px;
+  line-height: 1;
+  margin-left: 8px;
+}
+
+.annotation-item .annotation-remove:hover {
+  color: #dc2626;
+}
+
+/* ── Responsive tweaks ────────────────────────────────────────────────────── */
+
+@media (max-width: 480px) {
+  .page-chrome {
+    padding: 16px 14px 36px;
+  }
+
+  .widget {
+    padding: 14px 16px;
+  }
+
+  .verdict-section,
+  .freeform-section {
+    padding: 14px 16px;
+  }
+
+  .submit-btn,
+  .copy-btn {
+    width: 100%;
+    text-align: center;
+  }
+}

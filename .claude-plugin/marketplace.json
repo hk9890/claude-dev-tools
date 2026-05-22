@@ -97,6 +97,17 @@
       },
       "category": "workflow",
       "keywords": ["exploratory-testing", "beads", "qa", "exploration"]
+    },
+    {
+      "name": "html-ask",
+      "source": "./plugins/html-ask",
+      "description": "Interactive in-browser feedback for multi-decision plans and question batches — Claude renders a question form as HTML, the user answers in-browser, and a one-shot Node server writes the feedback and re-invokes Claude",
+      "version": "1.11.0",
+      "author": {
+        "name": "Hans Kohlreiter"
+      },
+      "category": "workflow",
+      "keywords": ["html", "feedback", "interactive", "questions", "browser", "node"]
     }
   ]
 }
