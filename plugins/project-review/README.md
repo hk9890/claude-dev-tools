@@ -56,6 +56,8 @@ project-review/
 ├── .claude-plugin/
 │   └── plugin.json
 ├── RULES.md
+├── agents/
+│   └── project-reviewer.md   (shared adversarial reviewer persona)
 └── skills/
     ├── complexity-review/
     │   ├── SKILL.md

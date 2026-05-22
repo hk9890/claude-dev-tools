@@ -1,15 +1,23 @@
 ---
 name: consistency-review
-description: "This skill should be used when the user wants to review a codebase for consistency, naming coherence, or divergent patterns — e.g. 'review my codebase for consistency', 'are we doing this two different ways?', 'our naming is a mess', 'we have two HTTP clients', 'check if patterns are uniform', 'do our APIs look the same', 'is our import style consistent', or 'find drift from our conventions'. Does not apply to over-engineering review (use complexity-review), directory layout and boundary concerns (use structure-review), test quality (use test-review), or pure formatting like whitespace and bracket placement (use a linter)."
+description: "This skill should be used when the user wants to review a codebase for consistency, naming coherence, or divergent patterns — e.g. 'review my codebase for consistency', 'are we doing this two different ways?', 'our naming is a mess', 'we have two HTTP clients', 'check if patterns are uniform', 'do our APIs look the same', 'is our import style consistent', or 'find drift from our conventions'. Does not apply to over-engineering review (use complexity-review), directory layout and boundary concerns (use structure-review), test quality (use test-review), or pure formatting like whitespace and bracket placement (use a linter). Invoke with an optional argument scoping what to review (a path or area of the codebase); with no argument it reviews the whole codebase. The review runs in an isolated context and cannot see this conversation."
+argument-hint: "[what-to-review]"
+context: fork
+agent: project-reviewer
 ---
 
-## Read-only contract
+## Invocation
 
-This review challenges and recommends. It does not edit code, rename files, or apply fixes. Every finding ends with a recommended answer, not an applied change. If you want fixes applied, take the recommended answer and act on it separately.
+What to review: $ARGUMENTS
 
-## Explore the codebase before asking
+An optional free-form description that scopes the review — for example "naming
+across the service layer" or a path. If no argument is given, review the whole
+codebase.
 
-Before posing any question: read the actual code. Open the files in question. Count the competing implementations. Find where each pattern is used. Check whether AGENTS.md, CODING.md, or a RULES.md file documents a standard. Do not ask the user to describe their own codebase — discover it yourself, then challenge what you found.
+## Role and contract
+
+This skill reviews a codebase for consistency — competing implementations, naming
+divergence, inconsistent API shapes, and drift from documented conventions.
 
 ## Interrogation procedure
 
@@ -50,6 +58,26 @@ Work through these questions in sequence. For each one, state the recommended an
    - For each violation: cite the documented rule and the code that ignores it.
    - State the recommended answer: _the documented standard takes precedence; the code is wrong, not the standard_.
    - Ask: "Is this a deliberate exception (in which case document it) or an oversight?"
+
+## Output format
+
+After working through all six questions, produce a single structured report:
+
+### Consistency verdict
+One of: `consistent`, `minor drift`, `significant drift`, `incoherent`.
+
+### Findings
+For each finding:
+- **Divergence** — the competing implementations, naming variants, or API shapes
+  that disagree
+- **Locations** — where each variant appears (exact paths)
+- **Recommended standard** — which pattern should win, and why (documented
+  convention, dominant usage, or better test coverage)
+- **Recommended action** — normalise to the standard, eliminate the minority, or
+  document the deviation as a deliberate exception
+
+### What is consistent
+Name the patterns and conventions that are already coherent across the codebase.
 
 ## Baseline rule
 

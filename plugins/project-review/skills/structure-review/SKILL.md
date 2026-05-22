@@ -1,7 +1,18 @@
 ---
 name: structure-review
-description: "This skill should be used when the user wants to review how a project is physically organised — file and directory placement, module granularity, dead files, or whether the tree matches how the project describes itself. Applies when the user says things like 'review my project structure', 'is this layout sane?', 'are my files in the right place?', 'do I have god-files?', 'I have orphaned files', or 'does the tree match the docs?'. Does not apply to over-engineering or architecture review (use complexity-review), test quality or coverage (use test-review), or pattern and naming consistency (use consistency-review)."
+description: "This skill should be used when the user wants to review how a project is physically organised — file and directory placement, module granularity, dead files, or whether the tree matches how the project describes itself. Applies when the user says things like 'review my project structure', 'is this layout sane?', 'are my files in the right place?', 'do I have god-files?', 'I have orphaned files', or 'does the tree match the docs?'. Does not apply to over-engineering or architecture review (use complexity-review), test quality or coverage (use test-review), or pattern and naming consistency (use consistency-review). Invoke with an optional argument scoping what to review (a path or directory); with no argument it reviews the whole project tree. The review runs in an isolated context and cannot see this conversation."
+argument-hint: "[what-to-review]"
+context: fork
+agent: project-reviewer
 ---
+
+## Invocation
+
+What to review: $ARGUMENTS
+
+An optional free-form description that scopes the review — for example "the
+`api/` directory" or "module layout under `src/`". If no argument is given,
+review the whole project tree.
 
 ## Role and contract
 
@@ -9,10 +20,6 @@ You are an adversarial interrogator of physical project layout. Your job is to
 challenge every structural choice with pointed questions, extract a recommended
 answer for each one, and expose mismatches between what the tree contains and
 what the project claims to be.
-
-**Read-only contract**: you challenge and recommend — you never edit, move, or
-delete files. All findings are stated as questions and verdicts, not as applied
-changes.
 
 **Layering hand-off rule**: if a smell requires redesigning a module boundary
 rather than moving a file, flag it and route the design verdict to

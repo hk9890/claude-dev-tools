@@ -1,25 +1,42 @@
 ---
 name: complexity-review
-description: "This skill should be used when the user wants a skeptical complexity review of requirements, architecture or design proposals, pull requests, or code changes. Also applies when the user says things like 'review this for complexity', 'is this over-engineered?', 'challenge these requirements', 'does this architecture earn its complexity?', or 'simplicity review of this PR'. Does not apply to implementation work, tracker workflows, or style-only linting reviews."
+description: "This skill should be used when the user wants a skeptical complexity review of requirements, architecture or design proposals, pull requests, or code changes. Also applies when the user says things like 'review this for complexity', 'is this over-engineered?', 'challenge these requirements', 'does this architecture earn its complexity?', or 'simplicity review of this PR'. Does not apply to implementation work, tracker workflows, or style-only linting reviews. Invoke with a single argument describing what to review (a path, a PR or diff reference, or the proposal text itself); the review runs in an isolated context and cannot see this conversation, so include inline anything that exists only here. With no argument it reviews the whole project."
+argument-hint: "[what-to-review]"
+context: fork
+agent: project-reviewer
 ---
+
+## Invocation
+
+What to review: $ARGUMENTS
+
+This is a free-form description of what to review — for example "architecture
+review of component X", "challenge the requirements for the export feature", a
+path, a PR or diff reference, or the artifact itself pasted inline (a design
+description or proposal lifted from the conversation).
+
+From it, determine which workflow(s) apply — see the routing table below, and
+pick all that fit — and locate the target: read it if it is a reference, take it
+at face value if it is inline text. For a code review of uncommitted work, the
+target is the working-tree diff (`git diff`).
+
+**If no argument is given, review the whole project.**
 
 ## Workflow routing
 
-| Workflow | Use when | Default stance | Source of truth |
+| Workflow | Applies when the target is | Default stance | Source of truth |
 |---|---|---|---|
-| Requirements review | The user wants to evaluate whether a feature, scope, or requirement set is worth building | Remove, defer, or narrow scope unless value is clearly proven | [references/requirements-review.md](references/requirements-review.md) |
-| Architecture review | The user wants to review a design, component structure, dependency choice, or system proposal | Treat added layers and moving parts as guilty until proven necessary | [references/architecture-review.md](references/architecture-review.md) |
-| Code / PR review | The user wants to review an implementation or pull request | Prefer obvious, local, behavior-preserving simplifications over cleverness or indirection | [references/code-pr-review.md](references/code-pr-review.md) |
+| Requirements review | a feature, scope, or requirement set — is it worth building? | Remove, defer, or narrow scope unless value is clearly proven | [references/requirements-review.md](references/requirements-review.md) |
+| Architecture review | a design, component structure, dependency choice, or system proposal | Treat added layers and moving parts as guilty until proven necessary | [references/architecture-review.md](references/architecture-review.md) |
+| Code / PR review | an implementation, pull request, or diff | Prefer obvious, local, behavior-preserving simplifications over cleverness or indirection | [references/code-pr-review.md](references/code-pr-review.md) |
 
-## Core review constitution
+## Complexity stance
 
-- Start from [references/principles.md](references/principles.md).
+- Start from [references/principles.md](references/principles.md) — it is the constitutional source for every verdict.
 - Treat added complexity as guilty until proven necessary.
 - Distinguish essential complexity from accidental complexity; attack accidental complexity first.
 - Prefer removing, narrowing, or deferring scope over introducing cleverness, indirection, or speculative flexibility.
 - Require explicit justification for new features, abstractions, dependencies, layers, and compatibility breaks.
-- If context is insufficient to judge necessity, ask focused questions before giving a hard verdict.
-- Be skeptical, direct, and concrete. Critique the artifact, not the people.
 
 ## Required review output
 
@@ -38,7 +55,9 @@ For each finding include:
 - **Simpler alternative or required justification**
 
 ## Open questions
-List missing context that blocks confident judgment.
+List missing context that blocks confident judgment. When context is insufficient
+to judge necessity, raise it here and use the `needs clarification` verdict rather
+than forcing a hard verdict.
 
 ## What to remove, defer, or simplify
 Be explicit.
@@ -48,6 +67,6 @@ Name the complexity that has earned its place and why.
 
 ## Mode-specific emphasis
 
-- In requirements review, explicitly state the minimal acceptable scope, the non-goals that should stay out, and the top sources of accidental complexity in the requirement set.
-- In architecture review, explicitly name the core model, the main sources of accidental complexity, the simplest credible alternative, and the complexity that is justified and why.
-- In code / PR review, explicitly call out abstraction, dependency, compatibility, and readability impact.
+- **Requirements review** — explicitly state the minimal acceptable scope, the non-goals that should stay out, and the top sources of accidental complexity in the requirement set.
+- **Architecture review** — explicitly name the core model, the main sources of accidental complexity, the simplest credible alternative, and the complexity that is justified and why.
+- **Code / PR review** — explicitly call out abstraction, dependency, compatibility, and readability impact.

@@ -33,11 +33,24 @@ What is justified). It is NOT converted to an interrogation-style or
 question-first workflow. The verdict-first format is intentional — it commits the
 reviewer to a stance and forces justification rather than deferring judgment.
 
-## 4. Each reviewer skill is self-contained — no shared reference file
+## 4. Reviewer skills run forked and share one persona agent
 
-Every new reviewer skill inlines its adversarial stance, principles, and review
-protocol directly in its own `SKILL.md` and `references/` files. There is no
-`skills/_shared/` directory and no shared principles file that spans skills. This
-avoids invisible coupling between skills: changing the shared file would silently
-alter every reviewer, and the four reviewers have distinct enough stances that
-sharing would water them down.
+Each reviewer skill runs in a forked context (`context: fork`) and delegates to a
+single shared agent, `agents/project-reviewer.md`. That agent encodes only the
+*attitude* common to every review — the read-only contract, explore-before-judging,
+the recommended-answer rule, the adversarial disposition, directness, and
+evidence-citing. It encodes no review *procedure* and no *output format*.
+
+Each `SKILL.md` keeps its own procedure and output format and supplies them to the
+forked agent: complexity-review its verdict report; structure-review, test-review,
+and consistency-review their interrogation procedures. The shared agent must never
+impose one shape on another — see rule 3.
+
+This supersedes the earlier rule that forbade any shared file across reviewers.
+The risk that rule named — a shared file silently altering every reviewer — is now
+accepted deliberately and narrowly: the four reviewers genuinely share one
+disposition, and stating it once keeps them from drifting apart. Only the
+*attitude* is shared. Procedure, principles, and output format stay per-skill;
+there is still no shared file for those, and no `skills/_shared/` directory.
+
+All four reviewer skills follow this pattern.
