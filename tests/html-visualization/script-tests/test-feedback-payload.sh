@@ -55,13 +55,39 @@ fi
 
 # ── Test 1: payload has exactly the two required keys ─────────────────────────
 
-run_node_test "payload has exactly comments and freeform keys" "
+run_node_test "payload has exactly action, comments, freeform keys" "
 var app = require('$APP_JS');
 var payload = app.buildFeedbackPayload({ comments: [], freeform: '' });
 var keys = Object.keys(payload).sort();
-if (JSON.stringify(keys) !== JSON.stringify(['comments','freeform'])) {
+if (JSON.stringify(keys) !== JSON.stringify(['action','comments','freeform'])) {
   console.error('Keys mismatch. Got: ' + JSON.stringify(keys));
   process.exit(1);
+}
+"
+
+# ── action field — apply / submit / default ──────────────────────────────────
+
+run_node_test "action 'apply' passes through" "
+var app = require('$APP_JS');
+if (app.buildFeedbackPayload({ action: 'apply', comments: [], freeform: '' }).action !== 'apply') {
+  console.error('apply not preserved'); process.exit(1);
+}
+"
+
+run_node_test "action 'submit' passes through" "
+var app = require('$APP_JS');
+if (app.buildFeedbackPayload({ action: 'submit', comments: [], freeform: '' }).action !== 'submit') {
+  console.error('submit not preserved'); process.exit(1);
+}
+"
+
+run_node_test "action defaults to 'submit' when absent or unrecognised" "
+var app = require('$APP_JS');
+if (app.buildFeedbackPayload({ comments: [], freeform: '' }).action !== 'submit') {
+  console.error('missing action should default to submit'); process.exit(1);
+}
+if (app.buildFeedbackPayload({ action: 'bogus', comments: [], freeform: '' }).action !== 'submit') {
+  console.error('unrecognised action should default to submit'); process.exit(1);
 }
 "
 

@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Review — [Claude: replace with document title]</title>
+  <!-- fb-generation: a fresh, different value every time you (re)generate this
+       file — e.g. the output of `date +%s%N`. app.js polls for a changed value
+       to auto-reload the page after an Apply round. -->
+  <meta name="fb-generation" content="[Claude: replace with a fresh unique value]">
   <link rel="stylesheet" href="/assets/feedback/style.css">
 </head>
 <body>
@@ -27,11 +31,15 @@
       Render the content as semantic HTML inside #content.
 
       Every commentable unit is a DIRECT CHILD of #content and carries a
-      unique data-block-id (printable ASCII, no whitespace). The user hovers
-      a block to reveal a 💬 button, and may select text inside it to quote.
+      unique data-block-id (printable ASCII, no whitespace).
+
+      To comment, the user selects any text inside a block — a floating 💬
+      button appears at the selection. The comment is anchored to the block
+      and quotes the selected text. To comment on a whole block, the user
+      selects all of its text.
 
       A whole list is one block (put data-block-id on the <ul>/<ol>, not on
-      each <li>) — per-line precision comes from the user's text selection.
+      each <li>).
 
       Replace the example blocks below with the real content.
     -->
@@ -66,22 +74,33 @@
                 placeholder="Any feedback that is not tied to a specific block — overall direction, tone, what is missing…"></textarea>
     </div>
 
-    <!-- ── Submit row ─────────────────────────────────────────────────── -->
+    <!-- ── Action row ─────────────────────────────────────────────────────
+      Apply & preview  — sends the feedback; Claude updates the document and
+                         re-serves it; this page auto-reloads with the result.
+      Submit & finish  — the final round; Claude applies the feedback and stops.
+    -->
     <div class="submit-row">
-      <button type="button" id="submit-btn" class="submit-btn">Submit feedback</button>
+      <button type="button" id="apply-btn" class="apply-btn">Apply &amp; preview</button>
+      <button type="button" id="submit-btn" class="submit-btn">Submit &amp; finish</button>
       <button type="button" id="copy-btn" class="copy-btn">Copy feedback</button>
     </div>
     <div id="submit-error" class="submit-error" style="display:none;"></div>
 
   </div><!-- /#feedback-doc -->
 
-  <!-- ── Success state (shown after 200 response) ───────────────────────── -->
+  <!-- ── Applying state (shown after an Apply round; auto-reloads) ───────── -->
+  <div id="state-applying" class="state-applying">
+    <h2>Applying your feedback…</h2>
+    <p>Claude is updating the document. This page will refresh automatically when the new version is ready.</p>
+  </div>
+
+  <!-- ── Success state (shown after a final Submit) ─────────────────────── -->
   <div id="state-submitted" class="state-submitted">
     <h2>Feedback submitted</h2>
     <p>Thank you. Claude has received your comments and will apply them.</p>
   </div>
 
-  <!-- ── Already-submitted state (shown after 410 response) ─────────────── -->
+  <!-- ── Already-submitted state (shown after a 410 response) ───────────── -->
   <div id="state-already-submitted" class="state-already-submitted">
     <h2>Already submitted</h2>
     <p>This document has already been submitted. Claude has your earlier feedback.</p>

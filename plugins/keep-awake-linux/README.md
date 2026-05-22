@@ -2,7 +2,7 @@
 
 Prevents your Linux desktop from suspending while a Claude Code session is active.
 
-## What it does
+## Overview
 
 The plugin holds a systemd sleep inhibitor for the lifetime of each Claude session. The inhibitor is acquired at session start and released when the session ends. If the session crashes, the inhibitor expires naturally within the TTL (default 30 minutes).
 

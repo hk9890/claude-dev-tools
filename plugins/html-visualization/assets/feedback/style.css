@@ -6,7 +6,8 @@
  *   #feedback-doc       — wrapper hidden after a successful submit
  *   #content            — the rendered content; commentable blocks live here
  *   [data-block-id]     — one commentable block of content
- *   .block-comment-btn  — the 💬 button revealed on block hover
+ *   .fb-float-btn       — floating 💬 button shown at a text selection
+ *   .fb-highlight       — inline <mark> on a commented phrase
  *   .has-comment        — block that currently has at least one comment
  *   .fb-comment-editor  — inline editor for adding/updating a comment
  *   .fb-comment-card    — a saved comment, rendered after its block
@@ -15,7 +16,9 @@
  *   .fb-comment-body    — the comment text inside a card
  *   .comment-count      — running count of comments in the header
  *   .freeform-section   — wraps the global free-text textarea
- *   .submit-row         — wraps the submit button and copy-feedback button
+ *   .submit-row         — wraps the apply, submit, and copy buttons
+ *   .apply-btn          — "Apply & preview" button (iterative round-trip)
+ *   .state-applying     — panel shown while Claude applies an Apply round
  *   .state-submitted / .state-already-submitted — post-submit panels
  */
 
@@ -72,10 +75,6 @@ body {
 }
 
 /* ── Content document ─────────────────────────────────────────────────────── */
-
-#feedback-doc {
-  padding-right: 44px; /* right-margin gutter for the 💬 button */
-}
 
 #content {
   background: #fff;
@@ -158,44 +157,36 @@ body {
   background: #f4f4f5;
 }
 
-/* ── Commentable block + 💬 button ────────────────────────────────────────── */
-/* .fb-block-wrap is injected by app.js around each [data-block-id] block so
-   the absolutely-positioned 💬 button has a valid positioned parent. */
+/* ── Floating comment button + inline highlight ───────────────────────────── */
+/* .fb-float-btn is appended to <body> by app.js and positioned at the user's
+   current text selection. */
 
-.fb-block-wrap {
-  position: relative;
-}
-
-.fb-block-wrap:first-child > [data-block-id] {
-  margin-top: 0;
-}
-
-.block-comment-btn {
+.fb-float-btn {
   position: absolute;
-  top: 0;
-  right: -38px;
-  width: 30px;
-  height: 30px;
-  padding: 0;
-  font-size: 0.95rem;
+  z-index: 50;
+  padding: 6px 12px;
+  font-family: inherit;
+  font-size: 0.83rem;
+  font-weight: 600;
   line-height: 1;
-  background: #fff;
-  border: 1px solid #d8d8db;
+  color: #fff;
+  background: #4f6ef7;
+  border: none;
   border-radius: 7px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
   cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.12s, border-color 0.12s, background 0.12s;
 }
 
-.fb-block-wrap:hover > .block-comment-btn,
-.fb-block-wrap:focus-within > .block-comment-btn,
-.block-comment-btn:focus {
-  opacity: 1;
+.fb-float-btn:hover {
+  background: #3b57e0;
 }
 
-.block-comment-btn:hover {
-  background: #fffbeb;
-  border-color: #f59e0b;
+/* Inline highlight on a commented phrase (best effort — see app.js). */
+mark.fb-highlight {
+  background: #fde68a;
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
 }
 
 #content [data-block-id].has-comment {
@@ -355,9 +346,9 @@ body {
   margin-top: 8px;
 }
 
+.apply-btn,
 .submit-btn {
-  padding: 11px 28px;
-  background: #4f6ef7;
+  padding: 11px 24px;
   color: #fff;
   border: none;
   border-radius: 7px;
@@ -368,10 +359,17 @@ body {
   transition: background 0.15s, opacity 0.15s;
 }
 
-.submit-btn:hover:not(:disabled) { background: #3b57e0; }
+/* Apply — the iterative round-trip, used repeatedly. */
+.apply-btn { background: #4f6ef7; }
+.apply-btn:hover:not(:disabled) { background: #3b57e0; }
 
+/* Submit — the final round. */
+.submit-btn { background: #10b981; }
+.submit-btn:hover:not(:disabled) { background: #059669; }
+
+.apply-btn:disabled,
 .submit-btn:disabled {
-  opacity: 0.55;
+  opacity: 0.5;
   cursor: default;
 }
 
@@ -401,6 +399,7 @@ body {
 /* ── Post-submit states ───────────────────────────────────────────────────── */
 
 .state-submitted,
+.state-applying,
 .state-already-submitted {
   display: none;
   background: #ecfdf5;
@@ -411,44 +410,45 @@ body {
   margin-top: 24px;
 }
 
+.state-applying {
+  background: #eef2ff;
+  border-color: #4f6ef7;
+}
+
 .state-already-submitted {
   background: #fffbeb;
   border-color: #f59e0b;
 }
 
 .state-submitted h2,
+.state-applying h2,
 .state-already-submitted h2 {
   margin: 0 0 8px;
   font-size: 1.2rem;
   color: #065f46;
 }
 
+.state-applying h2 { color: #3730a3; }
 .state-already-submitted h2 { color: #92400e; }
 
 .state-submitted p,
+.state-applying p,
 .state-already-submitted p {
   margin: 0;
   color: #047857;
   font-size: 0.95rem;
 }
 
+.state-applying p { color: #3b3f8f; }
 .state-already-submitted p { color: #b45309; }
 
 /* ── Responsive tweaks ────────────────────────────────────────────────────── */
 
 @media (max-width: 620px) {
   .page-chrome { padding: 16px 14px 36px; }
-
-  /* No room for a right gutter — float the 💬 button inside the block. */
-  #feedback-doc { padding-right: 0; }
   #content { padding: 18px 18px; }
 
-  .block-comment-btn {
-    right: 4px;
-    opacity: 1;
-    background: rgba(255, 255, 255, 0.85);
-  }
-
+  .apply-btn,
   .submit-btn,
   .copy-btn {
     width: 100%;

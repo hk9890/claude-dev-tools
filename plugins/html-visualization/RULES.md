@@ -70,13 +70,20 @@ root. When adding a skill, create a new `assets/<skill>/` subdirectory.**
 
 ## 7. Temp-dir ephemerality — no persisted session files
 
-All per-invocation files (HTML document, feedback JSON) are written to a unique
-subdirectory of the system temp dir (`os.tmpdir()`). These files are ephemeral:
-not committed, not archived, not reused across invocations. Each new skill
-invocation creates a fresh temp subdirectory.
+All per-invocation files (HTML document, feedback JSON, the html-feedback `.port`
+file) are written to a unique subdirectory of the system temp dir
+(`os.tmpdir()`). These files are ephemeral: not committed, not archived, not
+reused across invocations. Each new skill invocation creates a fresh temp
+subdirectory.
 
-**Do not write files outside the per-invocation temp dir. Do not reuse temp dirs
-across invocations. Do not commit or preserve feedback JSON files.**
+One clarification for the html-feedback Apply loop (see rule 12): an Apply loop
+is a **single skill invocation that spans multiple server cycles**. The temp dir
+belongs to the invocation, not to one server cycle — it is created once and
+reused across every Apply round, and deleted only after the final Submit. That
+is reuse *within* one invocation, not across invocations.
+
+**Do not write files outside the per-invocation temp dir. Do not reuse a temp dir
+across separate invocations. Do not commit or preserve feedback JSON files.**
 
 ## 8. Startup-token CSRF protection — token + Origin/Sec-Fetch-Site
 
@@ -122,11 +129,28 @@ is the point. Do not add a second per-widget free-text mechanism alongside it.**
 ## 11. (html-feedback) Block-anchored comments — no fragile text offsets
 
 In html-feedback, every commentable unit of content is an element carrying a stable
-`data-block-id`. A comment is anchored to a block id, never to a character offset
-range. When the user has selected text inside a block, the comment additionally
-captures that selection as a verbatim `quote` string — but the anchor is still the
-block. Each comment also carries the block's text (`blockText`) so Claude's
-read-back is self-contained and does not require re-parsing the authored HTML.
+`data-block-id`. Commenting is selection-driven — the user selects text and a
+floating button appears — but the stored anchor is the block id, never a character
+offset range. The selected text is captured as a verbatim `quote` string; the
+anchor is still the block. Each comment also carries the block's text
+(`blockText`) so Claude's read-back is self-contained and does not require
+re-parsing the authored HTML. The inline `<mark>` highlight of a quoted phrase is
+best-effort (it is skipped when the selection crosses element boundaries) — the
+comment is never lost when the highlight cannot be drawn.
 
 **Do not switch html-feedback to character-offset anchoring — it breaks when
 content reflows. Keep `data-block-id` as the anchor.**
+
+## 12. (html-feedback) The Apply loop — iterate without breaking the one-shot server
+
+html-feedback has two submit actions. **Submit** ends the round-trip. **Apply**
+is iterative: the page POSTs `action: "apply"`, the server still exits 0 (rule 4
+holds), Claude applies the feedback, regenerates `review.html` in the same temp
+dir with a fresh `fb-generation` value, and re-serves it on the **same port**
+(captured into `.port` on the first serve). The served page polls `GET /` and
+reloads itself when it sees a changed `fb-generation`, so the user keeps one URL
+and one browser tab across the whole loop. Final **Submit** does not re-serve.
+
+**Do not make Apply keep the server alive — each round is still one-shot. Do not
+let the re-serve pick a new random port (the open tab polls the old one). Do not
+reuse an `fb-generation` value — a stale value means the page never reloads.**

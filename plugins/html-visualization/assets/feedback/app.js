@@ -2,23 +2,25 @@
  * app.js — browser-side interaction layer for html-feedback.
  *
  * Exports (UMD-compatible, testable in Node without a DOM):
- *   buildFeedbackPayload(state) → { comments, freeform }
+ *   buildFeedbackPayload(state) → { action, comments, freeform }
  *
  * DOM wiring (only runs when document is available):
- *   - Scans #content for [data-block-id] blocks and gives each a 💬 button.
- *   - Clicking 💬 opens an inline editor anchored to that block; if the user
- *     had selected text inside the block, the comment captures it as a quote.
- *   - Saved comments render as inline cards directly after their block.
+ *   - Selecting text inside #content reveals a floating 💬 button at the
+ *     selection; clicking it opens a comment editor anchored to that text.
+ *   - Saved comments render as inline cards after their block; the selected
+ *     phrase is highlighted inline when the selection allows it.
+ *   - "Apply & preview" sends the feedback with action "apply": the server
+ *     exits, Claude updates the document and re-serves, and this page polls
+ *     for the new generation and reloads itself.
+ *   - "Submit & finish" sends action "submit" — the final round.
  *   - Reads CSRF_TOKEN global injected by the server.
- *   - POSTs to /submit and handles 200 / 410 / other responses.
- *   - "Copy feedback" button copies the exact /submit JSON payload.
  *
  * Comment anchoring (full contract in markup.md):
  *   data-block-id — stable id on each commentable block of content
  *   A comment is { blockId, blockText, quote, text }:
  *     blockId   — the block the comment is anchored to
  *     blockText — the block's plain text (so read-back is self-contained)
- *     quote     — the exact text the user selected inside the block (may be "")
+ *     quote     — the exact text the user selected inside the block
  *     text      — the user's comment
  */
 
@@ -28,17 +30,19 @@
 //
 // state shape:
 //   {
+//     action:   "apply" | "submit",
 //     comments: [ { blockId, blockText, quote, text } ],
 //     freeform: string
 //   }
 //
-// Returns the exact /submit request body:
-//   { comments, freeform }
+// Returns the exact /submit request body: { action, comments, freeform }.
 //
-// Enforces: comments with empty text — or no blockId — are filtered OUT.
-// blockText and quote default to "" when absent.
+// Enforces: action defaults to "submit" for any non-"apply" value; comments
+// with empty text — or no blockId — are filtered OUT; blockText and quote
+// default to "" when absent.
 
 function buildFeedbackPayload(state) {
+  var action = state.action === 'apply' ? 'apply' : 'submit';
   var freeform = state.freeform == null ? '' : String(state.freeform);
 
   var rawComments = Array.isArray(state.comments) ? state.comments : [];
@@ -56,6 +60,7 @@ function buildFeedbackPayload(state) {
   }
 
   return {
+    action: action,
     comments: comments,
     freeform: freeform,
   };
@@ -73,11 +78,9 @@ if (typeof document !== 'undefined') {
   document.addEventListener('DOMContentLoaded', function () {
 
     // ── State ───────────────────────────────────────────────────────────────
-    // commentState entries carry a client-side `id` for edit/delete; the id is
-    // dropped from the submit payload by buildCurrentState().
 
     var commentState = [];        // [ { id, blockId, blockText, quote, text } ]
-    var pendingSelection = null;  // { blockId, text } — last selection in a block
+    var pendingSelection = null;  // { blockId, text, range } — last text selection
     var nextId = 1;
     var openEditor = null;        // the single open editor element, or null
 
@@ -88,8 +91,8 @@ if (typeof document !== 'undefined') {
     function show(el) { if (el) el.style.display = ''; }
     function hide(el) { if (el) el.style.display = 'none'; }
 
-    function plainText(el) {
-      var t = (el.textContent || '').replace(/\s+/g, ' ').trim();
+    function plainText(node) {
+      var t = (node.textContent || '').replace(/\s+/g, ' ').trim();
       return t.length > 2000 ? t.slice(0, 2000) + '…' : t;
     }
 
@@ -107,8 +110,8 @@ if (typeof document !== 'undefined') {
       ? Array.prototype.slice.call(content.querySelectorAll('[data-block-id]'))
       : [];
 
-    // Cache each block's plain text BEFORE we inject any buttons, so blockText
-    // never includes the 💬 control or comment cards.
+    // Cache each block's plain text BEFORE any highlight <mark> is inserted, so
+    // blockText is always the pristine content.
     var blockTextById = {};
     blocks.forEach(function (block) {
       var id = block.getAttribute('data-block-id');
@@ -122,50 +125,69 @@ if (typeof document !== 'undefined') {
       return null;
     }
 
-    // ── Selection tracking ──────────────────────────────────────────────────
-    // Remember the most recent non-empty selection that lies inside one block.
-    // Clicking the 💬 button collapses the selection, so we keep the last
-    // known value and consume it when an editor opens.
+    // ── Generation marker (for the auto-reload poll) ────────────────────────
 
-    document.addEventListener('selectionchange', function () {
-      var sel = window.getSelection();
-      if (!sel || sel.isCollapsed || sel.rangeCount === 0) return;
-      var text = sel.toString().replace(/\s+/g, ' ').trim();
-      if (!text) return;
-      var node = sel.getRangeAt(0).commonAncestorContainer;
-      var node1 = node.nodeType === 1 ? node : node.parentElement;
-      var block = node1 && node1.closest ? node1.closest('[data-block-id]') : null;
-      if (block && content && content.contains(block)) {
-        pendingSelection = { blockId: block.getAttribute('data-block-id'), text: text };
+    var genMeta = document.querySelector('meta[name="fb-generation"]');
+    var myGeneration = genMeta ? genMeta.getAttribute('content') || '' : '';
+
+    // ── Floating comment button driven by text selection ────────────────────
+
+    var floatBtn = el('button', 'fb-float-btn', '💬 Comment');
+    floatBtn.type = 'button';
+    floatBtn.style.display = 'none';
+    document.body.appendChild(floatBtn);
+
+    // mousedown.preventDefault keeps the current selection intact on click.
+    floatBtn.addEventListener('mousedown', function (ev) { ev.preventDefault(); });
+    floatBtn.addEventListener('click', function (ev) {
+      ev.preventDefault();
+      if (pendingSelection) {
+        openEditorForBlock(pendingSelection.blockId, null);
       }
+      hide(floatBtn);
     });
 
-    // ── Wrap each block + add its comment button ────────────────────────────
-    // Each block is wrapped in a positioned <div> so the 💬 button and the
-    // comment cards are always valid children regardless of the block's tag
-    // (a <button> or <div> cannot be a direct child of <ul>/<table>, but both
-    // are fine inside the wrapper). The wrapper is created at runtime, so the
-    // authored HTML stays clean.
+    function blockOf(node) {
+      var e = node && node.nodeType === 1 ? node : node && node.parentElement;
+      return e && e.closest ? e.closest('[data-block-id]') : null;
+    }
 
-    blocks.forEach(function (block) {
-      var wrap = el('div', 'fb-block-wrap');
-      if (block.parentNode) {
-        block.parentNode.insertBefore(wrap, block);
-        wrap.appendChild(block);
+    function refreshFloatingButton() {
+      var sel = window.getSelection();
+      if (!sel || sel.isCollapsed || sel.rangeCount === 0) {
+        hide(floatBtn);
+        pendingSelection = null;
+        return;
       }
-      var btn = el('button', 'block-comment-btn', '💬');
-      btn.type = 'button';
-      btn.title = 'Comment on this';
-      btn.setAttribute('aria-label', 'Comment on this block');
-      // Suppress the default mousedown behaviour so clicking the button does
-      // not collapse or alter the user's current text selection — that
-      // selection is what becomes the comment's quote.
-      btn.addEventListener('mousedown', function (ev) { ev.preventDefault(); });
-      btn.addEventListener('click', function (ev) {
-        ev.preventDefault();
-        openEditorForBlock(block.getAttribute('data-block-id'), null);
-      });
-      wrap.appendChild(btn);
+      var text = sel.toString().replace(/\s+/g, ' ').trim();
+      var range = sel.getRangeAt(0);
+      var startBlock = blockOf(range.startContainer);
+      if (!text || !startBlock || !content || !content.contains(startBlock)) {
+        hide(floatBtn);
+        pendingSelection = null;
+        return;
+      }
+      pendingSelection = {
+        blockId: startBlock.getAttribute('data-block-id'),
+        text: text,
+        range: range.cloneRange(),
+      };
+      // Show first, then position — a positioning hiccup must never stop the
+      // button from appearing.
+      floatBtn.style.display = 'block';
+      try {
+        var rect = range.getBoundingClientRect();
+        floatBtn.style.top = (rect.top + window.scrollY - floatBtn.offsetHeight - 6) + 'px';
+        floatBtn.style.left = (rect.right + window.scrollX - floatBtn.offsetWidth) + 'px';
+      } catch (e) {
+        // Leave the button at its default position.
+      }
+    }
+
+    // Recompute after the selection settles (mouse drag or keyboard select).
+    document.addEventListener('mouseup', function () { setTimeout(refreshFloatingButton, 10); });
+    document.addEventListener('keyup', function (ev) {
+      if (ev.shiftKey || ev.key === 'Shift') setTimeout(refreshFloatingButton, 10);
     });
 
     // ── Editor ──────────────────────────────────────────────────────────────
@@ -186,31 +208,32 @@ if (typeof document !== 'undefined') {
       var existing = null;
       if (editingId) {
         for (var i = 0; i < commentState.length; i++) {
-          if (commentState[i].id === editingId) { existing = commentState[i]; }
+          if (commentState[i].id === editingId) existing = commentState[i];
         }
       }
 
-      // Quote: editing keeps the original; a new comment consumes any pending
-      // selection that belongs to this block.
+      // Quote + range: editing keeps the original quote (no re-highlight); a new
+      // comment consumes the pending selection that belongs to this block.
       var quote = '';
+      var range = null;
       if (existing) {
         quote = existing.quote;
       } else if (pendingSelection && pendingSelection.blockId === blockId) {
         quote = pendingSelection.text;
+        range = pendingSelection.range;
       }
       pendingSelection = null;
 
       var editor = el('div', 'fb-comment-editor');
-
       if (quote) {
         editor.appendChild(el('div', 'fb-quote', '“' + quote + '”'));
       } else {
         editor.appendChild(el('div', 'fb-anchor-note',
-          'Commenting on this block. Tip: select text first to quote it.'));
+          'Commenting on this whole block.'));
       }
 
       var ta = el('textarea', 'fb-comment-text');
-      ta.placeholder = 'What should change here? e.g. “remove this paragraph”';
+      ta.placeholder = 'What should change here? e.g. “remove this sentence”';
       if (existing) ta.value = existing.text;
       editor.appendChild(ta);
 
@@ -229,13 +252,15 @@ if (typeof document !== 'undefined') {
         if (existing) {
           existing.text = text;
         } else {
-          commentState.push({
+          var comment = {
             id: newId(),
             blockId: blockId,
             blockText: blockTextById[blockId] || '',
             quote: quote,
             text: text,
-          });
+          };
+          commentState.push(comment);
+          highlightComment(comment, range);
         }
         closeEditor();
         renderComments();
@@ -247,17 +272,40 @@ if (typeof document !== 'undefined') {
       ta.focus();
     }
 
+    // ── Inline highlight of the quoted phrase (best effort) ─────────────────
+    // surroundContents throws when the selection crosses element boundaries;
+    // in that case the comment is still saved, just without the inline mark.
+
+    function highlightComment(comment, range) {
+      if (!range || !comment.quote) return;
+      try {
+        var mark = el('mark', 'fb-highlight');
+        mark.setAttribute('data-comment-id', comment.id);
+        range.surroundContents(mark);
+      } catch (e) {
+        // Multi-element selection — skip the inline mark; the card still shows
+        // the quote, so the comment is not lost.
+      }
+    }
+
+    function unwrapHighlight(commentId) {
+      var mark = document.querySelector('mark.fb-highlight[data-comment-id="' + commentId + '"]');
+      if (!mark || !mark.parentNode) return;
+      var parent = mark.parentNode;
+      while (mark.firstChild) parent.insertBefore(mark.firstChild, mark);
+      parent.removeChild(mark);
+      if (parent.normalize) parent.normalize();
+    }
+
     // ── Render comment cards ────────────────────────────────────────────────
 
     function renderComments() {
-      // Remove existing cards and clear block highlights.
       var oldCards = document.querySelectorAll('.fb-comment-card');
       Array.prototype.forEach.call(oldCards, function (c) {
         if (c.parentNode) c.parentNode.removeChild(c);
       });
       blocks.forEach(function (b) { b.classList.remove('has-comment'); });
 
-      // Group comments by block, preserving insertion order.
       var byBlock = {};
       var order = [];
       commentState.forEach(function (c) {
@@ -273,11 +321,12 @@ if (typeof document !== 'undefined') {
         byBlock[blockId].forEach(function (c) {
           var card = buildCard(c);
           ref.insertAdjacentElement('afterend', card);
-          ref = card; // keep insertion order
+          ref = card;
         });
       });
 
       updateCommentCount();
+      updateActionButtons();
     }
 
     function buildCard(comment) {
@@ -303,12 +352,13 @@ if (typeof document !== 'undefined') {
       });
       delBtn.addEventListener('click', function () {
         commentState = commentState.filter(function (c) { return c.id !== comment.id; });
+        unwrapHighlight(comment.id);
         renderComments();
       });
       return card;
     }
 
-    // ── Comment count indicator ─────────────────────────────────────────────
+    // ── Header indicators ───────────────────────────────────────────────────
 
     var countEl = document.getElementById('comment-count');
     function updateCommentCount() {
@@ -327,8 +377,9 @@ if (typeof document !== 'undefined') {
       return ta ? ta.value : '';
     }
 
-    function buildCurrentState() {
+    function buildCurrentState(action) {
       return {
+        action: action,
         comments: commentState.map(function (c) {
           return { blockId: c.blockId, blockText: c.blockText, quote: c.quote, text: c.text };
         }),
@@ -336,24 +387,34 @@ if (typeof document !== 'undefined') {
       };
     }
 
-    function buildCurrentPayload() {
-      return buildFeedbackPayload(buildCurrentState());
+    function hasContent() {
+      return commentState.length > 0 || freeformValue().trim().length > 0;
     }
 
-    // ── Submit wiring ───────────────────────────────────────────────────────
+    // ── Submit / Apply wiring ───────────────────────────────────────────────
 
+    var applyBtn = document.getElementById('apply-btn');
     var submitBtn = document.getElementById('submit-btn');
     var copyBtn = document.getElementById('copy-btn');
     var submitError = document.getElementById('submit-error');
     var stateSubmitted = document.getElementById('state-submitted');
+    var stateApplying = document.getElementById('state-applying');
     var stateAlreadySubmitted = document.getElementById('state-already-submitted');
     var feedbackDoc = document.getElementById('feedback-doc');
 
-    function setSubmitting(on) {
-      if (submitBtn) {
-        submitBtn.disabled = on;
-        submitBtn.textContent = on ? 'Submitting…' : 'Submit feedback';
-      }
+    function updateActionButtons() {
+      // Apply with nothing to apply is a no-op round-trip — disable it then.
+      if (applyBtn) applyBtn.disabled = !hasContent();
+    }
+    updateActionButtons();
+
+    var freeformEl = document.getElementById('freeform-input');
+    if (freeformEl) freeformEl.addEventListener('input', updateActionButtons);
+
+    function setBusy(on, label) {
+      if (applyBtn) applyBtn.disabled = on || !hasContent();
+      if (submitBtn) submitBtn.disabled = on;
+      if (on && label && submitBtn) submitBtn.textContent = label;
     }
 
     function showError(msg) {
@@ -370,56 +431,91 @@ if (typeof document !== 'undefined') {
       }
     }
 
-    if (submitBtn) {
-      submitBtn.addEventListener('click', function () {
-        clearError();
-        closeEditor();
-        var payload = buildCurrentPayload();
+    function sendFeedback(action) {
+      clearError();
+      closeEditor();
+      hide(floatBtn);
+      var payload = buildFeedbackPayload(buildCurrentState(action));
+      var token = (typeof CSRF_TOKEN !== 'undefined') ? CSRF_TOKEN : '';
+      setBusy(true, action === 'apply' ? 'Working…' : 'Submitting…');
 
-        // Nothing is required to submit — the user may send back zero comments
-        // and empty freeform. The skill tells Claude how to interpret that.
-
-        var token = (typeof CSRF_TOKEN !== 'undefined') ? CSRF_TOKEN : '';
-        setSubmitting(true);
-
-        fetch('/submit', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': token,
-          },
-          body: JSON.stringify(payload),
-        })
-          .then(function (res) {
-            if (res.status === 200) {
-              if (feedbackDoc) hide(feedbackDoc);
-              if (stateSubmitted) stateSubmitted.style.display = 'block';
-            } else if (res.status === 410) {
-              if (feedbackDoc) hide(feedbackDoc);
-              if (stateAlreadySubmitted) stateAlreadySubmitted.style.display = 'block';
+      fetch('/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': token },
+        body: JSON.stringify(payload),
+      })
+        .then(function (res) {
+          if (res.status === 200) {
+            if (feedbackDoc) hide(feedbackDoc);
+            if (action === 'apply') {
+              if (stateApplying) stateApplying.style.display = 'block';
+              startReloadPolling();
             } else {
-              return res.json().then(function (body) {
-                setSubmitting(false);
-                showError('Submit failed (' + res.status + '): ' + (body.error || 'unknown error'));
-              });
+              if (stateSubmitted) stateSubmitted.style.display = 'block';
+            }
+          } else if (res.status === 410) {
+            if (feedbackDoc) hide(feedbackDoc);
+            if (stateAlreadySubmitted) stateAlreadySubmitted.style.display = 'block';
+          } else {
+            return res.json().then(function (body) {
+              setBusy(false);
+              showError('Request failed (' + res.status + '): ' + (body.error || 'unknown error'));
+            });
+          }
+        })
+        .catch(function () {
+          setBusy(false);
+          showError(
+            'Could not reach the server. Use "Copy feedback" to copy the JSON payload and paste it into Claude directly.'
+          );
+        });
+    }
+
+    if (applyBtn) applyBtn.addEventListener('click', function () { sendFeedback('apply'); });
+    if (submitBtn) submitBtn.addEventListener('click', function () { sendFeedback('submit'); });
+
+    // ── Auto-reload after Apply ─────────────────────────────────────────────
+    // Poll GET / until the served page reports a different fb-generation than
+    // ours — that is the regenerated document — then reload. Capped so a
+    // crashed or port-changed re-serve cannot poll forever.
+
+    function startReloadPolling() {
+      var attempts = 0;
+      var maxAttempts = 60;
+      var timer = setInterval(function () {
+        attempts++;
+        if (attempts > maxAttempts) {
+          clearInterval(timer);
+          if (stateApplying) {
+            var p = stateApplying.querySelector('p');
+            if (p) p.textContent =
+              'This is taking longer than expected. Reload this page manually once Claude reports the update is ready.';
+          }
+          return;
+        }
+        var ctrl = new AbortController();
+        var to = setTimeout(function () { ctrl.abort(); }, 800);
+        fetch('/', { signal: ctrl.signal, cache: 'no-store' })
+          .then(function (res) { return res.text(); })
+          .then(function (txt) {
+            clearTimeout(to);
+            var m = txt.match(/name="fb-generation"\s+content="([^"]*)"/);
+            if (m && m[1] && m[1] !== myGeneration) {
+              clearInterval(timer);
+              window.location.reload();
             }
           })
-          .catch(function () {
-            setSubmitting(false);
-            showError(
-              'Could not reach the server. Use "Copy feedback" to copy the JSON payload and paste it into Claude directly.'
-            );
-          });
-      });
+          .catch(function () { clearTimeout(to); });
+      }, 1000);
     }
 
     // ── Copy feedback fallback ──────────────────────────────────────────────
-    // Copies the exact /submit JSON payload — same schema, no second format.
+    // Copies the exact /submit JSON payload for a final submit.
 
     if (copyBtn) {
       copyBtn.addEventListener('click', function () {
         closeEditor();
-        var json = JSON.stringify(buildCurrentPayload(), null, 2);
+        var json = JSON.stringify(buildFeedbackPayload(buildCurrentState('submit')), null, 2);
 
         function markCopied() {
           copyBtn.textContent = 'Copied!';

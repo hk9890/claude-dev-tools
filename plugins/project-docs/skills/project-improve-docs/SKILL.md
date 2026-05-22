@@ -1,5 +1,5 @@
 ---
-name: project-improve-doc
+name: project-improve-docs
 description: "Improve docs structure — split, merge, slim, or consolidate; confirms with you before aggressive removals or deletion (not read-only)."
 user-invocable: true
 disable-model-invocation: true
@@ -11,7 +11,7 @@ Optional scope argument (advisory only — does not override lifecycle checks):
 
 $ARGUMENTS
 
-Run the project-improve-doc workflow from the `project-docs` skill:
+Run the project-improve-docs workflow from the `project-docs` skill:
 
 - If the user provides a concrete docs failure or incident context, run incident-driven mode (capture incident, propose recurrence-prevention edits, confirm high-impact changes, then implement and verify).
 - Otherwise, run discussion-first mode (summarize strengths, gaps, and options; ask which options to apply; then implement with verification).

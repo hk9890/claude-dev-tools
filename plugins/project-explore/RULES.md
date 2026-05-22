@@ -24,7 +24,7 @@ Findings (broken or rough behaviour) are filed as beads type `bug` with label `e
 
 ## 4. Beads is a Phase-0 runtime check only — no `dependencies` field
 
-The skill checks at runtime that `.beads/` exists and `bd` is usable. If beads is absent, the skill stops with guidance. This is the same "stop if no guidance" pattern used by `project-executes-tests` in `project-ops`.
+The skill checks at runtime that `.beads/` exists and `bd` is usable. If beads is absent, the skill stops with guidance. This is the same "stop if no guidance" pattern used by `project-run-tests` in `project-ops`.
 
 There is no `dependencies` field in `plugin.json`. Plugin-level dependency declaration for beads was explicitly rejected (plan-review Q9) because there is no harness enforcement mechanism and the runtime check is sufficient.
 

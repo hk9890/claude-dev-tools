@@ -21,6 +21,7 @@ JSON-object body, and the one-shot lifecycle.
 
 ```json
 {
+  "action": "apply" | "submit",
   "comments": [
     { "blockId": "<string>", "blockText": "<string>", "quote": "<string>", "text": "<string>" }
   ],
@@ -32,10 +33,11 @@ JSON-object body, and the one-shot lifecycle.
 
 | Field | Type | Description |
 |---|---|---|
+| `action` | string | `"apply"` — an iterative round: Claude applies the feedback, regenerates the document, and re-serves it for another pass. `"submit"` — the final round: Claude applies the feedback and stops. `app.js` emits `"submit"` for any value that is not exactly `"apply"`. |
 | `comments` | array | One entry per comment the user attached to a block. MAY be empty `[]`. |
 | `freeform` | string | Overall free-text feedback not tied to any block. MAY be `""`. |
 
-`app.js` always emits both fields.
+`app.js` always emits all three fields.
 
 ### `comments` — block-anchored notes
 
@@ -134,6 +136,7 @@ timestamp:
 ```json
 {
   "submittedAt": "<ISO-8601 timestamp>",
+  "action": "apply" | "submit",
   "comments": [
     { "blockId": "<string>", "blockText": "<string>", "quote": "<string>", "text": "<string>" }
   ],
@@ -144,3 +147,7 @@ timestamp:
 `submittedAt` is added by the server. All other fields are passed through from the
 request body verbatim. The file is written atomically (write to a temp path, then
 `fs.renameSync`) before `exit 0`.
+
+Claude branches its read-back on `action`: `"apply"` → apply the feedback,
+regenerate the document, and re-serve for another round; `"submit"` → apply the
+feedback and finish. See the html-feedback `SKILL.md` for the full loop.

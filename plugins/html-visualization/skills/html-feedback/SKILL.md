@@ -1,18 +1,23 @@
 ---
 name: html-feedback
-description: "This skill should be used when the user wants to review a piece of existing content — a document, draft, article, plan write-up, set of notes, or any prose — by marking it up with inline comments, rather than answering structured questions. It renders the content as an HTML page where the user hovers any paragraph, heading, list, or code block, optionally selects a phrase, and attaches a free-text comment (e.g. 'remove this paragraph', 'tighten this sentence'); Claude then applies the comments. Triggers on phrases like 'show me this as HTML so I can comment on it', 'let me mark up this document', 'render this draft so I can annotate it', 'let me annotate this draft', 'present this markdown so I can comment on specific parts'. Does NOT apply when Claude needs structured answers to specific questions or approve/reject decisions — use html-ask for that. Does not apply to short content where in-chat feedback is faster, or when the user wants a quick verbal reaction. When unsure between this and html-ask: html-ask asks the user questions; html-feedback shows the user content to react to."
+description: "This skill should be used when the user wants to review a piece of existing content — a document, draft, article, plan write-up, set of notes, or any prose — by marking it up with inline comments, rather than answering structured questions. It renders the content as an HTML page where the user selects any text and attaches a free-text comment (e.g. 'remove this paragraph', 'tighten this sentence'); Claude then applies the comments, and can re-render the updated document so the user iterates until satisfied. Triggers on phrases like 'show me this as HTML so I can comment on it', 'let me mark up this document', 'render this draft so I can annotate it', 'let me annotate this draft', 'present this markdown so I can comment on specific parts'. Does NOT apply when Claude needs structured answers to specific questions or approve/reject decisions — use html-ask for that. Does not apply to short content where in-chat feedback is faster, or when the user wants a quick verbal reaction. When unsure between this and html-ask: html-ask asks the user questions; html-feedback shows the user content to react to."
 ---
 
 ## What this skill does
 
 Render a piece of content as an interactive HTML document, serve it locally, and
-let the user attach inline comments to any block of it (and selected phrases
-within a block). Wait for the user to submit via browser, read the comments back,
-then apply them to the underlying content.
+let the user attach inline comments to any phrase of it by selecting text. The
+user ends each round in one of two ways:
 
-The typical use: the user is working on a document (often markdown) and wants to
-review it visually and leave precise, located feedback — far easier than quoting
-line numbers in chat.
+- **Apply & preview** — Claude applies the comments to the underlying content,
+  regenerates the document, and re-serves it; the user's page auto-reloads with
+  the update. The user can then comment again. This loop repeats as many times
+  as the user wants.
+- **Submit & finish** — the final round: Claude applies the comments and stops.
+
+The typical use: the user is editing a document (often markdown) and wants to
+review it visually, leave precise located feedback, watch Claude apply it, and
+iterate — far easier than quoting line numbers in chat.
 
 This skill **shows the user content to react to**. If instead you need the user to
 **answer specific questions** or make approve/reject decisions, use `html-ask`.
@@ -37,6 +42,25 @@ This skill **shows the user content to react to**. If instead you need the user 
 - Node.js is not available (see pre-flight below).
 
 **When unsure, bias toward asking in chat instead.**
+
+---
+
+## The round-trip, end to end
+
+```
+Step 0  pre-flight (node)
+Step 1  decide what to render
+Step 2  build review.html in a temp dir   ←──────────────┐
+Step 3  serve it (capture the port the first time)       │
+        ↓ user comments, clicks a button, server exits   │
+Step 4  read the feedback file                           │
+        action == "apply"  → apply, regenerate, re-serve ┘  (loop)
+        action == "submit" → apply, finish
+Step 5  clean up the temp dir   (only after "submit")
+```
+
+The temp directory and the server port live for the **whole** loop — one skill
+invocation, many Apply rounds — and are cleaned up only after a final Submit.
 
 ---
 
@@ -73,7 +97,7 @@ Before writing any HTML, decide:
 
 ## Step 2 — Build the HTML document
 
-### 2a. Create a unique per-invocation temp directory
+### 2a. Create the temp directory (once for the whole loop)
 
 ```bash
 TMPDIR_BASE=$(node -e "process.stdout.write(require('os').tmpdir())")
@@ -81,8 +105,10 @@ HTML_DIR="$TMPDIR_BASE/html-feedback-$(date +%s)-$$"
 mkdir -p "$HTML_DIR"
 ```
 
-The directory must be unique per invocation. Never reuse a directory from a
-previous invocation.
+This directory holds `review.html`, the feedback JSON, and a `.port` file. It is
+created **once** and reused for every Apply round of this invocation. On an Apply
+round (Step 4) you regenerate `review.html` inside this same directory — you do
+**not** make a new one.
 
 ### 2b. Copy the template
 
@@ -90,15 +116,18 @@ Copy `${CLAUDE_PLUGIN_ROOT}/skills/html-feedback/references/template.html` into
 `$HTML_DIR/review.html`.
 
 The template contains example blocks — replace them with the real content. Also
-replace the `<title>`, the header `<h1>`, and the `.subtitle` placeholders. Keep
-the page structure, freeform section, submit row, and state sections exactly as
-in the template.
+replace the `<title>`, the header `<h1>`, the `.subtitle`, and the
+`fb-generation` meta placeholder. Keep the page structure, freeform section,
+action row, and state sections exactly as in the template.
 
 ### 2c. Render the content
 
 Render the content inside `<div id="content">` per the markup contract in
 `${CLAUDE_PLUGIN_ROOT}/skills/html-feedback/references/markup.md`. Key rules:
 
+- Set `<meta name="fb-generation" content="...">` to a fresh, unique value (e.g.
+  the output of `date +%s%N`). It MUST differ on every regeneration — the page
+  uses it to detect the updated version and auto-reload.
 - Replace the `<h1>` / `<title>` and `.subtitle` placeholders.
 - Render the content as semantic HTML — headings, paragraphs, lists, tables,
   `<blockquote>`, `<pre><code>` — so it reads the way it should. The page `<h1>`
@@ -110,8 +139,11 @@ Render the content inside `<div id="content">` per the markup contract in
 - The `/assets/feedback/style.css` link and `/assets/feedback/app.js` script are
   correct as-is; do not change the paths.
 
+To comment, the user selects text and a floating 💬 button appears at the
+selection — there is nothing per-block for you to author beyond `data-block-id`.
+
 Consult `${CLAUDE_PLUGIN_ROOT}/skills/html-feedback/references/markup.md` for the
-full vocabulary (block rules, required IDs, anchoring behaviour).
+full vocabulary (block rules, required IDs, the `fb-generation` meta).
 
 ### 2d. Use HTML to render the content well
 
@@ -130,17 +162,11 @@ visual power where it helps the user judge the content:
 Keep it faithful to the content. Author any extra styling inline or in a
 `<style>` block in `<head>` — never edit the shared `/assets/feedback/style.css`.
 
-### 2e. Compute and record the feedback file path
+### 2e. The feedback file path
 
-The feedback file path is deterministic. Compute it now and remember it:
-
-```
-FEEDBACK_FILE="$HTML_DIR/review.feedback.json"
-```
-
-The server derives this as `<html-file-dir>/<basename-without-ext>.feedback.json`.
-Since the HTML file is `$HTML_DIR/review.html`, the feedback file will be
-`$HTML_DIR/review.feedback.json`. Do not glob for it later — use this exact path.
+The server writes feedback to `<html-file-dir>/<basename>.feedback.json`. Since
+the HTML file is `$HTML_DIR/review.html`, the feedback file is always
+`$HTML_DIR/review.feedback.json`. Use that exact path; do not glob for it.
 
 ---
 
@@ -149,13 +175,11 @@ Since the HTML file is `$HTML_DIR/review.html`, the feedback file will be
 Run the server as a **background process** (Bash tool `run_in_background: true`).
 Do not foreground it — a foreground call blocks and the round-trip never completes.
 
+**First round** — let the server pick a random port:
+
 ```bash
 node ${CLAUDE_PLUGIN_ROOT}/bin/server.js "$HTML_DIR/review.html"
 ```
-
-Optional flags:
-- `--port N` — bind to a specific port instead of a random one (rarely needed).
-- `--timeout-sec N` — override the 1800 s (30 min) default timeout.
 
 On startup the server prints two lines to stdout:
 
@@ -164,30 +188,36 @@ On startup the server prints two lines to stdout:
 [html-visualization] Feedback file: /tmp/html-feedback-.../review.feedback.json
 ```
 
-Wait until you see these lines, then surface the URL to the user. Render it as a
-**markdown link** (`[label](url)`) so it shows as clickable text. Example message:
+When you see them, **capture the port and save it** — every later Apply round
+must re-serve on the *same* port so the user's open tab keeps working:
+
+```bash
+echo "<port>" > "$HTML_DIR/.port"
+```
+
+Then surface the URL to the user as a **markdown link** (`[label](url)`):
 
 > Your review page is ready → **[Open review page](http://127.0.0.1:PORT/)**
 >
-> Hover any paragraph and click 💬 to comment — select a phrase first to quote it.
-> Click "Submit feedback" when done. I will continue as soon as you submit.
+> Select any text and click 💬 to comment. Click **Apply & preview** to have me
+> apply your comments and refresh the page, or **Submit & finish** when you're done.
 
-The server exits with code 0 after the first successful submit, which causes the
-harness to re-invoke Claude. Do not poll or read the feedback file while the
-server is running.
+Optional flags: `--timeout-sec N` overrides the 1800 s (30 min) default timeout.
+
+The server exits with code 0 after one successful submit, which re-invokes Claude.
+Do not poll or read the feedback file while the server is running.
 
 ---
 
-## Step 4 — Read back and apply the feedback
+## Step 4 — Read the feedback and act on `action`
 
 When the harness re-invokes Claude after server exit, read the feedback file
-(the path you computed in Step 2e).
-
-The file contains:
+`$HTML_DIR/review.feedback.json`:
 
 ```json
 {
   "submittedAt": "<ISO-8601 timestamp>",
+  "action": "apply" | "submit",
   "comments": [
     { "blockId": "<string>", "blockText": "<string>", "quote": "<string>", "text": "<string>" }
   ],
@@ -197,35 +227,51 @@ The file contains:
 
 Full schema: `${CLAUDE_PLUGIN_ROOT}/skills/html-feedback/references/submit-schema.md`.
 
-How to interpret each field:
+Interpret the comment fields:
 
 | Field | How to use it |
 |---|---|
-| `comments` | Each is one located piece of feedback. `blockId` + `blockText` tell you which passage; `quote` (when non-empty) narrows it to the exact phrase the user selected; `text` is what they want changed. Apply each comment to that passage of the underlying content. |
+| `comments` | Each is one located piece of feedback. `blockId` + `blockText` tell you which passage; `quote` (when non-empty) narrows it to the exact phrase the user selected; `text` is what they want changed. |
 | `freeform` | Feedback not tied to a block — overall direction, tone, what is missing. May be empty. |
 
-After reading the feedback:
+**Apply every comment to the underlying source** of the content (e.g. the
+markdown file) — not just to the rendered HTML. Acknowledge each comment as you
+apply it. If a comment is ambiguous, apply your best interpretation and say so.
+If both `comments` and `freeform` are empty, ask in chat what to change.
 
-- Apply each comment to the **underlying source** of the content (e.g. the
-  markdown file), not just to the rendered HTML — the HTML document is throwaway.
-- Acknowledge each comment explicitly as you apply it, so the user can see their
-  feedback was understood.
-- If a comment is ambiguous, apply your best interpretation and flag it, or ask a
-  brief follow-up in chat.
-- If both `comments` and `freeform` are empty, the user submitted without leaving
-  feedback — ask in chat what they would like changed.
+Then branch on `action`:
+
+### `action: "apply"` — iterate
+
+1. Apply the feedback to the underlying source.
+2. Regenerate `$HTML_DIR/review.html` from the updated content (repeat Step 2c)
+   with a **fresh `fb-generation` value**.
+3. Re-serve on the **same port** — run as a background process again:
+   ```bash
+   node ${CLAUDE_PLUGIN_ROOT}/bin/server.js "$HTML_DIR/review.html" --port "$(cat "$HTML_DIR/.port")"
+   ```
+   If the port is momentarily unavailable, wait ~1 s and retry the same command.
+4. Tell the user briefly, e.g. "Applied your 3 comments — the review page will
+   refresh automatically." You do not need to resend the link; the URL is
+   unchanged and the open tab reloads itself.
+5. The loop continues: the user comments on the updated page and submits again.
+
+### `action: "submit"` — finish
+
+1. Apply the feedback to the underlying source.
+2. Summarise what changed for the user.
+3. Proceed to Step 5 — do **not** re-serve.
 
 ---
 
-## Step 5 — Clean up the temp directory
+## Step 5 — Clean up (only after a final Submit)
 
-Once you have read the feedback file and extracted everything from it, delete the
-per-invocation temp directory:
+After an `action: "submit"` round, once you have applied everything, delete the
+temp directory:
 
 ```bash
 rm -rf "$HTML_DIR"
 ```
 
-The server process has already exited by this point (it self-terminates on
-submit). Do this only *after* the read-back in Step 4 — the feedback JSON lives
-inside `$HTML_DIR`.
+Do this **only** after a Submit. On an Apply round the directory must survive —
+it holds the port file and the `review.html` you just re-served.

@@ -11,10 +11,17 @@ and attributes defined here — without reading `style.css` or `app.js`.
 2. Each commentable unit of content carries a unique `data-block-id`.
 3. The file is served by `bin/server.js`, which injects a CSRF token and serves
    the skill's assets from `assets/feedback/`.
-4. `assets/feedback/app.js` gives each block a 💬 button. The user clicks it to
-   attach a comment; if they selected text inside the block first, that text is
-   captured as a `quote`. Comments render as inline cards after their block.
-5. On submit, the server writes a feedback file and exits — re-invoking Claude.
+4. `assets/feedback/app.js` watches for text selections inside `#content`. When
+   the user selects text, a floating 💬 button appears at the selection; clicking
+   it opens a comment editor. The comment is anchored to the block and quotes the
+   selected text. Comments render as inline cards after their block, and the
+   quoted phrase is highlighted inline when the selection allows it.
+5. The user ends each round with one of two buttons:
+   - **Apply & preview** — submit with `action: "apply"`. Claude updates the
+     document, regenerates this file, and re-serves it; the page auto-reloads.
+   - **Submit & finish** — submit with `action: "submit"`. The final round.
+6. Either button makes the server write a feedback file and exit, re-invoking
+   Claude.
 
 The `/submit` payload schema is defined in `submit-schema.md` (same directory).
 
@@ -31,6 +38,7 @@ Every document must have this top-level structure:
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Review — [descriptive title]</title>
+  <meta name="fb-generation" content="[a fresh unique value per generation]">
   <link rel="stylesheet" href="/assets/feedback/style.css">
 </head>
 <body>
@@ -43,9 +51,10 @@ Every document must have this top-level structure:
     <div id="feedback-doc">
       <div id="content"> … commentable blocks … </div>
       <div class="freeform-section"> … #freeform-input … </div>
-      <div class="submit-row"> … #submit-btn, #copy-btn … </div>
+      <div class="submit-row"> … #apply-btn, #submit-btn, #copy-btn … </div>
       <div id="submit-error" class="submit-error" style="display:none;"></div>
     </div>
+    <div id="state-applying" class="state-applying"> … </div>
     <div id="state-submitted" class="state-submitted"> … </div>
     <div id="state-already-submitted" class="state-already-submitted"> … </div>
   </div>
@@ -56,6 +65,15 @@ Every document must have this top-level structure:
 
 **Do NOT** add `<script>const CSRF_TOKEN = "...";</script>` manually — the server
 injects it before `</head>`.
+
+### The `fb-generation` meta
+
+`<meta name="fb-generation" content="...">` carries a value that MUST be
+**different every time Claude generates or regenerates the file** (e.g. the
+output of `date +%s%N`). After an "Apply & preview" round, `app.js` polls the
+re-served page and reloads as soon as it sees a `fb-generation` value different
+from the one it loaded with. If the value is stale (reused), the page never
+auto-reloads.
 
 ---
 
@@ -76,22 +94,20 @@ A **block** is one commentable unit. Block rules:
 - Put one `data-block-id` per logical passage: each paragraph, each heading,
   each code block, each blockquote.
 - A whole list is **one block** — put `data-block-id` on the `<ul>`/`<ol>`,
-  **not** on individual `<li>` elements. Per-line precision still works: the
-  user selects an item's text and it is captured as the comment's `quote`.
+  **not** on individual `<li>` elements.
 - Do not nest one `data-block-id` element inside another.
 
-`app.js` injects a 💬 button into every block and inserts comment cards directly
-after the block, so blocks must be elements that can have a `<div>` sibling
-(direct children of `#content` always qualify).
+`app.js` inserts comment cards directly after a block, so blocks must be elements
+that can have a `<div>` sibling (direct children of `#content` always qualify).
 
-### How a comment is anchored
+### How a comment is placed and anchored
 
+- The user selects any run of text inside a block; a floating 💬 button appears
+  at the selection. To comment on a whole block, the user selects all its text.
 - The comment's anchor is the block's `data-block-id` — never a character offset.
-- If the user selected text inside the block before commenting, the exact
-  selected text is captured verbatim as `quote`. If they selected nothing,
-  `quote` is `""` and the comment applies to the whole block.
+- The exact selected text is captured verbatim as `quote`.
 - If a selection spans more than one block, the comment anchors to the block
-  whose 💬 button was clicked; `quote` is still the literal selected text.
+  where the selection started; `quote` is still the literal selected text.
 - Each comment also carries `blockText` (the block's plain text) so Claude's
   read-back is self-contained.
 
@@ -103,14 +119,16 @@ These `id` values are hard-wired in `app.js` and must be present exactly once:
 
 | id | Element | Purpose |
 |---|---|---|
-| `feedback-doc` | `<div>` wrapping content + freeform + submit | Hidden after a successful submit. |
+| `feedback-doc` | `<div>` wrapping content + freeform + actions | Hidden after a submit. |
 | `content` | `<div>` wrapping the rendered content | Scanned for `[data-block-id]` blocks. |
 | `comment-count` | `<span>` in the header | `app.js` writes a running comment count here. |
 | `freeform-input` | The freeform `<textarea>` | Overall free-text feedback. |
-| `submit-btn` | Submit `<button>` | Primary submit button. |
+| `apply-btn` | "Apply & preview" `<button>` | Sends `action: "apply"` — iterative round. |
+| `submit-btn` | "Submit & finish" `<button>` | Sends `action: "submit"` — final round. |
 | `copy-btn` | Copy-feedback `<button>` | Copies the `/submit` JSON payload. |
 | `submit-error` | Error message `<div>` | Start hidden: `style="display:none"`. |
-| `state-submitted` | Post-submit success `<div>` | CSS hides it until shown. |
+| `state-applying` | Post-Apply `<div>` | CSS hides it until shown; page auto-reloads from here. |
+| `state-submitted` | Post-Submit success `<div>` | CSS hides it until shown. |
 | `state-already-submitted` | Post-410 `<div>` | CSS hides it until shown. |
 
 ---
@@ -118,12 +136,12 @@ These `id` values are hard-wired in `app.js` and must be present exactly once:
 ## Visual classes (do not rename)
 
 `page-chrome`, `page-header`, `subtitle`, `comment-count`, `freeform-section`,
-`submit-row`, `submit-btn`, `copy-btn`, `submit-error`, `state-submitted`,
-`state-already-submitted` — all defined in `assets/feedback/style.css`. Use them
-exactly as in `template.html`.
+`submit-row`, `apply-btn`, `submit-btn`, `copy-btn`, `submit-error`,
+`state-applying`, `state-submitted`, `state-already-submitted` — all defined in
+`assets/feedback/style.css`. Use them exactly as in `template.html`.
 
-The comment UI classes (`block-comment-btn`, `fb-comment-editor`,
-`fb-comment-card`, `fb-quote`, …) are injected by `app.js` at runtime. **Do not
+The comment UI classes (`fb-float-btn`, `fb-comment-editor`, `fb-comment-card`,
+`fb-quote`, `fb-highlight`, …) are injected by `app.js` at runtime. **Do not
 author them.**
 
 ---
@@ -132,15 +150,18 @@ author them.**
 
 Before finalising an html-feedback document:
 
+- [ ] `<meta name="fb-generation">` is present with a value different from any
+      previous generation of this file.
 - [ ] All content is inside `<div id="content">`, rendered as semantic HTML.
 - [ ] Every commentable block is a direct child of `#content` with a unique
       `data-block-id` (printable ASCII, no whitespace).
 - [ ] Lists carry `data-block-id` on the `<ul>`/`<ol>`, not on each `<li>`.
 - [ ] `id="comment-count"` span is in the header.
 - [ ] `id="freeform-input"` is on the freeform textarea.
-- [ ] `id="feedback-doc"`, `id="content"`, `id="submit-btn"`, `id="copy-btn"`,
-      `id="submit-error"`, `id="state-submitted"`, `id="state-already-submitted"`
-      are each present exactly once.
+- [ ] `id="feedback-doc"`, `id="content"`, `id="apply-btn"`, `id="submit-btn"`,
+      `id="copy-btn"`, `id="submit-error"`, `id="state-applying"`,
+      `id="state-submitted"`, `id="state-already-submitted"` are each present
+      exactly once.
 - [ ] `<link>` to `/assets/feedback/style.css` is in `<head>`; `<script>` for
       `/assets/feedback/app.js` is before `</body>`.
 - [ ] No `<script>const CSRF_TOKEN = …</script>` block — the server injects it.

@@ -2,7 +2,7 @@
 
 Interactive HTML the user opens in a browser, then sends back to Claude.
 
-## What it does
+## Overview
 
 Some exchanges are easier in a browser than in a chat window. This plugin is a
 family of skills that follow the same round-trip: Claude authors an HTML page, a

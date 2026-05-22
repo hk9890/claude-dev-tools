@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
 # keep-awake — per-session systemd-inhibit manager for Claude Code
 # Part of the keep-awake-linux plugin.
 #
