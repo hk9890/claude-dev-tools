@@ -73,7 +73,7 @@ mkdir -p "$HTML_DIR"
 
 ### 2b. Copy the template
 
-Copy `${CLAUDE_PLUGIN_ROOT}/skills/visualize-html/references/visualize-template.html`
+Copy `${CLAUDE_PLUGIN_ROOT}/skills/html-visualize/references/visualize-template.html`
 into `$HTML_DIR/visualization.html`.
 
 The template has a content area, an inline `<style>` block with light/dark colour

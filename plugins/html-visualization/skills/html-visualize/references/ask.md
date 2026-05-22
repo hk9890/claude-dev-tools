@@ -71,7 +71,7 @@ Before writing a single line of HTML, decide what goes into the document:
 
 See `references/serve.md` — temp directory section. Use the prefix `html-ask`.
 
-Copy `${CLAUDE_PLUGIN_ROOT}/skills/visualize-html/references/ask-template.html`
+Copy `${CLAUDE_PLUGIN_ROOT}/skills/html-visualize/references/ask-template.html`
 into `$HTML_DIR/feedback.html`.
 
 The template contains example widgets — remove every example widget you do not
@@ -81,7 +81,7 @@ submit row exactly as in the template.
 ### 2b. Fill in the content
 
 Edit the copied file per the markup contract in
-`${CLAUDE_PLUGIN_ROOT}/skills/visualize-html/references/ask-markup.md`. Key rules:
+`${CLAUDE_PLUGIN_ROOT}/skills/html-visualize/references/ask-markup.md`. Key rules:
 
 - Replace `[Claude: replace with document title]` in `<h1>` and `<title>` with
   your page title.
@@ -99,7 +99,7 @@ Edit the copied file per the markup contract in
 - The `/assets/ask/style.css` link and `/assets/ask/app.js` script are correct
   as-is; do not change the paths.
 
-Consult `${CLAUDE_PLUGIN_ROOT}/skills/visualize-html/references/ask-markup.md`
+Consult `${CLAUDE_PLUGIN_ROOT}/skills/html-visualize/references/ask-markup.md`
 for the full vocabulary (classes, data attributes, required IDs, verdict radio
 values).
 
@@ -163,7 +163,7 @@ The file contains:
 }
 ```
 
-Full schema: `${CLAUDE_PLUGIN_ROOT}/skills/visualize-html/references/ask-submit-schema.md`.
+Full schema: `${CLAUDE_PLUGIN_ROOT}/skills/html-visualize/references/ask-submit-schema.md`.
 
 How to interpret each field:
 

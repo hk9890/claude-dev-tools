@@ -2,30 +2,47 @@
 
 Non-derivable design decisions and constraints for this plugin. Read before making changes.
 
-## 1. Single skill with three modes around one shared server
+## 1. Core skill + three command skills around one shared server
 
-`html-visualization` hosts the `visualize-html` skill, which renders interactive
-HTML, lets the user act on it in a browser, and feeds the result back to Claude.
-The skill has three modes:
+`html-visualization` hosts a shared core skill, `html-visualize`, plus three thin
+command skills that load it. The core renders interactive HTML, lets the user act
+on it in a browser, and feeds the result back to Claude. It has three modes, one
+per command skill:
 
-- **ask** — renders a question/decision form; the user answers and submits.
-- **feedback** — renders content (e.g. a document) for inline commenting.
-- **visualize** — renders a display-only page; no submit expected.
+- **ask** (`html-visualize-ask`) — renders a question/decision form; the user answers and submits.
+- **feedback** (`html-visualize-feedback`) — renders content (e.g. a document) for inline commenting.
+- **visualize** (`html-visualize-demo`) — renders a display-only page; no submit expected.
 
-All modes share `bin/server.js` (the one-shot Node server) and the CSRF, temp-dir,
-and lifecycle rules below. Mode-specific browser assets live under `assets/<mode>/`.
+The core `html-visualize` skill holds all the logic (mode references, the shared
+serve procedure, templates). Each command skill is a thin wrapper that fixes the
+mode and loads the core — mirroring the `beads-core` + `beads-plan`/`beads-work`
+pattern. All modes share `bin/server.js` (the one-shot Node server) and the CSRF,
+temp-dir, and lifecycle rules below. Mode-specific browser assets live under
+`assets/<mode>/`.
 
 **A new mode belongs here only if it follows this round-trip shape: Claude authors
 HTML → shared server serves it → user interacts → server captures one JSON submit →
-Claude reads it back. Do not add unrelated skills or modes.**
+Claude reads it back. A new mode means a new command skill plus a mode reference in
+the core — do not add unrelated skills or modes.**
 
-## 2. Skill-only — no slash commands
+## 2. User-invoked command skills — the model cannot trigger them
 
-Every skill in this plugin is invoked when Claude decides the content warrants an
-interactive document, not by the user typing a command. A slash command would let
-a user invoke an empty document with no content prepared, which is meaningless.
+The three command skills (`html-visualize-ask`, `html-visualize-feedback`,
+`html-visualize-demo`) are `user-invocable: true` and `disable-model-invocation:
+true` — only the user can invoke them, by slash command, and the free-text intent
+travels in as the command argument. The core `html-visualize` skill is
+`user-invocable: false`: it is never triggered directly, only loaded by a command
+skill.
 
-**Do not add slash commands to this plugin.**
+This is a deliberate reversal of the plugin's earlier "invoked when Claude
+decides" design: the user prepares the intent and chooses the mode, so there is no
+risk of an empty document with no content. The model must not auto-render
+interactive HTML on its own judgement.
+
+**Keep `disable-model-invocation: true` on every command skill and
+`user-invocable: false` on the core. Do not give any skill in this plugin a
+model-triggering description. Do not add a fourth invocation surface (e.g. a slash
+command file) — the command skills are the invocation surface.**
 
 ## 3. Zero-dependency Node server — no npm install step
 

@@ -23,14 +23,21 @@ The round-trip:
 
 ## Skills
 
-| Skill | Invocation | Modes |
+A shared core skill holds all the logic; three thin command skills load it, one
+per mode. The command skills are **user-invoked only** — the model cannot trigger
+them. The free-text intent travels in as the slash-command argument.
+
+| Skill | Invocation | Role |
 |---|---|---|
-| `visualize-html` | `html-visualization:visualize-html` | **ask** — question/decision form (text, single/multi choice, approach widgets, overall verdict). **feedback** — content for inline commenting (user selects text, attaches comment, iterates with Apply). **visualize** — display-only HTML page; no submit. |
+| `html-visualize` | — (loaded by the commands) | Core: mode references, shared serve procedure, templates. `user-invocable: false`. |
+| `html-visualize-ask` | `/html-visualization:html-visualize-ask` | **ask** — question/decision form (text, single/multi choice, approach widgets, overall verdict). |
+| `html-visualize-feedback` | `/html-visualization:html-visualize-feedback` | **feedback** — content for inline commenting (user selects text, attaches comment, iterates with Apply). |
+| `html-visualize-demo` | `/html-visualization:html-visualize-demo` | **visualize** — display-only HTML page; no submit. |
 
 Rule of thumb: **ask mode asks the user questions; feedback mode shows the user
 content to react to; visualize mode renders content without expecting a
-response.** The skill is invoked by Claude when appropriate, not by the user
-typing a command.
+response.** Each command skill is `disable-model-invocation: true` — only the user
+invokes them, by slash command.
 
 ## Runtime requirements
 
@@ -52,10 +59,16 @@ html-visualization/
 │   ├── ask/                  # CSS + JS for ask-mode pages
 │   └── feedback/             # CSS + JS for feedback-mode pages
 └── skills/
-    └── visualize-html/
-        ├── SKILL.md
-        └── references/       # ask.md, feedback.md, visualize.md, serve.md,
-                              # *-markup.md, *-submit-schema.md, *-template.html
+    ├── html-visualize/          # core: logic, references, templates
+    │   ├── SKILL.md
+    │   └── references/          # ask.md, feedback.md, visualize.md, serve.md,
+    │                            # *-markup.md, *-submit-schema.md, *-template.html
+    ├── html-visualize-ask/      # command skill → ask mode
+    │   └── SKILL.md
+    ├── html-visualize-feedback/ # command skill → feedback mode
+    │   └── SKILL.md
+    └── html-visualize-demo/     # command skill → visualize mode
+        └── SKILL.md
 ```
 
 The server is **shared and schema-agnostic** — it handles transport, CSRF, the

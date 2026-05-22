@@ -1,7 +1,7 @@
 # Shared Serve Procedure
 
 Single source of truth for the server lifecycle used by all three modes of the
-`visualize-html` skill: **ask**, **feedback**, and **visualize**.
+`html-visualize` workflow: **ask**, **feedback**, and **visualize**.
 
 > **Authoritative contract**: the `.port` file persistence and the `fb-generation`
 > polling contract for the feedback Apply loop are defined **here** — mode-specific

@@ -85,7 +85,7 @@ See `references/serve.md` — temp directory section. Use the prefix
 
 ### 2b. Copy the template
 
-Copy `${CLAUDE_PLUGIN_ROOT}/skills/visualize-html/references/feedback-template.html`
+Copy `${CLAUDE_PLUGIN_ROOT}/skills/html-visualize/references/feedback-template.html`
 into `$HTML_DIR/review.html`.
 
 The template contains example blocks — replace them with the real content. Also
@@ -96,7 +96,7 @@ sections exactly as in the template.
 ### 2c. Render the content
 
 Render the content inside `<div id="content">` per the markup contract in
-`${CLAUDE_PLUGIN_ROOT}/skills/visualize-html/references/feedback-markup.md`. Key rules:
+`${CLAUDE_PLUGIN_ROOT}/skills/html-visualize/references/feedback-markup.md`. Key rules:
 
 - Set `<meta name="fb-generation" content="...">` to a fresh, unique value (e.g.
   the output of `date +%s%N`). It MUST differ on every regeneration — see the
@@ -111,7 +111,7 @@ Render the content inside `<div id="content">` per the markup contract in
 - The `/assets/feedback/style.css` link and `/assets/feedback/app.js` script are
   correct as-is; do not change the paths.
 
-Consult `${CLAUDE_PLUGIN_ROOT}/skills/visualize-html/references/feedback-markup.md`
+Consult `${CLAUDE_PLUGIN_ROOT}/skills/html-visualize/references/feedback-markup.md`
 for the full vocabulary (block rules, required IDs, the `fb-generation` meta).
 
 ### 2d. Use HTML to render the content well
@@ -179,7 +179,7 @@ The file contains:
 ```
 
 Full schema:
-`${CLAUDE_PLUGIN_ROOT}/skills/visualize-html/references/feedback-submit-schema.md`.
+`${CLAUDE_PLUGIN_ROOT}/skills/html-visualize/references/feedback-submit-schema.md`.
 
 Interpret the comment fields:
 

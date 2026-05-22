@@ -2,7 +2,7 @@
 /**
  * server.js — zero-dependency one-shot feedback server for html-visualization.
  *
- * Shared by every mode of the visualize-html skill (ask, feedback, visualize, …).
+ * Shared by every mode of the html-visualize skill (ask, feedback, visualize, …).
  *
  * Usage:
  *   node server.js <html-file> [--port N] [--timeout-sec N] [--no-wait]
