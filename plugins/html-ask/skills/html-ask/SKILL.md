@@ -124,11 +124,13 @@ On startup the server prints two lines to stdout:
 [html-ask] Feedback file: /tmp/html-ask-.../feedback.feedback.json
 ```
 
-Wait until you see these lines, then surface the URL to the user. Example message to the user:
+Wait until you see these lines, then surface the URL to the user. Render it as a
+**markdown link** (`[label](url)`) — not a bare or bold URL string — so it shows as
+clickable text in the terminal. Example message to the user:
 
-> Your feedback form is ready: **http://127.0.0.1:PORT/**
+> Your feedback form is ready → **[Open feedback form](http://127.0.0.1:PORT/)**
 >
-> Open that link in your browser, answer the questions, and click "Submit feedback". I will continue as soon as you submit.
+> Click that link, answer the questions, and click "Submit feedback". I will continue as soon as you submit.
 
 The server exits with code 0 after the first successful submit, which causes the harness to re-invoke Claude. Do not poll or attempt to read the feedback file while the server is running.
 
@@ -169,3 +171,19 @@ After reading the feedback, continue the original task:
 - If `verdict` is `approve`: proceed.
 - If `verdict` is `approve-with-changes`: acknowledge each piece of feedback explicitly, then proceed with the changes incorporated.
 - If `verdict` is `reject`: summarise the rejection reason from freeform/comments and open a discussion about the path forward.
+
+---
+
+## Step 5 — Clean up the temp directory
+
+Once you have read the feedback file and extracted everything you need from it, delete
+the per-invocation temp directory:
+
+```bash
+rm -rf "$HTML_DIR"
+```
+
+The server process has already exited by this point (it self-terminates on submit), so
+only the directory remains. Removing it keeps `$TMPDIR` from accumulating stale
+`html-ask-*` directories across invocations. Do this only *after* the read-back in
+Step 4 — the feedback JSON lives inside `$HTML_DIR`.
