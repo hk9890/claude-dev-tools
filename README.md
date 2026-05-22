@@ -25,6 +25,7 @@ See [docs/OVERVIEW.md](docs/OVERVIEW.md) for the full layout and architecture de
 | [`html-ask`](plugins/html-ask/README.md) | Interactive in-browser feedback for multi-decision plans and question batches — Claude renders a question form as HTML, the user answers in-browser, and a one-shot Node server writes the feedback and re-invokes Claude |
 | [`keep-awake-linux`](plugins/keep-awake-linux/README.md) | Prevents Linux system sleep while Claude Code is actively working — releases automatically when idle or on session exit |
 | [`project-docs`](plugins/project-docs/README.md) | Project documentation lifecycle: create, update, improve, and review project docs |
+| [`project-ops`](plugins/project-ops/README.md) | Operational skills for a project: run the full test suite, cut a release, and analyze monitoring data — driven by installed topic skills and the canonical docs taxonomy |
 | [`project-explore`](plugins/project-explore/README.md) | Beads-driven assisted exploratory testing — researches a project, then plays around with the product one action at a time, filing findings as tasks |
 
 ## Installation

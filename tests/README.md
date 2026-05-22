@@ -16,6 +16,8 @@ tests/
 
 Each plugin has its own `tests/<plugin-name>/script-tests/` subdir. `script-tests/` is for testing committed scripts in the plugin (e.g., bash helpers, python utilities). Empty subdirs are fine for plugins that don't have script-level tests yet.
 
+`tests/marketplace/` is the exception: it is not a plugin but holds repo-level tests (e.g., for `scripts/check-internal-consistency.py`, the marketplace-manifest validator). It follows the same `script-tests/` layout as the per-plugin directories.
+
 ## Running
 
 ```bash
