@@ -131,7 +131,7 @@ Slice files are sanitized: credentials and long hex strings are redacted, tool o
 
 ### Fixture tests
 
-A synthetic fixture and expected output live under [`scripts/fixtures/`](../scripts/fixtures/). Run the fixture check with:
+A synthetic fixture and expected output live under `scripts/fixtures/`. Run the fixture check with:
 
 ```bash
 python3 scripts/analyze-sessions.py \
