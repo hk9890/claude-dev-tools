@@ -12,24 +12,19 @@ read-back.
 
 ---
 
-## When to use feedback mode
+## Scope of feedback mode
 
-**Use feedback mode when:**
+The user invoked feedback mode explicitly — render the content for markup.
+Feedback mode shows the user a piece of content — a document, draft, or any
+substantial prose — and lets them attach inline comments to specific parts of it,
+then iterate via an Apply loop.
 
-1. The user wants to review or edit a document, draft, or any substantial prose
-   and leave feedback tied to specific parts of it.
-2. The user explicitly asks to "comment on", "mark up", "annotate", or "review"
-   content rendered as HTML.
-3. You are about to present a non-trivial piece of content the user will want to
-   revise, and located feedback would be clearer than a chat back-and-forth.
+Fall back to plain chat in only two cases:
 
-**Do NOT use feedback mode when:**
-
-- You need structured answers to specific questions → use ask mode instead.
-- The content is short enough that in-chat feedback is faster.
-- Node.js is not available (see pre-flight in `references/serve.md`).
-
-**When unsure, bias toward asking in chat instead.**
+- **Node.js is unavailable** — see pre-flight in `references/serve.md`.
+- **The intent does not fit** — e.g. the user needs structured answers to
+  specific questions (that is ask mode). Say so briefly and handle it the right
+  way.
 
 **Rule of thumb**: ask mode asks the user questions; feedback mode shows the user
 content to react to.
@@ -116,16 +111,11 @@ for the full vocabulary (block rules, required IDs, the `fb-generation` meta).
 
 ### 2d. Use HTML to render the content well
 
-This is a browser document — render the content the way it is meant to be read.
-If the source is markdown, convert it faithfully to HTML (real headings, lists,
-tables, code blocks — not paragraphs of raw markdown). Beyond that:
-
-- **Tables** for tabular data instead of flattening it into prose.
-- **Code blocks** (`<pre><code>`) with the code shown as code.
-- **Colour and badges** — inline `<span>`s with background colour — to mark
-  status, draft notes, or "needs work" sections at a glance.
-- **Inline SVG or styled `<div>`s** for a small diagram when the content
-  describes something spatial.
+Follow the **Authoring guidelines — all modes** in the `html-visualize` `SKILL.md`
+(already loaded). Feedback-specific: the user is reviewing the *rendered* content,
+so it must look the way it is meant to be read. If the source is markdown,
+convert it faithfully to HTML — real headings, lists, tables, and code blocks,
+never paragraphs of raw markdown.
 
 Author extra styling inline or in a `<style>` block in `<head>` — never edit the
 shared `/assets/feedback/style.css`.

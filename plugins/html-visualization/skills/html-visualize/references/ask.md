@@ -11,27 +11,21 @@ handling.
 
 ---
 
-## When to use ask mode
+## Scope of ask mode
 
-**Use ask mode when ANY of the following is true:**
+The user invoked ask mode explicitly — build the form. Ask mode fits a batch of
+open questions or approve/reject decisions the user answers in one pass, with a
+blocking submit round-trip.
 
-1. Claude has 3 or more separately-numbered open questions it needs answered
-   before proceeding.
-2. The response would contain 3 or more approve/reject decision points (e.g.,
-   "should I use X?", "do you want option A or B?").
-3. The user explicitly asks for an HTML feedback form.
+Fall back to plain chat in only two cases:
 
-**Do NOT use ask mode when:**
+- **Node.js is unavailable** — see pre-flight in `references/serve.md`.
+- **The intent does not fit a form** — e.g. it is a single yes/no question, or it
+  asks you to annotate existing content (that is feedback mode). Say so briefly,
+  then handle it the right way instead of building a form nobody needs.
 
-- There are 2 or fewer questions — ask them in chat.
-- A single yes/no or short answer is sufficient.
-- The user wants fast in-chat iteration.
-- The questions are purely rhetorical or are already answered by context.
-- The intent is to annotate or comment on a piece of existing content — use
-  feedback mode for that.
-- Node.js is not available (see pre-flight in `references/serve.md`).
-
-**When unsure, bias toward NOT triggering — ask in chat instead.**
+A couple of questions are still fine on a form the user asked for — do not refuse
+on question count alone.
 
 ---
 
@@ -105,19 +99,16 @@ values).
 
 ### 2c. Use HTML to make the content clear
 
-This is a browser document — use HTML's visual power wherever it makes questions
-or context easier to judge. Plain `<p>` prose is the floor, not the ceiling:
+Follow the **Authoring guidelines — all modes** in the `html-visualize` `SKILL.md`
+(already loaded). Ask-specific: every visual exists to help the user *judge a
+question faster*, so reach for —
 
-- **Tables** for comparing options, costs, or tradeoffs across questions.
-- **Colour and badges** — inline `<span>`s with background colour to flag risk,
-  status, or "recommended".
-- **Code blocks** (`<pre><code>`) for snippets, file paths, or diffs.
-- **Inline SVG or styled `<div>`s** for a small diagram when a picture decides
-  the question faster than a sentence.
+- **Tables** to compare options, costs, or tradeoffs side by side.
+- **Code blocks** (`<pre><code>`) for snippets, file paths, or diffs under review.
+- **Inline SVG** when a picture decides a question faster than a sentence.
 
-Keep it purposeful: every visual element must help the user answer. Do not
-decorate. Author extra styling inline or in a `<style>` block in `<head>` — never
-edit the shared `/assets/ask/style.css`.
+Author extra styling inline or in a `<style>` block in `<head>` — never edit the
+shared `/assets/ask/style.css`.
 
 ### 2d. Compute and record the feedback file path
 

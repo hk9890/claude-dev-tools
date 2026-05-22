@@ -12,6 +12,9 @@
 #   - POST /submit with a non-object JSON body returns 400
 #   - POST /submit after already submitted returns 410
 #   - Timeout with no submit exits non-zero
+#   - --no-wait: URL printed but no Feedback file line
+#   - --no-wait: POST /submit returns 405
+#   - --no-wait --timeout-sec N: server exits 0 on timeout
 set -uo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
@@ -634,6 +637,79 @@ test_correct_origin_allowed() {
   ok "correct origin: POST /submit with correct Origin returns 200"
 }
 
+# 15. --no-wait: startup prints URL but NOT a "Feedback file:" line
+test_no_wait_no_feedback_line() {
+  local tmp_html
+  tmp_html=$(mktemp --suffix=.html)
+  make_html "$tmp_html"
+
+  start_server "$tmp_html" --no-wait
+
+  local log_content
+  log_content=$(cat "$SERVER_LOG")
+
+  kill_server
+  rm -f "$tmp_html"
+
+  if ! printf '%s' "$log_content" | grep -q 'URL: http://127.0.0.1:'; then
+    fail "no-wait startup: URL not printed to stdout"
+    return
+  fi
+  ok "no-wait startup: URL printed to stdout"
+
+  if printf '%s' "$log_content" | grep -q 'Feedback file:'; then
+    fail "no-wait startup: Feedback file line should NOT be printed in --no-wait mode"
+    return
+  fi
+  ok "no-wait startup: Feedback file line not printed in --no-wait mode"
+}
+
+# 16. --no-wait: POST /submit returns 405 (405 fires before CSRF check)
+test_no_wait_submit_405() {
+  local tmp_html
+  tmp_html=$(mktemp --suffix=.html)
+  make_html "$tmp_html"
+
+  start_server "$tmp_html" --no-wait
+
+  local status
+  status=$(curl -s -o /dev/null -w '%{http_code}' \
+    -X POST \
+    -H "Content-Type: application/json" \
+    -d "$(valid_payload)" \
+    "$BASE_URL/submit")
+
+  kill_server
+  rm -f "$tmp_html"
+
+  if [[ "$status" != "405" ]]; then
+    fail "no-wait submit: expected 405, got $status"
+    return
+  fi
+  ok "no-wait submit: POST /submit returns 405"
+}
+
+# 17. --no-wait --timeout-sec 1: server exits with code 0 on timeout
+test_no_wait_timeout_exits_zero() {
+  local tmp_html
+  tmp_html=$(mktemp --suffix=.html)
+  make_html "$tmp_html"
+
+  start_server "$tmp_html" --no-wait --timeout-sec 1
+
+  local exit_code=0
+  wait "$SERVER_PID" 2>/dev/null || exit_code=$?
+  SERVER_PID=""
+
+  rm -f "$tmp_html"
+
+  if [[ "$exit_code" -ne 0 ]]; then
+    fail "no-wait timeout: expected exit 0, got $exit_code"
+    return
+  fi
+  ok "no-wait timeout: server exits 0 after timeout (exit $exit_code)"
+}
+
 # ── Run all tests ─────────────────────────────────────────────────────────────
 
 SERVER_PID=""
@@ -653,6 +729,9 @@ test_timeout_exits_nonzero
 test_wrong_origin_403
 test_sec_fetch_cross_site_403
 test_correct_origin_allowed
+test_no_wait_no_feedback_line
+test_no_wait_submit_405
+test_no_wait_timeout_exits_zero
 
 printf '\n'
 printf 'Results: %d passed, %d failed\n' "$PASS" "$FAIL"

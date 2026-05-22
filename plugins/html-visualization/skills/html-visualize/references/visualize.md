@@ -11,27 +11,20 @@ This file covers visualize-specific content authoring and rendering guidance.
 
 ---
 
-## When to use visualize mode
+## Scope of visualize mode
 
-**Use visualize mode when:**
+The user invoked visualize mode explicitly — build the visualization. Visualize
+mode produces a display-only page — a dependency graph, metric dashboard,
+timeline, comparison chart, data table, architecture diagram, or any rich visual
+the user opens in a browser. It is served non-blocking; there is no submit
+round-trip.
 
-1. The intent is to *show* something — a dependency graph, metric dashboard,
-   timeline, comparison chart, data table, architecture diagram, or any visual
-   that is better experienced in a browser than read in chat.
-2. The user says things like "show me", "visualize", "render as a chart",
-   "draw a diagram", "display this as HTML".
-3. The output is purely informational — there are no questions to answer and no
-   prose to annotate or revise.
+Fall back to plain chat in only two cases:
 
-**Do NOT use visualize mode when:**
-
-- The user needs to answer questions or make decisions → use ask mode instead.
-- The user wants to annotate or iterate on a piece of prose → use feedback mode instead.
-- The content is short enough that in-chat text is equally clear.
-- Node.js is not available (see pre-flight in `references/serve.md`).
-
-**When unsure, bias toward chat — or use the intent classification rules in
-`SKILL.md` to decide.**
+- **Node.js is unavailable** — see pre-flight in `references/serve.md`.
+- **The intent does not fit** — e.g. the user needs to answer questions (ask
+  mode) or annotate prose (feedback mode). Say so briefly and handle it the right
+  way.
 
 ---
 
@@ -155,31 +148,24 @@ headers, and `scope="row"` for row headers. Stripe rows with CSS
 
 ## Visual quality rules
 
-These rules apply regardless of which rendering form you choose.
+Follow the **Authoring guidelines — all modes** in the `html-visualize` `SKILL.md`
+(already loaded) — stand-alone page, scannable, purposeful visuals, legible in
+light and dark. Visualize mode adds three specifics, whatever rendering form you
+chose:
 
-**Self-contained.** Every resource the page needs must be either inline (SVG,
-CSS, JS) or fetched from a CDN. Do NOT reference `/assets/…` server paths or
-any path that only exists on the local filesystem.
+**Self-contained.** Every resource must be inline (SVG, CSS, JS) or fetched from
+a CDN. Do NOT reference `/assets/…` server paths or any path that exists only on
+the local filesystem — the page must render correctly even when saved and opened
+as a `file://` URL.
 
-**Legible in light and dark mode.** The template's `<style>` block includes
-`prefers-color-scheme: dark` overrides for the background, text, and surface
-colours. When you add chart colours or diagram fills, use the CSS custom
-properties (`--vis-bg`, `--vis-text`, `--vis-card`, `--vis-accent`,
-`--vis-muted`) so the page adapts automatically. For SVG fills and strokes, prefer
-`currentColor` or `var(--vis-accent)`.
+**Theme-aware colours.** When you add chart colours or diagram fills, use the
+template's CSS custom properties (`--vis-bg`, `--vis-text`, `--vis-card`,
+`--vis-accent`, `--vis-muted`) so the page follows the light/dark theme. For SVG
+fills and strokes, prefer `currentColor` or `var(--vis-accent)`.
 
-**Responsive.** Use `max-width: 900px; margin: 0 auto` on the content container
-(already in the template). For SVGs, set `width="100%"` plus a `viewBox`. For
-tables, wrap in `<div style="overflow-x: auto">`. The user may open the page on
-any screen.
-
-**Purposeful.** Every visual element — label, legend, colour distinction, tick
-mark — must carry information. Do not decorate. If a legend identifies four
-colours, use four colours; if there are two, use two.
-
-**Self-explanatory.** The page title, subtitle, and any axis labels or legend
-entries should let a reader understand what they are looking at without prior chat
-context.
+**Responsive visuals.** Keep `max-width: 900px; margin: 0 auto` on the content
+container (already in the template). For SVGs, set `width="100%"` plus a
+`viewBox`. Wrap wide tables in `<div style="overflow-x: auto">`.
 
 ---
 

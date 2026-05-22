@@ -19,30 +19,48 @@
   -->
 
   <style>
-    /* ── Colour tokens ──────────────────────────────────────────────────── */
+    /* ── Theme: "Editorial" ─────────────────────────────────────────────────
+      Warm paper, ink text, a single terracotta accent, a serif display face
+      paired with a refined sans body. Light + dark. This is a neutral scaffold
+      — keep the tokens, retheme the accent if the content calls for it, but do
+      not let the chrome shout over the visualization itself.
+    */
     :root {
-      --vis-bg:      #ffffff;
-      --vis-text:    #1a1a1a;
-      --vis-card:    #f5f5f5;
-      --vis-border:  #d1d5db;
-      --vis-accent:  #2563eb;
-      --vis-muted:   #6b7280;
-      --vis-success: #16a34a;
-      --vis-warning: #d97706;
-      --vis-danger:  #dc2626;
+      color-scheme: light dark;
+
+      --vis-bg:      #f4efe3;
+      --vis-text:    #2a251d;
+      --vis-card:    #fffdf7;
+      --vis-inset:   #faf5e9;
+      --vis-border:  #e2dac6;
+      --vis-accent:  #b1492a;
+      --vis-muted:   #6c6353;
+      --vis-success: #51762f;
+      --vis-warning: #a9781a;
+      --vis-danger:  #a33324;
+
+      --vis-shadow: 0 1px 2px rgba(42,32,14,.05), 0 7px 22px -10px rgba(42,32,14,.16);
+      --vis-radius: 11px;
+
+      --vis-font-display: "Charter", "Bitstream Charter", "Sitka Text", "Iowan Old Style", Cambria, Georgia, serif;
+      --vis-font-body: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      --vis-font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     }
 
     @media (prefers-color-scheme: dark) {
       :root {
-        --vis-bg:      #0f1117;
-        --vis-text:    #e8eaf0;
-        --vis-card:    #1e2130;
-        --vis-border:  #374151;
-        --vis-accent:  #60a5fa;
-        --vis-muted:   #9ca3af;
-        --vis-success: #4ade80;
-        --vis-warning: #fbbf24;
-        --vis-danger:  #f87171;
+        --vis-bg:      #15130e;
+        --vis-text:    #ece5d6;
+        --vis-card:    #211e16;
+        --vis-inset:   #1b1812;
+        --vis-border:  #352f23;
+        --vis-accent:  #e3895f;
+        --vis-muted:   #a89d86;
+        --vis-success: #95bd6c;
+        --vis-warning: #d8aa50;
+        --vis-danger:  #e3897a;
+
+        --vis-shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.7);
       }
     }
 
@@ -52,37 +70,82 @@
     body {
       margin: 0;
       padding: 0;
-      background: var(--vis-bg);
+      background:
+        radial-gradient(1200px 620px at 100% -8%, rgba(177,73,42,.06), transparent 62%),
+        radial-gradient(900px 520px at -5% 8%, rgba(169,120,26,.05), transparent 60%),
+        var(--vis-bg);
+      background-attachment: fixed;
       color: var(--vis-text);
-      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      font-family: var(--vis-font-body);
       font-size: 16px;
       line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    ::selection { background: rgba(177,73,42,.18); }
+
+    /* ── Motion: a quiet staggered entrance ─────────────────────────────── */
+    @keyframes vis-rise {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: none; }
+    }
+
+    .page-header { animation: vis-rise 0.5s ease both; }
+    .vis-content > * { animation: vis-rise 0.5s ease both; }
+    .vis-content > *:nth-child(1) { animation-delay: 0.08s; }
+    .vis-content > *:nth-child(2) { animation-delay: 0.16s; }
+    .vis-content > *:nth-child(3) { animation-delay: 0.24s; }
+    .vis-content > *:nth-child(n+4) { animation-delay: 0.32s; }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-delay: 0ms !important;
+        transition-duration: 0.001ms !important;
+      }
     }
 
     /* ── Page layout ────────────────────────────────────────────────────── */
     .page-chrome {
       max-width: 900px;
       margin: 0 auto;
-      padding: 2rem 1.5rem 4rem;
+      padding: 2.5rem 1.5rem 4rem;
     }
 
     /* ── Header ─────────────────────────────────────────────────────────── */
     .page-header {
+      position: relative;
       margin-bottom: 2rem;
       padding-bottom: 1.25rem;
       border-bottom: 1px solid var(--vis-border);
     }
 
+    .page-header::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      bottom: -1px;
+      width: 58px;
+      height: 3px;
+      background: var(--vis-accent);
+      border-radius: 2px;
+    }
+
     .page-header h1 {
-      margin: 0 0 0.4rem;
-      font-size: 1.6rem;
-      font-weight: 700;
-      line-height: 1.3;
+      margin: 0 0 0.45rem;
+      font-family: var(--vis-font-display);
+      font-size: 2.1rem;
+      font-weight: 600;
+      line-height: 1.14;
+      letter-spacing: -0.018em;
     }
 
     .page-header .subtitle {
       margin: 0;
-      font-size: 0.95rem;
+      font-family: var(--vis-font-display);
+      font-style: italic;
+      font-size: 1.08rem;
       color: var(--vis-muted);
     }
 
@@ -95,20 +158,29 @@
     .vis-card {
       background: var(--vis-card);
       border: 1px solid var(--vis-border);
-      border-radius: 8px;
-      padding: 1.25rem 1.5rem;
+      border-radius: var(--vis-radius);
+      padding: 1.35rem 1.6rem;
       margin-bottom: 1.5rem;
+      box-shadow: var(--vis-shadow);
     }
 
     .vis-card h2 {
       margin: 0 0 0.75rem;
-      font-size: 1.05rem;
+      font-family: var(--vis-font-display);
+      font-size: 1.2rem;
       font-weight: 600;
+      letter-spacing: -0.012em;
     }
 
     /* ── Tables ─────────────────────────────────────────────────────────── */
     .vis-table-wrap {
+      background: var(--vis-card);
+      border: 1px solid var(--vis-border);
+      border-radius: var(--vis-radius);
+      box-shadow: var(--vis-shadow);
+      overflow: hidden;
       overflow-x: auto;
+      margin-bottom: 1.5rem;
     }
 
     table {
@@ -119,28 +191,41 @@
 
     caption {
       text-align: left;
+      font-family: var(--vis-font-display);
+      font-size: 1.05rem;
       font-weight: 600;
-      margin-bottom: 0.5rem;
+      padding: 0.9rem 1rem 0.3rem;
       color: var(--vis-text);
     }
 
     th, td {
       text-align: left;
-      padding: 0.55rem 0.75rem;
+      padding: 0.6rem 1rem;
       border-bottom: 1px solid var(--vis-border);
     }
 
     th {
+      font-size: 0.78rem;
       font-weight: 600;
-      background: var(--vis-card);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--vis-muted);
+      background: var(--vis-inset);
     }
 
     tbody tr:nth-child(even) td {
-      background: var(--vis-card);
+      background: var(--vis-inset);
     }
+
+    tbody tr:last-child td { border-bottom: none; }
 
     /* ── Inline SVG container ───────────────────────────────────────────── */
     .vis-svg-wrap {
+      background: var(--vis-card);
+      border: 1px solid var(--vis-border);
+      border-radius: var(--vis-radius);
+      box-shadow: var(--vis-shadow);
+      padding: 1.35rem 1.6rem;
       margin-bottom: 1.5rem;
     }
 
@@ -157,6 +242,13 @@
       color: var(--vis-muted);
       border-top: 1px solid var(--vis-border);
       padding-top: 0.75rem;
+    }
+
+    /* ── Narrow screens ─────────────────────────────────────────────────── */
+    @media (max-width: 480px) {
+      .page-chrome { padding: 1.75rem 1rem 3rem; }
+      .page-header h1 { font-size: 1.7rem; }
+      .vis-card, .vis-svg-wrap { padding: 1rem 1.1rem; }
     }
   </style>
 </head>

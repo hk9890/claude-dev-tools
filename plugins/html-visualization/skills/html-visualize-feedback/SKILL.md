@@ -1,15 +1,19 @@
 ---
 name: html-visualize-feedback
 description: "Render existing content as a browser HTML page the user marks up with inline comments — feedback mode of the html-visualize workflow."
+argument-hint: "[content-to-review]"
 user-invocable: true
 disable-model-invocation: true
 ---
 
 ## Workflow
 
-The user's command argument (`ARGUMENTS`) identifies the content to render for
-review — a document, draft, article, plan write-up, or any prose. It is the
-content to render; do not ask the user to restate it.
+What to render for review — a document, draft, article, plan write-up, or any
+prose, given as the text itself or a path to it:
+
+$ARGUMENTS
+
+Work from that directly; do not ask the user to restate it.
 
 1. Load `html-visualization:html-visualize` for the mode routing table and the
    shared serve procedure.
