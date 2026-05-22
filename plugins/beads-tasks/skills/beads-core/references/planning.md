@@ -8,7 +8,7 @@ Guide for creating epics, tasks, acceptance-review tasks, and beads execution pl
 2. Context sufficiency is already confirmed before arriving here (done by planning-intake.md).
 3. Choose epic+tasks or standalone tasks. Use an **epic** when any of these are true: (a) the work needs an acceptance-review gate, (b) it splits into 2+ implementation tasks that could run independently, or (c) it involves multiple agent types (e.g. tasker + reviewer + verifier). Otherwise use a **standalone task**.
 4. Create the epic and tasks — follow issue structure rules in this file and beads-issue-workflow.md.
-5. Set dependencies with `bd dep add`.
+5. Set dependencies with `bd dep add`. Block edges must connect same-type issues only — epic↔epic, task↔task; linking across types fails. To order a task against an epic, depend on a task inside that epic instead.
 6. Present the plan to the user — brief summary of what will be built and in what order.
 
 ## Beads issue types

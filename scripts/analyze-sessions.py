@@ -46,6 +46,36 @@ from collections import defaultdict
 
 RENAME_ALIASES = {
     "complexity-review": "project-review",
+    "html-ask": "html-visualization",
+}
+
+# Skill-level rename aliases.  Keys are the raw attribution_skill strings that
+# appear in older transcripts; values are the current canonical skill name.
+# Applied before per-skill aggregation so renamed skills merge into a single row.
+SKILL_RENAME_ALIASES = {
+    # html-ask plugin era (plugin was later renamed to html-visualization)
+    "html-ask:html-ask": "html-visualization:html-visualize",
+    # intermediate names inside html-visualization before the unified skill
+    "html-visualization:html-ask": "html-visualization:html-visualize",
+    "html-visualization:html-feedback": "html-visualization:html-visualize",
+    "html-visualization:visualize-html": "html-visualization:html-visualize",
+    # project-docs skills (prefixed in a bulk rename)
+    "project-docs:coder-docs": "project-docs:project-docs",
+    "project-docs:create-docs": "project-docs:project-create-docs",
+    "project-docs:improve-doc": "project-docs:project-improve-docs",
+    "project-docs:project-improve-doc": "project-docs:project-improve-docs",
+    "project-docs:init-or-update-docs": "project-docs:project-init-or-update-docs",
+    "project-docs:review-docs": "project-docs:project-review-docs",
+    "project-docs:revise-docs": "project-docs:project-revise-docs",
+    # project-ops skills (prefixed in a bulk rename)
+    "project-ops:analyze-monitoring-data": "project-ops:project-analyze-monitoring-data",
+    "project-ops:executes-tests": "project-ops:project-run-tests",
+    "project-ops:project-executes-tests": "project-ops:project-run-tests",
+    "project-ops:trigger-release": "project-ops:project-trigger-release",
+    # beads-tasks skills
+    "beads-tasks:coder-beads": "beads-tasks:beads-core",
+    # complexity-review plugin era (plugin was later renamed to project-review)
+    "complexity-review:complexity-review": "project-review:complexity-review",
 }
 
 # Weight map for friction scoring
@@ -601,7 +631,7 @@ def write_summary(episodes, canonical_names, alias_to_canonical, output_dir,
     })
 
     for ep in episodes:
-        key = ep.attribution_skill
+        key = SKILL_RENAME_ALIASES.get(ep.attribution_skill, ep.attribution_skill)
         stats = skill_stats[key]
         stats["count"] += 1
         stats["total_turns"] += ep.turn_count

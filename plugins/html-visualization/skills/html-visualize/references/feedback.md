@@ -181,6 +181,9 @@ Interpret the comment fields:
 | `comments` | Each is one located piece of feedback. `blockId` + `blockText` tell you which passage; `quote` (when non-empty) narrows it to the exact phrase; `text` is what they want changed. |
 | `freeform` | Feedback not tied to a block — overall direction, tone, what is missing, or new ideas to add. May be empty. During brainstorming, `freeform` and "what is missing" comments are the primary way the user adds new ideas; an Apply round may therefore introduce new options, not only edit existing ones. |
 
+If the content came from a file, `Read` that file first — `Edit`/`Write` requires
+a prior `Read` of the file in the same session.
+
 **Apply every comment to the underlying source** of the content. If the content
 originated from a file (e.g. a markdown document), apply to that file. If the
 plan or ideas exist only in the conversation (no backing file), the conversation
@@ -194,7 +197,8 @@ Then branch on `action`:
 
 ### `action: "apply"` — iterate
 
-1. Apply the feedback to the underlying source.
+1. If the content came from a file, `Read` that file first, then apply the
+   feedback to the underlying source.
 2. Regenerate `$HTML_DIR/review.html` from the updated content with a **fresh
    `fb-generation` value** — see `references/serve.md` Cycle C for the contract.
 3. Re-serve on the same port — see `references/serve.md` Cycle C (Apply rounds).
@@ -204,7 +208,8 @@ Then branch on `action`:
 
 ### `action: "submit"` — finish
 
-1. Apply the feedback to the underlying source.
+1. If the content came from a file, `Read` that file first, then apply the
+   feedback to the underlying source.
 2. Summarise what changed for the user.
 3. Proceed to Step 5 — do **not** re-serve.
 

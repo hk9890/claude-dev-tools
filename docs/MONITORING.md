@@ -60,17 +60,48 @@ An **episode** is a contiguous run of assistant messages that share the same `at
 2. User messages, `tool_result` blocks, and `system` events that fall between attributed assistant turns are assigned to the **currently-open episode by position** — they do not delimit or close an episode.
 3. When `attributionSkill` changes (or an unattributed assistant message appears), the open episode closes and a new one opens if the incoming skill resolves to a known marketplace plugin.
 
-### Rename-alias map
+### Rename-alias maps
 
 Plugin renames are handled via `RENAME_ALIASES` in the script. The current map:
 
 ```python
 RENAME_ALIASES = {
     "complexity-review": "project-review",
+    "html-ask": "html-visualization",
 }
 ```
 
-Both the old name and the new name resolve to the canonical current plugin directory name — here, `complexity-review` is the former name of the `project-review` plugin. This keeps historical transcript data from falling into the unmatched bucket after a plugin is renamed.
+Both the old name and the new name resolve to the canonical current plugin directory name. This keeps historical transcript data from falling into the unmatched bucket after a plugin is renamed.
+
+Skill-level renames (where a skill was renamed within a plugin, or a skill's plugin prefix changed) are handled via `SKILL_RENAME_ALIASES`. This map is applied before the per-skill summary aggregation so renamed skills merge into a single row rather than fragmenting. The current map:
+
+```python
+SKILL_RENAME_ALIASES = {
+    # html-ask plugin era
+    "html-ask:html-ask": "html-visualization:html-visualize",
+    # intermediate names inside html-visualization before the unified skill
+    "html-visualization:html-ask": "html-visualization:html-visualize",
+    "html-visualization:html-feedback": "html-visualization:html-visualize",
+    "html-visualization:visualize-html": "html-visualization:html-visualize",
+    # project-docs skills (prefixed in a bulk rename)
+    "project-docs:coder-docs": "project-docs:project-docs",
+    "project-docs:create-docs": "project-docs:project-create-docs",
+    "project-docs:improve-doc": "project-docs:project-improve-docs",
+    "project-docs:project-improve-doc": "project-docs:project-improve-docs",
+    "project-docs:init-or-update-docs": "project-docs:project-init-or-update-docs",
+    "project-docs:review-docs": "project-docs:project-review-docs",
+    "project-docs:revise-docs": "project-docs:project-revise-docs",
+    # project-ops skills (prefixed in a bulk rename)
+    "project-ops:analyze-monitoring-data": "project-ops:project-analyze-monitoring-data",
+    "project-ops:executes-tests": "project-ops:project-run-tests",
+    "project-ops:project-executes-tests": "project-ops:project-run-tests",
+    "project-ops:trigger-release": "project-ops:project-trigger-release",
+    # beads-tasks skills
+    "beads-tasks:coder-beads": "beads-tasks:beads-core",
+    # complexity-review plugin era
+    "complexity-review:complexity-review": "project-review:complexity-review",
+}
+```
 
 ### Friction-score formula
 
