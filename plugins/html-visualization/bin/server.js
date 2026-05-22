@@ -12,8 +12,16 @@
  * writes feedback JSON and exits 0 on first successful submit.
  *
  * With --no-wait: serves the page and returns immediately (prints only the URL
- * line, no Feedback file line). POST /submit is not accepted (405). The server
- * self-terminates on timeout (default 1800s) with exit 0.
+ * line, no Feedback file line). POST /submit is still accepted for a one-shot
+ * submit/close round-trip:
+ *   - Non-empty freeform field: writes feedback file, exits 0 (harness re-invokes
+ *     Claude which reads the file).
+ *   - Empty/missing freeform, or any plain close: exits 0 silently, no file
+ *     written (Claude is not re-invoked — normal expected outcome).
+ * Timeout (default 1800s) exits 0 silently — same as an empty close.
+ *
+ * "Non-empty freeform" means payload.freeform is a string with length > 0.
+ * Trimming is the UI's responsibility; the server checks the raw value.
  *
  * The server is schema-agnostic: it accepts any JSON object as the POST /submit
  * body and writes it back verbatim (plus a server-stamped submittedAt). Each
@@ -233,13 +241,8 @@ async function handleRequest(req, res) {
     return;
   }
 
-  // POST /submit — accept feedback (not available in --no-wait mode)
+  // POST /submit — accept feedback (one-shot in both blocking and --no-wait mode)
   if (req.method === 'POST' && pathname === '/submit') {
-    if (noWait) {
-      jsonResponse(res, 405, { error: 'submit not supported in display-only mode' });
-      return;
-    }
-
     // 410 if already submitted
     if (accepted) {
       jsonResponse(res, 410, { error: 'already submitted' });
@@ -303,6 +306,28 @@ async function handleRequest(req, res) {
 
     // Mark as accepted immediately to block duplicate submits
     accepted = true;
+
+    // In --no-wait mode: check for a non-empty freeform message.
+    // Non-empty means payload.freeform is a string with length > 0 (UI handles trimming).
+    // Empty/missing freeform means the user just closed the page — exit silently, no file.
+    if (noWait) {
+      const hasFreeform = typeof payload.freeform === 'string' && payload.freeform.length > 0;
+
+      if (!hasFreeform) {
+        // Silent close: user dismissed without sending a message. Exit 0, no file.
+        const okBody = JSON.stringify({ ok: true, written: false });
+        res.writeHead(200, {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(okBody),
+        });
+        res.end(okBody, () => {
+          setTimeout(() => {
+            process.exit(0);
+          }, 250);
+        });
+        return;
+      }
+    }
 
     // Build feedback object: the server stamps submittedAt; every field from
     // the request body is passed through verbatim.

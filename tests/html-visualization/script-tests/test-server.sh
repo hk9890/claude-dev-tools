@@ -13,7 +13,8 @@
 #   - POST /submit after already submitted returns 410
 #   - Timeout with no submit exits non-zero
 #   - --no-wait: URL printed but no Feedback file line
-#   - --no-wait: POST /submit returns 405
+#   - --no-wait: empty/missing freeform submit → 200, exit 0, no feedback file (silent close)
+#   - --no-wait: non-empty freeform submit → 200, exit 0, feedback file written
 #   - --no-wait --timeout-sec N: server exits 0 on timeout
 set -uo pipefail
 
@@ -664,29 +665,148 @@ test_no_wait_no_feedback_line() {
   ok "no-wait startup: Feedback file line not printed in --no-wait mode"
 }
 
-# 16. --no-wait: POST /submit returns 405 (405 fires before CSRF check)
-test_no_wait_submit_405() {
+# 16. --no-wait: empty/missing freeform submit → 200, exit 0, no feedback file written
+test_no_wait_empty_close_exits_zero_no_file() {
   local tmp_html
   tmp_html=$(mktemp --suffix=.html)
   make_html "$tmp_html"
 
   start_server "$tmp_html" --no-wait
 
+  # Get the token from the served HTML
+  local html token
+  html=$(curl -s "$BASE_URL/")
+  token=$(extract_token_from_html "$html")
+
+  if [[ -z "$token" ]]; then
+    fail "no-wait empty close: could not extract CSRF_TOKEN from GET /"
+    kill_server
+    rm -f "$tmp_html"
+    return
+  fi
+
+  # Compute expected feedback file path manually (server doesn't print it in --no-wait)
+  local html_base html_dir expected_feedback
+  html_base="$(basename "$tmp_html" .html)"
+  html_dir="$(dirname "$tmp_html")"
+  expected_feedback="$html_dir/${html_base}.feedback.json"
+
+  # POST with empty freeform (silent close)
   local status
   status=$(curl -s -o /dev/null -w '%{http_code}' \
     -X POST \
     -H "Content-Type: application/json" \
-    -d "$(valid_payload)" \
+    -H "X-CSRF-Token: $token" \
+    -d '{"freeform":""}' \
     "$BASE_URL/submit")
 
-  kill_server
+  # Wait for server to exit
+  local exit_code=0
+  wait "$SERVER_PID" 2>/dev/null || exit_code=$?
+  SERVER_PID=""
+
   rm -f "$tmp_html"
 
-  if [[ "$status" != "405" ]]; then
-    fail "no-wait submit: expected 405, got $status"
+  if [[ "$status" != "200" ]]; then
+    fail "no-wait empty close: expected 200, got $status"
     return
   fi
-  ok "no-wait submit: POST /submit returns 405"
+  ok "no-wait empty close: POST /submit returns 200"
+
+  if [[ "$exit_code" -ne 0 ]]; then
+    fail "no-wait empty close: expected exit 0, got $exit_code"
+    return
+  fi
+  ok "no-wait empty close: server exits 0"
+
+  if [[ -f "$expected_feedback" ]]; then
+    fail "no-wait empty close: feedback file should NOT be written, but found $expected_feedback"
+    rm -f "$expected_feedback"
+    return
+  fi
+  ok "no-wait empty close: no feedback file written"
+}
+
+# 16b. --no-wait: non-empty freeform submit → 200, exit 0, feedback file written
+test_no_wait_nonempty_submit_writes_feedback() {
+  local tmp_html
+  tmp_html=$(mktemp --suffix=.html)
+  make_html "$tmp_html"
+
+  start_server "$tmp_html" --no-wait
+
+  # Get the token from the served HTML
+  local html token
+  html=$(curl -s "$BASE_URL/")
+  token=$(extract_token_from_html "$html")
+
+  if [[ -z "$token" ]]; then
+    fail "no-wait non-empty submit: could not extract CSRF_TOKEN from GET /"
+    kill_server
+    rm -f "$tmp_html"
+    return
+  fi
+
+  # Compute expected feedback file path manually (server doesn't print it in --no-wait)
+  local html_base html_dir expected_feedback
+  html_base="$(basename "$tmp_html" .html)"
+  html_dir="$(dirname "$tmp_html")"
+  expected_feedback="$html_dir/${html_base}.feedback.json"
+
+  # POST with non-empty freeform
+  local status
+  status=$(curl -s -o /dev/null -w '%{http_code}' \
+    -X POST \
+    -H "Content-Type: application/json" \
+    -H "X-CSRF-Token: $token" \
+    -d '{"freeform":"Great visualization, please add a legend."}' \
+    "$BASE_URL/submit")
+
+  # Wait for server to exit
+  local exit_code=0
+  wait "$SERVER_PID" 2>/dev/null || exit_code=$?
+  SERVER_PID=""
+
+  rm -f "$tmp_html"
+
+  if [[ "$status" != "200" ]]; then
+    fail "no-wait non-empty submit: expected 200, got $status"
+    rm -f "$expected_feedback" 2>/dev/null
+    return
+  fi
+  ok "no-wait non-empty submit: POST /submit returns 200"
+
+  if [[ "$exit_code" -ne 0 ]]; then
+    fail "no-wait non-empty submit: expected exit 0, got $exit_code"
+    rm -f "$expected_feedback" 2>/dev/null
+    return
+  fi
+  ok "no-wait non-empty submit: server exits 0"
+
+  if [[ ! -f "$expected_feedback" ]]; then
+    fail "no-wait non-empty submit: feedback file not written at $expected_feedback"
+    return
+  fi
+  ok "no-wait non-empty submit: feedback file written"
+
+  # Verify feedback file content
+  local freeform submitted_at
+  freeform=$(python3 -c "import json; print(json.load(open('$expected_feedback'))['freeform'])" 2>&1)
+  submitted_at=$(python3 -c "import json; print(json.load(open('$expected_feedback')).get('submittedAt','MISSING'))" 2>&1)
+
+  rm -f "$expected_feedback"
+
+  if [[ "$freeform" != "Great visualization, please add a legend." ]]; then
+    fail "no-wait non-empty submit: feedback freeform expected message, got '$freeform'"
+    return
+  fi
+  ok "no-wait non-empty submit: freeform value verbatim in feedback file"
+
+  if [[ "$submitted_at" == "MISSING" ]]; then
+    fail "no-wait non-empty submit: submittedAt missing from feedback file"
+    return
+  fi
+  ok "no-wait non-empty submit: submittedAt present in feedback file"
 }
 
 # 17. --no-wait --timeout-sec 1: server exits with code 0 on timeout
@@ -730,7 +850,8 @@ test_wrong_origin_403
 test_sec_fetch_cross_site_403
 test_correct_origin_allowed
 test_no_wait_no_feedback_line
-test_no_wait_submit_405
+test_no_wait_empty_close_exits_zero_no_file
+test_no_wait_nonempty_submit_writes_feedback
 test_no_wait_timeout_exits_zero
 
 printf '\n'
