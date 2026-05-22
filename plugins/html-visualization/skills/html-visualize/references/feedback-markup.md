@@ -104,8 +104,13 @@ that can have a `<div>` sibling (direct children of `#content` always qualify).
 
 - The user selects any run of text inside a block; a floating 💬 button appears
   at the selection. To comment on a whole block, the user selects all its text.
-- The comment's anchor is the block's `data-block-id` — never a character offset.
-- The exact selected text is captured verbatim as `quote`.
+- The comment's primary anchor is the block's `data-block-id`. For word-level
+  selections, the comment also records `quoteStart` — the character offset of the
+  selected phrase within the block's normalized plain text — enabling read-back to
+  locate the exact phrase even when the same text appears multiple times in a block.
+- The exact selected text is captured verbatim as `quote`. When a word-level
+  selection is saved, `app.js` wraps it with `<mark class="fb-highlight">` inline
+  (best-effort: silently skipped for multi-element selections).
 - If a selection spans more than one block, the comment anchors to the block
   where the selection started; `quote` is still the literal selected text.
 - Each comment also carries `blockText` (the block's plain text) so Claude's

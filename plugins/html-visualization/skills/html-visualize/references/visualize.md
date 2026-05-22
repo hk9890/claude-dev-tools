@@ -68,10 +68,13 @@ HTML_DIR="$TMPDIR_BASE/html-visualize-$(date +%s)-$$"
 mkdir -p "$HTML_DIR"
 ```
 
-### 2b. Copy the template
+### 2b. Author the destination from the template
 
-Copy `${CLAUDE_PLUGIN_ROOT}/skills/html-visualize/references/visualize-template.html`
-into `$HTML_DIR/visualization.html`.
+Read `${CLAUDE_PLUGIN_ROOT}/skills/html-visualize/references/visualize-template.html`
+with the Read tool, then author `$HTML_DIR/visualization.html` with the Write tool
+using the template as your starting structure. Do NOT `cp` the template then
+`Edit` the copy — the harness rejects it as "File has not been read yet". If
+you do `cp`, you MUST Read the copied file before any Edit.
 
 The template has a content area, an inline `<style>` block with light/dark colour
 tokens, and one structural placeholder section. Remove all placeholder comments

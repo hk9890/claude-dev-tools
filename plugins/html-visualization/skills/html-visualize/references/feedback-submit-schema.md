@@ -23,7 +23,13 @@ JSON-object body, and the one-shot lifecycle.
 {
   "action": "apply" | "submit",
   "comments": [
-    { "blockId": "<string>", "blockText": "<string>", "quote": "<string>", "text": "<string>" }
+    {
+      "blockId": "<string>",
+      "blockText": "<string>",
+      "quote": "<string>",
+      "quoteStart": <integer>,
+      "text": "<string>"
+    }
   ],
   "freeform": "<string>"
 }
@@ -41,13 +47,14 @@ JSON-object body, and the one-shot lifecycle.
 
 ### `comments` — block-anchored notes
 
-Each element of `comments` has exactly four fields:
+Each element of `comments` has exactly five fields:
 
 | Field | Type | Description |
 |---|---|---|
 | `blockId` | string | The `data-block-id` of the block the comment is anchored to. |
 | `blockText` | string | The block's plain text, captured before any UI controls were injected. Lets read-back be self-contained without re-parsing the HTML. MAY be truncated for very long blocks. |
 | `quote` | string | The exact text the user selected inside the block. `""` when the user selected nothing — the comment then applies to the whole block. |
+| `quoteStart` | integer | Character offset of `quote` within the normalized `blockText` string. `-1` when `quote` is `""` (block-level comment), or when the offset could not be determined. When `quoteStart >= 0`, `blockText.substring(quoteStart, quoteStart + quote.length)` SHOULD equal `quote` — use this to locate the exact phrase for word-level comments, and to disambiguate when the same phrase appears multiple times in the block. |
 | `text` | string | The user's comment. Never empty — `app.js` drops comments with empty text before sending. |
 
 Multiple comments MAY share the same `blockId` (the user commented on different
@@ -138,7 +145,13 @@ timestamp:
   "submittedAt": "<ISO-8601 timestamp>",
   "action": "apply" | "submit",
   "comments": [
-    { "blockId": "<string>", "blockText": "<string>", "quote": "<string>", "text": "<string>" }
+    {
+      "blockId": "<string>",
+      "blockText": "<string>",
+      "quote": "<string>",
+      "quoteStart": <integer>,
+      "text": "<string>"
+    }
   ],
   "freeform": "<string>"
 }

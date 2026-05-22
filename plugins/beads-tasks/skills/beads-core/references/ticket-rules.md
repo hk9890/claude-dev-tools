@@ -8,6 +8,7 @@ Keep proposed comments short and decision-oriented:
 - Capture status, outcome or finding, artifact path(s), and next step
 - One finding or decision per comment
 - If a finding requires substantial new analysis or separate follow-up work, return a dedicated bug/task draft instead of a long comment
+- Comments accept `-f <file>` (and `bd comment ... --stdin` via the shorthand); they have no `--body`/`--body-file` flag — those belong to `bd create`
 
 ## Bug draft required fields
 

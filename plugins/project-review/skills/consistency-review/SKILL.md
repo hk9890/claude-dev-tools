@@ -22,43 +22,45 @@ divergence, inconsistent API shapes, and drift from documented conventions.
 
 ## Interrogation procedure
 
-Work through these questions in sequence. For each one, state the recommended answer before asking for the user's justification. If the evidence is unambiguous, deliver a verdict directly — only ask when the evidence genuinely conflicts or context is missing.
+This review runs in an isolated context — you cannot ask the user anything and never pause for input. The `Ask:` lines are **investigation prompts**: answer them from the code yourself and fold the answer into the finding. Your only deliverable is the structured report — never an edit, an action on the user's behalf, or a question awaiting a reply.
+
+Work through these questions in sequence. For each one, state the recommended answer and resolve the investigation prompt from the code before moving on.
 
 1. **Competing implementations for one concern**
    Scan for two or more libraries, classes, or modules that do the same job — two HTTP clients, two config loaders, two error-handling chains, two logging setups, two auth strategies. For each competing pair:
    - Name both implementations and where each is used.
    - State the recommended answer: _which one should win, and why_ (favour the one with more usage, better test coverage, or explicit documentation).
-   - Ask: "What would it take to eliminate the minority implementation? Is there a reason it still exists?"
+   - Resolve from the code: "What would it take to eliminate the minority implementation? Is there a reason it still exists?"
 
 2. **Naming convention divergence**
    Look for inconsistent naming across the same category of thing — functions that do the same kind of work but are named differently (`getUser`, `fetch_account`, `loadProfile`); files that follow different casing or separators (`UserService.ts`, `user-service.ts`, `user_service.ts`); constants with mixed styles. For each divergence:
    - List the variants found and the files they appear in.
    - State the recommended answer: _the dominant pattern is X; the variants are deviations_.
-   - Ask: "Is there a documented convention? If not, which variant should become the standard, and what prevents normalising the others?"
+   - Resolve from the code: "Is there a documented convention? If not, which variant should become the standard, and what prevents normalising the others?"
 
 3. **Inconsistent API / function shapes across siblings**
    Find sibling functions, methods, or route handlers that do analogous things but have different signatures, different parameter orders, different return shapes, or different error contracts. For each group:
    - Show the divergent shapes side by side.
    - State the recommended answer: _the most common or most documented shape should be the template_.
-   - Ask: "Why do these siblings have different contracts? Is the difference essential or historical accident?"
+   - Resolve from the code: "Why do these siblings have different contracts? Is the difference essential or historical accident?"
 
 4. **Import and module convention drift**
    Check whether the codebase has a stated or dominant import convention: default vs. named exports, index-barrel re-exports vs. direct file imports, absolute vs. relative paths, import ordering. Find files that break the dominant pattern. For each violation:
    - Identify the file and the deviation.
    - State the recommended answer: _conform to the documented convention; if undocumented, conform to the majority_.
-   - Ask: "Is this deviation intentional? Does it introduce any coupling or confusion that the dominant pattern avoids?"
+   - Resolve from the code: "Is this deviation intentional? Does it introduce any coupling or confusion that the dominant pattern avoids?"
 
 5. **File-naming and casing drift**
    Verify that file and directory names follow one casing convention (kebab-case, PascalCase, snake_case). Note any casing inconsistencies, especially within the same directory.
    - List files that break the dominant pattern.
    - State the recommended answer: _the dominant casing is X; the deviations should be renamed_.
-   - Ask: "Is there a documented convention? Are the deviations legacy or accidental?"
+   - Resolve from the code: "Is there a documented convention? Are the deviations legacy or accidental?"
 
 6. **Documented-but-ignored standard**
    Check AGENTS.md, CODING.md, and any RULES.md files for explicit standards. Look for places where the code demonstrably ignores those standards.
    - For each violation: cite the documented rule and the code that ignores it.
    - State the recommended answer: _the documented standard takes precedence; the code is wrong, not the standard_.
-   - Ask: "Is this a deliberate exception (in which case document it) or an oversight?"
+   - Resolve from the code: "Is this a deliberate exception (in which case document it) or an oversight?"
 
 ## Output format
 
