@@ -26,3 +26,7 @@ Load [docs/TESTING.md](docs/TESTING.md) for how to run plugins locally, run stru
 ### Releasing plugins
 
 Load [docs/RELEASING.md](docs/RELEASING.md) for the version bump, quality gates, and release process.
+
+### Monitoring plugin usage
+
+Load [docs/MONITORING.md](docs/MONITORING.md) for session-analysis scripts, output schema, and how to interpret usage data.

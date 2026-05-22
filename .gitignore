@@ -25,6 +25,7 @@ __pycache__/
 
 # Local-only working files (not for the public marketplace repo)
 private/
+output/
 
 # Beads / Dolt files (added by bd init)
 .dolt/
