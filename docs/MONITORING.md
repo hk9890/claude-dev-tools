@@ -143,7 +143,7 @@ python3 scripts/fixtures/check-fixture.py \
     --summary output/session-analysis/fixture/summary.md
 ```
 
-This is also run as part of `bash tests/run-all.sh`.
+This is a manual step; it is not part of `bash tests/run-all.sh`.
 
 ## Phase 2 — Claude-in-the-loop judging
 
