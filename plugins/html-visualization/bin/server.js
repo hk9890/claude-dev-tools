@@ -2,14 +2,18 @@
 /**
  * server.js — zero-dependency one-shot feedback server for html-visualization.
  *
- * Shared by every skill in the plugin (html-ask, html-feedback, …).
+ * Shared by every mode of the visualize-html skill (ask, feedback, visualize, …).
  *
  * Usage:
- *   node server.js <html-file> [--port N] [--timeout-sec N]
+ *   node server.js <html-file> [--port N] [--timeout-sec N] [--no-wait]
  *
  * Binds 127.0.0.1 on port 0 (or --port N), serves the HTML document at GET /,
  * shared assets at GET /assets/*, accepts authenticated feedback at POST /submit,
  * writes feedback JSON and exits 0 on first successful submit.
+ *
+ * With --no-wait: serves the page and returns immediately (prints only the URL
+ * line, no Feedback file line). POST /submit is not accepted (405). The server
+ * self-terminates on timeout (default 1800s) with exit 0.
  *
  * The server is schema-agnostic: it accepts any JSON object as the POST /submit
  * body and writes it back verbatim (plus a server-stamped submittedAt). Each
@@ -30,19 +34,22 @@ const crypto = require('node:crypto');
 const args = process.argv.slice(2);
 
 if (args.length === 0 || args[0] === '--help') {
-  console.error('Usage: node server.js <html-file> [--port N] [--timeout-sec N]');
+  console.error('Usage: node server.js <html-file> [--port N] [--timeout-sec N] [--no-wait]');
   process.exit(1);
 }
 
 let htmlFile = null;
 let listenPort = 0;
 let timeoutSec = 1800;
+let noWait = false;
 
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '--port' && args[i + 1]) {
     listenPort = parseInt(args[++i], 10);
   } else if (args[i] === '--timeout-sec' && args[i + 1]) {
     timeoutSec = parseInt(args[++i], 10);
+  } else if (args[i] === '--no-wait') {
+    noWait = true;
   } else if (!args[i].startsWith('--')) {
     htmlFile = args[i];
   }
@@ -226,8 +233,13 @@ async function handleRequest(req, res) {
     return;
   }
 
-  // POST /submit — accept feedback
+  // POST /submit — accept feedback (not available in --no-wait mode)
   if (req.method === 'POST' && pathname === '/submit') {
+    if (noWait) {
+      jsonResponse(res, 405, { error: 'submit not supported in display-only mode' });
+      return;
+    }
+
     // 410 if already submitted
     if (accepted) {
       jsonResponse(res, 410, { error: 'already submitted' });
@@ -347,13 +359,20 @@ server.listen(listenPort, '127.0.0.1', () => {
   const { port } = server.address();
   const url = `http://127.0.0.1:${port}/`;
   console.log(`[html-visualization] URL: ${url}`);
-  console.log(`[html-visualization] Feedback file: ${feedbackFile}`);
+  if (!noWait) {
+    console.log(`[html-visualization] Feedback file: ${feedbackFile}`);
+  }
 
   // Timeout handler
   const timeoutMs = timeoutSec * 1000;
   setTimeout(() => {
-    console.error(`[html-visualization] Timeout: no submission received after ${timeoutSec}s. Exiting non-zero.`);
-    process.exit(2);
+    if (noWait) {
+      console.log(`[html-visualization] Display timeout reached after ${timeoutSec}s. Exiting.`);
+      process.exit(0);
+    } else {
+      console.error(`[html-visualization] Timeout: no submission received after ${timeoutSec}s. Exiting non-zero.`);
+      process.exit(2);
+    }
   // .unref() prevents the timer from keeping the event loop alive on its own.
   // The listening socket already keeps the event loop running; if something
   // closes the server early the timer won't ghost the process.

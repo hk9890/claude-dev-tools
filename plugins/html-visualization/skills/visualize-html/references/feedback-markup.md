@@ -1,13 +1,13 @@
-# html-feedback Markup Contract
+# feedback-mode Markup Contract
 
-Single source of truth for the HTML vocabulary Claude must use when authoring an
-`html-feedback` document. Claude can render any content using only the structure
+Single source of truth for the HTML vocabulary Claude must use when authoring a
+`feedback`-mode document. Claude can render any content using only the structure
 and attributes defined here — without reading `style.css` or `app.js`.
 
 ## How it works
 
 1. Claude renders the content as semantic HTML inside `#content`, based on
-   `template.html` (also in this references directory).
+   `feedback-template.html` (also in this references directory).
 2. Each commentable unit of content carries a unique `data-block-id`.
 3. The file is served by `bin/server.js`, which injects a CSRF token and serves
    the skill's assets from `assets/feedback/`.
@@ -23,7 +23,7 @@ and attributes defined here — without reading `style.css` or `app.js`.
 6. Either button makes the server write a feedback file and exit, re-invoking
    Claude.
 
-The `/submit` payload schema is defined in `submit-schema.md` (same directory).
+The `/submit` payload schema is defined in `feedback-submit-schema.md` (same directory).
 
 ---
 
@@ -148,7 +148,7 @@ author them.**
 
 ## Authoring checklist
 
-Before finalising an html-feedback document:
+Before finalising a feedback-mode document:
 
 - [ ] `<meta name="fb-generation">` is present with a value different from any
       previous generation of this file.

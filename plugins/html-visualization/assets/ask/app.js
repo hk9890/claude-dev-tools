@@ -1,5 +1,5 @@
 /**
- * app.js — browser-side interaction layer for html-ask.
+ * app.js — browser-side interaction layer for the ask mode of visualize-html.
  *
  * Exports (UMD-compatible, testable in Node without a DOM):
  *   buildFeedbackPayload(state) → { verdict, answers, comments, freeform }

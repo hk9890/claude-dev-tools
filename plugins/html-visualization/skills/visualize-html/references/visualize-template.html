@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>[Claude: replace with visualization title]</title>
+
+  <!-- ── Optional: CDN chart library (remove if not needed) ────────────────
+    If you need Chart.js, D3, or Mermaid, add the <script src="https://...">
+    tag here. Remove this comment block if no CDN library is used.
+
+    Examples:
+      Chart.js  → <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+      D3.js     → <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+      Mermaid   → <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+
+    Prefer inline SVG when the visualization can be encoded statically — no
+    network dependency, works offline, renders instantly.
+  -->
+
+  <style>
+    /* ── Colour tokens ──────────────────────────────────────────────────── */
+    :root {
+      --vis-bg:      #ffffff;
+      --vis-text:    #1a1a1a;
+      --vis-card:    #f5f5f5;
+      --vis-border:  #d1d5db;
+      --vis-accent:  #2563eb;
+      --vis-muted:   #6b7280;
+      --vis-success: #16a34a;
+      --vis-warning: #d97706;
+      --vis-danger:  #dc2626;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --vis-bg:      #0f1117;
+        --vis-text:    #e8eaf0;
+        --vis-card:    #1e2130;
+        --vis-border:  #374151;
+        --vis-accent:  #60a5fa;
+        --vis-muted:   #9ca3af;
+        --vis-success: #4ade80;
+        --vis-warning: #fbbf24;
+        --vis-danger:  #f87171;
+      }
+    }
+
+    /* ── Base ───────────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--vis-bg);
+      color: var(--vis-text);
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+    }
+
+    /* ── Page layout ────────────────────────────────────────────────────── */
+    .page-chrome {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────────── */
+    .page-header {
+      margin-bottom: 2rem;
+      padding-bottom: 1.25rem;
+      border-bottom: 1px solid var(--vis-border);
+    }
+
+    .page-header h1 {
+      margin: 0 0 0.4rem;
+      font-size: 1.6rem;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+
+    .page-header .subtitle {
+      margin: 0;
+      font-size: 0.95rem;
+      color: var(--vis-muted);
+    }
+
+    /* ── Main content area ──────────────────────────────────────────────── */
+    .vis-content {
+      /* Add any extra layout rules here for your visualization */
+    }
+
+    /* ── Card: a bordered surface useful for grouping sections ─────────── */
+    .vis-card {
+      background: var(--vis-card);
+      border: 1px solid var(--vis-border);
+      border-radius: 8px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .vis-card h2 {
+      margin: 0 0 0.75rem;
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+
+    /* ── Tables ─────────────────────────────────────────────────────────── */
+    .vis-table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+    }
+
+    caption {
+      text-align: left;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: var(--vis-text);
+    }
+
+    th, td {
+      text-align: left;
+      padding: 0.55rem 0.75rem;
+      border-bottom: 1px solid var(--vis-border);
+    }
+
+    th {
+      font-weight: 600;
+      background: var(--vis-card);
+    }
+
+    tbody tr:nth-child(even) td {
+      background: var(--vis-card);
+    }
+
+    /* ── Inline SVG container ───────────────────────────────────────────── */
+    .vis-svg-wrap {
+      margin-bottom: 1.5rem;
+    }
+
+    .vis-svg-wrap svg {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    /* ── Footer note ────────────────────────────────────────────────────── */
+    .vis-note {
+      margin-top: 2rem;
+      font-size: 0.82rem;
+      color: var(--vis-muted);
+      border-top: 1px solid var(--vis-border);
+      padding-top: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+
+<div class="page-chrome">
+
+  <!-- ── Page header ────────────────────────────────────────────────────── -->
+  <header class="page-header">
+    <h1>[Claude: replace with visualization title]</h1>
+    <p class="subtitle">[Claude: replace with a one-sentence description of what the user is viewing]</p>
+  </header>
+
+  <!-- ── Main content ───────────────────────────────────────────────────── -->
+  <!--
+    Replace the example blocks below with the real visualization content.
+    Choose the rendering form that fits your data:
+
+    INLINE SVG (preferred for diagrams, static charts, graphs):
+      Wrap in <div class="vis-svg-wrap">.
+      Use viewBox="0 0 W H" width="100%" so it scales.
+      Use var(--vis-accent), var(--vis-muted) etc. for fills/strokes.
+
+    CDN CHART LIBRARY (for interactive or complex charts):
+      Add the <script src="https://cdn.jsdelivr.net/npm/..."> in <head>.
+      Render into a <canvas> or <div> here.
+      Initialise in the inline <script> block at the bottom of <body>.
+
+    HTML TABLE (for tabular data):
+      Use <table> + <caption> + <thead>/<tbody>.
+      Wrap in <div class="vis-table-wrap"> for horizontal scrolling.
+
+    CARD GROUP (for summary metrics, key-value data, or multi-panel layouts):
+      Use <div class="vis-card"> per panel.
+  -->
+  <main class="vis-content">
+
+    <!-- ── EXAMPLE: Inline SVG placeholder ──────────────────────────────── -->
+    <!--
+      Replace this with real SVG content or remove if using a different form.
+      viewBox coordinates: 0 0 800 300 — adjust to suit your diagram.
+    -->
+    <div class="vis-svg-wrap">
+      <svg viewBox="0 0 800 200" xmlns="http://www.w3.org/2000/svg"
+           role="img" aria-label="[Claude: replace with a description of the diagram]">
+        <!-- [Claude: replace with real SVG paths, shapes, and text] -->
+        <rect x="20" y="20" width="760" height="160" rx="8"
+              fill="var(--vis-card)" stroke="var(--vis-border)" stroke-width="1.5"/>
+        <text x="400" y="105" text-anchor="middle"
+              fill="var(--vis-muted)" font-family="system-ui, sans-serif" font-size="16">
+          [Claude: replace with real diagram content]
+        </text>
+      </svg>
+    </div>
+
+    <!-- ── EXAMPLE: Table placeholder ──────────────────────────────────── -->
+    <!--
+      Replace or remove this table section.
+    -->
+    <div class="vis-table-wrap">
+      <table>
+        <caption>[Claude: replace with table title]</caption>
+        <thead>
+          <tr>
+            <th scope="col">[Claude: column 1]</th>
+            <th scope="col">[Claude: column 2]</th>
+            <th scope="col">[Claude: column 3]</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>[Claude: row 1, col 1]</td>
+            <td>[Claude: row 1, col 2]</td>
+            <td>[Claude: row 1, col 3]</td>
+          </tr>
+          <tr>
+            <td>[Claude: row 2, col 1]</td>
+            <td>[Claude: row 2, col 2]</td>
+            <td>[Claude: row 2, col 3]</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+
+  <!-- ── Optional footer note ─────────────────────────────────────────── -->
+  <!--
+    Use .vis-note for a footnote, data source citation, or generation timestamp.
+    Remove this block if not needed.
+  -->
+  <p class="vis-note">[Claude: optional footnote — e.g. data source, generated at timestamp, caveats]</p>
+
+</div><!-- /.page-chrome -->
+
+<!-- ── Optional: CDN chart initialisation ────────────────────────────────────
+  If you are using a CDN chart library (Chart.js, D3, Mermaid, etc.), add the
+  chart initialisation code in a <script> block here.
+
+  Example skeleton for Chart.js:
+    <script>
+      const ctx = document.getElementById('my-chart').getContext('2d');
+      new Chart(ctx, {
+        type: 'bar',
+        data: { labels: [...], datasets: [{ data: [...] }] },
+        options: { responsive: true }
+      });
+    </script>
+
+  Remove this comment block if no CDN library is used.
+-->
+
+</body>
+</html>

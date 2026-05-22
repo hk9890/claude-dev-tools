@@ -1,15 +1,15 @@
-# html-ask Markup Contract
+# ask-mode Markup Contract
 
-This document is the single source of truth for the HTML vocabulary Claude must use when authoring an `html-ask` document. Claude can author any number of question widgets using only the classes and attributes defined here — without reading `style.css` or `app.js`.
+This document is the single source of truth for the HTML vocabulary Claude must use when authoring an `ask`-mode document. Claude can author any number of question widgets using only the classes and attributes defined here — without reading `style.css` or `app.js`.
 
 ## How it works
 
-1. Claude writes a complete HTML file based on `template.html` (also in this references directory).
+1. Claude writes a complete HTML file based on `ask-template.html` (also in this references directory).
 2. The file is served by `bin/server.js`, which injects a CSRF token and serves the skill's assets from `assets/ask/`.
 3. `assets/ask/app.js` reads the widget DOM and assembles the `/submit` payload.
 4. On submit, the server writes a feedback file and exits — re-invoking Claude.
 
-The `/submit` payload schema is defined in `submit-schema.md` (same directory). The markup contract here describes only what Claude needs to author HTML correctly.
+The `/submit` payload schema is defined in `ask-submit-schema.md` (same directory). The markup contract here describes only what Claude needs to author HTML correctly.
 
 ---
 
@@ -180,7 +180,7 @@ These per-column answers live in `answers`, not in `verdict`. The overall `verdi
 
 ## Authoring checklist
 
-Before finalising an html-ask document:
+Before finalising an ask-mode document:
 
 - [ ] Every `.widget` has a unique `data-qid` (printable ASCII, no whitespace).
 - [ ] Every `.widget` has a `data-qtype` matching its input type.

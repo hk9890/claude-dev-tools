@@ -1,7 +1,7 @@
-# html-feedback `/submit` Payload Schema
+# feedback-mode `/submit` Payload Schema
 
 Single source of truth for the POST `/submit` payload produced by the
-html-feedback browser document (`assets/feedback/app.js`) and read back by Claude.
+feedback-mode browser document (`assets/feedback/app.js`) and read back by Claude.
 
 The shared `bin/server.js` is **schema-agnostic** — it accepts any JSON object,
 stamps `submittedAt`, and writes it verbatim. It does not validate the fields
@@ -150,4 +150,4 @@ request body verbatim. The file is written atomically (write to a temp path, the
 
 Claude branches its read-back on `action`: `"apply"` → apply the feedback,
 regenerate the document, and re-serve for another round; `"submit"` → apply the
-feedback and finish. See the html-feedback `SKILL.md` for the full loop.
+feedback and finish. See `references/feedback.md` for the full loop.

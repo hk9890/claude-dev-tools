@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# test-payload.sh — unit tests for buildFeedbackPayload in the html-ask app.js
+# test-payload.sh — unit tests for buildFeedbackPayload in the ask-mode app.js
+# (assets/ask/app.js).
 #
 # Loads the pure function via Node require() (no DOM, no CSRF_TOKEN global)
-# and asserts it produces an object matching the html-ask submit-schema.md
+# and asserts it produces an object matching the ask-submit-schema.md
 # shape for representative widget states.
 #
 # Part of the html-visualization plugin test harness; auto-discovered by run-all.sh.

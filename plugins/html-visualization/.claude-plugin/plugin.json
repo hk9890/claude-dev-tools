@@ -1,6 +1,6 @@
 {
   "name": "html-visualization",
-  "description": "Interactive HTML the user opens in a browser, then sends back to Claude. Ships html-ask (question and decision forms) and html-feedback (comment on rendered content), served by a shared zero-dependency one-shot Node server",
+  "description": "Interactive HTML the user opens in a browser, then sends back to Claude. Ships the visualize-html skill with three modes: ask (question and decision forms), feedback (comment on rendered content), and visualize (display-only). Served by a shared zero-dependency one-shot Node server",
   "version": "1.13.0",
   "author": {
     "name": "Hans Kohlreiter",

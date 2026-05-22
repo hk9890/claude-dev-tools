@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # test-feedback-payload.sh — unit tests for buildFeedbackPayload in the
-# html-feedback app.js.
+# feedback-mode app.js (assets/feedback/app.js).
 #
 # Loads the pure function via Node require() (no DOM, no CSRF_TOKEN global)
-# and asserts it produces an object matching the html-feedback submit-schema.md
+# and asserts it produces an object matching the feedback-submit-schema.md
 # shape for representative comment states.
 #
 # Part of the html-visualization plugin test harness; auto-discovered by run-all.sh.

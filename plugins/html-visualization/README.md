@@ -23,14 +23,14 @@ The round-trip:
 
 ## Skills
 
-| Skill | Invocation | What it renders |
+| Skill | Invocation | Modes |
 |---|---|---|
-| `html-ask` | `html-visualization:html-ask` | A **question/decision form** — text, single/multi choice, and side-by-side approach widgets, plus an overall verdict. Use when Claude needs structured answers before proceeding. |
-| `html-feedback` | `html-visualization:html-feedback` | **Content for inline commenting** — Claude renders a document, draft, or notes; the user hovers any block, optionally selects a phrase, and attaches a free-text comment. Use when the user wants to mark up content for Claude to revise. |
+| `visualize-html` | `html-visualization:visualize-html` | **ask** — question/decision form (text, single/multi choice, approach widgets, overall verdict). **feedback** — content for inline commenting (user selects text, attaches comment, iterates with Apply). **visualize** — display-only HTML page; no submit. |
 
-Rule of thumb: **html-ask asks the user questions; html-feedback shows the user
-content to react to.** Both skills are invoked by Claude when appropriate, not by
-the user typing a command.
+Rule of thumb: **ask mode asks the user questions; feedback mode shows the user
+content to react to; visualize mode renders content without expecting a
+response.** The skill is invoked by Claude when appropriate, not by the user
+typing a command.
 
 ## Runtime requirements
 
@@ -49,20 +49,18 @@ html-visualization/
 ├── bin/
 │   └── server.js             # shared zero-dependency one-shot feedback server
 ├── assets/
-│   ├── ask/                  # CSS + JS for html-ask pages
-│   └── feedback/             # CSS + JS for html-feedback pages
+│   ├── ask/                  # CSS + JS for ask-mode pages
+│   └── feedback/             # CSS + JS for feedback-mode pages
 └── skills/
-    ├── html-ask/
-    │   ├── SKILL.md
-    │   └── references/       # markup.md, submit-schema.md, template.html
-    └── html-feedback/
+    └── visualize-html/
         ├── SKILL.md
-        └── references/       # markup.md, submit-schema.md, template.html
+        └── references/       # ask.md, feedback.md, visualize.md, serve.md,
+                              # *-markup.md, *-submit-schema.md, *-template.html
 ```
 
 The server is **shared and schema-agnostic** — it handles transport, CSRF, the
-one-shot lifecycle, and the atomic write, but knows nothing about any skill's
-payload shape. Each skill owns its own markup contract, browser assets, and
+one-shot lifecycle, and the atomic write, but knows nothing about any mode's
+payload shape. Each mode owns its own markup contract, browser assets, and
 `/submit` payload schema. See [RULES.md](RULES.md) for the full set of design
 decisions.
 
@@ -71,4 +69,4 @@ decisions.
 The server binds `127.0.0.1` only. CSRF protection is a per-invocation unguessable
 startup token embedded in the served HTML and required as the `X-CSRF-Token`
 header on `POST /submit`, with `Origin`/`Sec-Fetch-Site` as a secondary check.
-Each skill's `references/submit-schema.md` documents the full contract.
+Each mode's `references/<mode>-submit-schema.md` documents the full contract.

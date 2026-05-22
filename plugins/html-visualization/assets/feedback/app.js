@@ -1,5 +1,5 @@
 /**
- * app.js — browser-side interaction layer for html-feedback.
+ * app.js — browser-side interaction layer for the feedback mode of visualize-html.
  *
  * Exports (UMD-compatible, testable in Node without a DOM):
  *   buildFeedbackPayload(state) → { action, comments, freeform }
