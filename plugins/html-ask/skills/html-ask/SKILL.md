@@ -87,7 +87,7 @@ Edit the copied file per the markup contract in `${CLAUDE_PLUGIN_ROOT}/skills/ht
 - Replace `[Claude: replace with a one-sentence description...]` in `.subtitle` with your subtitle.
 - Add one widget `<div>` per question inside `<div id="main-form">`, before the verdict section.
 - Every widget `<div>` must have `data-qid` (your question slug), `data-qtype` (`text`|`radio`|`checkbox`|`approaches`), and `class="widget widget-<type>"`.
-- Add `annotatable` and `data-anchor-id="<qid>"` to every widget to enable inline comments.
+- Add `annotatable` and `data-anchor-id="<qid>"` to every `radio`/`checkbox`/`approaches` widget — this gives that question an always-visible free-text note field, so the user can always write something in. Do NOT add it to `text` widgets; their `<textarea>` is already the free-text field.
 - Do NOT add `<script>const CSRF_TOKEN = "...";</script>` — the server injects it.
 - The `/assets/style.css` link and `/assets/app.js` script are correct as-is; do not change the paths.
 
@@ -162,15 +162,20 @@ How to interpret each field:
 
 | Field | How to use it |
 |---|---|
-| `verdict` | Overall user decision. `approve` → proceed as planned. `approve-with-changes` → incorporate the feedback then proceed. `reject` → rethink; discuss alternatives. |
-| `answers` | Map from `data-qid` slug to answer value. Text widgets → string. Radio → selected value string. Checkbox → array of selected value strings. Approaches column → per-column key `<qid>-<approach-id>` with value `"approve"` or `"reject"`. |
-| `comments` | Inline anchored comments. Each comment has `anchor` (CSS selector, e.g. `"#q-timeline"`) and `text`. Treat as additional context for the specific question. |
+| `verdict` | Overall user decision. `approve` → proceed as planned. `approve-with-changes` → incorporate the feedback then proceed. `reject` → rethink; discuss alternatives. `""` (empty) → no verdict given; do not assume approval (see below). |
+| `answers` | Map from `data-qid` slug to answer value. Text widgets → string. Radio → selected value string, or `null` if unanswered. Checkbox → array of selected value strings (may be `[]`). Approaches column → per-column key `<qid>-<approach-id>` with value `"approve"`, `"reject"`, or `null` if unanswered. |
+| `comments` | Per-question free-text notes. Each has `anchor` (`#<qid>`, e.g. `"#q-timeline"`) and `text`. Treat as the user's free-text answer or comment for that specific question. |
 | `freeform` | Free-text field. May be empty string. If non-empty, treat as general feedback. |
 
 After reading the feedback, continue the original task:
 - If `verdict` is `approve`: proceed.
 - If `verdict` is `approve-with-changes`: acknowledge each piece of feedback explicitly, then proceed with the changes incorporated.
 - If `verdict` is `reject`: summarise the rejection reason from freeform/comments and open a discussion about the path forward.
+- If `verdict` is empty (`""`): the user submitted without choosing a verdict. Do NOT treat this as approval. Use whatever answers, notes, and freeform were provided, and ask the user for the missing verdict before proceeding on anything that depends on it.
+
+### Partial submissions
+
+The user can submit at any time, even with questions left unanswered — the form never forces a complete response. An unanswered question shows up as an empty string (text), `null` (radio), `[]` (checkbox), or `null` for an approaches column. When you continue, do NOT silently guess at missing answers: explicitly tell the user which questions you are treating as unanswered, listing them by their question text, and ask any follow-up you genuinely need in chat.
 
 ---
 

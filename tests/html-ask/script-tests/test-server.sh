@@ -399,6 +399,38 @@ test_bad_verdict_400() {
   ok "bad verdict: POST /submit returns 400"
 }
 
+# 8b. POST /submit with empty verdict returns 200 (partial feedback allowed)
+test_empty_verdict_200() {
+  local tmp_html
+  tmp_html=$(mktemp --suffix=.html)
+  make_html "$tmp_html"
+
+  start_server "$tmp_html"
+
+  local html token
+  html=$(curl -s "$BASE_URL/")
+  token=$(extract_token_from_html "$html")
+
+  local status
+  status=$(curl -s -o /dev/null -w '%{http_code}' \
+    -X POST \
+    -H "Content-Type: application/json" \
+    -H "X-CSRF-Token: $token" \
+    -d '{"verdict":"","answers":{},"comments":[],"freeform":""}' \
+    "$BASE_URL/submit")
+
+  wait "$SERVER_PID" 2>/dev/null || true
+  SERVER_PID=""
+
+  rm -f "$tmp_html" "${FEEDBACK_FILE:-}" 2>/dev/null
+
+  if [[ "$status" != "200" ]]; then
+    fail "empty verdict: expected 200, got $status"
+    return
+  fi
+  ok "empty verdict: POST /submit with empty verdict returns 200 (partial feedback)"
+}
+
 # 9. POST /submit with missing required field returns 400
 test_missing_field_400() {
   local tmp_html
@@ -620,6 +652,7 @@ test_valid_submit
 test_missing_token_403
 test_wrong_token_403
 test_bad_verdict_400
+test_empty_verdict_200
 test_missing_field_400
 test_duplicate_submit_410
 test_timeout_exits_nonzero

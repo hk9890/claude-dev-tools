@@ -97,20 +97,16 @@ Every document must have this top-level structure:
 | `.approach-header` | `<div>` inside `.approach-col` | Column heading (approach name). |
 | `.approach-verdict` | `<div>` inside `.approach-col` | Per-column approve/reject radio pair. |
 
-### Inline-comment classes
+### Per-question note classes
+
+Every widget carrying `.annotatable` gets an **always-visible** free-text note field, injected by `app.js`. This guarantees the user can always write something in on a question, alongside its structured answer. Each non-empty note becomes one entry in the `comments` array of the submit payload, with `anchor` set to `#<data-anchor-id>`.
 
 | Class | Element | Purpose |
 |---|---|---|
-| `.annotatable` | Any `.widget` | Marks the widget as accepting an inline comment; `app.js` injects a comment button. |
-| `.annotation-trigger` | `<button>` (injected by `app.js`) | The "+" button that opens the comment bubble. Do NOT author manually. |
-| `.annotation-bubble` | `<div>` (injected by `app.js`) | The inline-comment entry form. Do NOT author manually. |
-| `.annotations-list` | `<div>` (injected by `app.js`) | Shows saved inline comments. Do NOT author manually. |
-| `.annotation-item` | `<div>` (injected by `app.js`) | One saved inline comment. Do NOT author manually. |
-| `.annotation-text` | `<span>` (injected by `app.js`) | Text of a saved comment. Do NOT author manually. |
-| `.annotation-remove` | `<button>` (injected by `app.js`) | Removes a saved comment. Do NOT author manually. |
-| `.bubble-actions` | `<div>` (injected by `app.js`) | Wraps Save/Cancel buttons. Do NOT author manually. |
-| `.bubble-save` | `<button>` (injected by `app.js`) | Saves the annotation. Do NOT author manually. |
-| `.bubble-cancel` | `<button>` (injected by `app.js`) | Cancels the annotation. Do NOT author manually. |
+| `.annotatable` | A choice-style `.widget` (`radio` / `checkbox` / `approaches`) | Marks the widget to receive an always-visible note field. Do NOT add it to `.widget-text` — that widget's `<textarea>` already *is* the free-text field. |
+| `.widget-note` | `<div>` (injected by `app.js`) | Wraps the note label and textarea. Do NOT author manually. |
+| `.widget-note-label` | `<label>` (injected by `app.js`) | Label shown above the note textarea. Do NOT author manually. |
+| `.widget-note-input` | `<textarea>` (injected by `app.js`) | The free-text note field. Do NOT author manually. |
 
 ### Submit / state classes
 
@@ -131,7 +127,7 @@ Every document must have this top-level structure:
 |---|---|---|---|
 | `data-qid` | `.widget` | Yes (for Q&A widgets) | Question ID: non-empty string, printable ASCII only (`0x20`–`0x7E`), no whitespace. Must be unique within the document. Used as the key in the `answers` map. |
 | `data-qtype` | `.widget` | Yes | Widget type: `text` \| `radio` \| `checkbox` \| `approaches`. Tells `app.js` how to collect the answer. |
-| `data-anchor-id` | `.annotatable` | Yes (for annotatable widgets) | The value used to derive the CSS selector for inline comments: the widget's element `id` AND the comment `anchor` in the payload will be `#<value>`. Must be a valid HTML `id` token. |
+| `data-anchor-id` | `.annotatable` | Yes (for annotatable widgets) | Identifies the widget's note. The widget's element `id` AND the note's `anchor` in the payload `comments` array will both be `#<value>`. Must be a valid HTML `id` token — set it equal to the widget's `data-qid`. |
 | `data-approach-id` | `.approach-col` | Yes | Short identifier for one column in a `.widget-approaches` widget (e.g. `"a"`, `"b"`, `"option-1"`). Combined with the parent `data-qid` to form the answer key: `<data-qid>-<data-approach-id>`. |
 
 ---
@@ -154,7 +150,7 @@ These `id` values are hard-wired in `app.js` and must be present exactly as show
 
 ## Verdict radio values
 
-The three verdict radio buttons **must** use exactly these `value` attributes (case-sensitive). Any other value will be rejected by the server with `400`:
+The three verdict radio buttons **must** use exactly these `value` attributes (case-sensitive):
 
 | `value` | Label to show user |
 |---|---|
@@ -163,6 +159,8 @@ The three verdict radio buttons **must** use exactly these `value` attributes (c
 | `reject` | Reject |
 
 All three radios must share `name="verdict"`.
+
+The verdict is **optional**: if the user submits without selecting one, the payload carries `verdict: ""` and the server accepts it. The server rejects only a *non-empty* verdict value that is not one of the three above (`400`).
 
 ---
 
@@ -186,7 +184,8 @@ Before finalising an html-ask document:
 
 - [ ] Every `.widget` has a unique `data-qid` (printable ASCII, no whitespace).
 - [ ] Every `.widget` has a `data-qtype` matching its input type.
-- [ ] Every annotatable widget has `data-anchor-id` equal to its `id`.
+- [ ] Every `radio` / `checkbox` / `approaches` widget has `.annotatable` and a `data-anchor-id` equal to its `data-qid`, so it gets an always-visible note field.
+- [ ] `.widget-text` widgets are NOT `.annotatable` (the textarea is already free text).
 - [ ] Every `.approach-col` has `data-approach-id`; the radio `name` matches `<data-qid>-<data-approach-id>`.
 - [ ] The verdict section contains all three radio options with the exact values above.
 - [ ] `id="freeform-input"` is on the freeform textarea.

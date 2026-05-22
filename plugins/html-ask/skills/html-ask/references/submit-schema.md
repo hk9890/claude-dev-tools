@@ -24,9 +24,9 @@ Single source of truth for the POST `/submit` contract between the browser-side 
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `verdict` | string | yes | The user's overall verdict on the plan or question batch. Allowed values: `"approve"`, `"approve-with-changes"`, `"reject"`. The server MUST reject any other value with `400`. |
-| `answers` | object | yes | A map from question ID to the user's answer. The object MAY be empty `{}` if no structured questions were posed. |
-| `comments` | array | yes | Inline comments anchored to specific locations in the HTML document. MAY be empty `[]`. |
+| `verdict` | string | yes | The user's overall verdict on the plan or question batch. Allowed values: `"approve"`, `"approve-with-changes"`, `"reject"`, or `""`. An empty string means the user left the verdict unanswered — partial feedback is always accepted. The server MUST reject any *non-empty* value outside that set with `400`. |
+| `answers` | object | yes | A map from question ID to the user's answer. The object MAY be empty `{}` if no structured questions were posed. Individual questions MAY be left unanswered (text → `""`, radio → `null`, checkbox → `[]`). |
+| `comments` | array | yes | Per-question free-text notes, each anchored to a question widget. MAY be empty `[]`. |
 | `freeform` | string | yes | Unstructured free-text feedback. MUST be present; MAY be an empty string `""`. |
 
 All four fields MUST be present in every request. A missing field MUST cause a `400` response.
@@ -36,14 +36,14 @@ All four fields MUST be present in every request. A missing field MUST cause a `
 - **`qID`** format: non-empty string, printable ASCII only (`0x20`–`0x7E`), no whitespace.  Claude MUST use stable, collision-free IDs within a single invocation (e.g. `q1`, `q2`, or a short slug).
 - **value type**: any JSON scalar or array. Claude documents the expected type per question in the HTML (see aa9.3 markup contract). The server stores values as-is without type coercion.
 
-### `comments` — inline anchored comments
+### `comments` — per-question notes
 
 Each element of the `comments` array MUST have exactly two fields:
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `anchor` | string | yes | CSS selector that uniquely identifies the HTML element the comment is attached to (e.g. `"#q2"`, `"[data-qid='decision-3']"`). The server stores this verbatim. |
-| `text` | string | yes | The comment text. MUST NOT be an empty string when the element is present in the array — the browser-side form MUST omit zero-length comments from the array entirely. |
+| `anchor` | string | yes | CSS selector identifying the question widget the note belongs to — always `#<data-qid>` (e.g. `"#q2"`). The server stores this verbatim. |
+| `text` | string | yes | The note text. MUST NOT be an empty string when the element is present in the array — the browser-side form MUST omit empty notes from the array entirely. |
 
 ---
 
@@ -91,7 +91,7 @@ The server writes the feedback file, then exits with code `0`.
 { "error": "<human-readable message>" }
 ```
 
-Returned when: required field is missing, `verdict` is not one of the allowed values, or `Content-Type` is not `application/json`.
+Returned when: a required field is missing, `verdict` is a non-empty value outside the allowed set, or `Content-Type` is not `application/json`.
 
 ### CSRF failure — `403 Forbidden`
 

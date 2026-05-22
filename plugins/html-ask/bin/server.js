@@ -286,10 +286,11 @@ async function handleRequest(req, res) {
       }
     }
 
-    // Validate verdict enum
-    if (!VALID_VERDICTS.has(payload.verdict)) {
+    // Validate verdict enum. An empty string is allowed and means the user
+    // left the verdict unanswered — partial feedback is always accepted.
+    if (payload.verdict !== '' && !VALID_VERDICTS.has(payload.verdict)) {
       jsonResponse(res, 400, {
-        error: `invalid verdict "${payload.verdict}"; must be one of: approve, approve-with-changes, reject`,
+        error: `invalid verdict "${payload.verdict}"; must be empty or one of: approve, approve-with-changes, reject`,
       });
       return;
     }

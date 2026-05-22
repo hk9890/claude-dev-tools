@@ -33,3 +33,15 @@ The server binds `127.0.0.1` only, but the localhost bind is NOT a CSRF boundary
 The full contract — token format, embedding location, header name, allowed Origin/Sec-Fetch-Site values, response codes — is defined in `skills/html-ask/references/submit-schema.md`. That file is the single source of truth.
 
 **Do not weaken CSRF protection. Do not accept the token as a query parameter or in the JSON body — it must be a request header so it is not logged in browser history. Do not relax the token to a short/guessable value.**
+
+## 6. Partial feedback is always accepted — verdict is optional
+
+The feedback form never blocks submission. The user may submit with the verdict or any individual question left unanswered. The browser-side submit handler does not require a verdict, and the server accepts `verdict: ""`. This is deliberate: the round-trip must never trap the user because they had no opinion on every question. Claude is responsible — per the skill's Step 4 read-back — for reporting which items were left unanswered.
+
+**Do not reintroduce a client-side or server-side check that blocks submit on an empty verdict or on unanswered questions. The server still rejects a _non-empty_ verdict outside the three allowed values with `400`.**
+
+## 7. Every choice-style question carries an always-visible note field
+
+Each `radio`, `checkbox`, and `approaches` widget is marked `.annotatable`, and `app.js` injects an always-visible free-text note `<textarea>` into it. This guarantees the user can write free text on any question, not only pick from fixed options. Notes travel in the `comments` array of the submit payload, anchored by `#<data-qid>`. `text` widgets are NOT annotatable — their own `<textarea>` already is the free-text field.
+
+**Do not hide the note field behind a button or make it opt-in — "always visible" is the point. Do not add a second per-widget free-text mechanism alongside it.**
