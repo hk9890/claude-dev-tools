@@ -44,15 +44,15 @@
       "keywords": ["testing", "release", "monitoring", "operations", "project-ops"]
     },
     {
-      "name": "complexity-review",
-      "source": "./plugins/complexity-review",
-      "description": "Skeptical complexity review for requirements, architecture, and code — bias toward simplicity",
+      "name": "project-review",
+      "source": "./plugins/project-review",
+      "description": "Multi-perspective adversarial review plugin — complexity, structure, tests, and consistency — bias toward simplicity and coherence",
       "version": "1.11.0",
       "author": {
         "name": "Hans Kohlreiter"
       },
       "category": "code-quality",
-      "keywords": ["review", "complexity", "architecture", "simplicity", "code-review"]
+      "keywords": ["review", "complexity", "architecture", "structure", "tests", "consistency", "code-review", "adversarial"]
     },
     {
       "name": "github-releases",
@@ -86,6 +86,17 @@
       },
       "category": "workflow",
       "keywords": ["linux", "systemd", "sleep", "keep-awake", "inhibit", "hooks"]
+    },
+    {
+      "name": "project-explore",
+      "source": "./plugins/project-explore",
+      "description": "Beads-driven assisted exploratory testing — researches a project, then plays around with the product one action at a time, filing findings as tasks.",
+      "version": "1.11.0",
+      "author": {
+        "name": "Hans Kohlreiter"
+      },
+      "category": "workflow",
+      "keywords": ["exploratory-testing", "beads", "qa", "exploration"]
     }
   ]
 }

@@ -23,6 +23,9 @@ __pycache__/
 *.tmp
 *.log
 
+# Local-only working files (not for the public marketplace repo)
+private/
+
 # Beads / Dolt files (added by bd init)
 .dolt/
 *.db

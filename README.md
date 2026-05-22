@@ -20,10 +20,11 @@ See [docs/OVERVIEW.md](docs/OVERVIEW.md) for the full layout and architecture de
 |---|---|
 | [`beads-tasks`](plugins/beads-tasks/README.md) | Beads task tracking with tasker, reviewer, and verifier agents — use with planning mode for full orchestration |
 | [`claude-catppuccin`](plugins/claude-catppuccin/README.md) | Visual style for Claude Code: Catppuccin Mocha color theme |
-| [`complexity-review`](plugins/complexity-review/README.md) | Skeptical complexity review for requirements, architecture, and code — bias toward simplicity |
+| [`project-review`](plugins/project-review/README.md) | Multi-perspective adversarial review plugin — complexity, structure, tests, and consistency — bias toward simplicity and coherence |
 | [`github-releases`](plugins/github-releases/README.md) | Language-agnostic GitHub release workflow with quality gates, semver, and release notes |
 | [`keep-awake-linux`](plugins/keep-awake-linux/README.md) | Prevents Linux system sleep while Claude Code is actively working — releases automatically when idle or on session exit |
 | [`project-docs`](plugins/project-docs/README.md) | Project documentation lifecycle: create, update, improve, and review project docs |
+| [`project-explore`](plugins/project-explore/README.md) | Beads-driven assisted exploratory testing — researches a project, then plays around with the product one action at a time, filing findings as tasks |
 
 ## Installation
 

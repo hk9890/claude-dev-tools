@@ -1,0 +1,13 @@
+{
+  "name": "project-explore",
+  "description": "Beads-driven assisted exploratory testing — researches a project, then plays around with the product one action at a time, filing findings as tasks.",
+  "version": "1.11.0",
+  "author": {
+    "name": "Hans Kohlreiter",
+    "email": "hans.kohlreiter@dynatrace.com"
+  },
+  "homepage": "https://github.com/hk9890/claude-dev-tools",
+  "repository": "https://github.com/hk9890/claude-dev-tools",
+  "license": "MIT",
+  "keywords": ["exploratory-testing", "beads", "qa", "exploration"]
+}
