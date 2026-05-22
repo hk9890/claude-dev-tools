@@ -10,7 +10,6 @@ claude-dev-tools/
   .claude-plugin/        # repo-level marketplace manifest
     marketplace.json     # lists all plugins, their versions, and descriptions
   docs/                  # developer guides (OVERVIEW, CODING, TESTING, RELEASING, …)
-  notes/                 # working notes and captured feedback
   plugins/               # one subdirectory per plugin
   scripts/               # repo maintenance scripts
   tests/                 # structural validation and smoke tests

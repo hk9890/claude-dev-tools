@@ -11,7 +11,6 @@ A plugin marketplace for [Claude Code](https://claude.ai/code). Each plugin is a
 | `docs/` | Developer guides (OVERVIEW, CODING, TESTING, RELEASING, MONITORING, CHANGE-WORKFLOW) |
 | `scripts/` | Repo maintenance scripts |
 | `tests/` | Structural validation and smoke tests |
-| `notes/` | Working notes and captured feedback |
 | `.beads/` | Beads task database for this repo (the `bd` issue store) |
 
 See [docs/OVERVIEW.md](docs/OVERVIEW.md) for the full layout and architecture details.
@@ -24,7 +23,7 @@ See [docs/OVERVIEW.md](docs/OVERVIEW.md) for the full layout and architecture de
 | [`claude-catppuccin`](plugins/claude-catppuccin/README.md) | Visual style for Claude Code: Catppuccin Mocha color theme |
 | [`project-review`](plugins/project-review/README.md) | Multi-perspective adversarial review plugin — complexity, structure, tests, and consistency — bias toward simplicity and coherence |
 | [`github-releases`](plugins/github-releases/README.md) | Language-agnostic GitHub release workflow with quality gates, semver, and release notes |
-| [`html-visualization`](plugins/html-visualization/README.md) | Interactive HTML the user opens in a browser, then sends back to Claude — three user-invoked command skills over a shared `html-visualize` core render question forms (`html-visualize-ask`), content for inline commenting (`html-visualize-feedback`), or display-only visualizations (`html-visualize-demo`); a shared one-shot Node server captures the response and re-invokes Claude |
+| [`html-visualization`](plugins/html-visualization/README.md) | Interactive HTML the user opens in a browser, then sends back to Claude — a shared `html-visualize` core skill plus three user-invoked command skills: `html-visualize-ask` (question and decision forms), `html-visualize-feedback` (comment on rendered content), and `html-visualize-demo` (display-only); a shared one-shot Node server captures the response and re-invokes Claude |
 | [`keep-awake-linux`](plugins/keep-awake-linux/README.md) | Prevents Linux system sleep while Claude Code is actively working — releases automatically when idle or on session exit |
 | [`project-docs`](plugins/project-docs/README.md) | Project documentation lifecycle: create, update, improve, and review project docs |
 | [`project-ops`](plugins/project-ops/README.md) | Operational skills for a project: run the full test suite, cut a release, and analyze monitoring data — driven by installed topic skills and the canonical docs taxonomy |

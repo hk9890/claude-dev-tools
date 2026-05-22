@@ -20,7 +20,7 @@ In-repo script tests live under `tests/` (see [tests/README.md](../tests/README.
 bash tests/run-all.sh
 ```
 
-Per-plugin suites under `tests/<plugin-name>/script-tests/` cover committed bash/python helpers (e.g., `project-docs` validator scripts). Empty subdirs are fine for plugins with no script-level tests.
+Per-plugin suites under `tests/<plugin-name>/script-tests/` cover committed bash/python helpers (e.g., `project-docs` validator scripts). Empty subdirs are fine for plugins with no script-level tests. A repo-level suite under `tests/marketplace/script-tests/` covers marketplace-wide helpers such as `scripts/check-internal-consistency.py`. `tests/run-all.sh` discovers and runs every suite, per-plugin and marketplace alike.
 
 ## Structural validation — `plugin-dev:plugin-validator`
 
