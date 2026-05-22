@@ -1,7 +1,7 @@
 {
   "name": "claude-catppuccin",
   "description": "Visual style for Claude Code: Catppuccin Mocha color theme",
-  "version": "1.11.0",
+  "version": "1.12.0",
   "author": {
     "name": "Hans Kohlreiter",
     "email": "hans.kohlreiter@dynatrace.com"
@@ -9,7 +9,13 @@
   "homepage": "https://github.com/hk9890/claude-dev-tools",
   "repository": "https://github.com/hk9890/claude-dev-tools",
   "license": "MIT",
-  "keywords": ["theme", "catppuccin", "mocha", "style", "visual"],
+  "keywords": [
+    "theme",
+    "catppuccin",
+    "mocha",
+    "style",
+    "visual"
+  ],
   "experimental": {
     "themes": "./themes/"
   }
