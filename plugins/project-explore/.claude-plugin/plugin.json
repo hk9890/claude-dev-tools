@@ -1,7 +1,7 @@
 {
   "name": "project-explore",
   "description": "Beads-driven assisted exploratory testing — researches a project, then plays around with the product one action at a time, filing findings as tasks.",
-  "version": "1.12.0",
+  "version": "1.13.0",
   "author": {
     "name": "Hans Kohlreiter",
     "email": "hans.kohlreiter@dynatrace.com"
