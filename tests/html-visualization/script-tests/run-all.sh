@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # run-all.sh — discover and run all test-*.sh suites in this directory.
 #
-# Part of the html-ask plugin test harness under tests/html-ask so that the
-# top-level tests/run-all.sh discovers it via:
+# Part of the html-visualization plugin test harness under tests/html-visualization
+# so that the top-level tests/run-all.sh discovers it via:
 #   find tests/ -mindepth 3 -maxdepth 3 -name run-all.sh
 #
 # Exit codes:

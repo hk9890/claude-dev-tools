@@ -1,6 +1,14 @@
-# `/submit` Payload Schema
+# html-ask `/submit` Payload Schema
 
-Single source of truth for the POST `/submit` contract between the browser-side form (aa9.3) and the zero-dependency Node server (aa9.2). Both sides MUST conform to this document. Any change here requires corresponding updates in both aa9.2 and aa9.3.
+Single source of truth for the POST `/submit` payload produced by the html-ask
+browser form (`assets/ask/app.js`) and read back by Claude.
+
+The shared `bin/server.js` is **schema-agnostic** — it accepts any JSON object,
+stamps `submittedAt`, and writes it verbatim. It does not validate the fields
+below. Conforming to this schema is therefore the responsibility of
+`assets/ask/app.js` (which emits it) and Claude (which reads it back). The
+server's only hard guarantees are CSRF/Origin checks, an `application/json`
+Content-Type, a JSON-object body, and the one-shot lifecycle.
 
 ## Wire format
 
@@ -24,26 +32,28 @@ Single source of truth for the POST `/submit` contract between the browser-side 
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `verdict` | string | yes | The user's overall verdict on the plan or question batch. Allowed values: `"approve"`, `"approve-with-changes"`, `"reject"`. The server MUST reject any other value with `400`. |
-| `answers` | object | yes | A map from question ID to the user's answer. The object MAY be empty `{}` if no structured questions were posed. |
-| `comments` | array | yes | Inline comments anchored to specific locations in the HTML document. MAY be empty `[]`. |
+| `verdict` | string | yes | The user's overall verdict on the plan or question batch. Allowed values: `"approve"`, `"approve-with-changes"`, `"reject"`, or `""`. An empty string means the user left the verdict unanswered — partial feedback is always accepted. `app.js` only ever emits one of these four values (the verdict radio group has no other options), so no value check is needed server-side. |
+| `answers` | object | yes | A map from question ID to the user's answer. The object MAY be empty `{}` if no structured questions were posed. Individual questions MAY be left unanswered (text → `""`, radio → `null`, checkbox → `[]`). |
+| `comments` | array | yes | Per-question free-text notes, each anchored to a question widget. MAY be empty `[]`. |
 | `freeform` | string | yes | Unstructured free-text feedback. MUST be present; MAY be an empty string `""`. |
 
-All four fields MUST be present in every request. A missing field MUST cause a `400` response.
+`app.js` always emits all four fields in every request (`buildFeedbackPayload`
+fills in safe defaults for any that are missing from its input state), so a
+read-back can rely on all four being present.
 
 ### `answers` — question IDs and values
 
 - **`qID`** format: non-empty string, printable ASCII only (`0x20`–`0x7E`), no whitespace.  Claude MUST use stable, collision-free IDs within a single invocation (e.g. `q1`, `q2`, or a short slug).
-- **value type**: any JSON scalar or array. Claude documents the expected type per question in the HTML (see aa9.3 markup contract). The server stores values as-is without type coercion.
+- **value type**: any JSON scalar or array. Claude documents the expected type per question in the HTML (see `markup.md`). The server stores values as-is without type coercion.
 
-### `comments` — inline anchored comments
+### `comments` — per-question notes
 
 Each element of the `comments` array MUST have exactly two fields:
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `anchor` | string | yes | CSS selector that uniquely identifies the HTML element the comment is attached to (e.g. `"#q2"`, `"[data-qid='decision-3']"`). The server stores this verbatim. |
-| `text` | string | yes | The comment text. MUST NOT be an empty string when the element is present in the array — the browser-side form MUST omit zero-length comments from the array entirely. |
+| `anchor` | string | yes | CSS selector identifying the question widget the note belongs to — always `#<data-qid>` (e.g. `"#q2"`). The server stores this verbatim. |
+| `text` | string | yes | The note text. MUST NOT be an empty string when the element is present in the array — the browser-side form MUST omit empty notes from the array entirely. |
 
 ---
 
@@ -91,7 +101,7 @@ The server writes the feedback file, then exits with code `0`.
 { "error": "<human-readable message>" }
 ```
 
-Returned when: required field is missing, `verdict` is not one of the allowed values, or `Content-Type` is not `application/json`.
+Returned when: `Content-Type` is not `application/json`, the body is not valid JSON, or the body is valid JSON but not an object (e.g. an array or scalar). The server does **not** inspect individual fields.
 
 ### CSRF failure — `403 Forbidden`
 

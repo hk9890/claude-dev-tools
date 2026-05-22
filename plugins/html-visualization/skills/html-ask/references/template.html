@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Feedback — [Claude: replace with document title]</title>
-  <link rel="stylesheet" href="/assets/style.css">
+  <link rel="stylesheet" href="/assets/ask/style.css">
 </head>
 <body>
 <!-- CSRF token injected here by server:
@@ -27,13 +27,12 @@
       Widget type : text
       data-qid    : unique question ID (printable ASCII, no whitespace)
       data-qtype  : "text"
-      .annotatable + data-anchor-id : enables inline comment button on this widget
+      Text widgets are NOT .annotatable — the <textarea> below already IS the
+      free-text field, so no separate note field is added.
     -->
-    <div class="widget widget-text annotatable"
+    <div class="widget widget-text"
          data-qid="q-timeline"
-         data-qtype="text"
-         data-anchor-id="q-timeline"
-         id="q-timeline">
+         data-qtype="text">
       <label class="widget-label" for="q-timeline-input">
         [Claude: question text here — e.g. "Is the proposed timeline realistic?"]
       </label>
@@ -48,6 +47,7 @@
       data-qid    : unique question ID
       data-qtype  : "radio"
       Each option : <input type="radio"> with name=data-qid and value=<option-value>
+      .annotatable + data-anchor-id : adds an always-visible free-text note field
     -->
     <div class="widget widget-radio annotatable"
          data-qid="q-priority"
@@ -79,6 +79,7 @@
       data-qtype  : "checkbox"
       Each option : <input type="checkbox"> with name=data-qid and value=<option-value>
       Answer value: array of all checked values (may be empty [])
+      .annotatable + data-anchor-id : adds an always-visible free-text note field
     -->
     <div class="widget widget-checkbox annotatable"
          data-qid="q-concerns"
@@ -113,6 +114,7 @@
       .approach-verdict: per-column approve/reject radios (values: "approve" | "reject")
       Per-column answer key in payload: "<data-qid>-<data-approach-id>"
         e.g. data-qid="q-approach" + data-approach-id="a" → answers["q-approach-a"]
+      .annotatable + data-anchor-id : adds an always-visible free-text note field
     -->
     <div class="widget widget-approaches annotatable"
          data-qid="q-approach"
@@ -157,6 +159,7 @@
       .verdict-section wraps the overall verdict widget.
       .widget-verdict  : the widget; DO NOT add data-qid (not a Q&A question).
       Verdict radio values MUST be exactly: "approve" | "approve-with-changes" | "reject"
+      The verdict is OPTIONAL — the user may submit without selecting one.
     -->
     <div class="verdict-section">
       <h2>Overall verdict</h2>
@@ -217,6 +220,6 @@
 
 </div><!-- /.page-chrome -->
 
-<script src="/assets/app.js"></script>
+<script src="/assets/ask/app.js"></script>
 </body>
 </html>

@@ -39,14 +39,22 @@ Capture the epic ID (e.g. `proj-abc`). All tasks created during this session are
 
 ### 0.3 Confirm scope with the user
 
-Ask:
+First, check whether the project already documents a test, scratch, staging, or dev environment. Scan `docs/TESTING.md`, `AGENTS.md` / `CLAUDE.md`, and `README.md` for any mention of one (e.g. a staging URL, a sandbox account, a `dev` profile, a test database).
 
-> I've opened epic `<epic-id>` — **Explore <project> — <date>**. Before I start researching, two quick questions:
->
-> 1. Do you have a scratch or dev environment I should prefer for any actions that mutate state? (If not, I'll use the current environment and ask before each write/delete/send.)
-> 2. Is there a particular area or feature you want me to focus on, or should I explore freely?
+- **If the docs name an environment for mutating actions**, do not ask question 1 — state what you will use and why:
 
-Wait for the user's answers. Record: (a) whether a scratch env is available and how to reach it, (b) any focus constraint. Then proceed to Phase 1.
+  > I've opened epic `<epic-id>` — **Explore <project> — <date>**. `docs/TESTING.md` documents `<environment>` for testing, so I'll target that for any actions that mutate state.
+  >
+  > One question before I start researching: is there a particular area or feature you want me to focus on, or should I explore freely?
+
+- **If the docs do not mention one**, ask both questions:
+
+  > I've opened epic `<epic-id>` — **Explore <project> — <date>**. Before I start researching, two quick questions:
+  >
+  > 1. Do you have a scratch or dev environment I should prefer for any actions that mutate state? (If not, I'll use the current environment and ask before each write/delete/send.)
+  > 2. Is there a particular area or feature you want me to focus on, or should I explore freely?
+
+Wait for the user's answer(s). Record: (a) whether a scratch env is available and how to reach it — from the docs or the user, (b) any focus constraint. Then proceed to Phase 1.
 
 ---
 

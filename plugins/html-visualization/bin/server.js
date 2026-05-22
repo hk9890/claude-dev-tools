@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 /**
- * server.js — zero-dependency one-shot feedback server for html-ask.
+ * server.js — zero-dependency one-shot feedback server for html-visualization.
+ *
+ * Shared by every skill in the plugin (html-ask, html-feedback, …).
  *
  * Usage:
  *   node server.js <html-file> [--port N] [--timeout-sec N]
@@ -8,6 +10,10 @@
  * Binds 127.0.0.1 on port 0 (or --port N), serves the HTML document at GET /,
  * shared assets at GET /assets/*, accepts authenticated feedback at POST /submit,
  * writes feedback JSON and exits 0 on first successful submit.
+ *
+ * The server is schema-agnostic: it accepts any JSON object as the POST /submit
+ * body and writes it back verbatim (plus a server-stamped submittedAt). Each
+ * skill defines and validates its own payload shape client-side.
  *
  * Uses only Node built-in modules — no npm dependencies.
  */
@@ -74,7 +80,6 @@ let accepted = false; // true after first valid POST /submit
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-const VALID_VERDICTS = new Set(['approve', 'approve-with-changes', 'reject']);
 const MAX_BODY_BYTES = 1024 * 1024; // 1 MB
 
 function jsonResponse(res, statusCode, obj) {
@@ -277,34 +282,19 @@ async function handleRequest(req, res) {
       return;
     }
 
-    // Validate required fields
-    const requiredFields = ['verdict', 'answers', 'comments', 'freeform'];
-    for (const field of requiredFields) {
-      if (!(field in payload)) {
-        jsonResponse(res, 400, { error: `missing required field: ${field}` });
-        return;
-      }
-    }
-
-    // Validate verdict enum
-    if (!VALID_VERDICTS.has(payload.verdict)) {
-      jsonResponse(res, 400, {
-        error: `invalid verdict "${payload.verdict}"; must be one of: approve, approve-with-changes, reject`,
-      });
+    // The body must be a plain JSON object. The server is schema-agnostic —
+    // each skill owns its own payload shape — but it always writes an object.
+    if (payload === null || typeof payload !== 'object' || Array.isArray(payload)) {
+      jsonResponse(res, 400, { error: 'request body must be a JSON object' });
       return;
     }
 
     // Mark as accepted immediately to block duplicate submits
     accepted = true;
 
-    // Build feedback object (submittedAt added by server; other fields verbatim)
-    const feedback = {
-      submittedAt: new Date().toISOString(),
-      verdict: payload.verdict,
-      answers: payload.answers,
-      comments: payload.comments,
-      freeform: payload.freeform,
-    };
+    // Build feedback object: the server stamps submittedAt; every field from
+    // the request body is passed through verbatim.
+    const feedback = { submittedAt: new Date().toISOString(), ...payload };
 
     // Atomic write: write to temp path, then rename
     const tmpPath = `${feedbackFile}.tmp`;
@@ -330,8 +320,8 @@ async function handleRequest(req, res) {
       // Brief delay so the 200 flushes before exit; also gives a tiny window
       // for a racing duplicate POST to receive 410.
       setTimeout(() => {
-        console.log(`[html-ask] Feedback written to: ${feedbackFile}`);
-        console.log('[html-ask] Exiting 0.');
+        console.log(`[html-visualization] Feedback written to: ${feedbackFile}`);
+        console.log('[html-visualization] Exiting 0.');
         process.exit(0);
       }, 250);
     });
@@ -346,7 +336,7 @@ async function handleRequest(req, res) {
 
 const server = http.createServer((req, res) => {
   handleRequest(req, res).catch((err) => {
-    console.error('[html-ask] Unhandled error:', err);
+    console.error('[html-visualization] Unhandled error:', err);
     try {
       jsonResponse(res, 500, { error: 'internal server error' });
     } catch (_) {}
@@ -356,13 +346,13 @@ const server = http.createServer((req, res) => {
 server.listen(listenPort, '127.0.0.1', () => {
   const { port } = server.address();
   const url = `http://127.0.0.1:${port}/`;
-  console.log(`[html-ask] URL: ${url}`);
-  console.log(`[html-ask] Feedback file: ${feedbackFile}`);
+  console.log(`[html-visualization] URL: ${url}`);
+  console.log(`[html-visualization] Feedback file: ${feedbackFile}`);
 
   // Timeout handler
   const timeoutMs = timeoutSec * 1000;
   setTimeout(() => {
-    console.error(`[html-ask] Timeout: no submission received after ${timeoutSec}s. Exiting non-zero.`);
+    console.error(`[html-visualization] Timeout: no submission received after ${timeoutSec}s. Exiting non-zero.`);
     process.exit(2);
   // .unref() prevents the timer from keeping the event loop alive on its own.
   // The listening socket already keeps the event loop running; if something

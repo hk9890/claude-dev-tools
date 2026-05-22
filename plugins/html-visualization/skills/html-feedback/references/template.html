@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Review — [Claude: replace with document title]</title>
+  <link rel="stylesheet" href="/assets/feedback/style.css">
+</head>
+<body>
+<!-- CSRF token injected here by server:
+     <script>const CSRF_TOKEN = "...";</script>
+     Do NOT add this manually — the server inserts it before </head>. -->
+
+<div class="page-chrome">
+
+  <!-- ── Page header ────────────────────────────────────────────────────── -->
+  <header class="page-header">
+    <h1>[Claude: replace with document title]</h1>
+    <p class="subtitle">[Claude: one sentence — what this is and what kind of feedback you want]</p>
+    <span id="comment-count" class="comment-count"></span>
+  </header>
+
+  <!-- ── Feedback document (hidden after submit) ─────────────────────────── -->
+  <div id="feedback-doc">
+
+    <!-- ── Content ───────────────────────────────────────────────────────
+      Render the content as semantic HTML inside #content.
+
+      Every commentable unit is a DIRECT CHILD of #content and carries a
+      unique data-block-id (printable ASCII, no whitespace). The user hovers
+      a block to reveal a 💬 button, and may select text inside it to quote.
+
+      A whole list is one block (put data-block-id on the <ul>/<ol>, not on
+      each <li>) — per-line precision comes from the user's text selection.
+
+      Replace the example blocks below with the real content.
+    -->
+    <div id="content">
+
+      <h2 data-block-id="b-title">[Claude: a heading from the content — start
+        in-content headings at h2; the page h1 above is the document title]</h2>
+
+      <p data-block-id="b-intro">
+        [Claude: a paragraph of the content. Keep one paragraph per block so a
+        comment lands on a specific passage.]
+      </p>
+
+      <h3 data-block-id="b-section">[Claude: a sub-section heading]</h3>
+
+      <p data-block-id="b-body">
+        [Claude: another paragraph. Use real HTML — headings, lists, tables,
+        code blocks, blockquotes — so the content reads the way it should.]
+      </p>
+
+      <ul data-block-id="b-list">
+        <li>[Claude: a list item]</li>
+        <li>[Claude: another list item]</li>
+      </ul>
+
+    </div><!-- /#content -->
+
+    <!-- ── Freeform section ────────────────────────────────────────────── -->
+    <div class="freeform-section">
+      <h2>Overall comments</h2>
+      <textarea id="freeform-input" name="freeform"
+                placeholder="Any feedback that is not tied to a specific block — overall direction, tone, what is missing…"></textarea>
+    </div>
+
+    <!-- ── Submit row ─────────────────────────────────────────────────── -->
+    <div class="submit-row">
+      <button type="button" id="submit-btn" class="submit-btn">Submit feedback</button>
+      <button type="button" id="copy-btn" class="copy-btn">Copy feedback</button>
+    </div>
+    <div id="submit-error" class="submit-error" style="display:none;"></div>
+
+  </div><!-- /#feedback-doc -->
+
+  <!-- ── Success state (shown after 200 response) ───────────────────────── -->
+  <div id="state-submitted" class="state-submitted">
+    <h2>Feedback submitted</h2>
+    <p>Thank you. Claude has received your comments and will apply them.</p>
+  </div>
+
+  <!-- ── Already-submitted state (shown after 410 response) ─────────────── -->
+  <div id="state-already-submitted" class="state-already-submitted">
+    <h2>Already submitted</h2>
+    <p>This document has already been submitted. Claude has your earlier feedback.</p>
+  </div>
+
+</div><!-- /.page-chrome -->
+
+<script src="/assets/feedback/app.js"></script>
+</body>
+</html>

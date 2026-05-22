@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test-server.sh — integration tests for plugins/html-ask/bin/server.js
+# test-server.sh — integration tests for plugins/html-visualization/bin/server.js
 #
 # Tests start the real server and issue real HTTP requests via curl.
 # Covers:
@@ -8,14 +8,15 @@
 #   - GET /assets/../../<path> returns 404 (path traversal)
 #   - POST /submit with valid token + same-origin headers writes feedback + exits 0
 #   - POST /submit with missing/wrong token returns 403 and server keeps running
-#   - POST /submit with bad verdict returns 400
+#   - POST /submit passes arbitrary JSON-object fields through verbatim
+#   - POST /submit with a non-object JSON body returns 400
 #   - POST /submit after already submitted returns 410
 #   - Timeout with no submit exits non-zero
 set -uo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-SERVER="$REPO_ROOT/plugins/html-ask/bin/server.js"
-ASSETS_DIR="$REPO_ROOT/plugins/html-ask/assets"
+SERVER="$REPO_ROOT/plugins/html-visualization/bin/server.js"
+ASSETS_DIR="$REPO_ROOT/plugins/html-visualization/assets"
 
 PASS=0
 FAIL=0
@@ -368,15 +369,15 @@ test_wrong_token_403() {
   ok "wrong token: POST /submit returns 403"
 }
 
-# 8. POST /submit with bad verdict returns 400
-test_bad_verdict_400() {
+# 8. POST /submit with an arbitrary JSON object — server is schema-agnostic, so
+#    every field is passed through verbatim and stamped with submittedAt.
+test_arbitrary_passthrough() {
   local tmp_html
   tmp_html=$(mktemp --suffix=.html)
   make_html "$tmp_html"
 
   start_server "$tmp_html"
 
-  # Get token
   local html token
   html=$(curl -s "$BASE_URL/")
   token=$(extract_token_from_html "$html")
@@ -386,21 +387,48 @@ test_bad_verdict_400() {
     -X POST \
     -H "Content-Type: application/json" \
     -H "X-CSRF-Token: $token" \
-    -d '{"verdict":"invalid-verdict","answers":{},"comments":[],"freeform":""}' \
+    -d '{"customField":"hello","nested":{"n":42},"list":[1,2]}' \
     "$BASE_URL/submit")
 
-  kill_server
+  wait "$SERVER_PID" 2>/dev/null || true
+  SERVER_PID=""
+
   rm -f "$tmp_html"
 
-  if [[ "$status" != "400" ]]; then
-    fail "bad verdict: expected 400, got $status"
+  if [[ "$status" != "200" ]]; then
+    fail "arbitrary payload: expected 200, got $status"
+    rm -f "${FEEDBACK_FILE:-}" 2>/dev/null
     return
   fi
-  ok "bad verdict: POST /submit returns 400"
+  ok "arbitrary payload: POST /submit returns 200 for any JSON object"
+
+  if [[ ! -f "$FEEDBACK_FILE" ]]; then
+    fail "arbitrary payload: feedback file not written"
+    return
+  fi
+
+  local custom nested submitted_at
+  custom=$(python3 -c "import json; print(json.load(open('$FEEDBACK_FILE'))['customField'])" 2>&1)
+  nested=$(python3 -c "import json; print(json.load(open('$FEEDBACK_FILE'))['nested']['n'])" 2>&1)
+  submitted_at=$(python3 -c "import json; print(json.load(open('$FEEDBACK_FILE')).get('submittedAt','MISSING'))" 2>&1)
+
+  rm -f "$FEEDBACK_FILE"
+
+  if [[ "$custom" != "hello" || "$nested" != "42" ]]; then
+    fail "arbitrary payload: fields not passed through verbatim (customField='$custom', nested.n='$nested')"
+    return
+  fi
+  ok "arbitrary payload: arbitrary fields passed through verbatim"
+
+  if [[ "$submitted_at" == "MISSING" ]]; then
+    fail "arbitrary payload: submittedAt not stamped by server"
+    return
+  fi
+  ok "arbitrary payload: server stamps submittedAt"
 }
 
-# 9. POST /submit with missing required field returns 400
-test_missing_field_400() {
+# 9. POST /submit with a non-object JSON body (array) returns 400
+test_non_object_body_400() {
   local tmp_html
   tmp_html=$(mktemp --suffix=.html)
   make_html "$tmp_html"
@@ -411,23 +439,22 @@ test_missing_field_400() {
   html=$(curl -s "$BASE_URL/")
   token=$(extract_token_from_html "$html")
 
-  # Missing 'freeform' field
   local status
   status=$(curl -s -o /dev/null -w '%{http_code}' \
     -X POST \
     -H "Content-Type: application/json" \
     -H "X-CSRF-Token: $token" \
-    -d '{"verdict":"approve","answers":{},"comments":[]}' \
+    -d '[1,2,3]' \
     "$BASE_URL/submit")
 
   kill_server
   rm -f "$tmp_html"
 
   if [[ "$status" != "400" ]]; then
-    fail "missing field: expected 400, got $status"
+    fail "non-object body: expected 400, got $status"
     return
   fi
-  ok "missing field: POST /submit returns 400 for missing required field"
+  ok "non-object body: POST /submit returns 400 for a JSON array"
 }
 
 # 10. Duplicate POST /submit returns 410
@@ -619,8 +646,8 @@ test_get_asset_path_traversal
 test_valid_submit
 test_missing_token_403
 test_wrong_token_403
-test_bad_verdict_400
-test_missing_field_400
+test_arbitrary_passthrough
+test_non_object_body_400
 test_duplicate_submit_410
 test_timeout_exits_nonzero
 test_wrong_origin_403

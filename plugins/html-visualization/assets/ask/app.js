@@ -6,7 +6,7 @@
  *
  * DOM wiring (only runs when document is available):
  *   - Collects answers from .widget[data-qid] elements.
- *   - Manages inline comments on .annotatable elements.
+ *   - Renders an always-visible free-text note field on each .annotatable widget.
  *   - Reads CSRF_TOKEN global injected by server.
  *   - POSTs to /submit and handles 200 / 410 / other responses.
  *   - "Copy feedback" button copies the exact /submit JSON payload.
@@ -15,7 +15,7 @@
  *   data-qid       — question ID; non-empty, printable ASCII, no whitespace
  *   data-qtype     — text | radio | checkbox | approaches
  *   data-anchor-id — base value used as CSS selector anchor (#<value>)
- *   .annotatable   — element that accepts an inline comment
+ *   .annotatable   — widget that gets an always-visible free-text note field
  */
 
 'use strict';
@@ -69,10 +69,6 @@ if (typeof module !== 'undefined' && module.exports) {
 
 if (typeof document !== 'undefined') {
   document.addEventListener('DOMContentLoaded', function () {
-
-    // ── Inline-comment state ────────────────────────────────────────────────
-    // Map from anchorSelector (e.g. "#q1") to comment text string.
-    var inlineComments = {};
 
     // ── Helpers ─────────────────────────────────────────────────────────────
 
@@ -141,16 +137,20 @@ if (typeof document !== 'undefined') {
       return ta ? ta.value : '';
     }
 
-    // ── Read inline comments ────────────────────────────────────────────────
+    // ── Read per-question notes ─────────────────────────────────────────────
+    // Each .annotatable widget has an always-visible note <textarea>; a
+    // non-empty note becomes one { anchor, text } entry in the comments array.
 
     function collectComments() {
       var list = [];
-      Object.keys(inlineComments).forEach(function (anchor) {
-        var text = inlineComments[anchor];
-        if (typeof text === 'string' && text.length > 0) {
-          list.push({ anchor: anchor, text: text });
-        }
-      });
+      document
+        .querySelectorAll('textarea.widget-note-input[data-note-anchor]')
+        .forEach(function (ta) {
+          var text = ta.value.trim();
+          if (text.length > 0) {
+            list.push({ anchor: ta.getAttribute('data-note-anchor'), text: text });
+          }
+        });
       return list;
     }
 
@@ -169,89 +169,35 @@ if (typeof document !== 'undefined') {
       return buildFeedbackPayload(buildCurrentState());
     }
 
-    // ── Inline comment wiring ───────────────────────────────────────────────
+    // ── Per-question note wiring ────────────────────────────────────────────
+    // Every .annotatable widget gets an always-visible free-text note field,
+    // so the user can write something in alongside any structured answer.
 
     function setupAnnotatable(el) {
       // Derive anchor selector from data-anchor-id or element id
       var anchorId = el.getAttribute('data-anchor-id') || el.id;
       if (!anchorId) return; // Can't anchor — skip
-      var anchorSelector = '#' + anchorId;
 
       // Make sure element has the id for the selector to work
       if (!el.id) el.id = anchorId;
 
-      // Inject trigger button
-      var trigger = document.createElement('button');
-      trigger.type = 'button';
-      trigger.className = 'annotation-trigger';
-      trigger.setAttribute('aria-label', 'Add inline comment');
-      trigger.textContent = '+';
-      el.appendChild(trigger);
+      var noteWrap = document.createElement('div');
+      noteWrap.className = 'widget-note';
 
-      // Inject bubble
-      var bubble = document.createElement('div');
-      bubble.className = 'annotation-bubble';
-      bubble.innerHTML =
-        '<textarea placeholder="Add a comment on this item…"></textarea>' +
-        '<div class="bubble-actions">' +
-        '  <button type="button" class="bubble-save">Save</button>' +
-        '  <button type="button" class="bubble-cancel">Cancel</button>' +
-        '</div>';
-      el.appendChild(bubble);
+      var label = document.createElement('label');
+      label.className = 'widget-note-label';
+      label.setAttribute('for', 'note-' + anchorId);
+      label.textContent = 'Add a note (optional)';
 
-      // Inject annotations list
-      var annotationsList = document.createElement('div');
-      annotationsList.className = 'annotations-list';
-      el.appendChild(annotationsList);
+      var ta = document.createElement('textarea');
+      ta.className = 'widget-note-input';
+      ta.id = 'note-' + anchorId;
+      ta.setAttribute('data-note-anchor', '#' + anchorId);
+      ta.placeholder = 'Add a note or comment on this question…';
 
-      function refreshList() {
-        annotationsList.innerHTML = '';
-        var text = inlineComments[anchorSelector];
-        if (text) {
-          var item = document.createElement('div');
-          item.className = 'annotation-item';
-          item.innerHTML =
-            '<span class="annotation-text"></span>' +
-            '<button type="button" class="annotation-remove" aria-label="Remove comment">x</button>';
-          item.querySelector('.annotation-text').textContent = text;
-          item.querySelector('.annotation-remove').addEventListener('click', function () {
-            delete inlineComments[anchorSelector];
-            trigger.classList.remove('has-comment');
-            refreshList();
-          });
-          annotationsList.appendChild(item);
-        }
-      }
-
-      trigger.addEventListener('click', function () {
-        var isOpen = bubble.classList.contains('open');
-        if (isOpen) {
-          bubble.classList.remove('open');
-        } else {
-          var ta = bubble.querySelector('textarea');
-          ta.value = inlineComments[anchorSelector] || '';
-          bubble.classList.add('open');
-          ta.focus();
-        }
-      });
-
-      bubble.querySelector('.bubble-save').addEventListener('click', function () {
-        var ta = bubble.querySelector('textarea');
-        var text = ta.value.trim();
-        if (text.length > 0) {
-          inlineComments[anchorSelector] = text;
-          trigger.classList.add('has-comment');
-        } else {
-          delete inlineComments[anchorSelector];
-          trigger.classList.remove('has-comment');
-        }
-        bubble.classList.remove('open');
-        refreshList();
-      });
-
-      bubble.querySelector('.bubble-cancel').addEventListener('click', function () {
-        bubble.classList.remove('open');
-      });
+      noteWrap.appendChild(label);
+      noteWrap.appendChild(ta);
+      el.appendChild(noteWrap);
     }
 
     // Wire up all .annotatable elements
@@ -290,10 +236,9 @@ if (typeof document !== 'undefined') {
         clearError();
         var payload = buildCurrentPayload();
 
-        if (!payload.verdict) {
-          showError('Please select an overall verdict before submitting.');
-          return;
-        }
+        // No field is required to submit — the user may send feedback back
+        // even with the verdict or any question left unanswered. Claude is
+        // told (in the skill) to report which items were not answered.
 
         // Read CSRF token from server-injected global
         var token = (typeof CSRF_TOKEN !== 'undefined') ? CSRF_TOKEN : '';
