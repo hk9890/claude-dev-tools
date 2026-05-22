@@ -289,6 +289,95 @@
       .page-header h1 { font-size: 1.7rem; }
       .vis-card, .vis-svg-wrap { padding: 1rem 1.1rem; }
     }
+
+    /* ── Feedback footer ────────────────────────────────────────────────── */
+    .vis-footer {
+      margin-top: 2.5rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid var(--hv-border);
+    }
+
+    .vis-footer-label {
+      display: block;
+      margin-bottom: 0.45rem;
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      color: var(--hv-muted);
+    }
+
+    .vis-footer-textarea {
+      display: block;
+      width: 100%;
+      min-height: 72px;
+      padding: 0.6rem 0.75rem;
+      background: var(--hv-surface);
+      color: var(--hv-text);
+      border: 1px solid var(--hv-border);
+      border-radius: calc(var(--hv-radius) - 2px);
+      font-family: var(--hv-font-body);
+      font-size: 0.95rem;
+      line-height: 1.5;
+      resize: vertical;
+      transition: border-color 0.15s;
+    }
+
+    .vis-footer-textarea:focus {
+      outline: none;
+      border-color: var(--hv-accent);
+      box-shadow: 0 0 0 2px rgba(var(--hv-accent-rgb), 0.18);
+    }
+
+    .vis-footer-actions {
+      display: flex;
+      gap: 0.6rem;
+      margin-top: 0.65rem;
+      align-items: center;
+    }
+
+    .vis-btn {
+      padding: 0.42rem 1.1rem;
+      font-family: var(--hv-font-body);
+      font-size: 0.9rem;
+      font-weight: 500;
+      border-radius: calc(var(--hv-radius) - 4px);
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: background 0.12s, opacity 0.12s;
+    }
+
+    .vis-btn-send {
+      background: var(--hv-accent);
+      color: #fff;
+      border-color: var(--hv-accent);
+    }
+
+    .vis-btn-send:hover:not(:disabled) {
+      background: var(--hv-accent-deep);
+      border-color: var(--hv-accent-deep);
+    }
+
+    .vis-btn-send:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+
+    .vis-btn-save {
+      background: var(--hv-surface);
+      color: var(--hv-text);
+      border-color: var(--hv-border);
+    }
+
+    .vis-btn-save:hover {
+      background: var(--hv-surface-2);
+    }
+
+    .vis-footer-status {
+      font-size: 0.85rem;
+      color: var(--hv-muted);
+      margin-left: 0.25rem;
+    }
   </style>
 </head>
 <body>
@@ -381,6 +470,19 @@
   -->
   <p class="vis-note">[Claude: optional footnote — e.g. data source, generated at timestamp, caveats]</p>
 
+  <!-- ── Feedback footer ──────────────────────────────────────────────────── -->
+  <footer class="vis-footer">
+    <label class="vis-footer-label" for="vis-message">Message to Claude</label>
+    <textarea id="vis-message" class="vis-footer-textarea"
+              placeholder="Optional — share feedback or a follow-up request, then click Send."
+              rows="3"></textarea>
+    <div class="vis-footer-actions">
+      <button id="vis-send" class="vis-btn vis-btn-send" type="button">Send</button>
+      <button id="vis-save" class="vis-btn vis-btn-save" type="button">Save</button>
+      <span id="vis-status" class="vis-footer-status" aria-live="polite"></span>
+    </div>
+  </footer>
+
 </div><!-- /.page-chrome -->
 
 <!-- ── Optional: CDN chart initialisation ────────────────────────────────────
@@ -399,6 +501,95 @@
 
   Remove this comment block if no CDN library is used.
 -->
+
+<script>
+(function () {
+  'use strict';
+
+  var sendBtn   = document.getElementById('vis-send');
+  var saveBtn   = document.getElementById('vis-save');
+  var textarea  = document.getElementById('vis-message');
+  var statusEl  = document.getElementById('vis-status');
+
+  // ── Send ──────────────────────────────────────────────────────────────────
+  // The server injects a CSRF token script block before </head>.
+  // When absent (file:// or saved copy) Send is disabled.
+  var token = (typeof CSRF_TOKEN !== 'undefined') ? CSRF_TOKEN : null;
+  if (!token) {
+    sendBtn.disabled = true;
+    sendBtn.title = 'Send is unavailable when the page is opened offline.';
+  }
+
+  sendBtn.addEventListener('click', function () {
+    if (!token) return;
+
+    var message = textarea.value;
+
+    sendBtn.disabled = true;
+    statusEl.textContent = 'Sending…';
+
+    fetch('/submit', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': token
+      },
+      body: JSON.stringify({ freeform: message })
+    })
+      .then(function (res) {
+        if (res.ok) {
+          statusEl.textContent = message.length > 0
+            ? 'Sent. You can close this tab.'
+            : 'Closed.';
+          textarea.disabled = true;
+          saveBtn.disabled = true;
+        } else {
+          statusEl.textContent = 'Error ' + res.status + '. Please try again.';
+          sendBtn.disabled = false;
+        }
+      })
+      .catch(function () {
+        statusEl.textContent = 'Network error. Please try again.';
+        sendBtn.disabled = false;
+      });
+  });
+
+  // ── Save ──────────────────────────────────────────────────────────────────
+  // Produces a clean, self-contained HTML file:
+  //   - strips all <script> blocks that reference CSRF_TOKEN
+  //   - disables the Send button (server is unreachable from a saved file://)
+  //   - the stripped scripts include both the injected token and this block
+  saveBtn.addEventListener('click', function () {
+    var clone = document.documentElement.cloneNode(true);
+
+    // Strip <script> blocks that contain CSRF_TOKEN
+    var scripts = clone.querySelectorAll('script');
+    scripts.forEach(function (s) {
+      if (s.textContent.indexOf('CSRF_TOKEN') !== -1) {
+        s.parentNode.removeChild(s);
+      }
+    });
+
+    // Disable the Send button in the clone
+    var clonedSend = clone.querySelector('#vis-send');
+    if (clonedSend) {
+      clonedSend.disabled = true;
+      clonedSend.title = 'Send is unavailable when the page is opened offline.';
+    }
+
+    var html = '<!DOCTYPE html>\n' + clone.outerHTML;
+    var blob = new Blob([html], { type: 'text/html; charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'visualization.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+}());
+</script>
 
 </body>
 </html>
