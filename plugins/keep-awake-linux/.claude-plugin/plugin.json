@@ -9,12 +9,5 @@
   "homepage": "https://github.com/hk9890/claude-dev-tools",
   "repository": "https://github.com/hk9890/claude-dev-tools",
   "license": "MIT",
-  "keywords": [
-    "linux",
-    "systemd",
-    "sleep",
-    "keep-awake",
-    "inhibit",
-    "hooks"
-  ]
+  "keywords": ["linux", "systemd", "sleep", "keep-awake", "inhibit", "hooks"]
 }

@@ -9,10 +9,5 @@
   "homepage": "https://github.com/hk9890/claude-dev-tools",
   "repository": "https://github.com/hk9890/claude-dev-tools",
   "license": "MIT",
-  "keywords": [
-    "docs",
-    "documentation",
-    "AGENTS.md",
-    "project-docs"
-  ]
+  "keywords": ["docs", "documentation", "AGENTS.md", "project-docs"]
 }

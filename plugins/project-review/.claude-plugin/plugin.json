@@ -9,14 +9,5 @@
   "homepage": "https://github.com/hk9890/claude-dev-tools",
   "repository": "https://github.com/hk9890/claude-dev-tools",
   "license": "MIT",
-  "keywords": [
-    "review",
-    "complexity",
-    "architecture",
-    "structure",
-    "tests",
-    "consistency",
-    "code-review",
-    "adversarial"
-  ]
+  "keywords": ["review", "complexity", "architecture", "structure", "tests", "consistency", "code-review", "adversarial"]
 }

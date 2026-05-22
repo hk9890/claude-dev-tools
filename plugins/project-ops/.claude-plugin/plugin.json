@@ -9,14 +9,6 @@
   "homepage": "https://github.com/hk9890/claude-dev-tools",
   "repository": "https://github.com/hk9890/claude-dev-tools",
   "license": "MIT",
-  "keywords": [
-    "testing",
-    "release",
-    "monitoring",
-    "operations",
-    "project-ops"
-  ],
-  "dependencies": [
-    "project-docs"
-  ]
+  "keywords": ["testing", "release", "monitoring", "operations", "project-ops"],
+  "dependencies": ["project-docs"]
 }

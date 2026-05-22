@@ -9,13 +9,7 @@
   "homepage": "https://github.com/hk9890/claude-dev-tools",
   "repository": "https://github.com/hk9890/claude-dev-tools",
   "license": "MIT",
-  "keywords": [
-    "theme",
-    "catppuccin",
-    "mocha",
-    "style",
-    "visual"
-  ],
+  "keywords": ["theme", "catppuccin", "mocha", "style", "visual"],
   "experimental": {
     "themes": "./themes/"
   }

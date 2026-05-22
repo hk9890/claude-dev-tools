@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Personal Marketplace for development with claude code",
-    "version": "1.11.0",
+    "version": "1.12.0",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -19,13 +19,7 @@
         "name": "Hans Kohlreiter"
       },
       "category": "workflow",
-      "keywords": [
-        "beads",
-        "task-tracking",
-        "agents",
-        "planning",
-        "orchestration"
-      ]
+      "keywords": ["beads", "task-tracking", "agents", "planning", "orchestration"]
     },
     {
       "name": "project-docs",
@@ -36,12 +30,7 @@
         "name": "Hans Kohlreiter"
       },
       "category": "documentation",
-      "keywords": [
-        "docs",
-        "documentation",
-        "AGENTS.md",
-        "project-docs"
-      ]
+      "keywords": ["docs", "documentation", "AGENTS.md", "project-docs"]
     },
     {
       "name": "project-ops",
@@ -52,13 +41,7 @@
         "name": "Hans Kohlreiter"
       },
       "category": "workflow",
-      "keywords": [
-        "testing",
-        "release",
-        "monitoring",
-        "operations",
-        "project-ops"
-      ]
+      "keywords": ["testing", "release", "monitoring", "operations", "project-ops"]
     },
     {
       "name": "project-review",
@@ -69,16 +52,7 @@
         "name": "Hans Kohlreiter"
       },
       "category": "code-quality",
-      "keywords": [
-        "review",
-        "complexity",
-        "architecture",
-        "structure",
-        "tests",
-        "consistency",
-        "code-review",
-        "adversarial"
-      ]
+      "keywords": ["review", "complexity", "architecture", "structure", "tests", "consistency", "code-review", "adversarial"]
     },
     {
       "name": "github-releases",
@@ -89,13 +63,7 @@
         "name": "Hans Kohlreiter"
       },
       "category": "workflow",
-      "keywords": [
-        "github",
-        "release",
-        "semver",
-        "gh-cli",
-        "quality-gates"
-      ]
+      "keywords": ["github", "release", "semver", "gh-cli", "quality-gates"]
     },
     {
       "name": "claude-catppuccin",
@@ -106,13 +74,7 @@
         "name": "Hans Kohlreiter"
       },
       "category": "theme",
-      "keywords": [
-        "theme",
-        "catppuccin",
-        "mocha",
-        "style",
-        "visual"
-      ]
+      "keywords": ["theme", "catppuccin", "mocha", "style", "visual"]
     },
     {
       "name": "keep-awake-linux",
@@ -123,14 +85,7 @@
         "name": "Hans Kohlreiter"
       },
       "category": "workflow",
-      "keywords": [
-        "linux",
-        "systemd",
-        "sleep",
-        "keep-awake",
-        "inhibit",
-        "hooks"
-      ]
+      "keywords": ["linux", "systemd", "sleep", "keep-awake", "inhibit", "hooks"]
     },
     {
       "name": "project-explore",
@@ -141,12 +96,7 @@
         "name": "Hans Kohlreiter"
       },
       "category": "workflow",
-      "keywords": [
-        "exploratory-testing",
-        "beads",
-        "qa",
-        "exploration"
-      ]
+      "keywords": ["exploratory-testing", "beads", "qa", "exploration"]
     },
     {
       "name": "html-ask",
@@ -157,14 +107,7 @@
         "name": "Hans Kohlreiter"
       },
       "category": "workflow",
-      "keywords": [
-        "html",
-        "feedback",
-        "interactive",
-        "questions",
-        "browser",
-        "node"
-      ]
+      "keywords": ["html", "feedback", "interactive", "questions", "browser", "node"]
     }
   ]
 }

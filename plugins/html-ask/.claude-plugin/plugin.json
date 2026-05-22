@@ -9,12 +9,5 @@
   "homepage": "https://github.com/hk9890/claude-dev-tools",
   "repository": "https://github.com/hk9890/claude-dev-tools",
   "license": "MIT",
-  "keywords": [
-    "html",
-    "feedback",
-    "interactive",
-    "questions",
-    "browser",
-    "node"
-  ]
+  "keywords": ["html", "feedback", "interactive", "questions", "browser", "node"]
 }
