@@ -11,6 +11,54 @@ Implementation guide for contributing to this plugin marketplace.
 5. Add the plugin to the table in `README.md`.
 6. Use the `plugin-dev` skill set to scaffold components: commands, skills, agents, hooks, MCP integration. `plugin-dev` ships in an external plugin and must be installed separately — see [TESTING.md](TESTING.md) for install instructions.
 
+## SKILL.md conventions
+
+These apply to every `SKILL.md` under `plugins/<plugin-name>/skills/<skill-name>/`. Plugin-specific RULES.md may add or restrict, but should not contradict.
+
+### Naming
+
+Skill directory name and the `name:` field in frontmatter must match, and both should be **domain-prefixed**: `<plugin-domain>-<topic>`. The qualified reference (`<plugin>:<skill>`) then carries the domain in both segments.
+
+- ✅ `keep-awake-linux:keep-awake-inspect`, `html-visualization:html-visualize-ask`, `project-docs:project-create-docs`
+- ❌ `keep-awake-linux:inspect` — bare verb, no domain
+
+Within a plugin, sibling skills share the same domain prefix so they sort and read as a family.
+
+A "main" skill may take the plugin's own name (e.g. `project-docs:project-docs`, `github-releases:github-releases`); this is the only accepted exception.
+
+### Frontmatter — pick a schema by invocation behaviour
+
+A skill is either **user-only** (must not auto-trigger) or **model-discoverable** (the model should auto-invoke it from conversation context). Pick the schema that matches the skill's intent.
+
+**Schema A — user-only:**
+
+```yaml
+---
+name: <skill-name>
+description: "<one-line summary>"
+user-invocable: true
+disable-model-invocation: true
+---
+```
+
+Use for skills that perform a consequential, explicit action and should only run when the user types the slash command. Examples: `beads-plan`, `explore-project`, `html-visualize-demo`, the `project-docs` sub-skills.
+
+**Schema B — model-discoverable:**
+
+```yaml
+---
+name: <skill-name>
+description: "<one-line summary>"
+when_to_use: "Use when … Triggers on '…', '…'. Does not apply to …"
+---
+```
+
+Use for skills the model should suggest or auto-invoke from context. `when_to_use` carries the trigger guidance — write positive triggers, exclusions, and (where it helps) the argument shape. Examples: the `*-review` skills, `github-releases`, `keep-awake-inspect`, the `project-docs` router.
+
+**Reference libraries** are skill folders loaded *by* sibling skills, not invoked directly. They use `user-invocable: false` and omit `when_to_use`. Examples: `beads-core`, `html-visualize`.
+
+Do not mix schemas — a skill with both `disable-model-invocation: true` and `when_to_use:` is contradictory.
+
 ## Plugin rules files
 
 Rules files live at `plugins/<plugin-name>/RULES.md`. They record facts, constraints, and design decisions that are not derivable from the code — deliberate feature exclusions, chosen approaches, known tradeoffs.
