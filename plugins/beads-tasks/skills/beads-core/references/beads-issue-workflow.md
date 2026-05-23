@@ -54,8 +54,12 @@ bd update <id> --status=open --remove-label has:open-questions
 Use dependency edges for strict ordering.
 
 ```bash
-bd dep add <parent-or-blocked-by-id> <dependent-id>
+# bd dep add <dependent> <blocker> — first arg depends on / is blocked by the second.
+# Example: bd-12 must run after bd-7 ->
+bd dep add bd-12 bd-7
 ```
+
+Always include the `add` subcommand — `bd dep <id> <id>` without it fails with `accepts at most 1 arg(s)`.
 
 Guideline:
 

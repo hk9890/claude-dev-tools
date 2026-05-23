@@ -81,10 +81,13 @@ Before writing any HTML, decide:
 See `references/serve.md` — temp directory section. Use the prefix
 `html-feedback`. This directory is created once and reused for every Apply round.
 
-### 2b. Copy the template
+### 2b. Author the destination from the template
 
-Copy `${CLAUDE_PLUGIN_ROOT}/skills/html-visualize/references/feedback-template.html`
-into `$HTML_DIR/review.html`.
+Read `${CLAUDE_PLUGIN_ROOT}/skills/html-visualize/references/feedback-template.html`
+with the Read tool, then author `$HTML_DIR/review.html` with the Write tool
+using the template as your starting structure. Do NOT `cp` the template then
+`Edit` the copy — the harness rejects it as "File has not been read yet". If
+you do `cp`, you MUST Read the copied file before any Edit.
 
 The template contains example blocks — replace them with the real content. Also
 replace the `<title>`, the header `<h1>`, the `.subtitle`, and the `fb-generation`
@@ -165,7 +168,13 @@ The file contains:
   "submittedAt": "<ISO-8601 timestamp>",
   "action": "apply" | "submit",
   "comments": [
-    { "blockId": "<string>", "blockText": "<string>", "quote": "<string>", "text": "<string>" }
+    {
+      "blockId": "<string>",
+      "blockText": "<string>",
+      "quote": "<string>",
+      "quoteStart": <integer>,
+      "text": "<string>"
+    }
   ],
   "freeform": "<string>"
 }
@@ -179,6 +188,7 @@ Interpret the comment fields:
 | Field | How to use it |
 |---|---|
 | `comments` | Each is one located piece of feedback. `blockId` + `blockText` tell you which passage; `quote` (when non-empty) narrows it to the exact phrase; `text` is what they want changed. |
+| `quote` + `quoteStart` | When `quote` is non-empty and `quoteStart >= 0`, the phrase is located at `blockText.substring(quoteStart, quoteStart + quote.length)`. Use `quoteStart` to disambiguate when the same phrase appears multiple times in a block. When `quoteStart` is `-1`, fall back to `blockText.indexOf(quote)` or treat the comment as applying to the whole block. |
 | `freeform` | Feedback not tied to a block — overall direction, tone, what is missing, or new ideas to add. May be empty. During brainstorming, `freeform` and "what is missing" comments are the primary way the user adds new ideas; an Apply round may therefore introduce new options, not only edit existing ones. |
 
 If the content came from a file, `Read` that file first — `Edit`/`Write` requires

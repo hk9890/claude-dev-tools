@@ -61,20 +61,22 @@ Before writing a single line of HTML, decide what goes into the document:
 
 ## Step 2 — Build the HTML document
 
-### 2a. Create temp directory and copy template
+### 2a. Create temp directory
 
 See `references/serve.md` — temp directory section. Use the prefix `html-ask`.
 
-Copy `${CLAUDE_PLUGIN_ROOT}/skills/html-visualize/references/ask-template.html`
-into `$HTML_DIR/feedback.html`.
+### 2b. Author the destination from the template
+
+Read `${CLAUDE_PLUGIN_ROOT}/skills/html-visualize/references/ask-template.html`
+with the Read tool, then author `$HTML_DIR/feedback.html` with the Write tool
+using the template as your starting structure. Do NOT `cp` the template then
+`Edit` the copy — the harness rejects it as "File has not been read yet". If
+you do `cp`, you MUST Read the copied file before any Edit.
 
 The template contains example widgets — remove every example widget you do not
 need. Keep the page structure, header, verdict section, freeform section, and
-submit row exactly as in the template.
-
-### 2b. Fill in the content
-
-Edit the copied file per the markup contract in
+submit row exactly as in the template. Fill in the content per the markup
+contract in
 `${CLAUDE_PLUGIN_ROOT}/skills/html-visualize/references/ask-markup.md`. Key rules:
 
 - Replace `[Claude: replace with document title]` in `<h1>` and `<title>` with

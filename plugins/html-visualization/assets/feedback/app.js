@@ -8,7 +8,8 @@
  *   - Selecting text inside #content reveals a floating 💬 button at the
  *     selection; clicking it opens a comment editor anchored to that text.
  *   - Saved comments render as inline cards after their block; the selected
- *     phrase is highlighted inline when the selection allows it.
+ *     phrase is highlighted inline when the selection allows it (word-level
+ *     <mark> wrapping for single-element selections).
  *   - "Apply & preview" sends the feedback with action "apply": the server
  *     exits, Claude updates the document and re-serves, and this page polls
  *     for the new generation and reloads itself.
@@ -17,11 +18,13 @@
  *
  * Comment anchoring (full contract in markup.md):
  *   data-block-id — stable id on each commentable block of content
- *   A comment is { blockId, blockText, quote, text }:
- *     blockId   — the block the comment is anchored to
- *     blockText — the block's plain text (so read-back is self-contained)
- *     quote     — the exact text the user selected inside the block
- *     text      — the user's comment
+ *   A comment is { blockId, blockText, quote, quoteStart, text }:
+ *     blockId    — the block the comment is anchored to
+ *     blockText  — the block's plain text (so read-back is self-contained)
+ *     quote      — the exact text the user selected inside the block
+ *     quoteStart — character offset of quote within blockText (normalized);
+ *                  -1 for block-level comments (no text selected)
+ *     text       — the user's comment
  */
 
 'use strict';
@@ -31,7 +34,7 @@
 // state shape:
 //   {
 //     action:   "apply" | "submit",
-//     comments: [ { blockId, blockText, quote, text } ],
+//     comments: [ { blockId, blockText, quote, quoteStart, text } ],
 //     freeform: string
 //   }
 //
@@ -39,7 +42,7 @@
 //
 // Enforces: action defaults to "submit" for any non-"apply" value; comments
 // with empty text — or no blockId — are filtered OUT; blockText and quote
-// default to "" when absent.
+// default to "" when absent; quoteStart defaults to -1 when absent or invalid.
 
 function buildFeedbackPayload(state) {
   var action = state.action === 'apply' ? 'apply' : 'submit';
@@ -51,10 +54,14 @@ function buildFeedbackPayload(state) {
     var c = rawComments[i];
     if (!c || typeof c.text !== 'string' || c.text.length === 0) continue;
     if (typeof c.blockId !== 'string' || c.blockId.length === 0) continue;
+    var qs = (typeof c.quoteStart === 'number' && Number.isFinite(c.quoteStart))
+      ? Math.floor(c.quoteStart)
+      : -1;
     comments.push({
       blockId: c.blockId,
       blockText: typeof c.blockText === 'string' ? c.blockText : '',
       quote: typeof c.quote === 'string' ? c.quote : '',
+      quoteStart: qs,
       text: c.text,
     });
   }
@@ -79,7 +86,7 @@ if (typeof document !== 'undefined') {
 
     // ── State ───────────────────────────────────────────────────────────────
 
-    var commentState = [];        // [ { id, blockId, blockText, quote, text } ]
+    var commentState = [];        // [ { id, blockId, blockText, quote, quoteStart, text } ]
     var pendingSelection = null;  // { blockId, text, range } — last text selection
     var nextId = 1;
     var openEditor = null;        // the single open editor element, or null
@@ -94,6 +101,39 @@ if (typeof document !== 'undefined') {
     function plainText(node) {
       var t = (node.textContent || '').replace(/\s+/g, ' ').trim();
       return t.length > 2000 ? t.slice(0, 2000) + '…' : t;
+    }
+
+    // Compute the character offset of the selection start within the block's
+    // normalized plain text. Returns -1 on failure (block-level comment or
+    // when the range walk cannot produce a reliable offset).
+    //
+    // Strategy: measure how many normalized characters precede the selection
+    // start within the block element, then use indexOf from that position to
+    // find the first occurrence of the quote starting no earlier than the
+    // measured offset. Falls back to -1 when the quote is not found.
+    function computeQuoteStart(block, range, quote, blockText) {
+      if (!block || !range || !quote) return -1;
+      try {
+        // Build a range from the block start to the selection start.
+        var prefixRange = document.createRange();
+        prefixRange.setStart(block, 0);
+        prefixRange.setEnd(range.startContainer, range.startOffset);
+        // Normalize whitespace in the prefix the same way plainText() does.
+        var prefix = (prefixRange.toString() || '').replace(/\s+/g, ' ').trimLeft();
+        var approxOffset = prefix.length;
+        // Find the quote in blockText at or near approxOffset.
+        // Allow the found index to be slightly before approxOffset (up to the
+        // quote length) to account for whitespace collapse discrepancies.
+        var searchFrom = Math.max(0, approxOffset - quote.length);
+        var idx = blockText.indexOf(quote, searchFrom);
+        if (idx < 0) {
+          // Quote not found — could be whitespace-collapsed; try from start.
+          idx = blockText.indexOf(quote);
+        }
+        return idx; // -1 if still not found
+      } catch (e) {
+        return -1;
+      }
     }
 
     function el(tag, className, text) {
@@ -216,11 +256,16 @@ if (typeof document !== 'undefined') {
       // comment consumes the pending selection that belongs to this block.
       var quote = '';
       var range = null;
+      var pendingQuoteStart = -1;
       if (existing) {
         quote = existing.quote;
       } else if (pendingSelection && pendingSelection.blockId === blockId) {
         quote = pendingSelection.text;
         range = pendingSelection.range;
+        // Pre-compute the offset now while the range is still valid.
+        pendingQuoteStart = computeQuoteStart(
+          block, range, quote, blockTextById[blockId] || ''
+        );
       }
       pendingSelection = null;
 
@@ -257,6 +302,7 @@ if (typeof document !== 'undefined') {
             blockId: blockId,
             blockText: blockTextById[blockId] || '',
             quote: quote,
+            quoteStart: pendingQuoteStart,
             text: text,
           };
           commentState.push(comment);
@@ -381,7 +427,13 @@ if (typeof document !== 'undefined') {
       return {
         action: action,
         comments: commentState.map(function (c) {
-          return { blockId: c.blockId, blockText: c.blockText, quote: c.quote, text: c.text };
+          return {
+            blockId: c.blockId,
+            blockText: c.blockText,
+            quote: c.quote,
+            quoteStart: typeof c.quoteStart === 'number' ? c.quoteStart : -1,
+            text: c.text,
+          };
         }),
         freeform: freeformValue(),
       };

@@ -110,7 +110,7 @@ if (!Array.isArray(payload.comments)) { console.error('comments not array'); pro
 
 # ── Test 3: non-empty comments survive ────────────────────────────────────────
 
-run_node_test "non-empty comments survive with all four fields" "
+run_node_test "non-empty comments survive with all five fields" "
 var app = require('$APP_JS');
 var payload = app.buildFeedbackPayload({
   comments: [
@@ -123,11 +123,14 @@ if (payload.comments.length !== 1) {
 }
 var c = payload.comments[0];
 var keys = Object.keys(c).sort();
-if (JSON.stringify(keys) !== JSON.stringify(['blockId','blockText','quote','text'])) {
+if (JSON.stringify(keys) !== JSON.stringify(['blockId','blockText','quote','quoteStart','text'])) {
   console.error('Comment keys mismatch: ' + JSON.stringify(keys)); process.exit(1);
 }
 if (c.blockId !== 'b-intro' || c.quote !== 'intro' || c.text !== 'remove this') {
   console.error('Comment values mismatch: ' + JSON.stringify(c)); process.exit(1);
+}
+if (c.quoteStart !== -1) {
+  console.error('quoteStart default wrong: ' + c.quoteStart); process.exit(1);
 }
 "
 

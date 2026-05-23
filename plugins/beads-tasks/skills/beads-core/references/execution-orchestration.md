@@ -37,7 +37,16 @@ Before implementing each task:
 When blocked by quality gaps:
 
 ```bash
+# Short comment — inline:
 bd comments add <id> "Cannot execute: <specific gaps>"
+
+# From a file:
+bd comments add <id> -f <file>
+
+# Multi-line via stdin — use the `bd comment` shorthand (it has --stdin):
+cat << 'HEREDOC' | bd comment <id> --stdin
+<multi-line text>
+HEREDOC
 ```
 
 If a subagent found the blocker, have it return tracker-ready comment text and apply it from the orchestrator.
@@ -72,7 +81,7 @@ At each iteration capture:
 
 ## Closure order
 
-1. Close implementation tasks serially from the orchestrator.
+1. Close implementation tasks serially **in dependency order — leaf tasks (no open blockers) first**, then the tasks they unblock. `bd close` rejects closing an issue with open blockers. Do **not** use `--force` to bypass this — close the blockers first; use `bd ready` / `bd dep tree <id>` to find a safe order.
 2. Run the acceptance-review task with a verifier.
 3. Close the epic only when the acceptance-review gate is closed.
 

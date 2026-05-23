@@ -39,6 +39,8 @@ Each enumerated item must end the review marked as either **in-scope and checked
 
 Run all three. They are necessary but not sufficient.
 
+Run them in **separate, sequential Bash calls — do not batch into one parallel tool-call set**. `claude-md.sh check` exits non-zero on a non-canonical `CLAUDE.md`, and a parallel batch then cancels its siblings, dropping the output from the other two scripts.
+
 - `scripts/claude-md.sh check <repo-root>` — `CLAUDE.md` is exactly `@AGENTS.md` (one line; any extra is BLOCKER).
 - `scripts/inventory.py <repo-root>` — missing canonical docs, non-canonical docs, non-canonical subdirs, location violations.
 - `scripts/validate-routes.py <repo-root> --include-docs --json` — unresolved file references.
