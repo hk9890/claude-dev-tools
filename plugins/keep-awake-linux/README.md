@@ -105,7 +105,7 @@ Sample lines:
 
 The log auto-rotates at 1 MiB (one archive kept as `keep-awake.log.1`). Disable with `KEEP_AWAKE_LOG=0`.
 
-**Structured report:** ask Claude to inspect keep-awake (e.g. "show me keep-awake state", "analyze the keep-awake log", "why didn't keep-awake fire") — the `keep-awake-linux:inspect` skill reads the log and current state and produces a per-session timeline with anomaly detection.
+**Structured report:** ask Claude to inspect keep-awake (e.g. "show me keep-awake state", "analyze the keep-awake log", "why didn't keep-awake fire") — the `keep-awake-linux:keep-awake-inspect` skill reads the log and current state and produces a per-session timeline with anomaly detection.
 
 ## Configuration & limits
 
