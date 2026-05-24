@@ -60,21 +60,37 @@ bookmark and share; it should make sense with no prior context from the chat.
 ### 2a. Create the temp directory
 
 See `references/serve.md` — temp directory section. Use the prefix
-`html-visualize`:
+`html-visualize`. Run the full block from that section, which creates the
+directory **and** writes `$HTML_DIR/.plugin-root`:
 
 ```bash
 TMPDIR_BASE=$(node -e "process.stdout.write(require('os').tmpdir())")
 HTML_DIR="$TMPDIR_BASE/html-visualize-$(date +%s)-$$"
 mkdir -p "$HTML_DIR"
+PLUGIN_ROOT=$(find /home/hans/.claude/plugins/cache/claude-dev-tools/html-visualization \
+  -maxdepth 1 -mindepth 1 -type d | sort -V | tail -1)
+echo "$PLUGIN_ROOT" > "$HTML_DIR/.plugin-root"
 ```
 
 ### 2b. Author the destination from the template
 
-Read `${CLAUDE_PLUGIN_ROOT}/skills/html-visualize/references/visualize-template.html`
-with the Read tool, then author `$HTML_DIR/visualization.html` with the Write tool
-using the template as your starting structure. Do NOT `cp` the template then
-`Edit` the copy — the harness rejects it as "File has not been read yet". If
-you do `cp`, you MUST Read the copied file before any Edit.
+Read the template using its resolved absolute path (use the `.plugin-root` file
+written in Step 2a):
+
+```
+Read: "$(cat "$HTML_DIR/.plugin-root")/skills/html-visualize/references/visualize-template.html"
+```
+
+Then author `$HTML_DIR/visualization.html` **with the Write tool**, using the
+template content as your starting structure.
+
+> **Write succeeds on the first call when the destination path does not yet
+> exist** — that is the intended path. Do NOT create the file first via `cp`,
+> `touch`, or a shell redirect and then Write to it. If the file already exists
+> at the destination path (stale temp dir), the harness requires a prior Read.
+> Because the temp directory is always unique per invocation (`$(date +%s)-$$`),
+> this situation should never arise — if it does, it means the temp dir was
+> reused, which violates the uniqueness rule.
 
 The template has a content area, an inline `<style>` block with light/dark colour
 tokens, and one structural placeholder section. Remove all placeholder comments
@@ -185,7 +201,7 @@ See `references/serve.md` — Cycle B (non-blocking serve-and-continue).
 Start the server as a background process (`run_in_background: true`):
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/bin/server.js "$HTML_DIR/visualization.html" --no-wait
+node "$(cat "$HTML_DIR/.plugin-root")/bin/server.js" "$HTML_DIR/visualization.html" --no-wait
 ```
 
 Wait until you see the startup line:
