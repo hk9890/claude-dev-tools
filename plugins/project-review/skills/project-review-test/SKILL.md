@@ -1,7 +1,7 @@
 ---
-name: test-review
+name: project-review-test
 description: "Adversarial review of test quality and coverage — gaps, weak assertions, brittleness, and missing edge cases."
-when_to_use: "Use when the user wants a test-quality or coverage review. Triggers on 'review my tests', 'are these tests any good?', 'test coverage review', 'are my tests fast enough?', 'what am I not testing?', 'are my tests brittle?', 'do my tests actually catch bugs?'. Does not apply to over-engineering review (use complexity-review), directory layout and layering smells (use structure-review), or pattern and naming consistency (use consistency-review). Invoke with an optional argument scoping what to review (a path or test area); with no argument it reviews the whole test suite. The review runs in an isolated context and cannot see this conversation."
+when_to_use: "Use when the user wants a test-quality or coverage review. Triggers on 'review my tests', 'are these tests any good?', 'test coverage review', 'are my tests fast enough?', 'what am I not testing?', 'are my tests brittle?', 'do my tests actually catch bugs?'. Does not apply to over-engineering review (use project-review-complexity), directory layout and layering smells (use project-review-structure), or pattern and naming consistency (use project-review-consistency). Invoke with an optional argument scoping what to review (a path or test area); with no argument it reviews the whole test suite. The review runs in an isolated context and cannot see this conversation."
 argument-hint: "[what-to-review]"
 context: fork
 agent: project-reviewer

@@ -8,7 +8,7 @@ This plugin provides structured, adversarial reviews across four dimensions of a
 
 Covers four review types:
 - **Complexity review** — challenge requirements, architecture, and code for accidental complexity and unjustified abstractions
-- **Structure review** — flag layering smells, boundary violations, and unclear component responsibilities; routes design verdicts to complexity-review
+- **Structure review** — flag layering smells, boundary violations, and unclear component responsibilities; routes design verdicts to project-review-complexity
 - **Test review** — adversarial test quality and coverage review; surface gaps, weak assertions, and missing edge cases
 - **Consistency review** — adversarial pattern and naming divergence review; flag drift from established conventions
 
@@ -16,10 +16,10 @@ Covers four review types:
 
 | Skill | Description |
 |---|---|
-| `complexity-review` | Skeptical complexity review of requirements, architecture, or code — challenges every abstraction and dependency |
-| `structure-review` | Adversarial review of physical project layout — misplaced files, god-files, dead code, tree-vs-docs drift; routes design verdicts to complexity-review |
-| `test-review` | Adversarial test quality and coverage review — slow suites, unjustified long tests, coverage gaps, weak or unfalsifiable assertions |
-| `consistency-review` | Adversarial pattern and naming divergence review — competing implementations, uneven naming, inconsistent API shapes |
+| `project-review-complexity` | Skeptical complexity review of requirements, architecture, or code — challenges every abstraction and dependency |
+| `project-review-structure` | Adversarial review of physical project layout — misplaced files, god-files, dead code, tree-vs-docs drift; routes design verdicts to project-review-complexity |
+| `project-review-test` | Adversarial test quality and coverage review — slow suites, unjustified long tests, coverage gaps, weak or unfalsifiable assertions |
+| `project-review-consistency` | Adversarial pattern and naming divergence review — competing implementations, uneven naming, inconsistent API shapes |
 
 ## Usage
 
@@ -35,7 +35,7 @@ Are the naming patterns consistent across the codebase?
 
 ## Review Output Structure
 
-`complexity-review` produces a structured verdict report:
+`project-review-complexity` produces a structured verdict report:
 
 1. **Verdict** — approve / approve with concerns / needs clarification / reject
 2. **Principle pressure points** — which principles are most at stake
@@ -44,7 +44,7 @@ Are the naming patterns consistent across the codebase?
 5. **What to remove, defer, or simplify** — explicit list
 6. **What is justified** — complexity or structure that has earned its place
 
-`structure-review`, `test-review`, and `consistency-review` are interrogation-style:
+`project-review-structure`, `project-review-test`, and `project-review-consistency` are interrogation-style:
 they grill you through a numbered sequence of pointed questions, each with a
 recommended answer, and explore the codebase before asking. See [RULES.md](RULES.md)
 for the division of labour between the four skills.
@@ -59,13 +59,13 @@ project-review/
 ├── agents/
 │   └── project-reviewer.md   (shared adversarial reviewer persona)
 └── skills/
-    ├── complexity-review/
+    ├── project-review-complexity/
     │   ├── SKILL.md
     │   └── references/     (principles, requirements-review, architecture-review, code-pr-review)
-    ├── structure-review/
+    ├── project-review-structure/
     │   └── SKILL.md
-    ├── test-review/
+    ├── project-review-test/
     │   └── SKILL.md
-    └── consistency-review/
+    └── project-review-consistency/
         └── SKILL.md
 ```

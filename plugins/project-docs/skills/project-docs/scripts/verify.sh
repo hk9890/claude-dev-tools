@@ -129,6 +129,69 @@ if not warned:
 "
 fi
 
+# ── Check 4: plugins/**/*.md relative-link integrity (hard) ──────────────────
+
+section "Check 4: plugins/**/*.md link integrity"
+PLUGINS_DIR="$REPO_ROOT/plugins"
+if [[ ! -d "$PLUGINS_DIR" ]]; then
+  printf 'SKIP: no plugins/ directory found\n'
+else
+  PLUGINS_RESULT=$(python3 - "$REPO_ROOT" "$SCRIPT_DIR/validate-routes.py" <<'PYEOF'
+import importlib.util, os, sys
+
+repo_root = sys.argv[1]
+vr_path = sys.argv[2]
+
+spec = importlib.util.spec_from_file_location("validate_routes", vr_path)
+vr = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(vr)
+
+plugins_dir = os.path.join(repo_root, "plugins")
+files_to_check = []
+for dirpath, dirnames, filenames in os.walk(plugins_dir):
+    dirnames.sort()
+    for fn in sorted(filenames):
+        if fn.endswith(".md"):
+            files_to_check.append(os.path.join(dirpath, fn))
+
+all_refs = []
+for filepath in files_to_check:
+    content = vr.load_file(filepath)
+    if content is None:
+        continue
+    refs = vr.extract_references(filepath, content)
+    all_refs.extend(refs)
+
+unresolved = []
+for ref in all_refs:
+    ok, reason = vr.resolve_reference(ref, repo_root)
+    if not ok:
+        # Treat directory targets without anchors as resolved (links to directories
+        # are valid navigation targets on GitHub — they render the directory listing).
+        if ref["anchor"] is None:
+            target = os.path.normpath(
+                os.path.join(os.path.dirname(ref["source_file"]), ref["raw_path"])
+            )
+            if os.path.isdir(target):
+                continue
+        unresolved.append(f"{ref['source_file']}:{ref['line']}: {ref['ref']}  [{reason}]")
+
+print(f"Scanned {len(files_to_check)} .md file(s) under plugins/, checked {len(all_refs)} reference(s).")
+for line in unresolved:
+    print(f"UNRESOLVED: {line}")
+sys.exit(1 if unresolved else 0)
+PYEOF
+  )
+  PLUGINS_EXIT=$?
+  printf '%s\n' "$PLUGINS_RESULT"
+  if [[ "$PLUGINS_EXIT" -eq 0 ]]; then
+    printf 'RESULT: PASS\n'
+  else
+    printf 'RESULT: FAIL\n'
+    HARD_FAIL=$((HARD_FAIL + 1))
+  fi
+fi
+
 # ── Final summary ─────────────────────────────────────────────────────────────
 
 printf '\n'

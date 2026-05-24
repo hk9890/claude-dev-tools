@@ -41,7 +41,7 @@ disable-model-invocation: true
 ---
 ```
 
-Use for skills that perform a consequential, explicit action and should only run when the user types the slash command. Examples: `beads-plan`, `explore-project`, `html-visualize-demo`, the `project-docs` sub-skills.
+Use for skills that perform a consequential, explicit action and should only run when the user types the slash command. Examples: `beads-plan`, `project-explore`, `html-visualize-demo`, the `project-docs` sub-skills.
 
 **Schema B — model-discoverable:**
 

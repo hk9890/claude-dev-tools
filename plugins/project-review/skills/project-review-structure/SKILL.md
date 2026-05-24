@@ -1,7 +1,7 @@
 ---
-name: structure-review
+name: project-review-structure
 description: "Review how a project is physically organised — file and directory placement, module granularity, dead files, and whether the tree matches the docs."
-when_to_use: "Use when the user wants a project-structure or layout review. Triggers on 'review my project structure', 'is this layout sane?', 'are my files in the right place?', 'do I have god-files?', 'I have orphaned files', 'does the tree match the docs?'. Does not apply to over-engineering or architecture review (use complexity-review), test quality or coverage (use test-review), or pattern and naming consistency (use consistency-review). Invoke with an optional argument scoping what to review (a path or directory); with no argument it reviews the whole project tree. The review runs in an isolated context and cannot see this conversation."
+when_to_use: "Use when the user wants a project-structure or layout review. Triggers on 'review my project structure', 'is this layout sane?', 'are my files in the right place?', 'do I have god-files?', 'I have orphaned files', 'does the tree match the docs?'. Does not apply to over-engineering or architecture review (use project-review-complexity), test quality or coverage (use project-review-test), or pattern and naming consistency (use project-review-consistency). Invoke with an optional argument scoping what to review (a path or directory); with no argument it reviews the whole project tree. The review runs in an isolated context and cannot see this conversation."
 argument-hint: "[what-to-review]"
 context: fork
 agent: project-reviewer
@@ -24,7 +24,7 @@ what the project claims to be.
 
 **Layering hand-off rule**: if a smell requires redesigning a module boundary
 rather than moving a file, flag it and route the design verdict to
-`complexity-review` — do not judge the architecture here.
+`project-review-complexity` — do not judge the architecture here.
 
 ---
 
@@ -118,7 +118,7 @@ interface. Cross-layer imports go in one direction only.
 **Hand-off rule**: If you find a layering smell, flag it here as a structural
 observation (e.g. "module A imports from `B/internal/`"). Do not issue a design
 verdict. Route the question "is this boundary worth having and is it correctly
-drawn?" to `complexity-review`.
+drawn?" to `project-review-complexity`.
 
 ---
 
@@ -134,7 +134,7 @@ For each finding:
 - **Location** — exact path(s)
 - **Observation** — what is wrong
 - **Recommended fix** — move, split, merge, delete, or rename (one concrete action)
-- **Route to complexity-review** — include this line only when the finding
+- **Route to project-review-complexity** — include this line only when the finding
   touches a design boundary rather than a placement error
 
 ### What looks correct

@@ -4,7 +4,7 @@ Non-derivable design decisions and constraints for this plugin. Read before maki
 
 ## 1. Research is inline — no sub-agent
 
-The original design (v2, `private/research-explore.html`) included a separate `project-researcher` sub-agent. After plan-review (epic `claude-dev-tools-t7z`, comment 2026-05-21), research was folded inline into the `explore-project` orchestrator skill. There is no agent file in `agents/` and no agent component in this plugin. The `agents/` directory does not exist.
+The original design (v2, `private/research-explore.html`) included a separate `project-researcher` sub-agent. After plan-review (epic `claude-dev-tools-t7z`, comment 2026-05-21), research was folded inline into the `project-explore` orchestrator skill. There is no agent file in `agents/` and no agent component in this plugin. The `agents/` directory does not exist.
 
 **Do not add a sub-agent without reopening the design decision.** The motivation for removing it was keeping context clean without the added complexity of agent dispatch for a task that does not need isolation.
 
@@ -40,14 +40,14 @@ Before filing a finding or question, the skill lists open children of the explor
 
 **Keep dedup lightweight — title/text comparison only. Do not add vector similarity or external dedup tooling.**
 
-## 7. Escape-hatch boundary
+## 7. Check-in cadence and escape-hatch boundary
 
-The user may say "do next N without asking" to suspend check-ins for a batch of actions. This suspension applies only to non-destructive actions. Destructive actions (as defined in rule 5) always force a stop-and-confirm even if the user has activated the escape hatch.
+Phase 2 step 5 must call `AskUserQuestion` after every iteration — silence is never consent. The user may suspend this with "do next N without asking" / "keep going, don't ask" / "explore freely until I stop you", but only for non-destructive actions; destructive actions (rule 5) always force stop-and-confirm. Session 2026-05-23 (epic `claude-dev-tools-wq6`) ran 11 iterations but only stopped properly twice because the agent inferred continue from silence — mandating the tool, not the behaviour, is what prevents that shortcut.
 
-**Do not extend the escape hatch to cover destructive actions.**
+**Do not infer continue from silence, and do not extend the escape hatch to cover destructive actions.**
 
 ## 8. Launch patterns are described inline — no dependency on the `run` skill
 
-The `run` skill is a harness built-in, not a depend-able plugin. The `explore-project` skill describes launch patterns for each project type (CLI, server, TUI, library, script) inline in Phase 2 of `SKILL.md`. The skill must be self-contained.
+The `run` skill is a harness built-in, not a depend-able plugin. The `project-explore` skill describes launch patterns for each project type (CLI, server, TUI, library, script) inline in Phase 2 of `SKILL.md`. The skill must be self-contained.
 
 **Do not add a `run` skill dependency or reference it as a prerequisite.**

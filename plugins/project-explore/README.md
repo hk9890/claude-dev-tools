@@ -15,7 +15,7 @@ The plugin is intentionally stateless between runs: each session starts with a f
 
 | Skill | Invocation | Description |
 |---|---|---|
-| explore-project | `/project-explore:explore-project` | Research the project inline, then explore it action by action, filing findings and questions as beads tasks |
+| project-explore | `/project-explore:project-explore` | Research the project inline, then explore it action by action, filing findings and questions as beads tasks |
 
 ## Plugin Structure
 
@@ -25,7 +25,7 @@ project-explore/
 │   └── plugin.json
 ├── RULES.md
 └── skills/
-    └── explore-project/
+    └── project-explore/
         ├── SKILL.md
         └── references/
             ├── understanding-template.md

@@ -46,7 +46,7 @@ Why the project exists, who it is for, notable architectural decisions, and anyt
 
 ## Prior exploration
 
-What recent `explore-project` sessions (within the last 14 days) already covered, so this session avoids re-treading ground and re-filing known issues.
+What recent `project-explore` sessions (within the last 14 days) already covered, so this session avoids re-treading ground and re-filing known issues.
 
 - Areas and user flows already exercised, each with the session date.
 - Finding and question task IDs still open from those sessions — these are the dedup targets when filing in Phase 2.
