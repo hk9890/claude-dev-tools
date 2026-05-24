@@ -28,7 +28,12 @@ Check B — version mirror:
     matching entry in .claude-plugin/marketplace.json. Any mismatch or missing
     entry => FAIL.
 
-Both checks run regardless of each other; all failures are reported before exit.
+Check C — description mirror:
+    Compares each plugins/*/.claude-plugin/plugin.json "description" against the
+    matching entry in .claude-plugin/marketplace.json. Any mismatch or missing
+    entry => FAIL. On mismatch, shows a one-line diff of the two values.
+
+All checks run regardless of each other; all failures are reported before exit.
 
 Fixture override flags (used by negative tests):
     --check-sections <file>...   scan only these specific markdown files
@@ -36,6 +41,7 @@ Fixture override flags (used by negative tests):
     --marketplace <file>         use this marketplace.json instead of the default
     --skip-sections              skip Check A entirely (useful for version-only tests)
     --skip-versions              skip Check B entirely (useful for section-only tests)
+    --skip-descriptions          skip Check C entirely
 
 Path resolution for --check-sections: target .md files referenced inside a
 fixture are resolved relative to the fixture file first, then relative to
@@ -387,12 +393,85 @@ def run_version_check(repo_root, plugin_json_files=None, marketplace_path=None):
 
 
 # ---------------------------------------------------------------------------
+# Description-mirror check — Check C
+# ---------------------------------------------------------------------------
+
+def run_description_check(repo_root, plugin_json_files=None, marketplace_path=None):
+    """Run Check C — description mirror.
+
+    Compares each plugins/*/.claude-plugin/plugin.json "description" against
+    the matching entry in .claude-plugin/marketplace.json. Any mismatch or
+    missing entry => FAIL. On mismatch, shows a one-line diff of the two values.
+
+    When plugin_json_files is given, only those files are checked (same scope
+    as --check-versions, so fixture tests stay consistent).
+
+    Returns list of failure strings.
+    """
+    if marketplace_path is None:
+        marketplace_path = os.path.join(repo_root, ".claude-plugin", "marketplace.json")
+
+    try:
+        with open(marketplace_path, encoding="utf-8") as fh:
+            marketplace = json.load(fh)
+    except (OSError, json.JSONDecodeError) as exc:
+        return [f"cannot load marketplace.json at {marketplace_path}: {exc}"]
+
+    # Build lookup: plugin name -> description from marketplace
+    market_descriptions = {
+        entry.get("name"): entry.get("description")
+        for entry in marketplace.get("plugins", [])
+        if entry.get("name")
+    }
+
+    if plugin_json_files is None:
+        plugin_json_files = []
+        plugins_dir = os.path.join(repo_root, "plugins")
+        if os.path.isdir(plugins_dir):
+            for plugin_name in sorted(os.listdir(plugins_dir)):
+                pj = os.path.join(plugins_dir, plugin_name, ".claude-plugin", "plugin.json")
+                if os.path.isfile(pj):
+                    plugin_json_files.append(pj)
+
+    failures = []
+
+    for pj_path in sorted(plugin_json_files):
+        try:
+            with open(pj_path, encoding="utf-8") as fh:
+                pj = json.load(fh)
+        except (OSError, json.JSONDecodeError) as exc:
+            failures.append(f"cannot load {pj_path}: {exc}")
+            continue
+
+        name = pj.get("name")
+        pj_desc = pj.get("description")
+
+        if not name:
+            failures.append(f"{pj_path}: missing 'name' field")
+            continue
+
+        if name not in market_descriptions:
+            failures.append(
+                f"{pj_path}: plugin {name!r} not found in marketplace.json "
+                f"({marketplace_path})"
+            )
+        elif pj_desc != market_descriptions[name]:
+            failures.append(
+                f"{pj_path}: description mismatch for {name!r}\n"
+                f"  - plugin.json:    {pj_desc!r}\n"
+                f"  + marketplace.json: {market_descriptions[name]!r}"
+            )
+
+    return failures
+
+
+# ---------------------------------------------------------------------------
 # Argument parsing
 # ---------------------------------------------------------------------------
 
 def _parse_args(argv):
     """Return a dict with keys: repo_root, check_sections, check_versions, marketplace,
-    skip_sections, skip_versions."""
+    skip_sections, skip_versions, skip_descriptions."""
     parsed = {
         "repo_root": None,
         "check_sections": None,   # None = full repo scan
@@ -400,6 +479,7 @@ def _parse_args(argv):
         "marketplace": None,
         "skip_sections": False,
         "skip_versions": False,
+        "skip_descriptions": False,
     }
 
     i = 0
@@ -426,6 +506,8 @@ def _parse_args(argv):
             parsed["skip_sections"] = True
         elif arg == "--skip-versions":
             parsed["skip_versions"] = True
+        elif arg == "--skip-descriptions":
+            parsed["skip_descriptions"] = True
         elif arg.startswith("--"):
             print(f"Unknown option: {arg}", file=sys.stderr)
             sys.exit(1)
@@ -525,6 +607,26 @@ def main():
             all_failures.extend(version_failures)
         else:
             print("CHECK B — version mirror: PASS")
+
+    # ------------------------------------------------------------------
+    # Check C — description mirror
+    # ------------------------------------------------------------------
+    if parsed["skip_descriptions"]:
+        print("CHECK C — description mirror: SKIPPED")
+    else:
+        description_failures = run_description_check(
+            repo_root,
+            plugin_json_files=parsed["check_versions"],
+            marketplace_path=parsed["marketplace"],
+        )
+
+        if description_failures:
+            print("CHECK C — description mirror: FAILED")
+            for f in description_failures:
+                print(f"  FAIL: {f}")
+            all_failures.extend(description_failures)
+        else:
+            print("CHECK C — description mirror: PASS")
 
     # ------------------------------------------------------------------
     # Summary

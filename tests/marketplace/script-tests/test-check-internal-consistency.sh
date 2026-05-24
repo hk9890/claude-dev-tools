@@ -151,7 +151,7 @@ test_good_version_passes() {
 
   printf '{"name":"alpha","version":"2.0.0","description":"x","author":{"name":"T"}}\n' \
     > "$tmp_dir/plugins/alpha/.claude-plugin/plugin.json"
-  printf '{"name":"t","plugins":[{"name":"alpha","version":"2.0.0","source":"./plugins/alpha"}]}\n' \
+  printf '{"name":"t","plugins":[{"name":"alpha","version":"2.0.0","description":"x","source":"./plugins/alpha"}]}\n' \
     > "$tmp_dir/.claude-plugin/marketplace.json"
 
   assert_exit "good-version: matching versions exit 0" 0 \
