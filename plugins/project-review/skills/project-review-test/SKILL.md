@@ -131,20 +131,23 @@ infrastructure is a liability.
 
 ---
 
-## Scoring and verdict
+## Output
 
-After completing all ten questions, give a verdict in one of three categories:
+Follow the shared output skeleton defined in the `project-reviewer` agent.
+The skill-specific pieces below slot into that skeleton:
 
-**Passing** — the suite is fast, the tests are honest, critical paths are
-covered, and the assertions are meaningful. State what is genuinely good.
-
-**Needs work** — name the specific questions where the answers were wrong and
-what the developer must fix. Be explicit: "Question 5: assertions in
-`test_user.py` lines 42–47 cannot fail."
-
-**Unreliable** — the suite provides false safety: tests that cannot fail,
-critical paths untested, slow tests mixed with fast ones, mocks hiding all real
-failure modes. Recommend treating the suite as unreliable until fixed.
+- **Verdict labels**: one of `passing`, `needs work`, `unreliable`.
+  - `passing` — suite is fast, tests are honest, critical paths covered,
+    assertions meaningful.
+  - `needs work` — specific questions above answered wrong; the suite still
+    provides value but has concrete defects.
+  - `unreliable` — suite provides false safety (tests that cannot fail,
+    critical paths untested, slow tests mixed with fast ones, mocks hiding
+    all real failure modes). Recommend treating the suite as unreliable
+    until fixed.
+- **Per-finding `Observation`** — open with the failing question number
+  from the interrogation above, e.g. `Question 5: …`.
+- **Per-finding `Location`** — cite exact test file paths and line numbers.
 
 ---
 

@@ -35,19 +35,29 @@ Are the naming patterns consistent across the codebase?
 
 ## Review Output Structure
 
-`project-review-complexity` produces a structured verdict report:
+All four skills produce the same output skeleton, defined in the shared
+`project-reviewer` agent:
 
-1. **Verdict** — approve / approve with concerns / needs clarification / reject
-2. **Principle pressure points** — which principles are most at stake
-3. **Findings** — observation, why it matters, simpler alternative
-4. **Open questions** — missing context blocking confident judgment
-5. **What to remove, defer, or simplify** — explicit list
-6. **What is justified** — complexity or structure that has earned its place
+1. **Verdict** — one label from the skill's domain-specific label set (see below)
+2. *(Optional)* skill-specific opening sections — e.g. `Principle pressure points` in complexity
+3. **Findings** — each with `Location`, `Observation`, `Why it matters`, `Recommended action`, and optional `Route to`
+4. *(Optional)* skill-specific middle sections — e.g. `Open questions` in complexity
+5. **Recommended actions** — prioritised list of what to tackle first
 
-`project-review-structure`, `project-review-test`, and `project-review-consistency` are interrogation-style:
-they grill you through a numbered sequence of pointed questions, each with a
-recommended answer, and explore the codebase before asking. See [RULES.md](RULES.md)
-for the division of labour between the four skills.
+Per-skill verdict label sets:
+
+| Skill | Verdict labels |
+|---|---|
+| `project-review-complexity` | `approve` / `approve with concerns` / `needs clarification` / `reject` |
+| `project-review-structure` | `clean` / `minor issues` / `significant issues` / `broken` |
+| `project-review-test` | `passing` / `needs work` / `unreliable` |
+| `project-review-consistency` | `consistent` / `minor drift` / `significant drift` / `incoherent` |
+
+`project-review-structure`, `project-review-test`, and `project-review-consistency` reach the
+above output via interrogation-style procedures: they grill the project through a
+numbered sequence of pointed questions, each with a recommended answer, and explore
+the codebase before asking. See [RULES.md](RULES.md) for the division of labour
+between the four skills.
 
 ## Plugin Structure
 
