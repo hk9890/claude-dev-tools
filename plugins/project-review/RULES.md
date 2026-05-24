@@ -25,32 +25,40 @@ Hand-off rule: `project-review-structure` flags layering smells and unclear boun
 routes design-level verdicts (is the abstraction worth having?) to `project-review-complexity`.
 Structure-review does not duplicate the complexity verdict.
 
-## 3. project-review-complexity keeps its verdict-report format
+## 3. project-review-complexity is not converted to an interrogation procedure
 
-`project-review-complexity` retains its structured verdict-report output (Verdict /
-Principle pressure points / Findings / Open questions / What to remove or defer /
-What is justified). It is NOT converted to an interrogation-style or
-question-first workflow. The verdict-first format is intentional — it commits the
-reviewer to a stance and forces justification rather than deferring judgment.
+The other three skills (`structure`, `test`, `consistency`) use interrogation-style
+procedures — numbered sequences of questions with recommended answers. The
+`complexity` skill deliberately does NOT. Its procedure is verdict-first: pick
+one of `approve` / `approve with concerns` / `needs clarification` / `reject` and
+defend it. The verdict-first procedure is intentional — it commits the reviewer to
+a stance and forces justification rather than deferring judgment behind a
+question list.
+
+This is a constraint on the *procedure*, not on the *output format* — see rule 4
+for the shared output skeleton that every skill (including complexity) conforms to.
 
 ## 4. Reviewer skills run forked and share one persona agent
 
 Each reviewer skill runs in a forked context (`context: fork`) and delegates to a
-single shared agent, `agents/project-reviewer.md`. That agent encodes only the
-*attitude* common to every review — the read-only contract, explore-before-judging,
-the recommended-answer rule, the adversarial disposition, directness, and
-evidence-citing. It encodes no review *procedure* and no *output format*.
+single shared agent, `agents/project-reviewer.md`. That agent encodes:
 
-Each `SKILL.md` keeps its own procedure and output format and supplies them to the
-forked agent: project-review-complexity its verdict report; project-review-structure, project-review-test,
-and project-review-consistency their interrogation procedures. The shared agent must never
-impose one shape on another — see rule 3.
+- the *attitude* common to every review — the read-only contract,
+  explore-before-judging, the recommended-answer rule, the adversarial
+  disposition, directness, and evidence-citing;
+- the *output skeleton* every review must conform to — Verdict, Findings (with a
+  fixed 5-field schema), and a prioritised Recommended actions list.
+
+Each `SKILL.md` keeps its own *procedure*, its own *verdict label set*, and any
+*optional opening or middle sections* (e.g. complexity's `Principle pressure
+points` and `Open questions`). The skill may extend the agent's skeleton; it may
+not drop, rename, or reshape the mandatory sections.
 
 This supersedes the earlier rule that forbade any shared file across reviewers.
 The risk that rule named — a shared file silently altering every reviewer — is now
 accepted deliberately and narrowly: the four reviewers genuinely share one
-disposition, and stating it once keeps them from drifting apart. Only the
-*attitude* is shared. Procedure, principles, and output format stay per-skill;
-there is still no shared file for those, and no `skills/_shared/` directory.
+disposition and one report shape, and stating each once keeps them from drifting
+apart. Procedure, principles, and verdict label sets stay per-skill; there is
+still no shared file for those, and no `skills/_shared/` directory.
 
 All four reviewer skills follow this pattern.

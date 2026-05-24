@@ -62,25 +62,19 @@ Work through these questions in sequence. For each one, state the recommended an
    - State the recommended answer: _the documented standard takes precedence; the code is wrong, not the standard_.
    - Resolve from the code: "Is this a deliberate exception (in which case document it) or an oversight?"
 
-## Output format
+## Output
 
-After working through all six questions, produce a single structured report:
+Follow the shared output skeleton defined in the `project-reviewer` agent.
+The skill-specific pieces below slot into that skeleton:
 
-### Consistency verdict
-One of: `consistent`, `minor drift`, `significant drift`, `incoherent`.
-
-### Findings
-For each finding:
-- **Divergence** — the competing implementations, naming variants, or API shapes
-  that disagree
-- **Locations** — where each variant appears (exact paths)
-- **Recommended standard** — which pattern should win, and why (documented
-  convention, dominant usage, or better test coverage)
-- **Recommended action** — normalise to the standard, eliminate the minority, or
-  document the deviation as a deliberate exception
-
-### What is consistent
-Name the patterns and conventions that are already coherent across the codebase.
+- **Verdict labels**: one of `consistent`, `minor drift`, `significant drift`,
+  `incoherent`.
+- **Per-finding `Observation`** — state the divergence: the competing
+  implementations, naming variants, or API shapes that disagree, and the
+  recommended standard (which pattern should win, and why — documented
+  convention, dominant usage, or better test coverage).
+- **Per-finding `Recommended action`** — normalise to the standard, eliminate
+  the minority, or document the deviation as a deliberate exception.
 
 ## Baseline rule
 

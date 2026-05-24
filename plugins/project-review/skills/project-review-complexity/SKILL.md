@@ -39,32 +39,22 @@ target is the working-tree diff (`git diff`).
 - Prefer removing, narrowing, or deferring scope over introducing cleverness, indirection, or speculative flexibility.
 - Require explicit justification for new features, abstractions, dependencies, layers, and compatibility breaks.
 
-## Required review output
+## Output
 
-Always structure the review as:
+Follow the shared output skeleton defined in the `project-reviewer` agent.
+The skill-specific pieces below slot into that skeleton:
 
-# Verdict
-Use one of: `approve`, `approve with concerns`, `needs clarification`, `reject`.
-
-## Principle pressure points
-List the governing principles most affected by the artifact.
-
-## Findings
-For each finding include:
-- **Observation**
-- **Why it matters**
-- **Simpler alternative or required justification**
-
-## Open questions
-List missing context that blocks confident judgment. When context is insufficient
-to judge necessity, raise it here and use the `needs clarification` verdict rather
-than forcing a hard verdict.
-
-## What to remove, defer, or simplify
-Be explicit.
-
-## What is justified
-Name the complexity that has earned its place and why.
+- **Verdict labels**: one of `approve`, `approve with concerns`,
+  `needs clarification`, `reject`. Prefer `needs clarification` over a forced
+  verdict when required context is genuinely absent.
+- **Skill-specific opening section** — `## Principle pressure points`: list
+  the governing principles from `references/principles.md` most affected by
+  the artifact.
+- **Skill-specific middle section** — `## Open questions`: list missing
+  context that blocks confident judgment. When this section is non-empty, the
+  verdict should usually be `needs clarification`.
+- **Per-finding `Recommended action`** — frame it as the simpler alternative
+  or the explicit justification the artifact owes.
 
 ## Mode-specific emphasis
 

@@ -41,7 +41,7 @@ When possible, recommend in this order:
 5. accept
 
 ## Output emphasis
-These items supplement the Required review output in SKILL.md (Verdict, Principle pressure points, Findings, Open questions, What to remove/defer/simplify, What is justified); all standard sections still apply.
+These items supplement the shared output skeleton defined in the `project-reviewer` agent (Verdict, Principle pressure points, Findings, Open questions, Recommended actions); all mandatory sections still apply.
 
 The review must explicitly include:
 - abstraction and dependency impact

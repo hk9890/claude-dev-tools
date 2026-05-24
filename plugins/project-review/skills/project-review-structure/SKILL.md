@@ -122,20 +122,15 @@ drawn?" to `project-review-complexity`.
 
 ---
 
-## Output format
+## Output
 
-After working through all five steps, produce a single structured report:
+Follow the shared output skeleton defined in the `project-reviewer` agent.
+The skill-specific pieces below slot into that skeleton:
 
-### Structure verdict
-One of: `clean`, `minor issues`, `significant issues`, `broken`.
-
-### Findings
-For each finding:
-- **Location** — exact path(s)
-- **Observation** — what is wrong
-- **Recommended fix** — move, split, merge, delete, or rename (one concrete action)
-- **Route to project-review-complexity** — include this line only when the finding
-  touches a design boundary rather than a placement error
-
-### What looks correct
-Name the structural choices that hold up under scrutiny.
+- **Verdict labels**: one of `clean`, `minor issues`, `significant issues`,
+  `broken`.
+- **Per-finding `Recommended action`** — exactly one of: move, split, merge,
+  delete, or rename.
+- **Per-finding `Route to`** — set to `project-review-complexity` only when
+  the finding touches a design boundary (a layering smell) rather than a
+  placement error. Apply the layering hand-off rule above.
