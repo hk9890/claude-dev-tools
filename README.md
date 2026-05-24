@@ -48,6 +48,18 @@ After installing, the plugin is recorded in your `.claude/settings.json`:
 }
 ```
 
+## Running tests
+
+A `Makefile` at the repo root provides a single discoverable entry point. Run `make` (or `make help`) to see all targets:
+
+| Target | What it runs |
+|---|---|
+| `make test` | Full test suite — all plugins (`tests/run-all.sh`) |
+| `make test-html` | html-visualization browser/server tests only |
+| `make check-consistency` | Cross-reference and version-mirror validation |
+| `make analyze-sessions` | Session-transcript analyser (use `ARGS=` to pass options) |
+| `make lint` | No linter configured — prints a notice and exits 0 |
+
 ## Contributing
 
 See [docs/CODING.md](docs/CODING.md) for how to add a new plugin and [docs/OVERVIEW.md](docs/OVERVIEW.md) for the repo layout, and [docs/CHANGE-WORKFLOW.md](docs/CHANGE-WORKFLOW.md) for the commit and task-tracking workflow used in this repo.
