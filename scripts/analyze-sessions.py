@@ -494,13 +494,18 @@ def parse_file(filepath, alias_to_canonical, max_slice_chars=2000):
                         if block.get("is_error") is True:
                             current.tool_errors += 1
 
-                        # Permission denial: user rejected the tool use
+                        # Permission denial: user rejected the tool use.
+                        # Guard with is_error == True to avoid false positives when
+                        # file content read by the model happens to contain the phrase
+                        # (e.g. docs/MONITORING.md describes the detector strings).
                         block_content = block.get("content", "")
+                        if (isinstance(block_content, str)
+                                and block.get("is_error") is True
+                                and ("doesn't want to proceed" in block_content
+                                     or "tool use was rejected" in block_content.lower())):
+                            current.permission_denials += 1
+                        # Outcome signals from tool output
                         if isinstance(block_content, str):
-                            if ("doesn't want to proceed" in block_content
-                                    or "tool use was rejected" in block_content.lower()):
-                                current.permission_denials += 1
-                            # Outcome signals from tool output
                             if TEST_RUN_RE.search(block_content):
                                 current.tests_run = True
                             if TEST_PASS_RE.search(block_content):
