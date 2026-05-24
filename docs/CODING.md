@@ -11,6 +11,15 @@ Implementation guide for contributing to this plugin marketplace.
 5. Add the plugin to the table in `README.md`.
 6. Use the `plugin-dev` skill set to scaffold components: commands, skills, agents, hooks, MCP integration. `plugin-dev` ships in an external plugin and must be installed separately — see [TESTING.md](TESTING.md) for install instructions.
 
+## Declaring plugin dependencies
+
+The `plugin.json` `dependencies` field is honored by the Claude Code marketplace harness — when a user installs a plugin that declares dependencies, the harness auto-installs each listed plugin at the same scope as the parent. Semver constraints are supported and enforced. Full behavior is documented at https://code.claude.com/docs/en/plugin-dependencies.
+
+Use the right pattern for each dependency kind:
+
+- **Plugin depends on another plugin** (e.g. `project-ops` → `project-docs`): declare the dependency in `plugin.json` under `dependencies`. The harness handles install, scope, and chained enable/disable.
+- **Plugin depends on a CLI tool** (e.g. `project-explore` → `bd`, `html-visualization` → `node`): the harness cannot install CLI binaries. Add a runtime check at skill load time (Phase 0) that tests whether the CLI is present and stops with guidance if it is missing. Do not add CLI tools to the `dependencies` field.
+
 ## SKILL.md conventions
 
 These apply to every `SKILL.md` under `plugins/<plugin-name>/skills/<skill-name>/`. Plugin-specific RULES.md may add or restrict, but should not contradict.
