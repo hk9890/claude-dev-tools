@@ -67,11 +67,20 @@ See `references/serve.md` — temp directory section. Use the prefix `html-ask`.
 
 ### 2b. Author the destination from the template
 
-Read `${CLAUDE_PLUGIN_ROOT}/skills/html-visualize/references/ask-template.html`
-with the Read tool, then author `$HTML_DIR/feedback.html` with the Write tool
-using the template as your starting structure. Do NOT `cp` the template then
-`Edit` the copy — the harness rejects it as "File has not been read yet". If
-you do `cp`, you MUST Read the copied file before any Edit.
+Read the template using its resolved absolute path (use the `.plugin-root` file
+written in the temp-directory step):
+
+```
+Read: "$(cat "$HTML_DIR/.plugin-root")/skills/html-visualize/references/ask-template.html"
+```
+
+Then author `$HTML_DIR/feedback.html` **with the Write tool**, using the
+template content as your starting structure.
+
+> **Write succeeds on the first call when the destination path does not yet
+> exist** — that is the intended path. Do NOT create the file first via `cp`,
+> `touch`, or a shell redirect and then Write to it. The temp directory is
+> unique per invocation so the destination path is always new.
 
 The template contains example widgets — remove every example widget you do not
 need. Keep the page structure, header, verdict section, freeform section, and

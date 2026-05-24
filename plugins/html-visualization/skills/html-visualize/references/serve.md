@@ -31,17 +31,30 @@ Only proceed past this step when `node --version` succeeds.
 
 ## Temp directory
 
-Create a unique per-invocation temp directory:
+Create a unique per-invocation temp directory and resolve the plugin root in the
+same Bash call:
 
 ```bash
 TMPDIR_BASE=$(node -e "process.stdout.write(require('os').tmpdir())")
 HTML_DIR="$TMPDIR_BASE/<mode>-$(date +%s)-$$"
 mkdir -p "$HTML_DIR"
+# Resolve the plugin root once and persist it for server-start commands.
+# $CLAUDE_PLUGIN_ROOT is NOT exported into Bash tool subprocesses; use find instead.
+PLUGIN_ROOT=$(find /home/hans/.claude/plugins/cache/claude-dev-tools/html-visualization \
+  -maxdepth 1 -mindepth 1 -type d | sort -V | tail -1)
+echo "$PLUGIN_ROOT" > "$HTML_DIR/.plugin-root"
 ```
 
 Replace `<mode>` with `html-ask`, `html-feedback`, or `html-visualize` depending
 on the active mode. The directory must be unique per invocation — never reuse one
 from a previous invocation.
+
+> **Why `find` instead of `$CLAUDE_PLUGIN_ROOT`**: `$CLAUDE_PLUGIN_ROOT` is a
+> harness token substituted only in plugin-config contexts (hook scripts,
+> settings.json). It is **not** exported into the environment of Bash tool
+> invocations. Any skill text that uses `$CLAUDE_PLUGIN_ROOT` in a `Bash` call
+> will silently expand to an empty string, producing broken paths. Always resolve
+> the plugin root via `find` as shown above.
 
 **Feedback mode only**: this directory is created **once** and reused for every
 Apply round of the same skill invocation. It is deleted only after a final Submit.
@@ -62,7 +75,7 @@ exits and re-invokes Claude with the feedback file.
 **Start the server as a background process (`run_in_background: true`)**:
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/bin/server.js "$HTML_DIR/feedback.html"
+node "$(cat "$HTML_DIR/.plugin-root")/bin/server.js" "$HTML_DIR/feedback.html"
 ```
 
 On startup the server prints two lines:
@@ -97,7 +110,7 @@ optionally send a message back, but Claude does not block on it.
 **Start the server as a background process (`run_in_background: true`)**:
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/bin/server.js "$HTML_DIR/visualization.html" --no-wait
+node "$(cat "$HTML_DIR/.plugin-root")/bin/server.js" "$HTML_DIR/visualization.html" --no-wait
 ```
 
 On startup the server prints one line (no Feedback file line in `--no-wait` mode):
@@ -134,7 +147,7 @@ tab keeps working.
 **Start the server as a background process (`run_in_background: true`)**:
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/bin/server.js "$HTML_DIR/review.html"
+node "$(cat "$HTML_DIR/.plugin-root")/bin/server.js" "$HTML_DIR/review.html"
 ```
 
 On startup the server prints two lines:
@@ -174,7 +187,7 @@ After each `action: "apply"` response:
    a stale value means the page never reloads.
 3. Re-serve on the **same port** (`run_in_background: true`):
    ```bash
-   node ${CLAUDE_PLUGIN_ROOT}/bin/server.js "$HTML_DIR/review.html" --port "$(cat "$HTML_DIR/.port")"
+   node "$(cat "$HTML_DIR/.plugin-root")/bin/server.js" "$HTML_DIR/review.html" --port "$(cat "$HTML_DIR/.port")"
    ```
    If the port is momentarily unavailable, wait ~1 s and retry once.
 4. Tell the user the comments have been applied; the URL is unchanged and the
