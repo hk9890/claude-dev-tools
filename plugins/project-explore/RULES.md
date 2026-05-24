@@ -26,7 +26,9 @@ Findings (broken or rough behaviour) are filed as beads type `bug` with label `e
 
 The skill checks at runtime that `.beads/` exists and `bd` is usable. If beads is absent, the skill stops with guidance. This is the same "stop if no guidance" pattern used by `project-run-tests` in `project-ops`.
 
-There is no `dependencies` field in `plugin.json`. Plugin-level dependency declaration for beads was explicitly rejected (plan-review Q9) because there is no harness enforcement mechanism and the runtime check is sufficient.
+There is no `dependencies` field in `plugin.json` for beads. The `plugin.json` `dependencies` field declares a dependency on another Claude Code marketplace plugin — it is honored by the harness (see [docs/CODING.md](../../docs/CODING.md) and https://code.claude.com/docs/en/plugin-dependencies). Beads is a CLI tool, not a marketplace plugin. A `plugin.json` dependency entry cannot cause the harness to install a CLI binary. The runtime check is the canonical pattern for declaring a hard dependency on a CLI tool.
+
+**Do not add a `dependencies` entry for `beads` or any CLI tool in `plugin.json` — that field declares plugin-on-plugin dependencies only; use a runtime check for CLI prerequisites.**
 
 ## 5. Mutation safety
 
