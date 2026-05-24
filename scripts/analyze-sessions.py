@@ -75,7 +75,14 @@ SKILL_RENAME_ALIASES = {
     # beads-tasks skills
     "beads-tasks:coder-beads": "beads-tasks:beads-core",
     # complexity-review plugin era (plugin was later renamed to project-review)
-    "complexity-review:complexity-review": "project-review:complexity-review",
+    "complexity-review:complexity-review": "project-review:project-review-complexity",
+    # project-review skills renamed to domain-prefixed form (1.14.0 -> 1.15.0)
+    "project-review:complexity-review": "project-review:project-review-complexity",
+    "project-review:consistency-review": "project-review:project-review-consistency",
+    "project-review:structure-review": "project-review:project-review-structure",
+    "project-review:test-review": "project-review:project-review-test",
+    # project-explore skill renamed (explore-project -> project-explore)
+    "project-explore:explore-project": "project-explore:project-explore",
 }
 
 # Weight map for friction scoring
@@ -873,9 +880,21 @@ def main():
     # Select and write slices
     sample = select_slice_sample(all_episodes, rocky_n, random_n)
     slices_dir = os.path.join(output_dir, "episodes")
+    expected_slices = set()
     for ep in sample:
+        slug = re.sub(r"[^a-zA-Z0-9_-]", "_", ep.attribution_skill)[:40]
+        expected_slices.add(f"{slug}__{ep.episode_id[:8]}.json")
         write_episode_slice(ep, output_dir, max_slice_chars)
     print(f"Wrote {len(sample)} episode slices to: {slices_dir}/")
+
+    # Reconcile episodes/ against this run: remove only files the script itself
+    # could have produced (matching our slug__8hexchars.json pattern) that aren't
+    # in this run's output set — leaves user-saved files untouched.
+    _slice_pattern = re.compile(r'^[A-Za-z0-9_-]{1,40}__[0-9a-f]{8}\.json$')
+    if os.path.isdir(slices_dir):
+        for entry in os.listdir(slices_dir):
+            if _slice_pattern.match(entry) and entry not in expected_slices:
+                os.remove(os.path.join(slices_dir, entry))
 
     # Summary stats
     if all_episodes:

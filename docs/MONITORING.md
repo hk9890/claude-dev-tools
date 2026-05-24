@@ -98,8 +98,15 @@ SKILL_RENAME_ALIASES = {
     "project-ops:trigger-release": "project-ops:project-trigger-release",
     # beads-tasks skills
     "beads-tasks:coder-beads": "beads-tasks:beads-core",
-    # complexity-review plugin era
-    "complexity-review:complexity-review": "project-review:complexity-review",
+    # complexity-review plugin era (plugin was later renamed to project-review)
+    "complexity-review:complexity-review": "project-review:project-review-complexity",
+    # project-review skills renamed to domain-prefixed form (1.14.0 -> 1.15.0)
+    "project-review:complexity-review": "project-review:project-review-complexity",
+    "project-review:consistency-review": "project-review:project-review-consistency",
+    "project-review:structure-review": "project-review:project-review-structure",
+    "project-review:test-review": "project-review:project-review-test",
+    # project-explore skill renamed (explore-project -> project-explore)
+    "project-explore:explore-project": "project-explore:project-explore",
 }
 ```
 

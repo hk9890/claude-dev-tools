@@ -108,7 +108,7 @@ Side-by-side examples for the most common violations. Use these as templates whe
 
 **Good** — pointer with the only thing a reader needs to know:
 
-> Release: run `scripts/release.sh <version>`. The script is idempotent — safe to re-run after a failed step. Failure-mode checklist in [docs/RELEASING.md](docs/RELEASING.md).
+> Release: run `scripts/release.sh <version>`. The script is idempotent — safe to re-run after a failed step. Failure-mode checklist in `[docs/RELEASING.md](docs/RELEASING.md)`.
 
 ### Stub doc → deletion
 

@@ -1,5 +1,5 @@
 ---
-name: explore-project
+name: project-explore
 description: "Research the project and explore it one action at a time, filing findings and questions as beads tasks under a dedicated exploration epic."
 user-invocable: true
 disable-model-invocation: true
@@ -23,7 +23,7 @@ ls .beads/ 2>/dev/null && bd list >/dev/null 2>&1
 
 If `.beads/` does not exist or `bd` is not usable, stop immediately and tell the user:
 
-> **beads is not initialised in this repository.** The `explore-project` skill requires beads to open and track the exploration session. Run `bd init` in the project root, then re-invoke this skill.
+> **beads is not initialised in this repository.** The `project-explore` skill requires beads to open and track the exploration session. Run `bd init` in the project root, then re-invoke this skill.
 
 Do not proceed to Phase 1 until beads is confirmed usable.
 
@@ -40,22 +40,14 @@ Capture the epic ID (e.g. `proj-abc`). All tasks created during this session are
 
 ### 0.3 Confirm scope with the user
 
-First, check whether the project already documents a test, scratch, staging, or dev environment. Scan `docs/TESTING.md`, `AGENTS.md` / `CLAUDE.md`, and `README.md` for any mention of one (e.g. a staging URL, a sandbox account, a `dev` profile, a test database).
+Scan `docs/TESTING.md`, `AGENTS.md`/`CLAUDE.md`, and `README.md` for a documented test/scratch/dev environment.
 
-- **If the docs name an environment for mutating actions**, do not ask question 1 — state what you will use and why:
+Then open with the epic ID and ask via `AskUserQuestion`:
 
-  > I've opened epic `<epic-id>` — **Explore <project> — <date>**. `docs/TESTING.md` documents `<environment>` for testing, so I'll target that for any actions that mutate state.
-  >
-  > One question before I start researching: is there a particular area or feature you want me to focus on, or should I explore freely?
+- If an env is documented: state you'll target it, then ask "focus area or explore freely?".
+- If not: ask both "is there a scratch env for mutating actions?" and "focus area or explore freely?".
 
-- **If the docs do not mention one**, ask both questions:
-
-  > I've opened epic `<epic-id>` — **Explore <project> — <date>**. Before I start researching, two quick questions:
-  >
-  > 1. Do you have a scratch or dev environment I should prefer for any actions that mutate state? (If not, I'll use the current environment and ask before each write/delete/send.)
-  > 2. Is there a particular area or feature you want me to focus on, or should I explore freely?
-
-Wait for the user's answer(s). Record: (a) whether a scratch env is available and how to reach it — from the docs or the user, (b) any focus constraint. Then proceed to Phase 1.
+Record (a) the scratch env (if any) and (b) any focus constraint. Then proceed to Phase 1.
 
 ---
 
@@ -96,7 +88,7 @@ Read these sources to understand trajectory and risk:
 
 ### 1.4 Read prior exploration sessions
 
-Each past `explore-project` session leaves an epic titled `Explore <project> — <YYYY-MM-DD>`. Pull recent ones so this session does not re-tread covered ground or re-file known issues.
+Each past `project-explore` session leaves an epic titled `Explore <project> — <YYYY-MM-DD>`. Pull recent ones so this session does not re-tread covered ground or re-file known issues.
 
 ```bash
 bd list --type epic
@@ -142,7 +134,7 @@ bd close <research-task-id> --reason done \
 
 Read the understanding file. Then enter the loop.
 
-Each iteration is exactly one action. Do not chain or batch actions — pick one, do it, judge it, record it, then stop and ask.
+Each iteration is exactly one action. Do not chain or batch actions — pick one, do it, judge it, record it, then stop and ask via `AskUserQuestion`. Silence is not consent.
 
 Load `references/break-it.md` before the first iteration. Use it as instinct-prompting, not a checklist.
 
@@ -218,13 +210,18 @@ Load `references/break-it.md` before the first iteration. Use it as instinct-pro
    Why this is unclear: ..."
    ```
 
-**5. Check in** — report what happened:
+**5. Check in** — report briefly:
    - What you did
    - What you found (or "nothing notable")
    - Any task ID filed
-   - Then stop and ask: **Continue (next action) / Redirect ("go deeper on X") / Stop?**
 
-   Wait for the user before the next iteration.
+   Then **stop and call `AskUserQuestion`** with: "Iteration <N> done. Continue, redirect, or stop?" and options "Continue — next action" / "Redirect — go deeper on …" / "Stop — wrap up".
+
+   Do not advance until the user's answer arrives. **Silence is not consent.**
+
+   **Anti-pattern:** ending with prose like "I'll proceed unless you redirect" or writing the three options as plain text. The only ways to advance are an explicit user answer via `AskUserQuestion` or an opt-out phrase.
+
+   **Opt-out:** "do next N without asking", "keep going, don't ask", or "explore freely until I stop you" — skip `AskUserQuestion` for non-destructive iterations only. Destructive actions still stop-and-confirm per step 2.
 
 ---
 
