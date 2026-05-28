@@ -749,6 +749,8 @@ def write_summary(episodes, canonical_names, alias_to_canonical, output_dir,
     # Unmatched plugins: came from the scan (plugins that never resolved)
     unmatched_plugins = dict(extra_unmatched) if extra_unmatched else {}
 
+    skill_modes = skill_modes or {}
+
     lines = [
         "# Session Analysis Summary",
         "",
@@ -756,10 +758,15 @@ def write_summary(episodes, canonical_names, alias_to_canonical, output_dir,
         "",
         "## Per-Skill Aggregates",
         "",
-        "| Skill | Episodes | Avg Turns | Avg Duration (s) | Avg Friction | "
-        "Errors | Interrupts | Explicit | Commits | PRs |",
-        "|-------|----------|-----------|-----------------|--------------|"
-        "--------|-----------|----------|---------|-----|",
+        "Mode column reflects SKILL.md frontmatter. `user-only` skills cannot be",
+        "model-invoked at all (Model-invoked=0 is by design, not a gap). `library`",
+        "skills are loaded by other skills via the Skill tool. `both` skills can be",
+        "reached either way.",
+        "",
+        "| Skill | Mode | Episodes | Avg Turns | Avg Duration (s) | Avg Friction | "
+        "Errors | Interrupts | Model-invoked | Commits | PRs |",
+        "|-------|------|----------|-----------|-----------------|--------------|"
+        "--------|-----------|---------------|---------|-----|",
     ]
 
     for skill in sorted(skill_stats):
@@ -768,8 +775,9 @@ def write_summary(episodes, canonical_names, alias_to_canonical, output_dir,
         avg_turns = round(s["total_turns"] / n, 1) if n else 0
         avg_dur = round(s["total_duration_ms"] / n / 1000, 1) if n else 0
         avg_friction = round(s["total_friction"] / n, 3) if n else 0
+        mode = skill_modes.get(skill, "?")
         lines.append(
-            f"| {skill} | {n} | {avg_turns} | {avg_dur} | {avg_friction} | "
+            f"| {skill} | {mode} | {n} | {avg_turns} | {avg_dur} | {avg_friction} | "
             f"{s['total_tool_errors']} | {s['total_interruptions']} | "
             f"{s['explicit_triggers']} | {s['ended_in_commit']} | {s['ended_in_pr']} |"
         )
@@ -915,6 +923,7 @@ def main():
 
     # Discover plugins
     canonical_names, alias_to_canonical = discover_plugins(plugins_dir)
+    skill_modes = discover_skill_modes(plugins_dir)
     print(
         f"Discovered {len(canonical_names)} marketplace plugins: "
         f"{sorted(canonical_names)}"
@@ -959,6 +968,7 @@ def main():
     summary_path = write_summary(
         all_episodes, canonical_names, alias_to_canonical, output_dir,
         extra_unmatched=dict(all_unmatched),
+        skill_modes=skill_modes,
     )
     print(f"Wrote: {summary_path}")
 
