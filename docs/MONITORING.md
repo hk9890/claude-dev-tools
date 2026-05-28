@@ -143,8 +143,8 @@ friction_score = round(raw / self.turn_count, 4)  # 0.0 if turn_count == 0
 |-------|----------------------|-------------------|
 | `tool_errors` | `tool_result.is_error == true` inside a user message | +1 per erroring result |
 | `interruptions` | `record.toolUseResult.interrupted == true` on the user record | +1 per interrupted turn |
-| `permission_denials` | `tool_result.content` contains `"doesn't want to proceed"` or `"tool use was rejected"` | +1 per denial |
-| `user_corrections` | First sentence of user text matches `\b(no|wrong|stop|don'?t|actually|revert)\b` | +1 per matching turn |
+| `permission_denials` | `tool_result.content` (left-stripped) starts with `"The user doesn't want to proceed with this tool use"` or `"Tool use was rejected"` | +1 per denial. The match is anchored at the start of the content so documentation that quotes these phrases (e.g. this file) does not self-match when read by a skill. |
+| `user_corrections` | First sentence of user prose matches `\b(no|wrong|stop|don'?t|actually|revert)\b` | +1 per matching turn. Harness-generated blocks inside the user message (`<command-name>`, `<command-args>`, `<local-command-stdout>`, `<bash-stdout>`, `<system-reminder>`, `<attachment>`, etc.) are stripped before the regex runs — slash-command bodies are not user prose. |
 | `retries` | Same `(tool_name, input_repr[:200])` pair seen a second time | +1 on the first repeat only |
 | `ask_user_questions` | `AskUserQuestion` tool call in the assistant turn | +1 per call |
 | `duration_ms` | `system` record with `subtype: "turn_duration"`, field `durationMs` | summed across all system events in the episode |

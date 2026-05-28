@@ -99,6 +99,25 @@ CORRECTION_RE = re.compile(
     r"\b(no|wrong|stop|don'?t|actually|revert)\b", re.IGNORECASE
 )
 
+# Harness-generated content blocks inside user messages. These are not user
+# prose, so they must be stripped before scanning for user_corrections —
+# otherwise slash-command bodies like /goal with args "do not stop until..."
+# fire false positives on the correction regex.
+HARNESS_BLOCK_RE = re.compile(
+    r"<(command-name|command-message|command-args|local-command-stdout|"
+    r"local-command-stderr|bash-stdout|bash-stderr|system-reminder|attachment)>"
+    r".*?</\1>",
+    re.DOTALL | re.IGNORECASE,
+)
+
+# Canonical prefixes of harness-emitted permission-denial tool_results.
+# Anchored so that documentation quoting these strings (e.g. MONITORING.md)
+# does not match.
+DENIAL_PREFIXES = (
+    "The user doesn't want to proceed with this tool use",
+    "Tool use was rejected",
+)
+
 CREDENTIAL_RE = re.compile(
     r"(?i)"
     r"(?:api[_-]?key|secret|token|password|passwd|auth|credential|private[_-]?key)"
@@ -149,6 +168,60 @@ def discover_plugins(plugins_dir):
         alias_to_canonical[name] = name
 
     return canonical_names, alias_to_canonical
+
+
+def discover_skill_modes(plugins_dir):
+    """Return {canonical_skill: invocation_mode} parsed from each SKILL.md frontmatter.
+
+    Mode is one of:
+      - 'user-only': user-invocable AND disable-model-invocation=true.
+        Reachable only via slash command; the Skill tool cannot invoke it.
+      - 'library':   user-invocable=false. Reachable only by other skills
+        loading it via the Skill tool; not user-invocable.
+      - 'both':      neither flag set. User can slash-invoke AND the model
+        can invoke via the Skill tool.
+
+    Surfacing this next to the trigger column prevents misreading a
+    structural 0% Model-invoked rate as a measurement gap.
+    """
+    modes = {}
+    if not os.path.isdir(plugins_dir):
+        return modes
+    for plugin_name in sorted(os.listdir(plugins_dir)):
+        skills_dir = os.path.join(plugins_dir, plugin_name, "skills")
+        if not os.path.isdir(skills_dir):
+            continue
+        for skill_name in sorted(os.listdir(skills_dir)):
+            skill_md = os.path.join(skills_dir, skill_name, "SKILL.md")
+            if not os.path.isfile(skill_md):
+                continue
+            user_inv = None
+            disable_mod = None
+            try:
+                with open(skill_md, encoding="utf-8", errors="replace") as fh:
+                    in_fm = False
+                    for line in fh:
+                        stripped = line.rstrip()
+                        if stripped == "---":
+                            if not in_fm:
+                                in_fm = True
+                                continue
+                            break
+                        if in_fm:
+                            if stripped.startswith("user-invocable:"):
+                                user_inv = stripped.split(":", 1)[1].strip()
+                            elif stripped.startswith("disable-model-invocation:"):
+                                disable_mod = stripped.split(":", 1)[1].strip()
+            except OSError:
+                continue
+            if user_inv == "false":
+                mode = "library"
+            elif disable_mod == "true":
+                mode = "user-only"
+            else:
+                mode = "both"
+            modes[f"{plugin_name}:{skill_name}"] = mode
+    return modes
 
 
 def resolve_plugin(plugin_name, alias_to_canonical):
@@ -479,8 +552,11 @@ def parse_file(filepath, alias_to_canonical, max_slice_chars=2000):
             content = msg.get("content", [])
 
             if isinstance(content, str):
-                # Plain text prompt — check for user correction
-                first_sentence = content.split(".")[0].split("!")[0].split("?")[0]
+                # Plain text prompt — check for user correction.
+                # Strip harness-generated blocks (slash-command echoes, etc.)
+                # before regex so they don't fire false positives.
+                prose = HARNESS_BLOCK_RE.sub("", content)
+                first_sentence = prose.split(".")[0].split("!")[0].split("?")[0]
                 if CORRECTION_RE.search(first_sentence):
                     current.user_corrections += 1
             elif isinstance(content, list):
@@ -494,11 +570,14 @@ def parse_file(filepath, alias_to_canonical, max_slice_chars=2000):
                         if block.get("is_error") is True:
                             current.tool_errors += 1
 
-                        # Permission denial: user rejected the tool use
+                        # Permission denial: user rejected the tool use.
+                        # Anchor on the canonical harness prefix so that
+                        # documentation that quotes the phrase (e.g. the
+                        # heuristic's own description in MONITORING.md) does
+                        # not match when it appears mid-content.
                         block_content = block.get("content", "")
                         if isinstance(block_content, str):
-                            if ("doesn't want to proceed" in block_content
-                                    or "tool use was rejected" in block_content.lower()):
+                            if block_content.lstrip().startswith(DENIAL_PREFIXES):
                                 current.permission_denials += 1
                             # Outcome signals from tool output
                             if TEST_RUN_RE.search(block_content):
@@ -514,9 +593,11 @@ def parse_file(filepath, alias_to_canonical, max_slice_chars=2000):
                             current.interruptions += 1
 
                     elif btype == "text":
-                        # Check for user correction in multi-part text block
+                        # Check for user correction in multi-part text block.
+                        # Strip harness-generated blocks first.
                         text = block.get("text", "")
-                        first_sentence = text.split(".")[0].split("!")[0].split("?")[0]
+                        prose = HARNESS_BLOCK_RE.sub("", text)
+                        first_sentence = prose.split(".")[0].split("!")[0].split("?")[0]
                         if CORRECTION_RE.search(first_sentence):
                             current.user_corrections += 1
 
@@ -610,11 +691,15 @@ def write_dataset(episodes, output_dir):
 
 
 def write_summary(episodes, canonical_names, alias_to_canonical, output_dir,
-                  extra_unmatched=None):
+                  extra_unmatched=None, skill_modes=None):
     """Write summary.md with per-skill aggregates and unmatched plugins.
 
     extra_unmatched: dict of {plugin_name: turn_count} for plugins attributed in
         transcripts but not resolving to any marketplace plugin (collected during scan).
+    skill_modes: dict of {canonical_skill: 'user-only'|'library'|'both'} parsed
+        from SKILL.md frontmatter. Determines whether the Model-invoked column
+        is meaningful: 'user-only' skills cannot be model-invoked at all, so
+        a 0 there is by-design, not a measurement gap.
     """
     os.makedirs(output_dir, exist_ok=True)
     path = os.path.join(output_dir, "summary.md")
