@@ -143,20 +143,34 @@ friction_score = round(raw / self.turn_count, 4)  # 0.0 if turn_count == 0
 |-------|----------------------|-------------------|
 | `tool_errors` | `tool_result.is_error == true` inside a user message | +1 per erroring result |
 | `interruptions` | `record.toolUseResult.interrupted == true` on the user record | +1 per interrupted turn |
-| `permission_denials` | `tool_result.content` contains `"doesn't want to proceed"` or `"tool use was rejected"` | +1 per denial |
-| `user_corrections` | First sentence of user text matches `\b(no|wrong|stop|don'?t|actually|revert)\b` | +1 per matching turn |
+| `permission_denials` | `tool_result.content` contains `"doesn't want to proceed"` or `"tool use was rejected"`, **guarded by `is_error == true`** | +1 per denial. The `is_error` guard prevents false positives when file content read by the model happens to contain the phrase (e.g. this file describes the detector strings) — a normal Read result has `is_error == false`. |
+| `user_corrections` | First sentence of user prose matches `\b(no|wrong|stop|don'?t|actually|revert)\b` | +1 per matching turn. Harness-generated blocks inside the user message (`<command-name>`, `<command-args>`, `<local-command-stdout>`, `<bash-stdout>`, `<system-reminder>`, `<attachment>`, etc.) are stripped before the regex runs — slash-command bodies are not user prose. |
 | `retries` | Same `(tool_name, input_repr[:200])` pair seen a second time | +1 on the first repeat only |
 | `ask_user_questions` | `AskUserQuestion` tool call in the assistant turn | +1 per call |
 | `duration_ms` | `system` record with `subtype: "turn_duration"`, field `durationMs` | summed across all system events in the episode |
 
 A `friction_score` of 0.0 means a smooth episode; higher values indicate rockier interactions. Episodes are comparable across different lengths because raw penalties are divided by `turn_count`.
 
+### Invocation modes (read this before interpreting the Model-invoked column)
+
+Each skill belongs to one of three modes, derived from its `SKILL.md` frontmatter (`user-invocable` and `disable-model-invocation`). The `summary.md` table surfaces this in the **Mode** column right next to **Model-invoked**, because the two only make sense together:
+
+| Mode | Frontmatter | What it means | Expected Model-invoked rate |
+|------|-------------|----------------|-----------------------------|
+| `user-only` | `user-invocable: true` + `disable-model-invocation: true` | Reachable only via slash command. The `Skill` tool cannot invoke it. | **Always 0** — by design, not a measurement gap. |
+| `library` | `user-invocable: false` | Loaded by other skills via the `Skill` tool; not user-invocable. | Should be near 100%; lower values mean some loads happen through a non-`Skill` path (Read, file include) and are worth investigating. |
+| `both` | Neither flag set | User can slash-invoke **and** the model can invoke via the `Skill` tool. | Tells you how often the model proactively reached for the skill versus the user picking it. |
+
+A 0 in **Model-invoked** is informative for `library` and `both` skills, structurally meaningless for `user-only` skills. Do not write commentary about "the classifier missed user invocations" without first reading the Mode column — for `user-only` skills, the user *is* the only invoker and the column is correct.
+
 ### Trigger classification
 
-Each episode is classified as `explicit` or `ambient`:
+Each episode is also classified as `explicit` or `ambient`. This is a narrower signal than Mode and lives on the per-episode record in `dataset.json`:
 
 - **explicit** — the assistant invoked the `Skill` tool targeting this skill in the immediately-preceding assistant turn, or in the first turn of the episode itself.
-- **ambient** — attribution changed without an explicit `Skill` invocation (the skill was already running or loaded through another path).
+- **ambient** — attribution changed without an explicit `Skill` invocation (the skill was already running, loaded through another path, or the user invoked it via slash command — the classifier cannot distinguish slash from already-running).
+
+For `user-only` skills, every episode is `ambient` by definition.
 
 ### Slice sampling
 

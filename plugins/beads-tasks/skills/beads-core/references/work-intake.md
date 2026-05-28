@@ -4,7 +4,7 @@ Contract:
 
 1. Determine what to work on — from conversation context first, from the tracker second.
 2. Propose the work back to the user.
-3. Get explicit confirmation before any `bd update --status=in_progress`, status change, or tasker/verifier spawn.
+3. Get explicit confirmation before any `bd update --status=in_progress`, status change, or tasker/verifier spawn — **unless** the work was authored or approved by the user in this same conversation (the conversation-referenced path in Section 2A and the user said "go" / "work on it" / equivalent already). In that case, restate the plan in one sentence and proceed.
 
 ## Section 1: Decision algorithm
 
@@ -57,6 +57,11 @@ Get explicit confirmation ("yes", "go", "do it") before:
 - Running `bd update <id> --status=in_progress`
 - Spawning any tasker, reviewer, or verifier
 - Making any other tracker write
+
+**Exception — conversation-authored work:** If the user just authored and approved
+the epic/task(s) in this same conversation and the natural next step is to execute
+them, you already have confirmation. Restate the plan in one sentence and proceed —
+do not ask a second time.
 
 If the user requests a different selection or different ordering, revise and re-propose. Do NOT start partial work and then ask.
 
