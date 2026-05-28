@@ -67,11 +67,17 @@ See `references/serve.md` — temp directory section. Use the prefix `html-ask`.
 
 ### 2b. Author the destination from the template
 
-Read `${CLAUDE_PLUGIN_ROOT}/skills/html-visualize/references/ask-template.html`
-with the Read tool, then author `$HTML_DIR/feedback.html` with the Write tool
-using the template as your starting structure. Do NOT `cp` the template then
-`Edit` the copy — the harness rejects it as "File has not been read yet". If
-you do `cp`, you MUST Read the copied file before any Edit.
+Author the destination in three steps:
+
+1. Create the destination file empty with Bash: `: > "$HTML_DIR/feedback.html"`.
+2. Read the destination (`$HTML_DIR/feedback.html`) **and** the template
+   (`${CLAUDE_PLUGIN_ROOT}/skills/html-visualize/references/ask-template.html`).
+   The Write tool requires a prior Read of the **destination path**, not the
+   template — without it the harness rejects with "File has not been read yet".
+3. Write `$HTML_DIR/feedback.html` using the template as your starting structure.
+
+Do NOT `cp` the template then `Edit` the copy — same rejection. If you do `cp`,
+you MUST Read the copied file before any Edit.
 
 The template contains example widgets — remove every example widget you do not
 need. Keep the page structure, header, verdict section, freeform section, and

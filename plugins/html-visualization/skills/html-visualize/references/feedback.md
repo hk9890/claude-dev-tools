@@ -83,11 +83,17 @@ See `references/serve.md` — temp directory section. Use the prefix
 
 ### 2b. Author the destination from the template
 
-Read `${CLAUDE_PLUGIN_ROOT}/skills/html-visualize/references/feedback-template.html`
-with the Read tool, then author `$HTML_DIR/review.html` with the Write tool
-using the template as your starting structure. Do NOT `cp` the template then
-`Edit` the copy — the harness rejects it as "File has not been read yet". If
-you do `cp`, you MUST Read the copied file before any Edit.
+Author the destination in three steps:
+
+1. Create the destination file empty with Bash: `: > "$HTML_DIR/review.html"`.
+2. Read the destination (`$HTML_DIR/review.html`) **and** the template
+   (`${CLAUDE_PLUGIN_ROOT}/skills/html-visualize/references/feedback-template.html`).
+   The Write tool requires a prior Read of the **destination path**, not the
+   template — without it the harness rejects with "File has not been read yet".
+3. Write `$HTML_DIR/review.html` using the template as your starting structure.
+
+Do NOT `cp` the template then `Edit` the copy — same rejection. If you do `cp`,
+you MUST Read the copied file before any Edit.
 
 The template contains example blocks — replace them with the real content. Also
 replace the `<title>`, the header `<h1>`, the `.subtitle`, and the `fb-generation`
