@@ -19,6 +19,7 @@ See [docs/OVERVIEW.md](docs/OVERVIEW.md) for the full layout and architecture de
 
 | Plugin | Description |
 |---|---|
+| [`tasks`](plugins/tasks/README.md) | Use the `taskmgr` file-based task tracker — its data model, core commands, and tracking discipline. A thin literacy skill, not a workflow methodology |
 | [`beads-tasks`](plugins/beads-tasks/README.md) | Beads task tracking with tasker, reviewer, and verifier agents — use with planning mode for full orchestration |
 | [`claude-catppuccin`](plugins/claude-catppuccin/README.md) | Visual style for Claude Code: Catppuccin Mocha color theme |
 | [`project-review`](plugins/project-review/README.md) | Multi-perspective adversarial review plugin — complexity, structure, tests, and consistency — bias toward simplicity and coherence |
