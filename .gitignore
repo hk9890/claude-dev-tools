@@ -31,3 +31,6 @@ output/
 .dolt/
 *.db
 .beads-credential-key
+
+# taskmgr local task store (runtime state, not marketplace content)
+.tasks/

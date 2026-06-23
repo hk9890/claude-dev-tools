@@ -11,6 +11,18 @@
   },
   "plugins": [
     {
+      "name": "tasks",
+      "source": "./plugins/tasks",
+      "description": "Use the taskmgr file-based task tracker — its data model, core commands, and tracking discipline. A thin literacy skill, not a workflow methodology.",
+      "version": "1.16.0",
+      "author": {
+        "name": "Hans Kohlreiter",
+        "email": "hans.kohlreiter@dynatrace.com"
+      },
+      "category": "workflow",
+      "keywords": ["tasks", "taskmgr", "task-tracking", "issues", "dependencies"]
+    },
+    {
       "name": "beads-tasks",
       "source": "./plugins/beads-tasks",
       "description": "Beads task tracking with tasker, reviewer, and verifier agents — use with planning mode for full orchestration",

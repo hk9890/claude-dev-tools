@@ -289,7 +289,7 @@ def run_section_check(repo_root, vr_mod, target_files=None):
     """Run Check A — section references.
 
     If target_files is given, scan only those files. Otherwise discover all
-    .md files in the repo (excluding examples/ and notes/ subtrees and .git/).
+    .md files in the repo (excluding examples/, notes/, .tasks/, and .git/).
 
     Returns (failures, total_refs_checked).
     """
@@ -299,7 +299,7 @@ def run_section_check(repo_root, vr_mod, target_files=None):
             # Prune directories we never descend into
             dirnames[:] = [
                 d for d in dirnames
-                if d not in ("examples", "notes", ".git")
+                if d not in ("examples", "notes", ".git", ".tasks")
             ]
             for fn in filenames:
                 if fn.endswith(".md"):

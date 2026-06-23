@@ -1,0 +1,13 @@
+{
+  "name": "tasks",
+  "description": "Use the taskmgr file-based task tracker — its data model, core commands, and tracking discipline. A thin literacy skill, not a workflow methodology.",
+  "version": "1.16.0",
+  "author": {
+    "name": "Hans Kohlreiter",
+    "email": "hans.kohlreiter@dynatrace.com"
+  },
+  "homepage": "https://github.com/hk9890/claude-dev-tools",
+  "repository": "https://github.com/hk9890/claude-dev-tools",
+  "license": "MIT",
+  "keywords": ["tasks", "taskmgr", "task-tracking", "issues", "dependencies"]
+}
