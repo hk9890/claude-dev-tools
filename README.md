@@ -22,12 +22,10 @@ See [docs/OVERVIEW.md](docs/OVERVIEW.md) for the full layout and architecture de
 | [`tasks`](plugins/tasks/README.md) | Use the `taskmgr` file-based task tracker — its data model, core commands, and tracking discipline. A thin literacy skill, not a workflow methodology |
 | [`beads-tasks`](plugins/beads-tasks/README.md) | Beads task tracking with tasker, reviewer, and verifier agents — use with planning mode for full orchestration |
 | [`claude-catppuccin`](plugins/claude-catppuccin/README.md) | Visual style for Claude Code: Catppuccin Mocha color theme |
-| [`project-review`](plugins/project-review/README.md) | Multi-perspective adversarial review plugin — complexity, structure, tests, and consistency — bias toward simplicity and coherence |
+| [`project-quality`](plugins/project-quality/README.md) | Project-quality toolkit — read-only adversarial reviews (complexity, structure, tests, consistency, docs) and thin, human-triggered operations (run tests, cut a release, analyze monitoring) |
 | [`github-releases`](plugins/github-releases/README.md) | Language-agnostic GitHub release workflow with quality gates, semver, and release notes |
 | [`html-visualization`](plugins/html-visualization/README.md) | Interactive HTML the user opens in a browser — a shared `html-visualize` core skill plus three user-invoked command skills: `html-visualize-ask` (question and decision forms), `html-visualize-feedback` (comment on rendered content), and `html-visualize-demo` (rich visualization with an always-on footer for optional follow-up messages); a shared one-shot Node server captures the response and re-invokes Claude |
 | [`keep-awake-linux`](plugins/keep-awake-linux/README.md) | Prevents Linux system sleep while Claude Code is actively working — releases automatically when idle or on session exit |
-| [`project-docs`](plugins/project-docs/README.md) | Project documentation lifecycle: create, update, improve, and review project docs |
-| [`project-ops`](plugins/project-ops/README.md) | Operational skills for a project: run the full test suite, cut a release, and analyze monitoring data — driven by installed topic skills and the canonical docs taxonomy |
 | [`project-explore`](plugins/project-explore/README.md) | Beads-driven assisted exploratory testing — researches a project, then plays around with the product one action at a time, filing findings as tasks |
 
 ## Installation

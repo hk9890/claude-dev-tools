@@ -17,7 +17,7 @@ The `plugin.json` `dependencies` field is honored by the Claude Code marketplace
 
 Use the right pattern for each dependency kind:
 
-- **Plugin depends on another plugin** (e.g. `project-ops` → `project-docs`): declare the dependency in `plugin.json` under `dependencies`. The harness handles install, scope, and chained enable/disable.
+- **Plugin depends on another plugin** (e.g. a workflow plugin that reuses another plugin's skills): declare the dependency in `plugin.json` under `dependencies`. The harness handles install, scope, and chained enable/disable.
 - **Plugin depends on a CLI tool** (e.g. `project-explore` → `bd`, `html-visualization` → `node`): the harness cannot install CLI binaries. Add a runtime check at skill load time (Phase 0) that tests whether the CLI is present and stops with guidance if it is missing. Do not add CLI tools to the `dependencies` field.
 
 ## SKILL.md conventions
@@ -28,12 +28,12 @@ These apply to every `SKILL.md` under `plugins/<plugin-name>/skills/<skill-name>
 
 Skill directory name and the `name:` field in frontmatter must match, and both should be **domain-prefixed**: `<plugin-domain>-<topic>`. The qualified reference (`<plugin>:<skill>`) then carries the domain in both segments.
 
-- ✅ `keep-awake-linux:keep-awake-inspect`, `html-visualization:html-visualize-ask`, `project-docs:project-create-docs`
+- ✅ `keep-awake-linux:keep-awake-inspect`, `html-visualization:html-visualize-ask`, `project-quality:project-review-docs`
 - ❌ `keep-awake-linux:inspect` — bare verb, no domain
 
 Within a plugin, sibling skills share the same domain prefix so they sort and read as a family.
 
-A "main" skill may take the plugin's own name (e.g. `project-docs:project-docs`, `github-releases:github-releases`); this is the only accepted exception.
+A "main" skill may take the plugin's own name (e.g. `project-explore:project-explore`, `github-releases:github-releases`); this is the only accepted exception.
 
 ### Frontmatter — pick a schema by invocation behaviour
 
@@ -50,7 +50,7 @@ disable-model-invocation: true
 ---
 ```
 
-Use for skills that perform a consequential, explicit action and should only run when the user types the slash command. Examples: `beads-plan`, `project-explore`, `html-visualize-demo`, the `project-docs` sub-skills.
+Use for skills that perform a consequential, explicit action and should only run when the user types the slash command. Examples: `beads-plan`, `project-explore`, `html-visualize-demo`, the `project-quality` operation skills (`project-run-tests`, `project-trigger-release`, `project-analyze-monitoring`).
 
 **Schema B — model-discoverable:**
 
@@ -62,7 +62,7 @@ when_to_use: "Use when … Triggers on '…', '…'. Does not apply to …"
 ---
 ```
 
-Use for skills the model should suggest or auto-invoke from context. `when_to_use` carries the trigger guidance — write positive triggers, exclusions, and (where it helps) the argument shape. Examples: the `*-review` skills, `github-releases`, `keep-awake-inspect`, the `project-docs` router.
+Use for skills the model should suggest or auto-invoke from context. `when_to_use` carries the trigger guidance — write positive triggers, exclusions, and (where it helps) the argument shape. Examples: the `project-review-*` skills, `github-releases`, `keep-awake-inspect`.
 
 **Reference libraries** are skill folders loaded *by* sibling skills, not invoked directly. They use `user-invocable: false` and omit `when_to_use`. Examples: `beads-core`, `html-visualize`.
 

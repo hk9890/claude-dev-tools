@@ -45,8 +45,12 @@ from collections import defaultdict
 # ---------------------------------------------------------------------------
 
 RENAME_ALIASES = {
-    "complexity-review": "project-review",
+    "complexity-review": "project-quality",
     "html-ask": "html-visualization",
+    # project-review, project-ops, and project-docs were merged into project-quality
+    "project-review": "project-quality",
+    "project-ops": "project-quality",
+    "project-docs": "project-quality",
 }
 
 # Skill-level rename aliases.  Keys are the raw attribution_skill strings that
@@ -59,28 +63,41 @@ SKILL_RENAME_ALIASES = {
     "html-visualization:html-ask": "html-visualization:html-visualize",
     "html-visualization:html-feedback": "html-visualization:html-visualize",
     "html-visualization:visualize-html": "html-visualization:html-visualize",
-    # project-docs skills (prefixed in a bulk rename)
-    "project-docs:coder-docs": "project-docs:project-docs",
-    "project-docs:create-docs": "project-docs:project-create-docs",
-    "project-docs:improve-doc": "project-docs:project-improve-docs",
-    "project-docs:project-improve-doc": "project-docs:project-improve-docs",
-    "project-docs:init-or-update-docs": "project-docs:project-init-or-update-docs",
-    "project-docs:review-docs": "project-docs:project-review-docs",
-    "project-docs:revise-docs": "project-docs:project-revise-docs",
-    # project-ops skills (prefixed in a bulk rename)
-    "project-ops:analyze-monitoring-data": "project-ops:project-analyze-monitoring-data",
-    "project-ops:executes-tests": "project-ops:project-run-tests",
-    "project-ops:project-executes-tests": "project-ops:project-run-tests",
-    "project-ops:trigger-release": "project-ops:project-trigger-release",
+    # project-docs skills -> consolidated into project-quality:project-review-docs (read-only audit)
+    "project-docs:coder-docs": "project-quality:project-review-docs",
+    "project-docs:create-docs": "project-quality:project-review-docs",
+    "project-docs:improve-doc": "project-quality:project-review-docs",
+    "project-docs:project-improve-doc": "project-quality:project-review-docs",
+    "project-docs:init-or-update-docs": "project-quality:project-review-docs",
+    "project-docs:review-docs": "project-quality:project-review-docs",
+    "project-docs:revise-docs": "project-quality:project-review-docs",
+    "project-docs:project-docs": "project-quality:project-review-docs",
+    "project-docs:project-create-docs": "project-quality:project-review-docs",
+    "project-docs:project-improve-docs": "project-quality:project-review-docs",
+    "project-docs:project-init-or-update-docs": "project-quality:project-review-docs",
+    "project-docs:project-review-docs": "project-quality:project-review-docs",
+    "project-docs:project-revise-docs": "project-quality:project-review-docs",
+    # project-ops skills -> project-quality (run-tests / trigger-release / analyze-monitoring)
+    "project-ops:analyze-monitoring-data": "project-quality:project-analyze-monitoring",
+    "project-ops:executes-tests": "project-quality:project-run-tests",
+    "project-ops:project-executes-tests": "project-quality:project-run-tests",
+    "project-ops:trigger-release": "project-quality:project-trigger-release",
+    "project-ops:project-analyze-monitoring-data": "project-quality:project-analyze-monitoring",
+    "project-ops:project-run-tests": "project-quality:project-run-tests",
+    "project-ops:project-trigger-release": "project-quality:project-trigger-release",
     # beads-tasks skills
     "beads-tasks:coder-beads": "beads-tasks:beads-core",
-    # complexity-review plugin era (plugin was later renamed to project-review)
-    "complexity-review:complexity-review": "project-review:project-review-complexity",
-    # project-review skills renamed to domain-prefixed form (1.14.0 -> 1.15.0)
-    "project-review:complexity-review": "project-review:project-review-complexity",
-    "project-review:consistency-review": "project-review:project-review-consistency",
-    "project-review:structure-review": "project-review:project-review-structure",
-    "project-review:test-review": "project-review:project-review-test",
+    # complexity-review plugin era (plugin later renamed; reviews now live in project-quality)
+    "complexity-review:complexity-review": "project-quality:project-review-complexity",
+    # project-review skills -> project-quality (the test -> tests rename happened in the merge)
+    "project-review:complexity-review": "project-quality:project-review-complexity",
+    "project-review:consistency-review": "project-quality:project-review-consistency",
+    "project-review:structure-review": "project-quality:project-review-structure",
+    "project-review:test-review": "project-quality:project-review-tests",
+    "project-review:project-review-complexity": "project-quality:project-review-complexity",
+    "project-review:project-review-consistency": "project-quality:project-review-consistency",
+    "project-review:project-review-structure": "project-quality:project-review-structure",
+    "project-review:project-review-test": "project-quality:project-review-tests",
     # project-explore skill renamed (explore-project -> project-explore)
     "project-explore:explore-project": "project-explore:project-explore",
 }
