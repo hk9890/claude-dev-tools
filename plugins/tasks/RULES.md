@@ -42,8 +42,9 @@ touch the tracker:
   defect it discovers, but does **not** close (closure is gated on verification).
 - **verifier** writes directly — it closes a *passing single task* and files a `bug` for any failure;
   it never closes an epic (it posts a "ready to close" verdict comment and a human closes it).
-- **reviewer** is read-only on both the project and the tracker — it returns findings as discussion;
-  nothing is filed until the user runs `tasks-create`.
+- **reviewer** (`project-quality:project-reviewer` — a sibling plugin; the `tasks` plugin ships no
+  reviewer of its own) is read-only on both the project and the tracker — it returns findings as
+  discussion; nothing is filed until the user runs `tasks-create`.
 
 ## 4. The CLI is the source of truth for its own surface
 

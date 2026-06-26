@@ -15,14 +15,16 @@ the outcome. Epics are verified and left for a human to close.
 ## 1. Preconditions
 
 First, **load the `tasks` skill** for the CLI surface and the taskmgr gotchas it relies on
-(closure is not gated, concurrent writes are safe). Then confirm the tracker is usable:
+(closure is not gated, concurrent writes are safe). Then confirm the tracker is usable — probe binary and store separately (`taskmgr list` resolves the
+store by walking up; do **not** use `ls .tasks/`, which only sees cwd):
 
 ```bash
-ls .tasks/ 2>/dev/null && taskmgr list >/dev/null 2>&1
+command -v taskmgr >/dev/null 2>&1   # binary installed?
+taskmgr list >/dev/null 2>&1          # store resolves?
 ```
 
-If `taskmgr` is missing or there is no `.tasks/` store, stop and tell the user (see the `tasks`
-skill, "Is taskmgr available?").
+If `command -v taskmgr` fails (no binary) or `taskmgr list` fails (no store resolves), stop and tell
+the user (see the `tasks` skill, "Is taskmgr available?").
 
 ## 2. Discover ready work
 

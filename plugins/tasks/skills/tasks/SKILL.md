@@ -13,19 +13,23 @@ flag surface, ask the tool itself (see "Source of truth" below).
 
 ## 1. Is taskmgr available?
 
-Before using the tracker, confirm both the binary and a store exist:
+Before using the tracker, confirm the binary and a store exist — probe them **separately** so the
+two failure modes stay distinct:
 
 ```bash
-ls .tasks/ 2>/dev/null && taskmgr list >/dev/null 2>&1
+command -v taskmgr >/dev/null 2>&1   # 1) is the binary installed?
+taskmgr list >/dev/null 2>&1          # 2) does a store resolve? (taskmgr walks up from cwd to find .tasks/)
 ```
 
-- **No `taskmgr` binary** → stop and tell the user to install it (`make install` from the
-  task-manager repo). Do not fall back to TodoWrite or markdown files for tracking.
-- **Binary present, no `.tasks/`** → the project has no store yet. Offer to create one with
+- **`command -v taskmgr` fails** → no binary. Stop and tell the user to install it (`make install`
+  from the task-manager repo). Do not fall back to TodoWrite or markdown files for tracking.
+- **Binary present but `taskmgr list` fails** → no store resolves from here. Offer to create one with
   `taskmgr init --prefix <p>` (prefix defaults to a slug of the directory name).
 
-The store is found by walking **up** from the current directory, so commands work from any
-subdirectory of the project.
+Do **not** test for the store with `ls .tasks/`: the store is found by walking **up** from the
+current directory, so a bare `ls` in a subdirectory reports "no store" even when taskmgr resolves one
+at the repo root — and would then create a second, nested store. Let `taskmgr list` do the
+resolution, and commands then work from any subdirectory of the project.
 
 ## 2. Source of truth for commands
 

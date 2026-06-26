@@ -43,20 +43,22 @@ Verify a single completed task against its acceptance criteria.
 
 When asked to verify an epic once its children are complete:
 
-1. Confirm every child is closed — an **empty result is required**:
+1. Confirm the epic exists — `taskmgr show <epic>` must resolve to a real epic. If it does not exist
+   or is not an epic, stop and report it; do not post a verdict. (An empty child list from a typo'd
+   or wrong id also returns `[]` — never read that as "all closed".)
+2. Confirm every child is closed — an **empty result is required**:
    ```bash
    taskmgr list -q 'parent == "<epic>" && status != "closed"' --json
    ```
-   If non-empty, stop: comment which children are still open and do not proceed. Treat an empty
-   result as "all closed" only after confirming the command exited `0` with a real epic id — a
-   typo'd or wrong id also returns `[]`, which would be a false "ready".
-2. Independently confirm the epic's own success criteria are met (not merely that children closed).
-3. Run project verification — build, test suite, typecheck/lint if applicable.
-4. **Persist the verdict** — write the per-criterion evidence as a comment on the epic:
+   If the query errors or returns a non-empty list, stop: comment which children are still open and
+   do not proceed.
+3. Independently confirm the epic's own success criteria are met (not merely that children closed).
+4. Run project verification — build, test suite, typecheck/lint if applicable.
+5. **Persist the verdict** — write the per-criterion evidence as a comment on the epic:
    ```bash
    taskmgr comment add <epic> "Acceptance review: <criterion> PASS — <evidence>; … Children all closed. Ready to close."
    ```
-5. **Do NOT close the epic.** Report that it is verified and ready for a human to close.
+6. **Do NOT close the epic.** Report that it is verified and ready for a human to close.
 
 ## No silent failures (non-negotiable)
 
@@ -80,4 +82,4 @@ Not verified: "the code looks right", "I inferred it works", "tests pass" (unles
 - Do not edit project code (read-only on the project; you may write the tracker).
 - Do not close an epic — only a human does, after your "ready to close" comment.
 - Do not reopen closed work — file a new bug instead.
-- Do not review designs or plans — that is the reviewer's job.
+- Do not review designs or plans — that is the reviewer's job (`project-quality:project-reviewer`).

@@ -21,15 +21,18 @@ $ARGUMENTS
 First, **load the `tasks` skill** for the CLI surface and the taskmgr gotchas (closure is not gated,
 `--description-file -`, `create --json` returns id-only) — this skill relies on them.
 
-Then confirm the tracker is usable before creating anything:
+Then confirm the tracker is usable before creating anything — probe binary and store separately
+(`taskmgr list` resolves the store by walking up; do **not** use `ls .tasks/`, which only sees cwd
+and would miss a store at the repo root):
 
 ```bash
-ls .tasks/ 2>/dev/null && taskmgr list >/dev/null 2>&1
+command -v taskmgr >/dev/null 2>&1   # binary installed?
+taskmgr list >/dev/null 2>&1          # store resolves?
 ```
 
-- **No `taskmgr` binary** → stop and tell the user to install it; do not fall back to TodoWrite or
-  markdown files.
-- **Binary present, no `.tasks/` store** → there is nowhere to file. Offer to create one with
+- **`command -v taskmgr` fails** → no binary. Stop and tell the user to install it; do not fall back
+  to TodoWrite or markdown files.
+- **Binary present but `taskmgr list` fails** → no store resolves. Offer to create one with
   `taskmgr init --prefix <p>`, then continue once it exists.
 
 ## 2. Gather the findings
