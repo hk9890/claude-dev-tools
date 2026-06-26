@@ -19,7 +19,7 @@ See [docs/OVERVIEW.md](docs/OVERVIEW.md) for the full layout and architecture de
 
 | Plugin | Description |
 |---|---|
-| [`tasks`](plugins/tasks/README.md) | Use the `taskmgr` file-based task tracker — its data model and commands, a skill to turn review findings into well-formed tasks, and generic implementer/verifier agents for executing and verifying work |
+| [`tasks`](plugins/tasks/README.md) | Use the `taskmgr` file-based task tracker — data model and commands, a skill to turn review findings into well-formed tasks, generic implementer/verifier agents, and a tasks-work workflow that runs ready work through implement, verify, and record |
 | [`beads-tasks`](plugins/beads-tasks/README.md) | Beads task tracking with tasker, reviewer, and verifier agents — use with planning mode for full orchestration |
 | [`claude-catppuccin`](plugins/claude-catppuccin/README.md) | Visual style for Claude Code: Catppuccin Mocha color theme |
 | [`project-quality`](plugins/project-quality/README.md) | Project-quality toolkit — read-only adversarial reviews (complexity, structure, tests, consistency, docs, plan/design grilling) and thin, human-triggered operations (run tests, cut a release, analyze monitoring) |

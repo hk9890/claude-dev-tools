@@ -20,11 +20,14 @@ versioned alongside the code. This plugin provides:
   implements one assigned task and reports; the verifier checks one outcome against its acceptance
   criteria, closes a passing task, and never closes an epic. Both write the tracker directly (taskmgr
   serializes writes via its lock) and file a bug for any defect they find.
+- **`tasks-work`** — the execution entry point. It confirms scope, then runs the bundled `work.js`
+  workflow: one `implementer` per task, a verify stage (review ∥ test), and a record stage that closes
+  passing tasks. Epics are verified and left for a human to close.
 
 It deliberately does **not** port the full `beads-tasks` methodology: no planning/work-intake
-documents, no serialized-writes orchestrator protocol, no acceptance-review *task* pattern. The
-orchestration that drives these workers (the ready→implement→verify→record loop) is a separate
-concern, not part of this plugin. See [RULES.md](RULES.md) for the design decisions behind that.
+documents, no serialized-writes orchestrator protocol, no acceptance-review *task* pattern — the
+ready→implement→verify→record loop is a thin, deterministic workflow, not a methodology. See
+[RULES.md](RULES.md) for the design decisions behind that.
 
 ## Skills
 
@@ -32,6 +35,7 @@ concern, not part of this plugin. See [RULES.md](RULES.md) for the design decisi
 |---|---|---|
 | `tasks` | model-discoverable (`tasks:tasks`) | How to use taskmgr — data model, core commands, tracking discipline, and CLI gotchas |
 | `tasks-create` | user-invocable (`/tasks-create`) | Turn conversation findings into well-formed bug/chore/task issues with a standard body |
+| `tasks-work` | user-invocable (`/tasks-work`) | Confirm scope, then run ready work through implement → verify → record via the bundled `work.js` workflow |
 
 ## Agents
 
@@ -55,9 +59,13 @@ tasks/
 ├── agents/
 │   ├── implementer.md
 │   └── verifier.md
-└── skills/
-    ├── tasks/
-    │   └── SKILL.md
-    └── tasks-create/
-        └── SKILL.md
+├── skills/
+│   ├── tasks/
+│   │   └── SKILL.md
+│   ├── tasks-create/
+│   │   └── SKILL.md
+│   └── tasks-work/
+│       └── SKILL.md
+└── workflows/
+    └── work.js            (bundled execution workflow, run by tasks-work via scriptPath)
 ```

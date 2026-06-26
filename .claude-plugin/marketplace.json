@@ -13,7 +13,7 @@
     {
       "name": "tasks",
       "source": "./plugins/tasks",
-      "description": "Use the taskmgr file-based task tracker — its data model and commands, a skill to turn review findings into well-formed tasks, and generic implementer/verifier agents for executing and verifying work.",
+      "description": "Use the taskmgr file-based task tracker — data model and commands, a skill to turn review findings into well-formed tasks, generic implementer/verifier agents, and a tasks-work workflow that runs ready work through implement, verify, and record.",
       "version": "1.16.0",
       "author": {
         "name": "Hans Kohlreiter",

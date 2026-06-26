@@ -14,12 +14,14 @@ generic layers:
 - **Execution workers** — the generic `implementer` and `verifier` agents execute a single assigned
   task and verify a single outcome. They are dumb workers handed one unit of work; they carry no
   planning or orchestration logic.
+- **Execution orchestration** — the `tasks-work` skill confirms scope, then the bundled `work.js`
+  workflow runs the `ready → implement → verify(review ∥ test) → record` loop and verifies the parent
+  epic. The loop is a thin, deterministic workflow script, not a methodology document.
 
 It deliberately still does **not** port the `beads-tasks` methodology wholesale: no planning/work
 intake documents, no serialized-writes orchestrator protocol, no acceptance-review *task* pattern.
-Orchestration of these workers (the ready→implement→verify→record loop) lives in a separate
-execution skill/workflow, not here. `taskmgr` is a tracker; how a session sequences work on top of it
-is kept thin and explicit rather than encoded as a heavy methodology.
+`taskmgr` is a tracker; how a session sequences work on top of it is kept as a thin, explicit
+workflow rather than a heavy methodology.
 
 ## 2. taskmgr enforces no closure ordering — callers gate themselves
 
@@ -65,3 +67,24 @@ dependencies only.
 The upstream project is checked out as `agent-tasks-control`, titled `task-manager`, and its Go
 module is `github.com/hk9890/task-manager` — but the installed binary is `taskmgr`. The skill
 references `taskmgr` throughout, since that is the stable name an agent actually invokes.
+
+## 7. The execution workflow (`work.js`) — design decisions
+
+`tasks-work` ships a workflow script at `workflows/work.js`, run via the Workflow tool by `scriptPath`
+(`${CLAUDE_PLUGIN_ROOT}/workflows/work.js`). `workflows/` is not an auto-discovered plugin component
+directory — the script is a bundled data file the skill points the tool at, with scope resolved in the
+main loop and passed as `args.taskIds` / `args.epicId`. A workflow script is pure JS and cannot run
+`taskmgr`; every tracker read/write happens inside a spawned agent. Key choices:
+
+- **Closure detection is explicit, because taskmgr does not gate it (rule 2).** Per-task records are
+  collected behind a `parallel` barrier; only then does one epic agent assert all children closed via
+  `list -q 'parent == "<id>" && status != "closed"'` — never via `show`'s child list.
+- **Epics are never auto-closed.** The epic stage verifies success criteria and posts a verdict
+  comment, then leaves the epic for a human to close. This sidesteps the absent CLI guardrail.
+- **Verify legs are report-only; a separate record stage closes.** Review (read-only) and test run in
+  parallel and cannot see each other, so neither closes; the record stage closes only when the test
+  passed *and* review is not `reject`. Three outcomes: closed / left-open (a real failure — bug filed)
+  / inconclusive (an agent did not complete — left open, no bug, no false close).
+- **Soft cross-plugin dependency.** The review leg spawns `project-quality:project-reviewer`, so
+  `tasks-work` (and only that skill) expects the `project-quality` plugin to be installed. It is not a
+  hard `plugin.json` dependency — the rest of the `tasks` plugin works without it.
