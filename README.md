@@ -26,7 +26,7 @@ See [docs/OVERVIEW.md](docs/OVERVIEW.md) for the full layout and architecture de
 | [`github-releases`](plugins/github-releases/README.md) | Language-agnostic GitHub release workflow with quality gates, semver, and release notes |
 | [`html-visualization`](plugins/html-visualization/README.md) | Interactive HTML the user opens in a browser — a shared `html-visualize` core skill plus three user-invoked command skills: `html-visualize-ask` (question and decision forms), `html-visualize-feedback` (comment on rendered content), and `html-visualize-demo` (rich visualization with an always-on footer for optional follow-up messages); a shared one-shot Node server captures the response and re-invokes Claude |
 | [`keep-awake-linux`](plugins/keep-awake-linux/README.md) | Prevents Linux system sleep while Claude Code is actively working — releases automatically when idle or on session exit |
-| [`project-explore`](plugins/project-explore/README.md) | Beads-driven assisted exploratory testing — researches a project, then plays around with the product one action at a time, filing findings as tasks |
+| [`project-explore`](plugins/project-explore/README.md) | Assisted exploratory testing — researches a project, then plays around with the product one action at a time, filing findings as tasks |
 
 ## Installation
 
