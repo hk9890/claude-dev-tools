@@ -89,6 +89,10 @@ taskmgr comment add proj-0042 "Repro only on the cold-start path."
 prefer `close --reason`. Setting a non-closed status on a closed issue reopens it onto that
 status.
 
+To turn findings from the current conversation (a review, `/code-review`, `/simplify`, an
+exploration) into issues with a standard body template, run `/tasks-create` — it owns the task-body
+contract, so prefer it over hand-rolling `create` calls for review findings.
+
 ## 5. Finding work with filters
 
 `list -q` takes a filter expression — `<field> <op> <value>` joined with `&&`, `||`, `!`,
@@ -114,3 +118,39 @@ values in use when you need them.
 - **Close with a reason** so the history explains itself.
 - **Don't reopen finished work to capture new findings** — file a new issue and link it. The
   closed record stays a faithful account of what happened.
+
+## 7. taskmgr specifics every agent must know
+
+Non-obvious facts about *this* tracker. Several differ sharply from other trackers (notably
+beads) — internalize them before automating against taskmgr.
+
+**Closure is NOT gated — ordering is your responsibility.** `taskmgr close` never refuses: closing
+an issue with open blockers succeeds, and closing an *epic with open children* succeeds. taskmgr
+enforces no dependency-ordered or parent-before-child closure. If you need a gate ("don't close the
+epic until its children are closed"), check it yourself first:
+
+```bash
+# empty result ⇒ every child is closed (substitute the real epic id)
+taskmgr list -q 'parent == "<epic-id>" && status != "closed"' --json
+```
+
+IDs are **opaque short codes** (e.g. `proj-o623mw`), not sequential numbers — never invent one like
+`proj-0007`; take it from `create --json` or `show`. Do **not** infer "all children closed" from
+`show <epic>` — its child list omits closed children, so an empty list is ambiguous (all-done vs.
+never-had-children). Always use the `list -q` check above, and treat an empty result as "all closed"
+only once you have confirmed the query ran without error.
+
+**Concurrent writes are safe.** The store serializes writes through `.tasks/.lock`, so several agents
+may `create`/`update`/`close`/`comment` at once without corrupting it. There is no need for a
+single-writer orchestrator.
+
+**Other gotchas:**
+
+- `create --json` returns the new **id only** — re-`show <id>` if you need its type or priority back.
+- `--description` and `--description-file` are mutually exclusive on a single call. Use
+  `--description-file -` to pipe a multi-line body from stdin.
+- `--parent` is an **organizational** link (grouping under an epic), not a blocker. For execution
+  order, use `dep add <dependent> <blocker>`.
+- Dependencies are **type-agnostic** — any issue can block any other (unlike beads' same-type rule).
+- There is no `list --parent` flag. Filter by parent with `list -q 'parent == "<id>"'` (`parent`
+  supports equality only, not `~`).
