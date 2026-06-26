@@ -8,7 +8,13 @@ Before proceeding verify all gates pass:
 
 - `gh auth status` — GitHub CLI must be authenticated
 - `git status --porcelain` — working tree must be clean (no uncommitted changes)
-- `git fetch origin && git diff HEAD "origin/$(git symbolic-ref --short refs/remotes/origin/HEAD | sed 's|origin/||')" --stat` — local branch must be in sync with the remote default branch (derive it; do not hardcode `main`)
+- After `git fetch origin`, the local branch must be in sync with the remote default branch. Derive it — with a fallback for when `origin/HEAD` is not set locally — and diff against it:
+
+  ```bash
+  DEFAULT_BRANCH=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|origin/||')
+  DEFAULT_BRANCH=${DEFAULT_BRANCH:-$(git remote show origin | sed -n 's/.*HEAD branch: //p')}
+  git diff HEAD "origin/$DEFAULT_BRANCH" --stat   # expect no differences
+  ```
 
 See [quality-gates.md](quality-gates.md) for full gate details including CI status checks.
 

@@ -11,8 +11,9 @@ git diff-index --quiet HEAD -- || echo "FAIL: uncommitted changes"
 # Untracked files
 git ls-files --others --exclude-standard | head -5
 
-# Up to date with remote (derive the default branch; do not hardcode main)
-DEFAULT_BRANCH=$(git symbolic-ref --short refs/remotes/origin/HEAD | sed 's|origin/||')
+# Up to date with remote (derive the default branch; fall back when origin/HEAD is unset)
+DEFAULT_BRANCH=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|origin/||')
+DEFAULT_BRANCH=${DEFAULT_BRANCH:-$(git remote show origin | sed -n 's/.*HEAD branch: //p')}
 git fetch origin && git diff HEAD "origin/$DEFAULT_BRANCH" --stat
 ```
 
