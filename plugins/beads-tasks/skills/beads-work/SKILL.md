@@ -7,6 +7,14 @@ disable-model-invocation: true
 
 ## Workflow
 
+**Preflight — beads CLI check.** Before any tracker work, confirm the `bd` CLI is on PATH:
+
+```bash
+command -v bd >/dev/null 2>&1 || echo "MISSING"
+```
+
+If `bd` is missing, stop and tell the user: *the beads CLI is not installed — run `npm install -g @beads/bd` (and `bd init` if `.beads/` does not yet exist), then re-invoke this skill.* Do not write to the tracker until `bd` is available.
+
 1. Load `beads-tasks:beads-core` for the routing table.
 2. Load and follow the **work intake** instructions to decide what to work on (conversation references first, tracker discovery second) and propose it to the user. Do not write to the tracker or spawn agents during intake.
 3. On explicit user confirmation of the proposed work, load and follow the **execution orchestration** instructions to run the plan-review gate, delegate to taskers and verifiers, apply tracker updates, and close the epic.

@@ -124,8 +124,7 @@ The file is ephemeral — do not commit it or attach it to the epic.
 ### 1.6 Close the research task
 
 ```bash
-bd close <research-task-id> --reason done \
-  --comment "Understanding file written to temp path. Research complete."
+bd close <research-task-id> --reason "done: understanding file written to temp path; research complete"
 ```
 
 ---
@@ -230,7 +229,9 @@ Load `references/break-it.md` before the first iteration. Use it as instinct-pro
 When the user says "stop" or when the session ends naturally, post a summary comment on the epic.
 
 ```bash
-bd comments add <epic-id> --body "..."
+cat << 'HEREDOC' | bd comment <epic-id> --stdin
+...
+HEREDOC
 ```
 
 The summary must include:

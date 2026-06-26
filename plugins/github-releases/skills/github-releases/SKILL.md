@@ -13,7 +13,7 @@ Language-agnostic release workflow for GitHub projects.
 Before starting, verify:
 - `gh auth status` succeeds (GitHub CLI authenticated)
 - `git status --porcelain` returns empty (clean working tree)
-- You are on the correct branch and `git fetch origin && git diff HEAD origin/main --stat` returns no differences (local branch in sync with remote)
+- You are on the correct branch and, after `git fetch origin`, `git diff HEAD "origin/$(git symbolic-ref --short refs/remotes/origin/HEAD | sed 's|origin/||')" --stat` returns no differences (local branch in sync with the remote default branch — do not hardcode `main`; this derives it, e.g. `master`)
 
 ## Workflow
 

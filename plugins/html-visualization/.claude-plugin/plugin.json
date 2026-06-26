@@ -1,6 +1,6 @@
 {
   "name": "html-visualization",
-  "description": "Interactive HTML the user opens in a browser, then sends back to Claude — three user-invoked command skills over a shared html-visualize core render question forms (html-visualize-ask), content for inline commenting (html-visualize-feedback), or display-only visualizations (html-visualize-demo); a shared one-shot Node server captures the response and re-invokes Claude",
+  "description": "Interactive HTML the user opens in a browser, then sends back to Claude — three user-invoked command skills over a shared html-visualize core, each rendering a different surface: question forms (html-visualize-ask), content for inline commenting (html-visualize-feedback), or display-only visualizations (html-visualize-demo); a shared one-shot Node server captures the response and re-invokes Claude",
   "version": "1.16.0",
   "author": {
     "name": "Hans Kohlreiter",

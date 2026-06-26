@@ -1,6 +1,6 @@
 ---
 description: Create a new GitHub release — runs quality gates, version bump, and release creation
-argument-hint: "[version]"
+argument-hint: "[version|setup]"
 ---
 
 Load the `github-releases` skill.
@@ -8,6 +8,8 @@ Load the `github-releases` skill.
 Treat this as optional version/context guidance:
 
 $ARGUMENTS
+
+If `$ARGUMENTS` is `setup`, create or update the project's `docs/RELEASING.md` per the skill's `references/setup-modify-release-workflow.md` instead of cutting a release.
 
 Follow the skill's release workflow:
 - Check prerequisites (gh auth, clean working tree)

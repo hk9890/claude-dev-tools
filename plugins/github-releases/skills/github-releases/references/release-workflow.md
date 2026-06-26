@@ -8,7 +8,7 @@ Before proceeding verify all gates pass:
 
 - `gh auth status` — GitHub CLI must be authenticated
 - `git status --porcelain` — working tree must be clean (no uncommitted changes)
-- `git fetch origin && git diff HEAD origin/main --stat` — local branch must be in sync with remote
+- `git fetch origin && git diff HEAD "origin/$(git symbolic-ref --short refs/remotes/origin/HEAD | sed 's|origin/||')" --stat` — local branch must be in sync with the remote default branch (derive it; do not hardcode `main`)
 
 See [quality-gates.md](quality-gates.md) for full gate details including CI status checks.
 
