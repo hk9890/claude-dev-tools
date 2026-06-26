@@ -78,14 +78,21 @@ main loop and passed as `args.taskIds` / `args.epicId`. A workflow script is pur
 `taskmgr`; every tracker read/write happens inside a spawned agent. Key choices:
 
 - **Closure detection is explicit, because taskmgr does not gate it (rule 2).** Per-task records are
-  collected behind a `parallel` barrier; only then does one epic agent assert all children closed via
-  `list -q 'parent == "<id>" && status != "closed"'` — never via `show`'s child list.
+  collected by running each task's pipeline to completion; only then does one epic agent assert all
+  children closed via `list -q 'parent == "<id>" && status != "closed"'` — never via `show`'s child list.
 - **Epics are never auto-closed.** The epic stage verifies success criteria and posts a verdict
   comment, then leaves the epic for a human to close. This sidesteps the absent CLI guardrail.
+- **Tasks run sequentially against the shared working tree.** taskmgr's lock (rule 3) protects the
+  *tracker*, not project source files, so parallel implementers would clobber each other's edits and
+  the verify legs would observe a commingled tree. v1 runs one task's implement → verify → record at a
+  time; review ∥ test stay parallel *within* a task (its implementer has already finished) and the
+  review is scoped to the task's reported `changedFiles`. Parallel implementation across isolated
+  worktrees, with an integration/merge step, is a deliberate future enhancement — not v1.
 - **Verify legs are report-only; a separate record stage closes.** Review (read-only) and test run in
   parallel and cannot see each other, so neither closes; the record stage closes only when the test
-  passed *and* review is not `reject`. Three outcomes: closed / left-open (a real failure — bug filed)
-  / inconclusive (an agent did not complete — left open, no bug, no false close).
+  passed *and* review is not `reject`. Four outcomes: closed / left-open (a verification failure — bug
+  filed) / inconclusive (an agent did not complete — left open, no bug) / skipped (the ticket was
+  unready or blocked — the implementer never started, no bug).
 - **Soft cross-plugin dependency.** The review leg spawns `project-quality:project-reviewer`, so
   `tasks-work` (and only that skill) expects the `project-quality` plugin to be installed. It is not a
   hard `plugin.json` dependency — the rest of the `tasks` plugin works without it.

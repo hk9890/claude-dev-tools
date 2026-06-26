@@ -26,6 +26,7 @@ const IMPL_SCHEMA = {
     taskId: { type: 'string' },
     status: { type: 'string', enum: ['implemented', 'blocked', 'unready'] },
     summary: { type: 'string' },
+    changedFiles: { type: 'array', items: { type: 'string' } },
     bugsFiled: { type: 'array', items: { type: 'string' } },
   },
 }
@@ -68,10 +69,13 @@ const EPIC_SCHEMA = {
 }
 
 const implementPrompt = (id) =>
-  `Implement taskmgr task ${id} as one unit of an execution run. Follow your implementer instructions: run the readiness gate first; if the ticket is not executable, comment the gaps and report status "unready" (do NOT claim or write code). If ready, claim it (\`taskmgr update ${id} --status in_progress\`), implement the simplest change that satisfies the acceptance criteria, run the project's relevant tests, and file a bug directly for any unrelated defect you find. Do NOT close the task. Report status "implemented" (ready to verify) or "blocked" (with the reason in summary), a short summary of what changed, and any bug ids filed.`
+  `Implement taskmgr task ${id} as one unit of an execution run. Follow your implementer instructions: run the readiness gate first; if the ticket is not executable, comment the gaps and report status "unready" (do NOT claim or write code). If ready, claim it (\`taskmgr update ${id} --status in_progress\`), implement the simplest change that satisfies the acceptance criteria, run the project's relevant tests, and file a bug directly for any unrelated defect you find. Do NOT close the task. Report status "implemented" (ready to verify) or "blocked" (with the reason in summary), a short summary of what changed, the list of files you touched in changedFiles, and any bug ids filed.`
 
-const reviewPrompt = (id, impl) =>
-  `Review the implementation just made for taskmgr task ${id}. Run \`taskmgr show ${id}\` for intent and inspect the working-tree change (\`git diff\`). You are READ-ONLY: do not edit code and do not write the tracker. Return a verdict: "ok" (no blocking concern), "concerns" (real but non-blocking issues), or "reject" (a blocking correctness or design flaw that should stop closure), with a one-line summary and any findings. Implementation summary: ${JSON.stringify(impl && impl.summary)}.`
+const reviewPrompt = (id, impl) => {
+  const files = (impl && impl.changedFiles && impl.changedFiles.length) ? impl.changedFiles.join(' ') : ''
+  const diffCmd = files ? `git diff -- ${files}` : 'git diff'
+  return `Review the implementation just made for taskmgr task ${id}. Run \`taskmgr show ${id}\` for intent and inspect ONLY this task's change with \`${diffCmd}\`${files ? ' (tasks run sequentially against a shared tree that may also hold earlier uncommitted edits — judge only the files this task changed)' : ''}. You are READ-ONLY: do not edit code and do not write the tracker. Return a verdict: "ok" (no blocking concern), "concerns" (real but non-blocking issues), or "reject" (a blocking correctness or design flaw that should stop closure), with a one-line summary and any findings. Implementation summary: ${JSON.stringify(impl && impl.summary)}.`
+}
 
 const testPrompt = (id, impl) =>
   `Verify taskmgr task ${id} against its acceptance criteria by EXECUTING — run the project's tests/commands and trigger the behavior; do not infer from reading code. REPORT ONLY in this run: do NOT close the task (the workflow records the decision). File a bug directly for any failing criterion or unrelated breakage. Return pass=true only if every acceptance criterion was executed and passed; otherwise pass=false with evidence and any bug ids filed. Implementation summary: ${JSON.stringify(impl && impl.summary)}.`
@@ -93,9 +97,13 @@ const epicClosePrompt = (id) =>
 
 async function runTask(id) {
   const impl = await agent(implementPrompt(id), { agentType: 'tasks:implementer', phase: 'Implement', label: `impl:${id}`, schema: IMPL_SCHEMA })
-  if (!impl || impl.status !== 'implemented') {
-    // blocked / unready / dead agent — nothing to verify; the implementer already commented (or it died).
-    return { taskId: id, impl, record: { taskId: id, action: impl ? 'left-open' : 'inconclusive', reason: impl ? impl.status : 'implementer did not complete' } }
+  if (!impl) {
+    // dead/timed-out implementer — nothing ran, decision never recorded.
+    return { taskId: id, impl: null, record: { taskId: id, action: 'inconclusive', reason: 'implementer did not complete' } }
+  }
+  if (impl.status !== 'implemented') {
+    // unready (readiness gate refused) or blocked — no code written, no bug filed, nothing to verify.
+    return { taskId: id, impl, record: { taskId: id, action: 'skipped', reason: impl.status } }
   }
   const [review, test] = await parallel([
     () => agent(reviewPrompt(id, impl), { agentType: 'project-quality:project-reviewer', phase: 'Verify', label: `review:${id}`, schema: REVIEW_SCHEMA }),
@@ -107,8 +115,16 @@ async function runTask(id) {
 }
 
 phase('Implement')
-log(`Running ${taskIds.length} task(s)${epicId ? ` under epic ${epicId}` : ''}`)
-const perTask = await parallel(taskIds.map((id) => () => runTask(id)))
+log(`Running ${taskIds.length} task(s) sequentially${epicId ? ` under epic ${epicId}` : ''}`)
+// Sequential by design: implementers share ONE working tree, and taskmgr's lock protects only the
+// tracker (.tasks/), not project source files. Running them in parallel would let two implementers
+// clobber each other's edits and make the verify legs observe a commingled tree. So one task's
+// implement → verify → record completes before the next starts. (review ∥ test still run in parallel
+// WITHIN a task, after that task's implementer has finished — see runTask.)
+const perTask = []
+for (const id of taskIds) {
+  perTask.push(await runTask(id))
+}
 
 let epic = null
 if (epicId) {
@@ -116,15 +132,18 @@ if (epicId) {
   epic = await agent(epicClosePrompt(epicId), { agentType: 'tasks:verifier', phase: 'Close', label: `epic:${epicId}`, schema: EPIC_SCHEMA })
 }
 
-const closed = perTask.filter((r) => r && r.record && r.record.action === 'closed').map((r) => r.taskId)
-const open = perTask.filter((r) => r && r.record && r.record.action === 'left-open').map((r) => r.taskId)
-const inconclusive = perTask.filter((r) => r && r.record && r.record.action === 'inconclusive').map((r) => r.taskId)
+const byAction = (a) => perTask.filter((r) => r && r.record && r.record.action === a).map((r) => r.taskId)
+const closed = byAction('closed')
+const open = byAction('left-open')
+const inconclusive = byAction('inconclusive')
+const skipped = byAction('skipped')
 
 return {
-  summary: { total: taskIds.length, closed: closed.length, left_open: open.length, inconclusive: inconclusive.length, epic: epic ? epic.action : 'n/a' },
+  summary: { total: taskIds.length, closed: closed.length, left_open: open.length, inconclusive: inconclusive.length, skipped: skipped.length, epic: epic ? epic.action : 'n/a' },
   closed,
   left_open: open,
   inconclusive,
+  skipped,
   epic,
   perTask,
 }

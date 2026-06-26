@@ -70,14 +70,16 @@ Workflow({
 ```
 
 Pass `epicId` only when running an epic (it drives the epic-verification stage). The workflow owns
-all sequencing; every taskmgr read/write happens inside its agents. It runs in the background; when
-it completes you receive its summary object (counts of closed / left-open / inconclusive, plus the
-epic verdict) — then do step 5. No manual polling.
+all sequencing — it runs the tasks **sequentially** (one implement→verify→record at a time, since
+they share one working tree) — and every taskmgr read/write happens inside its agents. It runs in the
+background; when it completes you receive its summary object (counts of closed / left-open /
+inconclusive / skipped, plus the epic verdict) — then do step 5. No manual polling.
 
 ## 5. Report
 
 When the workflow returns, relay its summary: how many tasks were **closed**, **left open** (a
-verification failure — a bug was filed), or **inconclusive** (an agent did not complete — left open,
-no bug). For an epic, report the verification verdict and that it is **ready for the user to close**
+verification failure — a bug was filed), **inconclusive** (an agent did not complete — left open, no
+bug), or **skipped** (the ticket was unready or blocked — never started, no bug). For an epic, report
+the verification verdict and that it is **ready for the user to close**
 (the workflow never closes an epic). List any filed bug ids and suggest `taskmgr ready` for the next
 batch.
