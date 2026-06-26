@@ -70,6 +70,15 @@ skeleton; it may not drop, rename, or reshape the mandatory sections. There is n
 `skills/_shared/` directory; procedure, principles, and verdict label sets stay
 per-skill.
 
+**Exception — `project-review-grill`.** The grill skill is deliberately **not**
+forked. Grilling walks a sheet of questions with the user one at a time, which a
+forked context cannot do (a fork returns a single result and cannot hold a live
+back-and-forth). So the skill runs in the main loop: it spawns `project-reviewer`
+in *grill mode* to generate the sheet in isolation, then conducts the interactive
+walkthrough itself. Grill mode is also the one sanctioned exception to the agent's
+output skeleton — it returns a grill sheet (question · recommended answer · why ·
+source · `grill-status`) instead of Verdict/Findings/Recommended actions.
+
 ## 7. complexity is verdict-first; the other reviews interrogate
 
 `project-review-structure`, `-tests`, `-consistency`, and `-docs` use
@@ -99,3 +108,14 @@ and the validators (`claude-md.sh`, `inventory.py`, `validate-routes.py`,
 `verify.sh`) are a cheap first pass. `validate-routes.py` is also imported by the
 repo's own `scripts/check-internal-consistency.py`; keep that path in sync if the
 skill is ever moved or renamed.
+
+## 10. Reviews may suggest task creation, never perform it
+
+The read-only contract (rule 1) covers the **project**; it does not let a reviewer
+write a **tracker** either. A review may *suggest* the user run a task-creation skill
+(`tasks:tasks-create`) to file its findings, but it must never create, edit, or close
+tracker issues itself — the suggestion is phrased as something the user does. The offer
+is conditional and dependency-free: project-quality declares no dependency on the
+`tasks` plugin and the offer is omitted when no such skill is present. This keeps the
+"reviews suggest, the human acts" boundary intact while letting findings flow into a
+tracker when one exists.

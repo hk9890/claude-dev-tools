@@ -8,24 +8,33 @@ when_to_use: "Use when working with a taskmgr / .tasks tracker — creating, fin
 
 `taskmgr` is a lean, file-based task tracker: issues, dependencies, and ready-work as
 Markdown files under a `.tasks/` directory, versioned alongside the code. You operate it
-through the `taskmgr` CLI. This skill covers the model and the discipline; for the exact
-flag surface, ask the tool itself (see "Source of truth" below).
+**only** through the `taskmgr` CLI — the `.tasks/` directory is an internal store, never a place to
+read or edit by hand. Do **not** `cat`, `grep`, `ls`, or write the files under `.tasks/` directly:
+the CLI holds the write lock, resolves the store by walking up from any subdirectory, and emits
+stable `--json`. Touching the files directly bypasses the lock (risking corruption), misses stores
+that live above the current directory, and couples you to a format that can drift. This skill covers
+the model and the discipline; for the exact flag surface, ask the tool itself (see "Source of
+truth" below).
 
 ## 1. Is taskmgr available?
 
-Before using the tracker, confirm both the binary and a store exist:
+Before using the tracker, confirm the binary and a store exist — probe them **separately** so the
+two failure modes stay distinct:
 
 ```bash
-ls .tasks/ 2>/dev/null && taskmgr list >/dev/null 2>&1
+command -v taskmgr >/dev/null 2>&1   # 1) is the binary installed?
+taskmgr list >/dev/null 2>&1          # 2) does a store resolve? (taskmgr walks up from cwd to find .tasks/)
 ```
 
-- **No `taskmgr` binary** → stop and tell the user to install it (`make install` from the
-  task-manager repo). Do not fall back to TodoWrite or markdown files for tracking.
-- **Binary present, no `.tasks/`** → the project has no store yet. Offer to create one with
+- **`command -v taskmgr` fails** → no binary. Stop and tell the user to install it (`make install`
+  from the task-manager repo). Do not fall back to TodoWrite or markdown files for tracking.
+- **Binary present but `taskmgr list` fails** → no store resolves from here. Offer to create one with
   `taskmgr init --prefix <p>` (prefix defaults to a slug of the directory name).
 
-The store is found by walking **up** from the current directory, so commands work from any
-subdirectory of the project.
+Do **not** test for the store with `ls .tasks/`: the store is found by walking **up** from the
+current directory, so a bare `ls` in a subdirectory reports "no store" even when taskmgr resolves one
+at the repo root — and would then create a second, nested store. Let `taskmgr list` do the
+resolution, and commands then work from any subdirectory of the project.
 
 ## 2. Source of truth for commands
 
@@ -89,6 +98,10 @@ taskmgr comment add proj-0042 "Repro only on the cold-start path."
 prefer `close --reason`. Setting a non-closed status on a closed issue reopens it onto that
 status.
 
+To turn findings from the current conversation (a review, `/code-review`, `/simplify`, an
+exploration) into issues with a standard body template, run `/tasks-create` — it owns the task-body
+contract, so prefer it over hand-rolling `create` calls for review findings.
+
 ## 5. Finding work with filters
 
 `list -q` takes a filter expression — `<field> <op> <value>` joined with `&&`, `||`, `!`,
@@ -114,3 +127,39 @@ values in use when you need them.
 - **Close with a reason** so the history explains itself.
 - **Don't reopen finished work to capture new findings** — file a new issue and link it. The
   closed record stays a faithful account of what happened.
+
+## 7. taskmgr specifics every agent must know
+
+Non-obvious facts about *this* tracker. Several differ sharply from other trackers (notably
+beads) — internalize them before automating against taskmgr.
+
+**Closure is NOT gated — ordering is your responsibility.** `taskmgr close` never refuses: closing
+an issue with open blockers succeeds, and closing an *epic with open children* succeeds. taskmgr
+enforces no dependency-ordered or parent-before-child closure. If you need a gate ("don't close the
+epic until its children are closed"), check it yourself first:
+
+```bash
+# empty result ⇒ every child is closed (substitute the real epic id)
+taskmgr list -q 'parent == "<epic-id>" && status != "closed"' --json
+```
+
+IDs are **opaque short codes** (e.g. `proj-o623mw`), not sequential numbers — never invent one like
+`proj-0007`; take it from `create --json` or `show`. Do **not** infer "all children closed" from
+`show <epic>` — its child list omits closed children, so an empty list is ambiguous (all-done vs.
+never-had-children). Always use the `list -q` check above, and treat an empty result as "all closed"
+only once you have confirmed the query ran without error.
+
+**Concurrent writes are safe.** The store serializes writes through `.tasks/.lock`, so several agents
+may `create`/`update`/`close`/`comment` at once without corrupting it. There is no need for a
+single-writer orchestrator.
+
+**Other gotchas:**
+
+- `create --json` returns the new **id only** — re-`show <id>` if you need its type or priority back.
+- `--description` and `--description-file` are mutually exclusive on a single call. Use
+  `--description-file -` to pipe a multi-line body from stdin.
+- `--parent` is an **organizational** link (grouping under an epic), not a blocker. For execution
+  order, use `dep add <dependent> <blocker>`.
+- Dependencies are **type-agnostic** — any issue can block any other (unlike beads' same-type rule).
+- There is no `list --parent` flag. Filter by parent with `list -q 'parent == "<id>"'` (`parent`
+  supports equality only, not `~`).
