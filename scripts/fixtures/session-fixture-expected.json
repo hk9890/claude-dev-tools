@@ -23,9 +23,9 @@
       "_friction_breakdown": "tool_errors=1*3.0 + retries=1*1.0 + user_corrections=1*0.5 = 4.5 / 5 turns = 0.9"
     },
     {
-      "_description": "Episode 2: complexity-review:complexity-review — rename alias -> project-review; ambient trigger",
+      "_description": "Episode 2: complexity-review:complexity-review — rename alias -> project-quality; ambient trigger",
       "attribution_skill": "complexity-review:complexity-review",
-      "attribution_plugin": "project-review",
+      "attribution_plugin": "project-quality",
       "trigger_type": "ambient",
       "turn_count": 2,
       "tool_errors": 0,
@@ -56,6 +56,6 @@
     "Episode 1: the true permission denial (is_error=true + doesn't want to proceed) is in commit-commands episode, not here.",
     "Episode 1: turn_count=5 (asst-001..asst-004a + asst-004); friction = 4.5/5 = 0.9.",
     "Episode 2: no Skill tool use before it => trigger_type=ambient.",
-    "Episode 2: complexity-review plugin resolved via rename alias to project-review."
+    "Episode 2: complexity-review plugin resolved via rename alias to project-quality."
   ]
 }

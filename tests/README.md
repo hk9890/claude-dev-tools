@@ -25,10 +25,10 @@ Each plugin has its own `tests/<plugin-name>/script-tests/` subdir. `script-test
 bash tests/run-all.sh
 
 # One plugin
-bash tests/project-docs/script-tests/run-all.sh
+bash tests/project-quality/script-tests/run-all.sh
 
 # One suite
-bash tests/project-docs/script-tests/test-claude-md.sh
+bash tests/project-quality/script-tests/test-claude-md.sh
 ```
 
 ## Path resolution in test scripts
