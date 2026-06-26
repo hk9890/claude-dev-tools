@@ -8,8 +8,13 @@ when_to_use: "Use when working with a taskmgr / .tasks tracker — creating, fin
 
 `taskmgr` is a lean, file-based task tracker: issues, dependencies, and ready-work as
 Markdown files under a `.tasks/` directory, versioned alongside the code. You operate it
-through the `taskmgr` CLI. This skill covers the model and the discipline; for the exact
-flag surface, ask the tool itself (see "Source of truth" below).
+**only** through the `taskmgr` CLI — the `.tasks/` directory is an internal store, never a place to
+read or edit by hand. Do **not** `cat`, `grep`, `ls`, or write the files under `.tasks/` directly:
+the CLI holds the write lock, resolves the store by walking up from any subdirectory, and emits
+stable `--json`. Touching the files directly bypasses the lock (risking corruption), misses stores
+that live above the current directory, and couples you to a format that can drift. This skill covers
+the model and the discipline; for the exact flag surface, ask the tool itself (see "Source of
+truth" below).
 
 ## 1. Is taskmgr available?
 
