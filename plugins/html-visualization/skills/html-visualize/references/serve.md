@@ -39,9 +39,10 @@ TMPDIR_BASE=$(node -e "process.stdout.write(require('os').tmpdir())")
 HTML_DIR="$TMPDIR_BASE/<mode>-$(date +%s)-$$"
 mkdir -p "$HTML_DIR"
 # Resolve the plugin root once and persist it for server-start commands.
-# $CLAUDE_PLUGIN_ROOT is NOT exported into Bash tool subprocesses; use find instead.
-PLUGIN_ROOT=$(find /home/hans/.claude/plugins/cache/claude-dev-tools/html-visualization \
-  -maxdepth 1 -mindepth 1 -type d | sort -V | tail -1)
+# $CLAUDE_PLUGIN_ROOT is NOT exported into Bash tool subprocesses; locate the
+# install under $HOME so this resolves for any user and marketplace name.
+PLUGIN_DIR=$(find "$HOME/.claude/plugins/cache" -maxdepth 3 -type d -name html-visualization | head -1)
+PLUGIN_ROOT=$(find "$PLUGIN_DIR" -maxdepth 1 -mindepth 1 -type d | sort -V | tail -1)
 echo "$PLUGIN_ROOT" > "$HTML_DIR/.plugin-root"
 ```
 

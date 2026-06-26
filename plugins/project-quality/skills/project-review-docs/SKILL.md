@@ -53,11 +53,22 @@ For a quick pass, work the six questions below. For an exhaustive audit (or when
 the user asks for thoroughness), follow `project-doc-review-guidelines.md` end to
 end — its `scripts/` validators are a cheap, read-only first pass:
 
+This review runs forked, with the working directory set to the repo under review —
+not this skill's directory — so the bundled scripts must be anchored. `$CLAUDE_PLUGIN_ROOT`
+is **not** exported into Bash tool subprocesses; locate the install under `$HOME` instead
+(the repo's house pattern), then run the validators from the resolved path:
+
+```bash
+PLUGIN_DIR=$(find "$HOME/.claude/plugins/cache" -maxdepth 3 -type d -name project-quality | head -1)
+SCRIPTS="$(find "$PLUGIN_DIR" -maxdepth 1 -mindepth 1 -type d | sort -V | tail -1)/skills/project-review-docs/scripts"
+
+"$SCRIPTS/claude-md.sh" check <repo-root>                       # CLAUDE.md is exactly @AGENTS.md
+"$SCRIPTS/inventory.py" <repo-root>                             # missing/non-canonical docs, location violations
+"$SCRIPTS/validate-routes.py" <repo-root> --include-docs --json # unresolved references
 ```
-scripts/claude-md.sh check <repo-root>      # CLAUDE.md is exactly @AGENTS.md
-scripts/inventory.py <repo-root>            # missing/non-canonical docs, location violations
-scripts/validate-routes.py <repo-root> --include-docs --json   # unresolved references
-```
+
+`verify.sh` in the same directory runs all three in sequence and prints a combined
+summary — use `"$SCRIPTS/verify.sh" <repo-root>` for a one-shot pass.
 
 ### 1. Does the documentation match the code? (dimension b — accuracy)
 

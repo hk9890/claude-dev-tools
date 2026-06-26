@@ -97,14 +97,17 @@ schema-agnostic is what lets every current and future mode share it.**
 ## 7. Per-mode browser assets under `assets/<mode>/`
 
 Browser assets are namespaced per mode: `assets/ask/{style.css,app.js}`,
-`assets/feedback/{style.css,app.js}`. The server serves them at `/assets/<mode>/…`.
-A mode's authored HTML references only its own subdirectory. (The `visualize`
-mode is self-contained in its template and requires no `assets/visualize/`
-directory unless a future change adds shared CSS/JS for it.)
+`assets/feedback/{style.css,app.js}`, plus a cross-mode `assets/shared/tokens.css`
+design-token layer that the per-mode stylesheets and the visualize template import.
+The server serves them at `/assets/<mode>/…` (and `/assets/shared/…`). A mode's
+authored HTML references only its own subdirectory plus the shared tokens. (The
+`visualize` mode is self-contained in its template and requires no
+`assets/visualize/` directory.)
 
-**Do not put one mode's CSS/JS in another mode's directory or at the `assets/`
-root. When adding a mode that needs shared browser assets, create a new
-`assets/<mode>/` subdirectory.**
+**Do not put one mode's CSS/JS in another mode's directory. The only shared
+location is `assets/shared/`, reserved for genuinely cross-mode tokens; when adding
+a mode that needs its own browser assets, create a new `assets/<mode>/`
+subdirectory.**
 
 ## 8. Temp-dir ephemerality — no persisted session files
 

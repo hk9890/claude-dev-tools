@@ -57,6 +57,7 @@ html-visualization/
 ├── bin/
 │   └── server.js             # shared zero-dependency one-shot feedback server
 ├── assets/
+│   ├── shared/               # cross-mode design tokens (tokens.css)
 │   ├── ask/                  # CSS + JS for ask-mode pages
 │   └── feedback/             # CSS + JS for feedback-mode pages
 └── skills/

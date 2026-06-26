@@ -17,7 +17,7 @@ The orchestrator role (planning, tracker mutation ownership, subagent delegation
 Install the beads CLI:
 
 ```bash
-npm install -g beads
+npm install -g @beads/bd
 ```
 
 Then initialize beads in your project:
@@ -59,7 +59,8 @@ beads-tasks/
 └── skills/
     ├── beads-core/         (internal reference library — not invoked directly)
     │   ├── SKILL.md
-    │   └── references/     (planning, issue workflow, execution, acceptance review, ticket rules)
+    │   ├── references/     (planning, issue workflow, execution, acceptance review, ticket rules)
+    │   └── scripts/        (new-ar-task.sh — canonical Acceptance Review task creator)
     ├── beads-plan/
     │   └── SKILL.md        (full planning and orchestration workflow)
     └── beads-work/

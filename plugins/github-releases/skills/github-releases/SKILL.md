@@ -13,7 +13,13 @@ Language-agnostic release workflow for GitHub projects.
 Before starting, verify:
 - `gh auth status` succeeds (GitHub CLI authenticated)
 - `git status --porcelain` returns empty (clean working tree)
-- You are on the correct branch and `git fetch origin && git diff HEAD origin/main --stat` returns no differences (local branch in sync with remote)
+- You are on the correct branch and in sync with the remote default branch. After `git fetch origin`, derive the default branch — with a fallback for when `origin/HEAD` is not set locally (fresh `git init`, shallow/CI checkouts, new worktrees) — and diff against it:
+
+  ```bash
+  DEFAULT_BRANCH=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|origin/||')
+  DEFAULT_BRANCH=${DEFAULT_BRANCH:-$(git remote show origin | sed -n 's/.*HEAD branch: //p')}
+  git diff HEAD "origin/$DEFAULT_BRANCH" --stat   # expect no differences
+  ```
 
 ## Workflow
 
