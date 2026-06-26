@@ -331,9 +331,9 @@ test_injected_block_agents() {
   printf '@AGENTS.md\n' > "$dir/CLAUDE.md"
   {
     printf '# Agents\n\nNormal routing.\n\n'
-    printf '<!-- BEGIN BEADS INTEGRATION v:1 hash:abc -->\n'
-    printf '## Beads\nGenerated content here.\nMore lines.\n'
-    printf '<!-- END BEADS INTEGRATION -->\n'
+    printf '<!-- BEGIN TRACKER INTEGRATION v:1 hash:abc -->\n'
+    printf '## Tracker\nGenerated content here.\nMore lines.\n'
+    printf '<!-- END TRACKER INTEGRATION -->\n'
   } > "$dir/AGENTS.md"
   local out
   out=$("$SCRIPT" "$dir")
@@ -344,7 +344,7 @@ test_injected_block_agents() {
 
   local name
   name=$(json_val "$out" "d['injected_blocks'][0]['name']")
-  assert_eq "injected-block: name normalized (metadata stripped)" "BEADS INTEGRATION" "$name"
+  assert_eq "injected-block: name normalized (metadata stripped)" "TRACKER INTEGRATION" "$name"
 
   local file
   file=$(json_val "$out" "d['injected_blocks'][0]['file']")

@@ -4,7 +4,7 @@
 # For every PR merged since a given base tag/ref whose merged commits touch
 # validator-checked plugin surfaces (.claude-plugin/plugin.json, agents/, skills/,
 # commands/, hooks/ under any plugins/* subtree), this script looks up the linked
-# beads bead ID and verifies that the bead carries a `gate2:passed` or `gate2:n/a`
+# taskmgr task ID and verifies that the task carries a `gate2:passed` or `gate2:n/a`
 # comment.
 #
 # Usage:
@@ -18,13 +18,13 @@
 # Exit codes:
 #   0  All checked PRs have gate2 evidence (or no PRs needed checking).
 #   1  One or more PRs are missing gate2 evidence — release should be blocked.
-#   2  A dependency (gh or bd) is unavailable.
+#   2  A dependency (gh or taskmgr) is unavailable.
 #
 # Per-PR output:
-#   PASS  PR #N (bd: <id>): gate2 evidence found
-#   FAIL  PR #N (bd: <id>): no gate2:passed or gate2:n/a comment found
+#   PASS  PR #N (task: <id>): gate2 evidence found
+#   FAIL  PR #N (task: <id>): no gate2:passed or gate2:n/a comment found
 #   SKIP  PR #N (no validator-checked files): not required
-#   WARN  PR #N: no linked bead ID found — cannot verify; review manually
+#   WARN  PR #N: no linked task ID found — cannot verify; review manually
 #
 # Environment:
 #   REPO_ROOT  Override the repository root (default: git rev-parse --show-toplevel)
@@ -39,9 +39,9 @@ if ! command -v gh >/dev/null 2>&1; then
   exit 2
 fi
 
-if ! command -v bd >/dev/null 2>&1; then
-  printf 'ERROR: bd (beads CLI) is not installed or not on PATH.\n' >&2
-  printf 'Install the beads-tasks plugin to get bd.\n' >&2
+if ! command -v taskmgr >/dev/null 2>&1; then
+  printf 'ERROR: taskmgr (task-manager CLI) is not installed or not on PATH.\n' >&2
+  printf 'Install taskmgr (see plugins/tasks/README.md) to get the binary.\n' >&2
   exit 2
 fi
 
@@ -92,12 +92,12 @@ merge_touches_validator_surface() {
   return 1
 }
 
-# Extract beads ID from a PR body string (stdin) or a commit message (stdin)
+# Extract taskmgr task ID from a PR body string (stdin) or a commit message (stdin)
 # Accepts forms:
 #   Closes claude-dev-tools-<id>[.,]?
 #   Closes <id>[.,]?   (where id contains alphanum, -, .)
 # Returns the normalised bare ID (e.g. "sjn.2", "ar2", "d2m")
-extract_bead_id() {
+extract_task_id() {
   local text="$1"
   # Try full-prefix form first: claude-dev-tools-<id>
   local id
@@ -109,12 +109,12 @@ extract_bead_id() {
   printf '%s' "$id"
 }
 
-# Check whether a beads bead has a gate2:passed or gate2:n/a comment
-# Returns 0 if evidence found, 1 if not found, 2 if bd lookup failed
+# Check whether a taskmgr task has a gate2:passed or gate2:n/a comment
+# Returns 0 if evidence found, 1 if not found, 2 if taskmgr lookup failed
 check_gate2_comment() {
-  local bead_id="$1"
+  local task_id="$1"
   local output
-  if ! output=$(bd comments "$bead_id" 2>&1); then
+  if ! output=$(taskmgr show "$task_id" 2>&1); then
     return 2
   fi
   if printf '%s' "$output" | grep -qE 'gate2:(passed|n/a)'; then
@@ -164,31 +164,31 @@ for entry in "${MERGE_COMMITS[@]}"; do
   fi
 
   # PR touches validator surface — must have gate2 evidence
-  # Try to extract bead ID from the PR body
-  bead_id=""
+  # Try to extract task ID from the PR body
+  task_id=""
   if [[ -n "$pr_num" ]]; then
     pr_body=$(gh pr view "$pr_num" --json body -q '.body' 2>/dev/null || true)
     if [[ -n "$pr_body" ]]; then
-      bead_id=$(extract_bead_id "$pr_body")
+      task_id=$(extract_task_id "$pr_body")
     fi
   fi
 
   # Fallback: scan commit message of the merge commit itself
-  if [[ -z "$bead_id" ]]; then
+  if [[ -z "$task_id" ]]; then
     commit_msg=$(git -C "$REPO_ROOT" log -1 --format="%B" "$sha" 2>/dev/null || true)
-    bead_id=$(extract_bead_id "$commit_msg")
+    task_id=$(extract_task_id "$commit_msg")
   fi
 
-  if [[ -z "$bead_id" ]]; then
-    printf 'WARN  %s: no linked bead ID found — verify gate2 manually\n' "$label"
+  if [[ -z "$task_id" ]]; then
+    printf 'WARN  %s: no linked task ID found — verify gate2 manually\n' "$label"
     WARN_COUNT=$((WARN_COUNT + 1))
     continue
   fi
 
-  label="PR #${pr_num:-?} (bd: ${bead_id})"
+  label="PR #${pr_num:-?} (task: ${task_id})"
 
   rc=0
-  check_gate2_comment "$bead_id" || rc=$?
+  check_gate2_comment "$task_id" || rc=$?
 
   case "$rc" in
     0)
@@ -196,11 +196,11 @@ for entry in "${MERGE_COMMITS[@]}"; do
       PASS_COUNT=$((PASS_COUNT + 1))
       ;;
     1)
-      printf 'FAIL  %s: no gate2:passed or gate2:n/a comment on bead\n' "$label"
+      printf 'FAIL  %s: no gate2:passed or gate2:n/a comment on task\n' "$label"
       FAIL_COUNT=$((FAIL_COUNT + 1))
       ;;
     2)
-      printf 'WARN  %s: bd lookup failed — cannot verify gate2 evidence\n' "$label"
+      printf 'WARN  %s: taskmgr lookup failed — cannot verify gate2 evidence\n' "$label"
       WARN_COUNT=$((WARN_COUNT + 1))
       ;;
   esac
@@ -208,7 +208,7 @@ done
 
 printf '\n'
 printf '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'
-printf 'Summary: %d pass, %d fail, %d skip (no validator surface), %d warn (no bead)\n' \
+printf 'Summary: %d pass, %d fail, %d skip (no validator surface), %d warn (no task)\n' \
   "$PASS_COUNT" "$FAIL_COUNT" "$SKIP_COUNT" "$WARN_COUNT"
 
 if [[ "$FAIL_COUNT" -gt 0 ]]; then

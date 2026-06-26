@@ -37,11 +37,11 @@ PERSONAL_LOCAL = [".claude.local.md"]
 # Injected-block detection
 # ---------------------------------------------------------------------------
 # Steering docs (CLAUDE.md, AGENTS.md) should be hand-authored and small. Some
-# external tools (e.g. `bd`) auto-inject content between HTML-comment markers:
+# external tools (e.g. a tracker CLI) auto-inject content between HTML-comment markers:
 #
-#   <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:7510c1e2 -->
+#   <!-- BEGIN TRACKER INTEGRATION v:1 profile:minimal hash:7510c1e2 -->
 #   ... 47 lines of generated content ...
-#   <!-- END BEADS INTEGRATION -->
+#   <!-- END TRACKER INTEGRATION -->
 #
 # Detection is generic: any matching BEGIN/END pair flagged regardless of name.
 

@@ -34,7 +34,7 @@ Anchor algorithm: GitHub-style (matches what GitHub renders on hover).
     C++ Notes   -> c-notes
 
 Known limitation (v1):
-  Skill references of the form plugin-name:skill-name (e.g. beads-tasks:beads-core)
+  Skill references of the form plugin-name:skill-name (e.g. tasks:tasks-create)
   are opaque identifiers for Claude Code skill plugins and do not map to files on
   disk. They are skipped without flagging. A future version could validate them
   against installed plugin manifests.

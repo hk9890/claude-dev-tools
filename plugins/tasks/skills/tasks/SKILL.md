@@ -1,7 +1,7 @@
 ---
 name: tasks
 description: "How to use taskmgr — the file-based task tracker: its data model, core commands, and tracking discipline."
-when_to_use: "Use when working with a taskmgr / .tasks tracker — creating, finding, updating, or closing tasks via the taskmgr CLI, or deciding what to work on next from its ready queue. Triggers on 'taskmgr', 'task manager', 'the .tasks store', 'create a task / file a bug / open an epic', 'what's ready to work on'. Does not apply to the beads tracker (bd / .beads → use beads-tasks), the harness's built-in TaskCreate/TaskList tools, or TodoWrite."
+when_to_use: "Use when working with a taskmgr / .tasks tracker — creating, finding, updating, or closing tasks via the taskmgr CLI, or deciding what to work on next from its ready queue. Triggers on 'taskmgr', 'task manager', 'the .tasks store', 'create a task / file a bug / open an epic', 'what's ready to work on'. Does not apply to the harness's built-in TaskCreate/TaskList tools or TodoWrite."
 ---
 
 # Using taskmgr
@@ -130,8 +130,7 @@ values in use when you need them.
 
 ## 7. taskmgr specifics every agent must know
 
-Non-obvious facts about *this* tracker. Several differ sharply from other trackers (notably
-beads) — internalize them before automating against taskmgr.
+Non-obvious facts about *this* tracker — internalize them before automating against taskmgr.
 
 **Closure is NOT gated — ordering is your responsibility.** `taskmgr close` never refuses: closing
 an issue with open blockers succeeds, and closing an *epic with open children* succeeds. taskmgr
@@ -160,6 +159,6 @@ single-writer orchestrator.
   `--description-file -` to pipe a multi-line body from stdin.
 - `--parent` is an **organizational** link (grouping under an epic), not a blocker. For execution
   order, use `dep add <dependent> <blocker>`.
-- Dependencies are **type-agnostic** — any issue can block any other (unlike beads' same-type rule).
+- Dependencies are **type-agnostic** — any issue can block any other.
 - There is no `list --parent` flag. Filter by parent with `list -q 'parent == "<id>"'` (`parent`
   supports equality only, not `~`).

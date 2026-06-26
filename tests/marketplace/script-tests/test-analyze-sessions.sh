@@ -111,14 +111,14 @@ test_fixture_check_passes() {
       --summary "$TMP_DIR/output/fixture/summary.md"
 }
 
-# 4. False-positive guard: the beads-tasks:beads-core episode must have
+# 4. False-positive guard: the tasks:tasks episode must have
 #    permission_denials=0 even though a Read tool_result in that episode
 #    contains the magic phrase "doesn't want to proceed" with is_error=false.
 test_false_positive_not_counted() {
   assert_json_field \
     "false-positive: permission_denials=0 for Read result with magic phrase (is_error=false)" \
     "$TMP_DIR/output/fixture/dataset.json" \
-    "beads-tasks:beads-core" \
+    "tasks:tasks" \
     "permission_denials" \
     "0"
 }

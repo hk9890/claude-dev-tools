@@ -27,10 +27,5 @@ __pycache__/
 private/
 output/
 
-# Beads / Dolt files (added by bd init)
-.dolt/
-*.db
-.beads-credential-key
-
 # taskmgr local task store (runtime state, not marketplace content)
 .tasks/

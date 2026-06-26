@@ -205,7 +205,7 @@ test_at_in_prose() {
 test_external_urls_skipped() {
   local dir; dir=$(tmpdir)
   touch "$dir/CLAUDE.md"
-  printf '# Agents\n\n[Beads](https://github.com/gastownhall/beads/blob/main/docs/SYNC_CONCEPTS.md)\n' \
+  printf '# Agents\n\n[Concepts](https://github.com/example/project/blob/main/docs/CONCEPTS.md)\n' \
     > "$dir/AGENTS.md"
   assert_exit "external-url: https:// link not flagged" 0 python3 "$SCRIPT" "$dir"
   rm -rf "$dir"
@@ -215,9 +215,9 @@ test_external_urls_skipped() {
 test_skill_ref_skipped() {
   local dir; dir=$(tmpdir)
   touch "$dir/CLAUDE.md"
-  printf '# Agents\n\nLoad [beads-tasks:beads-core](beads-tasks:beads-core) here.\n' \
+  printf '# Agents\n\nLoad [tasks:tasks-create](tasks:tasks-create) here.\n' \
     > "$dir/AGENTS.md"
-  assert_exit "skill-ref: beads-tasks:beads-core not flagged" 0 python3 "$SCRIPT" "$dir"
+  assert_exit "skill-ref: tasks:tasks-create not flagged" 0 python3 "$SCRIPT" "$dir"
   rm -rf "$dir"
 }
 

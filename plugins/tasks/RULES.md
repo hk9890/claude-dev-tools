@@ -18,16 +18,15 @@ generic layers:
   workflow runs the `ready → implement → verify(review ∥ test) → record` loop and verifies the parent
   epic. The loop is a thin, deterministic workflow script, not a methodology document.
 
-It deliberately still does **not** port the `beads-tasks` methodology wholesale: no planning/work
-intake documents, no serialized-writes orchestrator protocol, no acceptance-review *task* pattern.
-`taskmgr` is a tracker; how a session sequences work on top of it is kept as a thin, explicit
-workflow rather than a heavy methodology.
+It deliberately keeps the methodology thin: no planning/work-intake documents, no serialized-writes
+orchestrator protocol, no acceptance-review *task* pattern. `taskmgr` is a tracker; how a session
+sequences work on top of it is kept as a thin, explicit workflow rather than a heavy methodology.
 
 ## 2. taskmgr enforces no closure ordering — callers gate themselves
 
-Unlike beads (whose `close` rejects an issue with open blockers), `taskmgr close` never refuses: it
-will close an epic with open children and a blocker with an open dependent. Any "don't close until X"
-gate is therefore the **caller's** responsibility, checked explicitly with
+`taskmgr close` never refuses: it will close an epic with open children and a blocker with an open
+dependent. Any "don't close until X" gate is therefore the **caller's** responsibility, checked
+explicitly with
 `taskmgr list -q 'parent == "<id>" && status != "closed"'` (empty ⇒ all children closed). This fact is
 documented in the `tasks` skill (section 7) because every agent that closes work must know it. We do
 **not** auto-close epics — verification posts a "children verified" comment and a human closes the epic.
@@ -35,7 +34,7 @@ documented in the `tasks` skill (section 7) because every agent that closes work
 ## 3. The writer/reader split
 
 taskmgr serializes writes via `.tasks/.lock`, so direct concurrent writes from multiple agents are
-safe — which removes beads' reason for a single-writer orchestrator. Roles split by whether they
+safe — so there is no need for a single-writer orchestrator. Roles split by whether they
 touch the tracker:
 
 - **implementer** writes directly — it claims its task (`in_progress`) and files a `bug` for any
