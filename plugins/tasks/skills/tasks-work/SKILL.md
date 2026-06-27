@@ -49,9 +49,7 @@ Resolve the selection to a concrete list of task ids:
 - For an epic, list its ready children with
   `taskmgr list -q 'parent == "<epic-id>" && ready' --json` (substitute the real epic id; ids are
   opaque short codes; the `ready` predicate excludes children that are blocked or already in
-  progress). Capture the `<epic-id>` separately for epic verification. This run-selection query
-  differs on purpose from the epic-close gate the workflow runs later (`status != "closed"`, which
-  asserts every child is *done* — a different question).
+  progress). Capture the `<epic-id>` separately for epic verification.
 
 Nothing runs until the user confirms.
 

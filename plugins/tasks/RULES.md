@@ -64,9 +64,7 @@ dependencies only.
 
 ## 6. Anchored on the binary name `taskmgr`
 
-The upstream project is checked out as `agent-tasks-control`, titled `task-manager`, and its Go
-module is `github.com/hk9890/task-manager` — but the installed binary is `taskmgr`. The skill
-references `taskmgr` throughout, since that is the stable name an agent actually invokes.
+The installed binary is `taskmgr`. The skill references `taskmgr` throughout, since that is the stable name an agent actually invokes.
 
 ## 7. The execution workflow (`work.js`) — design decisions
 

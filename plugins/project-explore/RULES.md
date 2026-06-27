@@ -4,7 +4,7 @@ Non-derivable design decisions and constraints for this plugin. Read before maki
 
 ## 1. Research is inline — no sub-agent
 
-The original design (v2, `private/research-explore.html`) included a separate `project-researcher` sub-agent. After plan-review (2026-05-21), research was folded inline into the `project-explore` orchestrator skill. There is no agent file in `agents/` and no agent component in this plugin. The `agents/` directory does not exist.
+The original design included a separate `project-researcher` sub-agent; research was folded inline into the `project-explore` orchestrator skill. There is no agent file in `agents/` and no agent component in this plugin. The `agents/` directory does not exist.
 
 **Do not add a sub-agent without reopening the design decision.** The motivation for removing it was keeping context clean without the added complexity of agent dispatch for a task that does not need isolation.
 
@@ -44,7 +44,7 @@ Before filing a finding or question, the skill lists open children of the explor
 
 ## 7. Check-in cadence and escape-hatch boundary
 
-Phase 2 step 5 must call `AskUserQuestion` after every iteration — silence is never consent. The user may suspend this with "do next N without asking" / "keep going, don't ask" / "explore freely until I stop you", but only for non-destructive actions; destructive actions (rule 5) always force stop-and-confirm. Session 2026-05-23 ran 11 iterations but only stopped properly twice because the agent inferred continue from silence — mandating the tool, not the behaviour, is what prevents that shortcut.
+Phase 2 step 5 must call `AskUserQuestion` after every iteration — silence is never consent. The user may suspend this with "do next N without asking" / "keep going, don't ask" / "explore freely until I stop you", but only for non-destructive actions; destructive actions (rule 5) always force stop-and-confirm. Mandating the tool, not the behaviour, is what prevents inferring continue from silence.
 
 **Do not infer continue from silence, and do not extend the escape hatch to cover destructive actions.**
 

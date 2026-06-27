@@ -1,7 +1,7 @@
 # ask-mode `/submit` Payload Schema
 
-Single source of truth for the POST `/submit` payload produced by the ask-mode
-browser form (`assets/ask/app.js`) and read back by Claude.
+The POST `/submit` payload produced by the ask-mode browser form
+(`assets/ask/app.js`) and read back by Claude.
 
 The shared `bin/server.js` is **schema-agnostic** — it accepts any JSON object,
 stamps `submittedAt`, and writes it verbatim. It does not validate the fields

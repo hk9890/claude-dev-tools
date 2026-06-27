@@ -123,9 +123,7 @@ canonical taxonomy, structure rules, authoring bar, AGENTS template, and the
 exhaustive review guidelines), read-only validator `scripts/`, and `examples/` of
 good docs. These are the "how docs should be" knowledge the audit judges against,
 and the validators (`claude-md.sh`, `inventory.py`, `validate-routes.py`,
-`verify.sh`) are a cheap first pass. `validate-routes.py` is also imported by the
-repo's own `scripts/check-internal-consistency.py`; keep that path in sync if the
-skill is ever moved or renamed.
+`verify.sh`) are a cheap first pass.
 
 ## 10. Reviews may suggest task creation, never perform it
 

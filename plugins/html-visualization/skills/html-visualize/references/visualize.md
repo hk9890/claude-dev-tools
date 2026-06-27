@@ -269,8 +269,7 @@ libraries) would open correctly as a `file://` URL, visualize mode always serves
 via the server. Reasons:
 
 1. **Consistency** — all three modes share one pre-flight and one server lifecycle
-   (`references/serve.md`). A mode-specific bypass adds a branch every author
-   and future reader must know about.
+   (`references/serve.md`).
 2. **Cleanup** — the server's timeout ensures the temp directory is eventually
    reaped. A bare `file://` page has no cleanup hook.
 3. **CDN pages need a server anyway** — when the page includes a CDN `<script>`,
