@@ -52,6 +52,7 @@ Known coverage gaps the scripts do **not** catch (must be covered by specialist 
 - Undocumented top-level directories (validator only checks docs that exist, not repo surface that should be documented).
 - Sibling-doc contradictions (two docs stating the same fact differently).
 - Reachability of every `docs/**/*.md` from `AGENTS.md` routing.
+- Audience/purpose drift — content that is accurate but sits outside its file's *Inside* / *Not inside* ownership in `project-setup.md` (R10/C13), e.g. end-user usage in `CODING.md` or test content in `MONITORING.md`.
 
 ### Step 2 — Specialist reviewer fan-out (parallel)
 
@@ -65,7 +66,8 @@ Required specialists (run all, every time):
 4. **Route reachability reviewer** — for every file under `docs/`, trace whether it is reachable from `AGENTS.md` (directly or via an intermediate canonical doc named in `AGENTS.md`). Output: list of orphaned docs.
 5. **Anchor and link integrity reviewer** — for every `[text](path#anchor)` and `[text](path)` in canonical docs, verify the file exists *and* the anchor (if any) resolves to a real heading. Output: list of broken anchors and missing targets.
 6. **CI and process inventory reviewer** — compare `TESTING.md`'s merge-gate list to `.github/workflows/*.yml`, and compare any "scripts/tools/skills" list to the actual repo. Output: list of omissions and stale entries in both directions.
-7. **Fresh-eyes contributor reviewer** — read `README.md` → `AGENTS.md` → top-level `docs/*.md` cold as a new contributor would. Output: confusion points, undefined jargon, missing onboarding steps, sections whose claims do not match what `ls` shows in the repo root.
+7. **README user-first & fresh-eyes reviewer** — read `README.md` cold **as a user/evaluator first**: can you tell what the product is and how to use it? A `README.md` whose opening is build-from-source or dev setup serves the wrong audience and is a finding (R10 — that material belongs in `CONTRIBUTING.md` and the topic docs; BLOCKER when the README is *largely* the wrong genre). *Only then* read `README.md` → `AGENTS.md` → top-level `docs/*.md` as a new contributor. Output: README audience-fit verdict, confusion points, undefined jargon, missing onboarding steps, sections whose claims do not match what `ls` shows in the repo root.
+8. **Audience/purpose-fit reviewer (R10 / C13)** — for **every** canonical doc, check its content against the file's defined audience and *Inside* / *Not inside* ownership in `project-setup.md`. Flag content that sits outside a file's *Inside* even when every statement is accurate — e.g. end-user usage in `CODING.md`, test content absorbed into `MONITORING.md`, a build/test command reference in `CHANGE-WORKFLOW.md`, build/dev material in `README.md`. This specialist produces the evidence for coverage category **C13** across the whole canonical set (specialist #7 covers the README in depth; the orchestrator dedupes the README overlap). Output: per-doc audience-fit verdict (in-boundary / R10-MAJOR / R10-BLOCKER) with the offending lines quoted and the owning file each should route to.
 
 Specialist prompt template (use for each):
 
@@ -121,8 +123,9 @@ Every review must produce explicit status for each row. `verified` requires evid
 | C10 | Named tools/skills/scripts/packages in docs actually exist in the repo | A |
 | C11 | End-to-end runnability of advertised commands (e.g., `release:prepare`) | B |
 | C12 | Live external integrations (registries, dashboards, services) | C |
+| C13 | Each doc's content stays within its file's defined audience/purpose — the *Inside* / *Not inside* ownership in `project-setup.md` (rule R10) | A |
 
-Categories C1–C10 are Tier A — all must be checked. C11/C12 may be deferred with reason.
+Categories C1–C10 and C13 are Tier A — all must be checked. C11/C12 may be deferred with reason.
 
 ## Findings format
 
@@ -149,6 +152,7 @@ Rule IDs and default severity:
 | `R7` | Cross-doc consistency (sibling docs do not contradict each other on load-bearing facts) | MAJOR |
 | `R8` | Layout-block completeness (project-structure blocks match `ls`) | MAJOR |
 | `R9` | Route reachability (every `docs/` file reachable from `AGENTS.md`) | MAJOR |
+| `R10` | Audience/purpose fit (doc content matches the file's defined audience and *Inside* / *Not inside* ownership in `project-setup.md`) | MAJOR — raise to BLOCKER when the doc is *largely* the wrong genre for its owner (e.g. a build/dev-oriented `README.md`, which must serve users/evaluators) |
 | `V1` | Validation coverage (links/anchors/paths resolve) | BLOCKER |
 
 Severity may be raised one level when the violation directly causes wrong behavior in real workflows (e.g., a stale command in `RELEASING.md` is R5/BLOCKER, not R5/MAJOR).
@@ -159,14 +163,14 @@ The orchestrator's final report must include the following sections in order. Mi
 
 1. **Headline** — `Findings: <N> BLOCKER · <N> MAJOR · <N> MINOR — <verdict>` (see verdict rules and headline language constraint below).
 2. **Scope** — bulleted enumeration from Step 0, each item tagged in-scope or out-of-scope-with-reason.
-3. **Coverage table** — the C1–C12 rows above, each marked `verified: <how>`, `findings: <N> (see #IDs)`, or `not-checked: <reason — Tier B/C only>`.
+3. **Coverage table** — the C1–C13 rows above, each marked `verified: <how>`, `findings: <N> (see #IDs)`, or `not-checked: <reason — Tier B/C only>`.
 4. **Findings** — flat list in the standard format, grouped by severity.
 5. **Not checked** — items deliberately deferred (Tier B/C only), each with a one-line reason. Tier A items are not permitted here.
-6. **Recommended actions** — a prioritised list of suggested fixes, each tagged with its dimension: (a) missing canonical doc, (b) stale/inaccurate vs code, or (c) structural quality (bloat/duplication/misrouting/hollow).
+6. **Recommended actions** — a prioritised list of suggested fixes, each tagged with its dimension: (a) missing canonical doc, (b) stale/inaccurate vs code, (c) structural quality (bloat/duplication/misrouting/hollow), or (d) audience/purpose mismatch (content sits outside the file's *Inside* boundary / wrong genre for its owner).
 
 ## Headline language constraint
 
-The headline and any closing line must not use the words `done`, `complete`, `all good`, `everything checks out`, or equivalents unless **every** C1–C10 row is `verified` (no `findings`, no `not-checked`). Validator scripts passing alone never justify these words.
+The headline and any closing line must not use the words `done`, `complete`, `all good`, `everything checks out`, or equivalents unless **every** Tier A row (C1–C10 and C13) is `verified` (no `findings`, no `not-checked`). Validator scripts passing alone never justify these words.
 
 When categories are mixed, prefer neutral phrasing: "Findings reported; coverage table attached." A green validator run is reported as "validator scripts pass" — not "done."
 
@@ -181,20 +185,20 @@ When categories are mixed, prefer neutral phrasing: "Findings reported; coverage
 Review passes (`clean`) when **all** of:
 
 1. No `BLOCKER` findings remain.
-2. Every C1–C10 row in the coverage table is `verified` (no `findings`, no `not-checked`).
+2. Every Tier A row (C1–C10 and C13) in the coverage table is `verified` (no `findings`, no `not-checked`).
 3. The report includes all required sections (Headline, Scope, Coverage table, Findings, Not checked, Recommended actions).
 
 Other verdicts:
 
-- `minor only` — no BLOCKER or MAJOR, coverage complete on C1–C10.
+- `minor only` — no BLOCKER or MAJOR, coverage complete on the Tier A rows (C1–C10 and C13).
 - `needs work` — MAJOR present, no BLOCKER.
-- `fails` — at least one BLOCKER, **or** any C1–C10 row left unchecked despite being Tier A.
+- `fails` — at least one BLOCKER, **or** any Tier A row (C1–C10 or C13) left unchecked.
 - `incomplete` — report is missing a required section; not a content verdict, but the review must be re-run before any verdict is trusted.
 
 ## Orchestrator anti-patterns
 
 - Declaring success after only the three validator scripts ran.
-- Writing "done"/"complete" in the headline while any C1–C10 row is not `verified`.
+- Writing "done"/"complete" in the headline while any Tier A row (C1–C10 or C13) is not `verified`.
 - Skipping Step 0 enumeration and only checking what came to mind.
 - Skipping Step 3 second-pass and submitting the first-pass report directly.
 - Using **Not checked** as a dumping ground for Tier A items the orchestrator did not get to.

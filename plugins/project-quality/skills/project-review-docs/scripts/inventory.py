@@ -34,6 +34,13 @@ CANONICAL_DOCS = [
 # project opts in simply by creating the file under docs/.
 OPTIONAL_CANONICAL_DOCS = ["REVIEWING.md", "RUNNING.md"]
 
+# Optional-canonical repo-root files — the human-contributor entrypoint.
+# Same present-only contract as OPTIONAL_CANONICAL_DOCS (recognized when present,
+# never reported missing when absent) but resolved at the repo root, not under
+# docs/. Must NOT be added to CANONICAL_ROOT (that would count absence as missing)
+# or to the docs/-scoped lists (that would flag the correct root file as misplaced).
+OPTIONAL_CANONICAL_ROOT = ["CONTRIBUTING.md"]
+
 # Personal/local files — optional, gitignored, never written by canonical doc
 # flows. Surfaced so authors know they exist but not counted as missing.
 PERSONAL_LOCAL = [".claude.local.md"]
@@ -185,6 +192,22 @@ def inventory(repo_root):
             "optional": True,
         }
 
+    # ── optional-canonical repo-root files (counted only when present) ───────
+    # Same present-only contract as the optional docs/ loop above, but resolved
+    # at the repo root (e.g. CONTRIBUTING.md) rather than under docs/.
+    for name in OPTIONAL_CANONICAL_ROOT:
+        path = os.path.join(repo_root, name)
+        if not os.path.isfile(path):
+            continue
+        lines, nhl = count_lines(path)
+        canonical[name] = {
+            "present": True,
+            "path": name,
+            "lines": lines,
+            "non_heading_lines": nhl,
+            "optional": True,
+        }
+
     # ── personal/local files (optional) ────────────────────────────────────
 
     personal_local = {}
@@ -219,7 +242,7 @@ def inventory(repo_root):
                         os.path.join("docs", entry.name) + "/"
                     )
                 elif entry.is_file(follow_symlinks=False) and entry.name.endswith(".md"):
-                    if entry.name not in CANONICAL_DOCS and entry.name not in OPTIONAL_CANONICAL_DOCS:
+                    if entry.name not in CANONICAL_DOCS and entry.name not in OPTIONAL_CANONICAL_DOCS and entry.name not in OPTIONAL_CANONICAL_ROOT:
                         lines, nhl = count_lines(entry.path)
                         non_canonical_docs.append({
                             "path": os.path.join("docs", entry.name),
@@ -241,7 +264,7 @@ def inventory(repo_root):
                 "expected_at": os.path.join("docs", name),
             })
 
-    for name in CANONICAL_ROOT:
+    for name in CANONICAL_ROOT + OPTIONAL_CANONICAL_ROOT:
         wrong_path = os.path.join(repo_root, "docs", name)
         if os.path.isfile(wrong_path):
             location_violations.append({
