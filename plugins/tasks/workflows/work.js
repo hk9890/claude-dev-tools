@@ -12,25 +12,34 @@ export const meta = {
 // args, supplied by the tasks-work skill (which ran taskmgr ready in the main loop):
 //   { taskIds: string[], epicId?: string }
 // The script owns sequencing and null-handling; every taskmgr read/write happens inside an agent.
-//
-// Defensive: the runtime may hand `args` over as a JSON *string* rather than a parsed object
-// (observed in practice — a string has no `.taskIds`, so the guard below would trip on every run
-// and the whole workflow would no-op while reporting success). The script can't control how the
-// value arrives, so normalize it before reading fields.
-let parsedArgs = args
-if (typeof parsedArgs === 'string') {
-  try { parsedArgs = JSON.parse(parsedArgs) } catch { parsedArgs = {} }
-}
-const taskIds = (parsedArgs && parsedArgs.taskIds) || []
-const epicId = (parsedArgs && parsedArgs.epicId) || null
 
-if (!taskIds.length) {
-  // A bail-out return surfaces to the harness as status:completed, so a total no-op otherwise looks
-  // like success — log and echo what we received so it is diagnosable instead of silently passing.
-  log(`tasks-work: no taskIds resolved from args (received type "${typeof args}") — nothing to run`)
+// ── Pure helpers ──────────────────────────────────────────────────────────────
+// No runtime globals — unit-tested via tests/tasks/script-tests/test-work.js.
+
+// Normalize the incoming `args` value into { taskIds, epicId }.
+// Defensive: the runtime may hand `args` over as a JSON *string* rather than a parsed
+// object (observed in practice). A string has no `.taskIds`, so reading it directly would
+// yield undefined and the whole workflow would no-op while reporting success — so parse a
+// string first. This is the regression the test suite pins.
+function normalizeArgs(rawArgs) {
+  let parsed = rawArgs
+  if (typeof parsed === 'string') {
+    try { parsed = JSON.parse(parsed) } catch { parsed = {} }
+  }
   return {
-    error: 'No taskIds provided. The tasks-work skill must resolve the scope and pass taskIds.',
-    received: { type: typeof args },
+    taskIds: (parsed && parsed.taskIds) || [],
+    epicId: (parsed && parsed.epicId) || null,
+  }
+}
+
+// Bucket the per-task results by the tracker action each one recorded.
+function summarizeActions(perTask) {
+  const byAction = (a) => perTask.filter((r) => r && r.record && r.record.action === a).map((r) => r.taskId)
+  return {
+    closed: byAction('closed'),
+    left_open: byAction('left-open'),
+    inconclusive: byAction('inconclusive'),
+    skipped: byAction('skipped'),
   }
 }
 
@@ -149,36 +158,58 @@ async function runTask(id) {
   return { taskId: id, impl, review, test, record }
 }
 
-phase('Implement')
-log(`Running ${taskIds.length} task(s) sequentially${epicId ? ` under epic ${epicId}` : ''}`)
-// Sequential by design: implementers share ONE working tree, and taskmgr's lock protects only the
-// tracker (.tasks/), not project source files. Running them in parallel would let two implementers
-// clobber each other's edits and make the verify legs observe a commingled tree. So one task's
-// implement → verify → record completes before the next starts. (review ∥ test still run in parallel
-// WITHIN a task, after that task's implementer has finished — see runTask.)
-const perTask = []
-for (const id of taskIds) {
-  perTask.push(await runTask(id))
+// ── Orchestration ─────────────────────────────────────────────────────────────
+// Runs only under the Workflow runtime, which injects the `agent` hook (plus args/log/
+// parallel/phase). Under a Node test harness those globals are absent, so this block is
+// skipped and only the pure helpers above are exercised (see the module.exports guard below).
+if (typeof agent === 'function') {
+  const { taskIds, epicId } = normalizeArgs(args)
+
+  if (!taskIds.length) {
+    // A bail-out return surfaces to the harness as status:completed, so a total no-op otherwise
+    // looks like success — log and echo what we received so it is diagnosable instead of silently
+    // passing.
+    log(`tasks-work: no taskIds resolved from args (received type "${typeof args}") — nothing to run`)
+    return {
+      error: 'No taskIds provided. The tasks-work skill must resolve the scope and pass taskIds.',
+      received: { type: typeof args },
+    }
+  }
+
+  phase('Implement')
+  log(`Running ${taskIds.length} task(s) sequentially${epicId ? ` under epic ${epicId}` : ''}`)
+  // Sequential by design: implementers share ONE working tree, and taskmgr's lock protects only the
+  // tracker (.tasks/), not project source files. Running them in parallel would let two implementers
+  // clobber each other's edits and make the verify legs observe a commingled tree. So one task's
+  // implement → verify → record completes before the next starts. (review ∥ test still run in parallel
+  // WITHIN a task, after that task's implementer has finished — see runTask.)
+  const perTask = []
+  for (const id of taskIds) {
+    perTask.push(await runTask(id))
+  }
+
+  let epic = null
+  if (epicId) {
+    phase('Close')
+    epic = await agent(epicClosePrompt(epicId), { agentType: 'tasks:verifier', phase: 'Close', label: `epic:${epicId}`, schema: EPIC_SCHEMA })
+  }
+
+  const { closed, left_open, inconclusive, skipped } = summarizeActions(perTask)
+
+  return {
+    summary: { total: taskIds.length, closed: closed.length, left_open: left_open.length, inconclusive: inconclusive.length, skipped: skipped.length, epic: epic ? epic.action : 'n/a' },
+    closed,
+    left_open,
+    inconclusive,
+    skipped,
+    epic,
+    perTask,
+  }
 }
 
-let epic = null
-if (epicId) {
-  phase('Close')
-  epic = await agent(epicClosePrompt(epicId), { agentType: 'tasks:verifier', phase: 'Close', label: `epic:${epicId}`, schema: EPIC_SCHEMA })
-}
-
-const byAction = (a) => perTask.filter((r) => r && r.record && r.record.action === a).map((r) => r.taskId)
-const closed = byAction('closed')
-const open = byAction('left-open')
-const inconclusive = byAction('inconclusive')
-const skipped = byAction('skipped')
-
-return {
-  summary: { total: taskIds.length, closed: closed.length, left_open: open.length, inconclusive: inconclusive.length, skipped: skipped.length, epic: epic ? epic.action : 'n/a' },
-  closed,
-  left_open: open,
-  inconclusive,
-  skipped,
-  epic,
-  perTask,
+// Test-only: expose the pure helpers to the Node loader in tests/tasks/script-tests.
+// Guarded so it is a no-op under the Workflow runtime (where `module` is undefined, and
+// where the orchestration above has already returned before reaching this line).
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { normalizeArgs, summarizeActions }
 }
