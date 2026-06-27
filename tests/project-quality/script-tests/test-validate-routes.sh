@@ -12,6 +12,8 @@
 #   - ignore: external URLs (http/https)
 #   - ignore: plugin:skill opaque references
 #   - pass: --include-docs extends validation to docs/*.md
+#   - pass: --include-plugins extends validation to plugins/**/*.md
+#   - pass: a link to an existing directory (no anchor) resolves; with #anchor it fails
 #   - misc: no args → exit 1; bad dir → exit 1
 set -euo pipefail
 
@@ -347,6 +349,56 @@ test_nothing_to_check_no_docs_dir() {
   rm -rf "$dir"
 }
 
+# 23. Directory link (no anchor) resolves — the single resolver treats a link to
+#     an existing directory as a valid navigation target (GitHub renders the listing).
+test_directory_link_resolves() {
+  local dir; dir=$(tmpdir)
+  touch "$dir/CLAUDE.md"
+  mkdir -p "$dir/docs"
+  printf '# Agents\n\nSee the [docs](docs) directory.\n' > "$dir/AGENTS.md"
+  assert_exit "directory-link: link to existing dir (no anchor) resolves" 0 \
+    python3 "$SCRIPT" "$dir"
+  rm -rf "$dir"
+}
+
+# 24. Directory link WITH an anchor still fails (a directory has no headings).
+test_directory_link_with_anchor_fails() {
+  local dir; dir=$(tmpdir)
+  touch "$dir/CLAUDE.md"
+  mkdir -p "$dir/docs"
+  printf '# Agents\n\n[bad](docs#section)\n' > "$dir/AGENTS.md"
+  assert_exit "directory-link-anchor: dir link with #anchor still fails" 1 \
+    python3 "$SCRIPT" "$dir"
+  rm -rf "$dir"
+}
+
+# 25. --include-plugins extends validation to plugins/**/*.md
+test_include_plugins() {
+  local dir; dir=$(tmpdir)
+  touch "$dir/CLAUDE.md" "$dir/AGENTS.md"
+  mkdir -p "$dir/plugins/foo/skills/bar"
+  printf '# Bar\n\n[broken](nope/missing.md)\n' > "$dir/plugins/foo/skills/bar/SKILL.md"
+  # Without the flag, plugin docs are not scanned → pass
+  assert_exit "include-plugins: without flag exit 0" 0 python3 "$SCRIPT" "$dir"
+  # With the flag, the broken plugin link is caught → fail
+  assert_exit "include-plugins: with flag exit 1 for broken plugin link" 1 \
+    python3 "$SCRIPT" "$dir" --include-plugins
+  rm -rf "$dir"
+}
+
+# 26. The unified directory-link rule applies to plugins/ too — this is the exact
+#     divergence the resolver-unification fixed (formerly plugins/ allowed dir
+#     links via a verify.sh carve-out while the CLI rejected them under docs/).
+test_plugins_directory_link_resolves() {
+  local dir; dir=$(tmpdir)
+  touch "$dir/CLAUDE.md" "$dir/AGENTS.md"
+  mkdir -p "$dir/plugins/foo/skills/bar/refs"
+  printf '# Bar\n\nSee [refs](refs) for details.\n' > "$dir/plugins/foo/skills/bar/SKILL.md"
+  assert_exit "plugins-dir-link: directory link in plugin .md resolves under --include-plugins" 0 \
+    python3 "$SCRIPT" "$dir" --include-plugins
+  rm -rf "$dir"
+}
+
 # ── run all tests ─────────────────────────────────────────────────────────────
 
 test_no_args
@@ -371,6 +423,10 @@ test_nothing_to_check_message
 test_nothing_to_check_scanned_context
 test_nothing_to_check_include_docs
 test_nothing_to_check_no_docs_dir
+test_directory_link_resolves
+test_directory_link_with_anchor_fails
+test_include_plugins
+test_plugins_directory_link_resolves
 
 printf '\n'
 printf 'Results: %d passed, %d failed\n' "$PASS" "$FAIL"
