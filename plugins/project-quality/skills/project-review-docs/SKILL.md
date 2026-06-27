@@ -47,7 +47,7 @@ in `references/` — load them as you go:
 
 - [references/project-setup.md](references/project-setup.md) — canonical doc set + file ownership (the bar for "what should exist")
 - [references/project-structure.md](references/project-structure.md) — structural + AGENTS routing constraints
-- [references/project-doc-guidelines.md](references/project-doc-guidelines.md) — authoring quality bar (A1–A7, hard prohibitions) and the Bad→Good fix vocabulary
+- [references/project-doc-guidelines.md](references/project-doc-guidelines.md) — authoring quality bar (A1–A10, hard prohibitions) and the Bad→Good fix vocabulary
 - [references/agents-md-template.md](references/agents-md-template.md) — the AGENTS.md conformance standard
 - [references/project-doc-review-guidelines.md](references/project-doc-review-guidelines.md) — the exhaustive audit discipline: coverage table (C1–C13), severity rubric, validator scripts, specialist fan-out
 
