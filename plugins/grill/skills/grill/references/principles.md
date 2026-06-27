@@ -7,6 +7,11 @@ that contradicts one of them is a finding, not a preference.
 Two families: the **simplicity** values (is this worth its cost?) and the **risk**
 values (what happens when it is wrong?). A critical grill presses on both.
 
+> Provenance: the simplicity values (1–6) are paraphrased and condensed from
+> `project-quality`'s `project-review-complexity/references/principles.md` (a 6-of-11
+> subset). Kept as a separate file because plugins install independently — a reword
+> there will not propagate here, so keep the two conceptually aligned when either changes.
+
 ## Simplicity values
 
 ### 1. Simplicity is non-negotiable

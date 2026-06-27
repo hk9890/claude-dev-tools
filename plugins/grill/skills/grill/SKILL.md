@@ -28,13 +28,19 @@ The challenger runs in an isolated context that cannot see this conversation. In
 prompt, include:
 
 - the target description and any plan/design detail that exists only here;
-- the absolute path to the value base so it can ground its answers. Locate it with:
+- the absolute path to the value base so it can ground its answers. Locate it with
+  the same robust + fail-loud approach the `project-review` orchestrator uses — search
+  both the install and the current checkout, with a glob that tolerates the versioned
+  cache layout (`…/grill/<version>/skills/…`):
 
   ```bash
-  find "$HOME/.claude/plugins" -path "*grill/skills/grill/references/principles.md" | head -1
+  PRINCIPLES="$(find "$HOME/.claude/plugins" "$PWD" -path "*grill*/skills/grill/references/principles.md" 2>/dev/null | sort -V | tail -1)"
   ```
 
-  Pass that path and tell the challenger to read it before forming positions.
+  If `$PRINCIPLES` is a real file, pass that absolute path and tell the challenger to
+  read it before forming positions. If it is **empty**, fail loud: tell the challenger
+  the value base could not be located, so it grills from its own judgment *and says so*
+  in the sheet — never pass a path you did not confirm exists.
 
 Ask it to return an ordered list of `Q<n>` entries — each with `Recommended answer`,
 `Why it matters`, and `Source` — and a final `grill-status: clean | needs-answers` line.
