@@ -21,7 +21,7 @@ The plugin is intentionally stateless between runs: each session starts with a f
 
 The [`taskmgr`](https://github.com/hk9890/task-manager) binary must be installed and a `.tasks/` store initialised (the harness cannot install CLI tools). The skill checks at use time (Phase 0) and stops with guidance if the binary or store is missing — see [RULES.md](RULES.md).
 
-## Plugin Structure
+## Plugin structure
 
 ```
 project-explore/

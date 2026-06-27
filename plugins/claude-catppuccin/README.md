@@ -50,7 +50,7 @@ The theme maps Catppuccin Mocha colors to Claude Code UI roles:
 
 Diff background colors (`diffAdded`, `diffRemoved`, and their `*Dimmed`/`*Word` variants) are not from the canonical palette — they are custom dark green/red tints derived from Base for terminal readability.
 
-## Plugin Structure
+## Plugin structure
 
 ```
 claude-catppuccin/
