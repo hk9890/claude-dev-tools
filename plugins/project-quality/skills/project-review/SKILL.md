@@ -34,19 +34,29 @@ Anything that is not a known dimension token or a `--tier` flag is the scope.
 
 ## 2. Run the review workflow
 
-Take the script below, set its three config constants (`DIMS`, `SCOPE`, `TIER`) from
-your step-1 parsing, and run it **via the Workflow tool** (pass it as `script`). Those
-constants are the single configuration point — set them directly; do **not** rely on
-the Workflow `args` global (it is not guaranteed to reach the script).
+Take the script below, fill in its config constants from your step-1 parsing, and run
+it **via the Workflow tool** (pass it as `script`). These constants are the single
+configuration point — set them directly; do **not** rely on the Workflow `args` global
+(it is not guaranteed to reach the script):
+
+- `DIMS`, `TIER` — from step 1.
+- `SCOPE` — the scope text, written as a **properly escaped JS string literal** (escape
+  any `'` or `\`, e.g. `'the auth module\'s tests'`), or a stray quote breaks the script.
+- `PLUGIN_DIR` — the absolute path of *this* plugin, so finders can locate each
+  dimension's procedure wherever the plugin is installed. Resolve it in the main loop
+  (where `${CLAUDE_PLUGIN_ROOT}` is available), e.g.
+  `find ~/.claude/plugins -maxdepth 5 -type d -path '*project-quality' | head -1`, and
+  paste the absolute path. Leaving it empty makes finders fall back to a best-effort
+  search and fail loudly if they still can't find the procedure.
 
 The finders and verifiers are `project-quality:project-reviewer` agents — finders
 load each dimension's own `SKILL.md` procedure from the installed plugin and review
 the target repo; verifiers (on a cheaper model) try to **refute** each finding.
 
-If the Workflow tool is unavailable in this session, run the same three stages by
-hand with the Task tool (one `project-reviewer` per dimension for Find, one per
-finding for Verify, one per dimension for Sweep), then apply the same synthesis
-(drop REFUTED, fold `route_to`, dedup, sort) before rendering.
+If the Workflow tool is unavailable in this session, run the same stages by hand
+with the Task tool (one `project-reviewer` per dimension for Find, one per finding
+for Verify, and — only at `--high` — one per dimension for Sweep), then apply the
+same synthesis (drop REFUTED, fold `route_to`, dedup, sort) before rendering.
 
 ```js
 export const meta = {
@@ -59,11 +69,12 @@ export const meta = {
   ],
 }
 
-// ─── CONFIG — the skill fills these in from $ARGUMENTS (step 1) before running.
-//     Defaults below = a full, whole-project, high-tier review. ────────────────
+// ─── CONFIG — the skill fills these in (steps 1-2) before running. Defaults below
+//     = a full, whole-project, high-tier review. ───────────────────────────────
 const DIMS = ['complexity', 'consistency', 'docs', 'structure', 'tests']
 const SCOPE = '' // a path/description to scope the review; '' = whole project
 const TIER = 'high' // 'low' | 'medium' | 'high'
+const PLUGIN_DIR = '' // absolute path of the project-quality plugin; '' = finders search
 // ─────────────────────────────────────────────────────────────────────────────
 const SCOPE_TEXT = SCOPE || 'the whole project at the current working directory'
 
@@ -102,7 +113,8 @@ const VERIFY_SCHEMA = {
 }
 
 const locate = (dim) =>
-  `SKILL=$(find "$HOME/.claude/plugins" -path "*project-quality/skills/project-review-${dim}/SKILL.md" | head -1)`
+  `SKILL="${PLUGIN_DIR}/skills/project-review-${dim}/SKILL.md"; ` +
+  `[ -f "$SKILL" ] || SKILL="$(find "$HOME/.claude/plugins" "$PWD" -path "*project-quality/skills/project-review-${dim}/SKILL.md" 2>/dev/null | head -1)"`
 
 function finderPrompt(dim) {
   return [
@@ -111,9 +123,11 @@ function finderPrompt(dim) {
     ``,
     `PROCEDURE — locate this dimension's own review procedure and follow it exactly:`,
     `  ${locate(dim)}`,
-    `Read that SKILL.md and any references/ files it points to, then run its interrogation/`,
-    `verdict procedure and use its verdict label set. Explore the real code/docs first`,
-    `(Read, Grep, git) — never judge before seeing the evidence.`,
+    `If "$SKILL" is empty or that file is missing, STOP — return verdict "error" and a`,
+    `single finding stating the ${dim} procedure file could not be located; do NOT improvise`,
+    `a review without it. Otherwise read that SKILL.md and any references/ files it points`,
+    `to, then run its interrogation/verdict procedure and use its verdict label set. Explore`,
+    `the real code/docs first (Read, Grep, git) — never judge before seeing the evidence.`,
     ``,
     `REVIEW SCOPE: ${SCOPE_TEXT}.`,
     ``,
@@ -181,9 +195,10 @@ const found = await parallel(
     })),
   ),
 )
+const okFound = found.filter(Boolean) // drop any dimension whose finder thunk rejected
 const verdicts = {}
-for (const r of found) verdicts[r.dim] = r.verdict
-let candidates = found.flatMap((r) => r.findings)
+for (const r of okFound) verdicts[r.dim] = r.verdict
+let candidates = okFound.flatMap((r) => r.findings)
 log(`find: ${candidates.length} candidate findings across ${DIMS.length} dimension(s)`)
 
 // ---- Verify ---------------------------------------------------------------
@@ -197,8 +212,20 @@ async function verifyAll(items) {
   ).filter(Boolean)
 }
 
+// Fold route_to: reassign a finding's dimension when it routes to another reviewer
+// that is part of this run (the one cross-dimension merge). Applied BEFORE Sweep so the
+// sweep "already found" lists are bucketed by each finding's final dimension.
+const inRun = new Set(DIMS)
+function foldRoutes(items) {
+  for (const f of items) {
+    const rt = (f.route_to || '').replace(/^project-review-/, '').trim()
+    if (rt && inRun.has(rt)) f.dimension = rt
+  }
+  return items
+}
+
 phase('Verify')
-let kept = (await verifyAll(candidates)).filter((f) => f.vote !== 'REFUTED')
+let kept = foldRoutes((await verifyAll(candidates)).filter((f) => f.vote !== 'REFUTED'))
 if (TIER === 'low') kept = kept.filter((f) => f.vote === 'CONFIRMED')
 log(`verify: ${kept.length} survived (${TIER === 'low' ? 'CONFIRMED only' : 'CONFIRMED + PLAUSIBLE'})`)
 
@@ -214,19 +241,13 @@ if (TIER === 'high') {
       ),
     )
   ).flat()
-  const sweepKept = (await verifyAll(sweepFound)).filter((f) => f.vote !== 'REFUTED')
+  const sweepKept = foldRoutes((await verifyAll(sweepFound)).filter((f) => f.vote !== 'REFUTED'))
   log(`sweep: ${sweepFound.length} new candidates → ${sweepKept.length} survived`)
   kept = kept.concat(sweepKept)
 }
 
 // ---- Synthesize -----------------------------------------------------------
-// Fold route_to: reassign a finding's dimension when it routes to another
-// reviewer that is actually part of this run (the one cross-dimension merge).
-const inRun = new Set(DIMS)
-for (const f of kept) {
-  const rt = (f.route_to || '').replace(/^project-review-/, '').trim()
-  if (rt && inRun.has(rt)) f.dimension = rt
-}
+// route_to was folded before Sweep, so each finding's dimension is final here.
 
 // Dedup: same dimension + location + first words of observation.
 function dedupKey(f) {

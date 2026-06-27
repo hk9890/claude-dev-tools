@@ -33,6 +33,8 @@ Skill directory name and the `name:` field in frontmatter must match, and both s
 
 Within a plugin, sibling skills share the same domain prefix so they sort and read as a family.
 
+A family may also expose an **umbrella** skill named with the family's shared stem — e.g. `project-review` over the `project-review-<aspect>` skills. This is still the `<plugin-domain>-<topic>` shape (here `project`-`review`), so it needs no exception.
+
 A "main" skill may take the plugin's own name (e.g. `project-explore:project-explore`, `github-releases:github-releases`); this is the only accepted exception.
 
 ### Frontmatter — pick a schema by invocation behaviour

@@ -22,8 +22,9 @@ This split is the organising principle. A skill belongs to exactly one family,
 and its name says which (`project-review-<aspect>`, `project-exec-<topic>` where
 `<topic>` names the project flow the skill defers to — testing, releasing,
 monitoring — or `project-explain`). Reviews and exec are families with one skill
-per distinct procedure; explain is a single skill because explaining is one
-procedure parameterised by topic (see rule 11).
+per distinct procedure; the review family additionally exposes the `project-review`
+umbrella (rule 12) that runs all five dimensions together; explain is a single skill
+because explaining is one procedure parameterised by topic (see rule 11).
 
 ## 2. This plugin is a consolidation of three former plugins
 
@@ -168,10 +169,11 @@ operation.
 returns one prioritised list — so the user does not run five skills and merge five
 reports by hand. Design decisions behind it:
 
-- **Umbrella name.** It takes the family-parent name `project-review` (the
-  `project-review-<aspect>` skills are its members). This is the rule-1 naming shape's
-  one allowed parent form — analogous to `project-explore:project-explore` — not a
-  bare-verb violation.
+- **Umbrella name.** `project-review` is an ordinary `<plugin-domain>-<topic>` name —
+  domain `project`, topic `review`, the same shape as `project-explain` — that also
+  heads the `project-review-<aspect>` family (its members add an aspect suffix). It needs
+  no naming exception: it is the `<plugin-domain>-<topic>` shape that `docs/CODING.md`
+  already sanctions (see rule 1), not the plugin's-own-name exception.
 - **User-invoked only** (`user-invocable: true` + `disable-model-invocation: true`),
   unlike the model-discoverable dimensional skills. A full run can spawn a dozen-plus
   agents (a finder and a sweep per dimension, plus a verifier per finding); that cost
