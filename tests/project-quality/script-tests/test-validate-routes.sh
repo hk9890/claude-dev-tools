@@ -13,7 +13,7 @@
 #   - ignore: plugin:skill opaque references
 #   - pass: --include-docs extends validation to docs/*.md
 #   - pass: --include-plugins extends validation to plugins/**/*.md
-#   - pass: a link to an existing directory (no anchor) resolves; with #anchor it fails
+#   - scope: a directory link (no anchor) resolves in plugins/ but is flagged in steering/docs
 #   - misc: no args → exit 1; bad dir → exit 1
 set -euo pipefail
 
@@ -349,14 +349,15 @@ test_nothing_to_check_no_docs_dir() {
   rm -rf "$dir"
 }
 
-# 23. Directory link (no anchor) resolves — the single resolver treats a link to
-#     an existing directory as a valid navigation target (GitHub renders the listing).
-test_directory_link_resolves() {
+# 23. Directory link in a STEERING doc (no anchor) is flagged — the steering/docs scan
+#     stays strict, so a file link accidentally written as a bare directory name (e.g.
+#     [setup](docs/setup) meaning docs/setup.md while docs/setup/ exists) is still caught.
+test_directory_link_in_steering_fails() {
   local dir; dir=$(tmpdir)
   touch "$dir/CLAUDE.md"
   mkdir -p "$dir/docs"
   printf '# Agents\n\nSee the [docs](docs) directory.\n' > "$dir/AGENTS.md"
-  assert_exit "directory-link: link to existing dir (no anchor) resolves" 0 \
+  assert_exit "directory-link-steering: dir link in AGENTS.md is flagged (strict)" 1 \
     python3 "$SCRIPT" "$dir"
   rm -rf "$dir"
 }
@@ -423,7 +424,7 @@ test_nothing_to_check_message
 test_nothing_to_check_scanned_context
 test_nothing_to_check_include_docs
 test_nothing_to_check_no_docs_dir
-test_directory_link_resolves
+test_directory_link_in_steering_fails
 test_directory_link_with_anchor_fails
 test_include_plugins
 test_plugins_directory_link_resolves

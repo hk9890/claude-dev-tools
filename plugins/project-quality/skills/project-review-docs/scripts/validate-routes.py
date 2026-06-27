@@ -247,8 +247,12 @@ def extract_references(filepath, content):
 # Resolution
 # ---------------------------------------------------------------------------
 
-def resolve_reference(ref, repo_root):
+def resolve_reference(ref, repo_root, allow_dir_links=False):
     """Attempt to resolve a reference dict.
+
+    When allow_dir_links is True, a link to an existing directory (no anchor) resolves
+    OK (a valid GitHub navigation target). It defaults to False so the steering-doc/docs
+    scan stays strict; validate() enables it only for refs sourced from plugins/.
 
     Returns (resolved: bool, reason: str).
     """
@@ -261,11 +265,12 @@ def resolve_reference(ref, repo_root):
     target_path = os.path.normpath(os.path.join(source_dir, raw_path))
 
     if not os.path.isfile(target_path):
-        # A link to an existing directory (no anchor) is a valid navigation target:
-        # GitHub renders the directory listing. Keeping this rule here — the single
-        # reference resolver — means every caller (the CLAUDE.md/AGENTS.md/docs scan
-        # and the plugins/ scan) resolves directory links identically.
-        if anchor is None and os.path.isdir(target_path):
+        # A link to an existing directory (no anchor) is a valid navigation target on
+        # GitHub (it renders the directory listing). Allowed ONLY when the caller opts in
+        # — the plugins/ scan does (see validate()); the steering-doc/docs scan stays
+        # strict so a file link typo'd as a bare directory name is still flagged. The rule
+        # lives here, in the single resolver, rather than being re-implemented per caller.
+        if allow_dir_links and anchor is None and os.path.isdir(target_path):
             return True, "ok (directory target)"
         return False, f"file not found: {target_path}"
 
@@ -335,9 +340,14 @@ def validate(repo_root, include_docs=False, include_plugins=False):
         refs = extract_references(filepath, content)
         all_refs.extend(refs)
 
+    # Directory links resolve OK only inside plugins/** (the original verify.sh behavior);
+    # steering docs (CLAUDE.md/AGENTS.md) and docs/ stay strict.
+    plugins_root = os.path.join(os.path.abspath(repo_root), "plugins") + os.sep
+
     unresolved = []
     for ref in all_refs:
-        ok, reason = resolve_reference(ref, repo_root)
+        allow_dir = os.path.abspath(ref["source_file"]).startswith(plugins_root)
+        ok, reason = resolve_reference(ref, repo_root, allow_dir_links=allow_dir)
         if not ok:
             unresolved.append({
                 "source_file": ref["source_file"],
