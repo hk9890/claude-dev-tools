@@ -1,7 +1,7 @@
 ---
 name: project-review-grill
-description: "Adversarially grill a plan, design, or piece of work — generate a sheet of pointed questions, each with a recommended answer and source, then walk them with you one at a time."
-when_to_use: "Use when the user wants their plan, design, approach, or work challenged before committing — 'grill me on this', 'poke holes in this design', 'challenge this plan', 'what am I missing here?', 'stress-test this approach'. Produces an interactive question-by-question walkthrough, not a written report. Does not apply to a code/PR or architecture complexity review (use project-review-complexity) or the other dimensional reviews. Invoke with an argument naming what to grill, or it grills the plan/design under discussion."
+description: "Adversarially grill a plan, design, or piece of work — pointed questions walked through with you one at a time."
+when_to_use: "Use when the user wants a plan, design, or approach challenged before committing. Triggers on 'grill me on this', 'poke holes in this design', 'challenge this plan', 'what am I missing?'. Produces an interactive walkthrough, not a report. Not for code/PR or architecture reviews."
 argument-hint: "[what-to-grill]"
 ---
 

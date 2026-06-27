@@ -1,6 +1,6 @@
 ---
 name: project-trigger-release
-description: "Cut a new release — derives the procedure from the project's own release docs and any installed release skills, runs the release process, and reports the outcome."
+description: "Cut a new release using the project's own release docs and skills, then report the outcome."
 user-invocable: true
 disable-model-invocation: true
 ---

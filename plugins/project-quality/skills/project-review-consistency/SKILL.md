@@ -1,7 +1,7 @@
 ---
 name: project-review-consistency
-description: "Review a codebase for consistency, naming coherence, and divergent patterns — drift from established conventions."
-when_to_use: "Use when the user wants a consistency or naming-coherence review. Triggers on 'review my codebase for consistency', 'are we doing this two different ways?', 'our naming is a mess', 'we have two HTTP clients', 'check if patterns are uniform', 'do our APIs look the same', 'is our import style consistent', 'find drift from our conventions'. Does not apply to over-engineering review (use project-review-complexity), directory layout and boundary concerns (use project-review-structure), test quality (use project-review-tests), or pure formatting like whitespace and bracket placement (use a linter). Invoke with an optional argument scoping what to review (a path or area of the codebase); with no argument it reviews the whole codebase. The review runs in an isolated context and cannot see this conversation."
+description: "Review a codebase for consistency, naming coherence, and drift from established conventions."
+when_to_use: "Use when the user wants a consistency or naming-coherence review. Triggers on 'are we doing this two different ways?', 'our naming is a mess', 'we have two HTTP clients'. Not for over-engineering, structure, or test reviews — each has its own skill; pure formatting is a linter's job."
 argument-hint: "[what-to-review]"
 context: fork
 agent: project-reviewer

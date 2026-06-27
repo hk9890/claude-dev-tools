@@ -1,6 +1,6 @@
 ---
 name: html-visualize-demo
-description: "Render a browser HTML visualization, diagram, chart, or data summary and serve it non-blocking — visualize mode of the html-visualize workflow. The page includes an always-on footer for optional follow-up messages."
+description: "Render a browser HTML visualization, chart, or data summary and serve it non-blocking — visualize mode of html-visualize."
 argument-hint: "[what-to-visualize]"
 user-invocable: true
 disable-model-invocation: true

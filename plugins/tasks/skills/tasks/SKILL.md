@@ -1,7 +1,7 @@
 ---
 name: tasks
 description: "How to use taskmgr — the file-based task tracker: its data model, core commands, and tracking discipline."
-when_to_use: "Use when working with a taskmgr / .tasks tracker — creating, finding, updating, or closing tasks via the taskmgr CLI, or deciding what to work on next from its ready queue. Triggers on 'taskmgr', 'task manager', 'the .tasks store', 'create a task / file a bug / open an epic', 'what's ready to work on'. Does not apply to the harness's built-in TaskCreate/TaskList tools or TodoWrite."
+when_to_use: "Use when working with a taskmgr / .tasks tracker — creating, finding, updating, or closing tasks via the CLI, or picking what to work on next. Triggers on 'taskmgr', 'the .tasks store', 'create a task', 'what's ready to work on'. Not for the harness's built-in TaskCreate/TaskList or TodoWrite."
 ---
 
 # Using taskmgr

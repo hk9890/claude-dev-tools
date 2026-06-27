@@ -6,11 +6,7 @@ Language-agnostic GitHub release workflow with quality gates, semver, and releas
 
 This plugin provides a structured, checklist-driven GitHub release workflow that works with any project (Node, Python, Rust, Go, etc.). It enforces quality gates before release and guides you through version bumping, release note writing, and post-release verification.
 
-## Commands
-
-| Command | Description |
-|---|---|
-| `/release` | Create a new GitHub release — runs quality gates, version bump, and release creation |
+The plugin is **skill-driven** — there is no slash command. The `github-releases` skill triggers automatically from intent, or you can invoke it explicitly as `/github-releases`.
 
 ## Prerequisites
 
@@ -19,15 +15,15 @@ This plugin provides a structured, checklist-driven GitHub release workflow that
 
 ## Usage
 
-```
-/release 1.2.0
-```
-
-Or without a version to let the skill determine the bump:
+Ask Claude to cut a release and the skill takes over:
 
 ```
-/release
+cut a release
+ship version 1.2.0
+bump the version
 ```
+
+Name a version to pin it (e.g. "release 1.2.0"); otherwise the skill determines the bump.
 
 ## Workflow Phases
 
@@ -44,11 +40,7 @@ Or without a version to let the skill determine the bump:
 
 Add a `docs/RELEASING.md` to your project with the actual commands for your build system, test runner, and version bump process. The skill reads this file before executing and replaces generic placeholders with your real commands.
 
-To create or update this file:
-
-```
-/release setup
-```
+To create or update this file, ask Claude to set up the release workflow (e.g. "set up our release workflow").
 
 ## Plugin structure
 
@@ -56,8 +48,6 @@ To create or update this file:
 github-releases/
 ├── .claude-plugin/
 │   └── plugin.json
-├── commands/
-│   └── release.md
 └── skills/
     └── github-releases/
         ├── SKILL.md
