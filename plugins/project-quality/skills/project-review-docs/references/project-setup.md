@@ -7,6 +7,7 @@
 - `CLAUDE.md`: Claude Code entrypoint — **must contain exactly `@AGENTS.md` and nothing else** (one line, optional trailing newline). Any other content is a finding; the recommended fix routes it into AGENTS.md (for routing) or a topic doc under `docs/`. Checkable via `scripts/claude-md.sh check`.
 - `docs/` topic files: durable repo-specific operating guidance
 - `docs/REVIEWING.md` (optional-canonical): project-specific review guidance — canonical when present, never reported missing when absent
+- `docs/RUNNING.md` (optional-canonical): how the agent launches and drives the built product to reproduce a bug or verify a change — canonical when present, never reported missing when absent
 - `.claude.local.md` (optional, personal): per-user local context — gitignored; never written by canonical doc flows (create/update/improve/revise); surfaced by `scripts/inventory.py` so authors know it exists
 
 Create topic docs only when the repository has real local guidance for that topic.
@@ -20,6 +21,7 @@ docs/
   OVERVIEW.md
   CODING.md
   TESTING.md
+  RUNNING.md         (optional — see below)
   REVIEWING.md       (optional — see below)
   RELEASING.md
   MONITORING.md
@@ -30,6 +32,7 @@ Notes:
 
 - If a reusable skill fully covers a topic and there is no local delta, do not create a hollow doc for that topic.
 - `REVIEWING.md` is **optional-canonical**: recognized as a canonical doc when a project opts in by creating it, but never reported missing when absent (most repos have no local review delta). `scripts/inventory.py` counts it only when present and never nags for it.
+- `RUNNING.md` is **optional-canonical** on the same terms: create it only when the project ships a product an agent can drive (a CLI, service, TUI, or app). A pure library whose tests are its only exercise path needs none; it is never reported missing when absent.
 
 ## File ownership boundaries
 
@@ -88,6 +91,10 @@ Notes:
 ### `docs/MONITORING.md`
 
 - Repo-specific observability and evidence paths
+- **Boundary vs RUNNING.md**: MONITORING inspects the evidence of what already happened
+  (logs, spans, sessions, usage); RUNNING drives the live product to make something happen.
+  Bug reproduction is driven from `RUNNING.md`, which may pull MONITORING data as supporting
+  evidence.
 - Example: [../examples/docs/MONITORING.md](../examples/docs/MONITORING.md)
 
 ### `docs/CHANGE-WORKFLOW.md`
@@ -112,6 +119,29 @@ Notes:
   delta; it is never reported missing when absent (see the canonical topic set
   above).
 - Example: [../examples/docs/REVIEWING.md](../examples/docs/REVIEWING.md)
+
+### `docs/RUNNING.md` (optional-canonical)
+
+- How the agent launches and drives *this project's built product* by hand to observe
+  real behavior — reproduce a reported bug, verify an outcome after a task, confirm a fix.
+  It is **agent-facing**: how the *agent* operates the product, which can diverge from the
+  human path (a browser-automation tool, a TUI-inspection script where a human would just
+  click). Operating the artifact, not running the test suites.
+- **Boundary vs TESTING.md**: TESTING owns the automated suites, validators, and gates
+  (repeatable pass/fail you maintain); RUNNING owns driving the running product ad-hoc to
+  observe behavior. The generic launch-and-drive workflow is covered by the built-in
+  `run`/`verify` skills — RUNNING holds only the local delta (launch command, entrypoints,
+  how to reach a state, fixtures, where output lands). Authoring rule A4 applies; placement
+  is fixed by A9.
+- **Boundary vs MONITORING.md**: both can serve bug reproduction. RUNNING *makes* the
+  product do it (hands on the live app); MONITORING *inspects* what it already did. The
+  reproduction is driven from RUNNING, which may pull MONITORING data as supporting
+  evidence (stated symmetrically in the MONITORING block above).
+- **Precedence**: where a local `RUNNING.md` instruction conflicts with the generic
+  `run`/`verify` flow, the local instruction wins — it knows this product's real entrypoints.
+- **Optional-canonical**: create it only when the project ships a product an agent can
+  drive; it is never reported missing when absent (see the canonical topic set above).
+- Example: [../examples/docs/RUNNING.md](../examples/docs/RUNNING.md)
 
 ## Boundary to project-structure
 

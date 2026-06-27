@@ -210,9 +210,9 @@ Decisions behind it:
 - **Optional-canonical, not full canonical.** `scripts/inventory.py` carries it in a
   separate `OPTIONAL_CANONICAL_DOCS` tier: recognized as canonical when present, but
   never reported missing when absent. Most repos have no local review delta, so a
-  full-canonical "REVIEWING.md missing" warning on every repo would be pure noise. It is
-  the one optional-canonical doc; the tier exists so the taxonomy can *name* a doc
-  without *demanding* it.
+  full-canonical "REVIEWING.md missing" warning on every repo would be pure noise. The tier
+  (`OPTIONAL_CANONICAL_DOCS`) exists so the taxonomy can *name* a doc without *demanding*
+  it; `RUNNING.md` (§14) is the other doc in this tier.
 - **Reviewers consume it.** The shared `project-reviewer` persona reads
   `docs/REVIEWING.md` (when present) during its explore-before-judge pass and treats its
   rules as authoritative local constraints — so all five dimensional reviewers and the
@@ -228,3 +228,30 @@ Decisions behind it:
   duplicate the umbrella and miscategorise a read-only operation — the same reasoning that
   rules out `project-exec-coding` (rule 11). `project-explain reviewing` covers the
   knowledge side; the umbrella covers the doing side.
+
+## 14. RUNNING.md is an optional-canonical doc for driving the product
+
+`docs/RUNNING.md` holds the **local delta** an agent needs to launch and drive a project's
+built product by hand — to reproduce a reported bug or verify an outcome after a task. It is
+agent-facing: it documents how the *agent* operates the product, which can diverge from the
+human path (a browser-automation tool, a TUI-inspection script). Decisions behind it:
+
+- **Optional-canonical, not full canonical.** Carried in `scripts/inventory.py`'s
+  `OPTIONAL_CANONICAL_DOCS` tier alongside `REVIEWING.md` (§13): recognized when present,
+  never reported missing when absent. A pure library whose tests are its only exercise path
+  has no product to drive, so a full-canonical "RUNNING.md missing" warning would be noise.
+- **Boundaries are fixed by authoring rule A9.** `TESTING.md` owns the automated suites and
+  gates (repeatable pass/fail you maintain); `RUNNING.md` owns ad-hoc operation of the live
+  artifact. `MONITORING.md` owns the evidence trail of what already happened; `RUNNING.md`
+  drives the product to make something happen. Bug reproduction is driven from `RUNNING.md`,
+  which may pull `MONITORING.md` data as supporting evidence. The generic launch-and-drive
+  flow is left to the built-in `run`/`verify` skills (rule A4).
+- **No in-repo agent consumes it, so nothing is wired.** Unlike `REVIEWING.md`, which the
+  `project-reviewer` persona reads mid-review (§13), `RUNNING.md` has no in-repo agent that
+  ingests it during work — like `OVERVIEW.md` and `CODING.md`, its consumer is `AGENTS.md`
+  routing followed by a general agent (plus `project-explain running` and the inventory
+  validator). There is deliberately no agent change.
+- **No `project-exec-running`.** The built-in `run`/`verify` skills already cover the doing
+  side (launching and driving the app); an exec-running skill would duplicate them. The
+  knowledge side is `project-explain running`. This mirrors the reasoning that rules out
+  `project-exec-coding` (rule 11) and `project-exec-reviewing` (§13).

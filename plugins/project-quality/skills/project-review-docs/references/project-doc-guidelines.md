@@ -74,6 +74,18 @@ into `CODING.md` or `CHANGE-WORKFLOW.md`. Symmetric with A6. Like A4, `REVIEWING
 states only the local delta: link the `project-review-*` skills for the generic lenses
 rather than restating a generic review checklist.
 
+### A9 — Canonical product-operation placement
+
+How-to-operate-the-product guidance — launching the built artifact and driving it by hand
+to reproduce a bug or verify a fix — belongs in `RUNNING.md` (optional-canonical), not in
+`TESTING.md` (which owns the automated suites and gates) or `MONITORING.md` (which owns
+log/usage analysis). Symmetric with A6/A8. Like A4, `RUNNING.md` states only the local
+delta — the repo-specific launch command, entrypoints, and how to reach a given state —
+and links the built-in `run`/`verify` skills for the generic launch-and-drive flow rather
+than restating it. `RUNNING.md` is agent-facing: it documents how the *agent* drives the
+product, which can differ from the human path (e.g. a browser-automation tool or a
+TUI-inspection script where a human would just click).
+
 ## Hard prohibitions
 
 Canonical docs should avoid:

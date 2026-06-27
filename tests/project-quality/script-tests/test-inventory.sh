@@ -544,6 +544,109 @@ test_optional_doc_location_violation() {
   rm -rf "$dir"
 }
 
+# 25. Second optional-canonical doc (RUNNING.md) recognized when present in docs/
+test_optional_running_present() {
+  local dir; dir=$(make_full_fixture)
+  printf '# Running\nLaunch with scripts/foo.\n' > "$dir/docs/RUNNING.md"
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  # present and recognized as canonical
+  local present
+  present=$(json_val "$out" "d['canonical']['RUNNING.md']['present']")
+  assert_eq "optional-running-present: RUNNING.md present=True" "True" "$present"
+
+  # flagged as optional in the canonical entry
+  local optional
+  optional=$(json_val "$out" "d['canonical']['RUNNING.md'].get('optional', False)")
+  assert_eq "optional-running-present: RUNNING.md optional=True" "True" "$optional"
+
+  # counted toward canonical_present (3 root + 6 required + 1 optional = 10)
+  local cpresent
+  cpresent=$(json_val "$out" "d['summary']['canonical_present']")
+  assert_eq "optional-running-present: canonical_present=10" "10" "$cpresent"
+
+  # no missing canonical docs
+  local missing
+  missing=$(json_val "$out" "d['summary']['canonical_missing']")
+  assert_eq "optional-running-present: canonical_missing=0" "0" "$missing"
+
+  # NOT flagged as a non-canonical consolidation candidate (only EXTRA.md is)
+  local nc
+  nc=$(json_val "$out" "d['summary']['non_canonical_count']")
+  assert_eq "optional-running-present: RUNNING.md not counted non-canonical (count=1)" "1" "$nc"
+
+  rm -rf "$dir"
+}
+
+# 26. Second optional-canonical doc (RUNNING.md) absent → omitted, never reported missing
+test_optional_running_absent() {
+  local dir; dir=$(make_full_fixture)   # 6 required docs, no RUNNING.md
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  # absent optional doc is not present in the canonical map at all
+  local omitted
+  omitted=$(json_val "$out" "'RUNNING.md' not in d['canonical']")
+  assert_eq "optional-running-absent: RUNNING.md omitted when absent" "True" "$omitted"
+
+  # absence does not inflate canonical_missing
+  local missing
+  missing=$(json_val "$out" "d['summary']['canonical_missing']")
+  assert_eq "optional-running-absent: canonical_missing=0" "0" "$missing"
+
+  rm -rf "$dir"
+}
+
+# 27. Second optional-canonical doc (RUNNING.md) at repo root → location violation
+test_optional_running_location_violation() {
+  local dir; dir=$(tmpdir)
+  mkdir -p "$dir/docs"
+  printf '# Running\nMisplaced.\n' > "$dir/RUNNING.md"   # at root, belongs in docs/
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  local violations
+  violations=$(json_val "$out" "d['summary']['violation_count']")
+  assert_eq "optional-running-violation: violation_count=1" "1" "$violations"
+
+  assert_contains "optional-running-violation: RUNNING.md in violations" "RUNNING.md" "$out"
+
+  rm -rf "$dir"
+}
+
+# 28. Both optional-canonical docs present → both recognized and counted (multi-optional path)
+test_both_optional_present() {
+  local dir; dir=$(make_full_fixture)
+  printf '# Reviewing\nLocal review rule.\n' > "$dir/docs/REVIEWING.md"
+  printf '# Running\nLaunch with scripts/foo.\n' > "$dir/docs/RUNNING.md"
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  # both flagged optional
+  local rev_opt run_opt
+  rev_opt=$(json_val "$out" "d['canonical']['REVIEWING.md'].get('optional', False)")
+  run_opt=$(json_val "$out" "d['canonical']['RUNNING.md'].get('optional', False)")
+  assert_eq "both-optional: REVIEWING.md optional=True" "True" "$rev_opt"
+  assert_eq "both-optional: RUNNING.md optional=True" "True" "$run_opt"
+
+  # counted toward canonical_present (3 root + 6 required + 2 optional = 11)
+  local cpresent
+  cpresent=$(json_val "$out" "d['summary']['canonical_present']")
+  assert_eq "both-optional: canonical_present=11" "11" "$cpresent"
+
+  local missing
+  missing=$(json_val "$out" "d['summary']['canonical_missing']")
+  assert_eq "both-optional: canonical_missing=0" "0" "$missing"
+
+  # neither counted as a non-canonical consolidation candidate (only EXTRA.md is)
+  local nc
+  nc=$(json_val "$out" "d['summary']['non_canonical_count']")
+  assert_eq "both-optional: optional docs not counted non-canonical (count=1)" "1" "$nc"
+
+  rm -rf "$dir"
+}
+
 # ── run all tests ─────────────────────────────────────────────────────────────
 
 test_no_args
@@ -570,6 +673,10 @@ test_personal_local_text_format
 test_optional_doc_present
 test_optional_doc_absent
 test_optional_doc_location_violation
+test_optional_running_present
+test_optional_running_absent
+test_optional_running_location_violation
+test_both_optional_present
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
