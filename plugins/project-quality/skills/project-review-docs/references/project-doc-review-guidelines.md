@@ -52,6 +52,7 @@ Known coverage gaps the scripts do **not** catch (must be covered by specialist 
 - Undocumented top-level directories (validator only checks docs that exist, not repo surface that should be documented).
 - Sibling-doc contradictions (two docs stating the same fact differently).
 - Reachability of every `docs/**/*.md` from `AGENTS.md` routing.
+- Audience/purpose drift — content that is accurate but sits outside its file's *Inside* / *Not inside* ownership in `project-setup.md` (R10/C13), e.g. end-user usage in `CODING.md` or test content in `MONITORING.md`.
 
 ### Step 2 — Specialist reviewer fan-out (parallel)
 
@@ -65,7 +66,8 @@ Required specialists (run all, every time):
 4. **Route reachability reviewer** — for every file under `docs/`, trace whether it is reachable from `AGENTS.md` (directly or via an intermediate canonical doc named in `AGENTS.md`). Output: list of orphaned docs.
 5. **Anchor and link integrity reviewer** — for every `[text](path#anchor)` and `[text](path)` in canonical docs, verify the file exists *and* the anchor (if any) resolves to a real heading. Output: list of broken anchors and missing targets.
 6. **CI and process inventory reviewer** — compare `TESTING.md`'s merge-gate list to `.github/workflows/*.yml`, and compare any "scripts/tools/skills" list to the actual repo. Output: list of omissions and stale entries in both directions.
-7. **Audience-fit & fresh-eyes reviewer** — read `README.md` cold **as a user/evaluator first**: can you tell what the product is and how to use it? A `README.md` whose opening is build-from-source or dev setup serves the wrong audience and is a finding (R10 — that material belongs in `CONTRIBUTING.md` and the topic docs; BLOCKER when the README is *largely* the wrong genre). *Only then* read `README.md` → `AGENTS.md` → top-level `docs/*.md` as a new contributor. Output: README audience-fit verdict, confusion points, undefined jargon, missing onboarding steps, sections whose claims do not match what `ls` shows in the repo root.
+7. **README user-first & fresh-eyes reviewer** — read `README.md` cold **as a user/evaluator first**: can you tell what the product is and how to use it? A `README.md` whose opening is build-from-source or dev setup serves the wrong audience and is a finding (R10 — that material belongs in `CONTRIBUTING.md` and the topic docs; BLOCKER when the README is *largely* the wrong genre). *Only then* read `README.md` → `AGENTS.md` → top-level `docs/*.md` as a new contributor. Output: README audience-fit verdict, confusion points, undefined jargon, missing onboarding steps, sections whose claims do not match what `ls` shows in the repo root.
+8. **Audience/purpose-fit reviewer (R10 / C13)** — for **every** canonical doc, check its content against the file's defined audience and *Inside* / *Not inside* ownership in `project-setup.md`. Flag content that sits outside a file's *Inside* even when every statement is accurate — e.g. end-user usage in `CODING.md`, test content absorbed into `MONITORING.md`, a build/test command reference in `CHANGE-WORKFLOW.md`, build/dev material in `README.md`. This specialist produces the evidence for coverage category **C13** across the whole canonical set (specialist #7 covers the README in depth; the orchestrator dedupes the README overlap). Output: per-doc audience-fit verdict (in-boundary / R10-MAJOR / R10-BLOCKER) with the offending lines quoted and the owning file each should route to.
 
 Specialist prompt template (use for each):
 
