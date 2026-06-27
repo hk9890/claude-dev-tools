@@ -1,12 +1,22 @@
 ---
 name: github-releases
-description: "Create or publish a GitHub release, or set up a project's release guide."
-when_to_use: "Use when the user wants to create or publish a GitHub release, bump a version, or set up a release workflow. Triggers on 'cut a release', 'ship version X', 'bump the version'. Not for deployment pipelines, CI config, or non-GitHub releases."
+description: "Create or publish a GitHub release, set up a project's release guide, or set up release CI."
+when_to_use: "Use when the user wants to create or publish a GitHub release, bump a version, set up a release workflow, or set up CI to automate the release publish. Triggers on 'cut a release', 'ship version X', 'bump the version', 'set up our release workflow', 'automate releases in CI'. Not for non-GitHub releases or general (non-release) CI/CD config."
 ---
 
 # GitHub Releases
 
 Language-agnostic release workflow for GitHub projects.
+
+## Use cases
+
+This skill covers three release tasks — identify which one the user wants:
+
+1. **Cut or publish a release** (default) — run the Prerequisites and Workflow below.
+2. **Set up or update `docs/RELEASING.md`** — the project's release guide. Follow [setup-modify-release-workflow.md](references/setup-modify-release-workflow.md) instead of the release workflow.
+3. **Set up release CI** — automate the mechanical *publish* half of a release in a CI pipeline. This is design guidance only; it does not write provider-specific pipeline files. Follow [ci-pipeline-guide.md](references/ci-pipeline-guide.md).
+
+The Prerequisites and Workflow below apply to use case 1.
 
 ## Prerequisites
 
@@ -55,4 +65,5 @@ Replace any generic commands with the actual commands from `docs/RELEASING.md`. 
 - [version-management.md](references/version-management.md) — Semver rules and version bump analysis
 - [release-notes-guide.md](references/release-notes-guide.md) — Structured release notes format
 - [troubleshooting.md](references/troubleshooting.md) — Common gh CLI, git, and CI issues
+- [ci-pipeline-guide.md](references/ci-pipeline-guide.md) — Automating the publish half in CI (decide-vs-publish, trigger models, hardening) — generic guidance, not stack-specific config
 - [setup-modify-release-workflow.md](references/setup-modify-release-workflow.md) — Set up or update docs/RELEASING.md for this project
