@@ -1,7 +1,7 @@
 {
   "name": "github-releases",
   "description": "Language-agnostic GitHub release workflow with quality gates, semver, and release notes",
-  "version": "1.17.0",
+  "version": "1.18.0",
   "author": {
     "name": "Hans Kohlreiter",
     "email": "hans.kohlreiter@dynatrace.com"
