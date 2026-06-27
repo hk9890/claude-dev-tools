@@ -45,7 +45,7 @@
       "friction_score": 0.0
     },
     {
-      "_description": "Episode 3: github-releases:github-releases — explicit trigger. Positive case that fires EVERY outcome/friction detector branch so a regression that breaks one cannot ship green: a true permission denial (is_error + 'doesn't want to proceed'), an interruption (toolUseResult.interrupted), an AskUserQuestion, a pytest result (tests_run + tests_passed), and assistant text naming a commit and a pull request.",
+      "_description": "Episode 3: github-releases:github-releases — explicit trigger. Positive case that fires EVERY outcome/friction detector branch so a regression that breaks one cannot ship green: a true permission denial (is_error + 'doesn't want to proceed'), an interruption (toolUseResult.interrupted), an AskUserQuestion, a pytest result (tests_run + tests_passed), and assistant text naming a commit and a pull request. ALSO includes a cancelled parallel-batch sibling (is_error=true carrying 'Cancelled: parallel tool call') which must NOT count toward tool_errors — so tool_errors stays 2, not 3 (lvdtq4 regression guard).",
       "attribution_skill": "github-releases:github-releases",
       "attribution_plugin": "github-releases",
       "trigger_type": "explicit",
@@ -87,6 +87,7 @@
     "Episode 3: tool_errors=2 (the rejected git push AND the interrupted sleep both carry is_error=true).",
     "Episode 3: permission_denials=1 (git push rejected with 'doesn't want to proceed', is_error=true).",
     "Episode 3: interruptions=1 (sleep tool_result carries toolUseResult.interrupted=true).",
-    "Episode 3: ask_user_questions=1 (AskUserQuestion tool_use); tests_run+tests_passed from the pytest result; ended_in_commit+ended_in_pr from the final assistant text."
+    "Episode 3: ask_user_questions=1 (AskUserQuestion tool_use); tests_run+tests_passed from the pytest result; ended_in_commit+ended_in_pr from the final assistant text.",
+    "Episode 3: the 'Cancelled: parallel tool call' tool_result (user-017b) carries is_error=true but is a user-initiated batch cancellation, so tool_errors stays 2 (would be 3 without the lvdtq4 fix; friction would be 2.25 instead of 1.75). It also embeds 'token: ABCD1234SECRETKEY99', redacted to [REDACTED] in the episode slice — exercising sanitize_text in the slice content (rzbmhc)."
   ]
 }

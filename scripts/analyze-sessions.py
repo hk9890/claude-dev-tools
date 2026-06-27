@@ -153,6 +153,12 @@ TEST_PASS_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Cancelled siblings of a parallel tool batch. When the user interrupts a
+# parallel tool call, the un-run siblings come back as is_error tool_results
+# carrying this phrase. They are user-initiated cancellations, not tool
+# failures, so they must not be counted as tool_errors (weighted 3.0).
+CANCELLED_PARALLEL_RE = re.compile(r"cancelled:\s*parallel tool call", re.IGNORECASE)
+
 # ---------------------------------------------------------------------------
 # Helper: discover marketplace plugins
 # ---------------------------------------------------------------------------
@@ -281,9 +287,6 @@ class Episode:
         # Internal tracking for retry detection
         self._tool_calls_seen = {}  # (tool_name, input_repr) -> count
 
-        # For slice output: lightweight line records (no raw content)
-        self._slice_events = []
-
     def to_summary_record(self):
         """Return a JSON-serializable summary dict (no raw content)."""
         friction = self._compute_friction()
@@ -373,6 +376,26 @@ def sanitize_text(text, max_chars=2000):
     if len(text) > max_chars:
         text = text[:max_chars] + f"... [truncated {len(text) - max_chars} chars]"
     return text
+
+
+def _tool_result_text(content):
+    """Flatten a tool_result 'content' value (str or list of blocks) to text.
+
+    Tool results carry content either as a plain string or as a list of
+    typed blocks (e.g. [{"type": "text", "text": "..."}]). Return a single
+    string so detectors can scan it uniformly.
+    """
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for item in content:
+            if isinstance(item, dict) and isinstance(item.get("text"), str):
+                parts.append(item["text"])
+            elif isinstance(item, str):
+                parts.append(item)
+        return "\n".join(parts)
+    return ""
 
 
 # ---------------------------------------------------------------------------
@@ -579,17 +602,23 @@ def parse_file(filepath, alias_to_canonical, max_slice_chars=2000):
                     btype = block.get("type")
 
                     if btype == "tool_result":
-                        # Error signal: is_error == True
-                        if block.get("is_error") is True:
+                        block_content = block.get("content", "")
+                        is_error = block.get("is_error") is True
+                        # Error signal: is_error == True, EXCEPT cancelled siblings
+                        # of a parallel tool batch. When a user interrupts a parallel
+                        # call, the un-run siblings return is_error results carrying
+                        # "Cancelled: parallel tool call" — those are cancellations,
+                        # not tool failures, so counting them inflates tool_errors.
+                        if is_error and not CANCELLED_PARALLEL_RE.search(
+                                _tool_result_text(block_content)):
                             current.tool_errors += 1
 
                         # Permission denial: user rejected the tool use.
                         # Guard with is_error == True to avoid false positives when
                         # file content read by the model happens to contain the phrase
                         # (e.g. docs/MONITORING.md describes the detector strings).
-                        block_content = block.get("content", "")
                         if (isinstance(block_content, str)
-                                and block.get("is_error") is True
+                                and is_error
                                 and ("doesn't want to proceed" in block_content
                                      or "tool use was rejected" in block_content.lower())):
                             current.permission_denials += 1
@@ -672,8 +701,77 @@ def walk_projects(projects_dir, alias_to_canonical, max_slice_chars=2000):
 # Episode slice writer
 # ---------------------------------------------------------------------------
 
+def _extract_slice_events(source_file, start_line, end_line, max_slice_chars):
+    """Reconstruct sanitized conversation events for one episode's line range.
+
+    Re-reads source_file (only called for the small sampled subset of episodes,
+    so the re-read cost is negligible) and returns an ordered list of event
+    dicts the Phase 2 judge can read: assistant turns (text + tool names), user
+    prompts, and tool results (with an is_error flag). All text is run through
+    sanitize_text — credential-like strings and long hex are redacted and each
+    field is capped at max_slice_chars.
+    """
+    events = []
+    try:
+        for lineno, record in iter_records(source_file):
+            if lineno < start_line:
+                continue
+            if lineno > end_line:
+                break
+            rtype = record.get("type")
+            content = record.get("message", {}).get("content", [])
+
+            if rtype == "assistant":
+                if not isinstance(content, list):
+                    continue
+                text_parts, tools = [], []
+                for block in content:
+                    if not isinstance(block, dict):
+                        continue
+                    if block.get("type") == "text":
+                        text_parts.append(block.get("text", ""))
+                    elif block.get("type") == "tool_use":
+                        tools.append(block.get("name", ""))
+                event = {"line": lineno, "role": "assistant"}
+                if text_parts:
+                    event["text"] = sanitize_text("\n".join(text_parts), max_slice_chars)
+                if tools:
+                    event["tools"] = tools
+                events.append(event)
+
+            elif rtype == "user":
+                if isinstance(content, str):
+                    events.append({
+                        "line": lineno, "role": "user",
+                        "text": sanitize_text(content, max_slice_chars),
+                    })
+                elif isinstance(content, list):
+                    for block in content:
+                        if not isinstance(block, dict):
+                            continue
+                        btype = block.get("type")
+                        if btype == "text":
+                            events.append({
+                                "line": lineno, "role": "user",
+                                "text": sanitize_text(block.get("text", ""), max_slice_chars),
+                            })
+                        elif btype == "tool_result":
+                            event = {
+                                "line": lineno, "role": "tool_result",
+                                "text": sanitize_text(
+                                    _tool_result_text(block.get("content", "")),
+                                    max_slice_chars),
+                            }
+                            if block.get("is_error") is True:
+                                event["is_error"] = True
+                            events.append(event)
+    except OSError:
+        pass
+    return events
+
+
 def write_episode_slice(ep, output_dir, max_slice_chars=2000):
-    """Write a sanitized per-episode slice file."""
+    """Write a sanitized per-episode slice file with reconstructed content."""
     slices_dir = os.path.join(output_dir, "episodes")
     os.makedirs(slices_dir, exist_ok=True)
 
@@ -681,9 +779,15 @@ def write_episode_slice(ep, output_dir, max_slice_chars=2000):
     filename = f"{slug}__{ep.episode_id[:8]}.json"
     filepath = os.path.join(slices_dir, filename)
 
-    # Build a sanitized slice
+    # Build a sanitized slice: summary fields + the episode's conversation
+    # events so the Phase 2 judge has real content to read (not just stats).
     record = ep.to_summary_record()
-    record["_note"] = "sanitized slice; raw content stripped"
+    record["events"] = _extract_slice_events(
+        ep.source_file, ep.start_line, ep.end_line, max_slice_chars)
+    record["_note"] = (
+        "sanitized slice; credential-like strings and long hex redacted, "
+        f"each event text capped at {max_slice_chars} chars"
+    )
 
     with open(filepath, "w", encoding="utf-8") as fh:
         json.dump(record, fh, indent=2)
