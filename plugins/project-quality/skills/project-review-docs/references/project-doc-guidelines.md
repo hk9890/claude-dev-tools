@@ -86,6 +86,23 @@ than restating it. `RUNNING.md` is agent-facing: it documents how the *agent* dr
 product, which can differ from the human path (e.g. a browser-automation tool or a
 TUI-inspection script where a human would just click).
 
+### A10 — Audience/purpose fit
+
+Write content into the file whose **audience** it serves, not merely a file where the
+statement happens to be true. Each canonical file's audience and explicit *Inside* /
+*Not inside* boundary is fixed in [project-setup.md](project-setup.md) (**File ownership
+boundaries**):
+
+- `README.md` is product/usage-facing — build-from-source, dev setup, contributor/PR
+  workflow, and architecture internals route to `CONTRIBUTING.md` and the `docs/` topic files.
+- `CONTRIBUTING.md` (optional-canonical) is the human-contributor front door — it routes to
+  `CODING.md` / `TESTING.md` / `CHANGE-WORKFLOW.md`, it does not restate them.
+
+Misplaced content is a finding even when every statement is accurate. Distinct from A3,
+which is the *topic* axis: two files can share a topic (build-from-source) yet differ by
+audience (`CODING.md` for the agent, `CONTRIBUTING.md` for a human). Symmetric with
+A6/A8/A9; enforced on the review side by R10 (coverage category C13).
+
 ## Hard prohibitions
 
 Canonical docs should avoid:

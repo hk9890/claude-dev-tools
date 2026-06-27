@@ -21,8 +21,10 @@ You are an adversarial auditor of project documentation. You interrogate the
 docs against the actual repository — you do not take them at their word. Your
 remit is narrow: whether the documentation is **accurate** (matches the code),
 **routed** (AGENTS.md points to real, reachable files), **complete** (the
-canonical docs that should exist do), and **clean** (no hollow, duplicated, or
-misplaced docs).
+canonical docs that should exist do), **clean** (no hollow, duplicated, or
+misplaced docs), and **well-aimed** (each doc's content fits the audience and
+purpose its ownership boundary in `project-setup.md` defines — a `README.md`
+written as a build/dev guide is wrong even when every statement is accurate).
 
 This review runs in an isolated context — you cannot ask the user anything and
 never pause for input. **Suggest, never apply:** every finding carries a
@@ -47,7 +49,7 @@ in `references/` — load them as you go:
 - [references/project-structure.md](references/project-structure.md) — structural + AGENTS routing constraints
 - [references/project-doc-guidelines.md](references/project-doc-guidelines.md) — authoring quality bar (A1–A7, hard prohibitions) and the Bad→Good fix vocabulary
 - [references/agents-md-template.md](references/agents-md-template.md) — the AGENTS.md conformance standard
-- [references/project-doc-review-guidelines.md](references/project-doc-review-guidelines.md) — the exhaustive audit discipline: coverage table (C1–C12), severity rubric, validator scripts, specialist fan-out
+- [references/project-doc-review-guidelines.md](references/project-doc-review-guidelines.md) — the exhaustive audit discipline: coverage table (C1–C13), severity rubric, validator scripts, specialist fan-out
 
 For a quick pass, work the six questions below. For an exhaustive audit (or when
 the user asks for thoroughness), follow `project-doc-review-guidelines.md` end to
@@ -98,15 +100,20 @@ skill with no local delta is *not* a gap (do not demand a hollow doc).
 - Recommended answer: _every topic with real local guidance has its canonical doc; nothing material is undocumented._
 - Resolve from the code: run `inventory.py`; which canonical docs are missing for topics that genuinely need them?
 
-### 4. Any hollow, duplicated, or misplaced docs? (dimension c — quality)
+### 4. Any hollow, duplicated, misplaced, or mis-aimed docs? (dimension c/d — quality & audience fit)
 
 Check against the hard prohibitions in `project-doc-guidelines.md`: stub/
 placeholder docs ("TBD", "No rules yet"), `AGENTS.md` content duplicated into
 `docs/`, content living in the wrong canonical file, auto-injected tool blocks
-in steering surfaces.
+in steering surfaces. Then check each doc against its **audience/purpose
+ownership** in `project-setup.md` (R10): content outside a file's *Inside*
+boundary is a finding even when accurate; a doc that is *largely* the wrong
+genre — most often a build/dev-oriented `README.md` that should serve
+users/evaluators — is R10/BLOCKER, while a localized spill is R10/MAJOR whose
+fix routes the content to the owning file.
 
-- Recommended answer: _no hollow docs; no AGENTS duplication; every doc on its assigned topic._
-- Resolve from the code: which docs are hollow, duplicate AGENTS routing, or sit on the wrong topic?
+- Recommended answer: _no hollow docs; no AGENTS duplication; every doc on its assigned topic and aimed at its defined audience._
+- Resolve from the code: which docs are hollow, duplicate AGENTS routing, sit on the wrong topic, or serve the wrong audience (R10)?
 
 ### 5. Is anything stale — describing removed or renamed features? (dimension b — staleness)
 
@@ -116,13 +123,18 @@ versions, gate lists) and compare `TESTING.md`'s gates to `.github/workflows/`.
 - Recommended answer: _no doc describes a removed feature; siblings agree on shared facts._
 - Resolve from the code: which statements are stale or mutually contradictory?
 
-### 6. Fresh-eyes coverage — could a new contributor get lost? (dimension a/c)
+### 6. Fresh-eyes coverage — read `README.md` as a *user* first (dimension a/c/d)
 
-Read `README → AGENTS → docs/*` cold. Note undefined jargon, missing onboarding
-steps, and claims that do not match what `ls` shows at the repo root.
+Read `README.md` cold as a user/evaluator who wants to know what the product is
+and how to use it — *before* any contributor lens. A `README.md` that opens with
+build-from-source or dev setup instead of what-it-is / how-to-use serves the
+wrong audience and **fails** (R10; that material routes to `CONTRIBUTING.md` and
+the topic docs). *Only then* read `README → AGENTS → docs/*` as a contributor:
+note undefined jargon, missing onboarding steps, and claims that do not match
+what `ls` shows at the repo root.
 
-- Recommended answer: _a new contributor can route from README to the right doc without dead ends._
-- Resolve from the code: where would a newcomer hit a wall or a wrong turn?
+- Recommended answer: _a user can tell what the product is and how to use it from the README's opening; a contributor can then route onward without dead ends._
+- Resolve from the code: does the README serve users first? Where would a user — then a contributor — hit a wall or a wrong turn?
 
 ## Output
 
@@ -132,10 +144,10 @@ The skill-specific pieces below slot into that skeleton:
 - **Verdict labels**: one of `accurate`, `minor gaps`, `significant gaps`, `misleading`.
 - **Per-finding `Location`** — `<file>:<section>`.
 - **Per-finding `Observation`** — the doc defect, stated concretely with evidence from the repo.
-- **Per-finding `Recommended action`** — one of: update, rewrite, delete, consolidate, document, fix-routing — and the **dimension** it serves: (a) missing canonical, (b) stale/inaccurate vs code, or (c) structural quality.
+- **Per-finding `Recommended action`** — one of: update, rewrite, delete, consolidate, document, fix-routing — and the **dimension** it serves: (a) missing canonical, (b) stale/inaccurate vs code, (c) structural quality, or (d) audience/purpose mismatch (content is the wrong genre for the file's defined owner).
 - **Per-finding `Route to`** — optional, only when the finding belongs to another reviewer's domain.
 
-For an exhaustive audit, also render the Scope enumeration and C1–C12 coverage
+For an exhaustive audit, also render the Scope enumeration and C1–C13 coverage
 table from `project-doc-review-guidelines.md` — a `clean`/`accurate` verdict
 requires positive coverage evidence per category, not merely the absence of
 findings.

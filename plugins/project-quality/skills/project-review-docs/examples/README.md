@@ -53,6 +53,7 @@ Delete a widget:
 curl -X DELETE http://localhost:8080/widgets/a1b2c3d4-...
 ```
 
-## Building locally
+## Contributing & building from source
 
-To build and run the project from source, follow the steps in [docs/CODING.md](docs/CODING.md#building-from-source).
+Contributors start at [CONTRIBUTING.md](CONTRIBUTING.md), which points to the
+build-from-source steps in [docs/CODING.md](docs/CODING.md#building-from-source).
