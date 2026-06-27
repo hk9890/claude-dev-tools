@@ -15,15 +15,21 @@ $ARGUMENTS
 
 ### 0.1 Verify taskmgr is initialised
 
-Check that taskmgr is usable:
+Confirm the binary and a store exist — probe them **separately** so the two failure modes stay distinct:
 
 ```bash
-ls .tasks/ 2>/dev/null && taskmgr list >/dev/null 2>&1
+command -v taskmgr >/dev/null 2>&1   # 1) is the binary installed?
+taskmgr list >/dev/null 2>&1          # 2) does a store resolve? (taskmgr walks up from cwd to find .tasks/)
 ```
 
-If `.tasks/` does not exist or `taskmgr` is not usable, stop immediately and tell the user:
+Do **not** test for the store with `ls .tasks/`: the store is found by walking **up** from the current directory, so a bare `ls` in a subdirectory reports "no store" even when taskmgr resolves one at the repo root — and would then create a second, nested store. Let `taskmgr list` do the resolution.
 
-> **taskmgr is not initialised in this repository.** The `project-explore` skill requires a `taskmgr` store to open and track the exploration session. If the `taskmgr` binary is missing, install it first; otherwise run `taskmgr init` in the project root, then re-invoke this skill.
+Stop immediately and tell the user if either check fails:
+
+- **`command -v taskmgr` fails** → the binary is missing. Tell the user to install it first, then re-invoke this skill.
+- **Binary present but `taskmgr list` fails** → no store resolves from here. Tell the user to run `taskmgr init` in the project root, then re-invoke this skill.
+
+> **taskmgr is not initialised in this repository.** The `project-explore` skill requires a `taskmgr` store to open and track the exploration session.
 
 Do not proceed to Phase 1 until taskmgr is confirmed usable.
 

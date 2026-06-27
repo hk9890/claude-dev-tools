@@ -50,7 +50,7 @@ To create or update this file:
 /release setup
 ```
 
-## Plugin Structure
+## Plugin structure
 
 ```
 github-releases/
