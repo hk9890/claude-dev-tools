@@ -200,7 +200,7 @@ The script selects episodes for the `episodes/` slice output:
 - Top N by friction score (default 5, `--sample-rocky`)
 - N evenly-spaced from the remaining episodes as a random baseline (default 5, `--sample-random`)
 
-Slice files are sanitized: credentials and long hex strings are redacted, tool output is capped at `--max-slice-chars` (default 2000).
+Each slice file carries the episode's summary fields plus an `events` array reconstructing the episode's conversation — assistant turns (text + tool names), user prompts, and tool results — so the Phase 2 judge has real content to read, not just stats. Slice content is sanitized: credential-like strings and long hex are redacted, and each event's text is capped at `--max-slice-chars` (default 2000).
 
 ### Fixture tests
 
@@ -216,7 +216,7 @@ python3 scripts/fixtures/check-fixture.py \
     --summary output/session-analysis/fixture/summary.md
 ```
 
-This is a manual step; it is not part of `bash tests/run-all.sh`.
+The commands above are the manual equivalent; the same fixture check also runs automatically as part of `bash tests/run-all.sh` (via `tests/marketplace/script-tests/test-analyze-sessions.sh`).
 
 ## Phase 2 — Claude-in-the-loop judging
 

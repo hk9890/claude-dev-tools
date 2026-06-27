@@ -7,6 +7,10 @@
 #   - fixture-check: check-fixture.py validates the dataset against expected output
 #   - false-positive: a Read tool_result with is_error=false containing the
 #     permission-denial magic phrase must NOT increment permission_denials (1un)
+#   - lvdtq4: a cancelled parallel-batch sibling (is_error=true + "Cancelled:
+#     parallel tool call") must NOT increment tool_errors
+#   - rzbmhc: episode slice files carry reconstructed conversation events, with
+#     credential-like strings redacted by sanitize_text
 set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
@@ -123,12 +127,75 @@ test_false_positive_not_counted() {
     "0"
 }
 
+# 5. lvdtq4: the cancelled parallel-batch sibling in episode 3 carries
+#    is_error=true but must NOT count toward tool_errors (stays 2, not 3).
+test_cancelled_not_counted() {
+  assert_json_field \
+    "lvdtq4: tool_errors=2 for github-releases (cancelled parallel call not counted)" \
+    "$TMP_DIR/output/fixture/dataset.json" \
+    "github-releases:github-releases" \
+    "tool_errors" \
+    "2"
+}
+
+# 6. rzbmhc: the episode slice carries reconstructed conversation events,
+#    not just summary stats.
+test_slice_has_content() {
+  local slice
+  slice=$(ls "$TMP_DIR"/output/fixture/episodes/github-releases*.json 2>/dev/null | head -1)
+  if [[ -z "$slice" ]]; then
+    fail "rzbmhc: github-releases slice file not found"
+    return
+  fi
+  local result
+  result=$(python3 - "$slice" <<'PYEOF'
+import json, sys
+d = json.load(open(sys.argv[1]))
+events = d.get("events", [])
+if not events:
+    print("events array empty or missing")
+    sys.exit(0)
+blob = json.dumps(events)
+if "pull request" not in blob and "pytest" not in blob:
+    print("events present but missing expected episode content")
+    sys.exit(0)
+print("OK")
+PYEOF
+)
+  if [[ "$result" == "OK" ]]; then
+    ok "rzbmhc: github-releases slice contains reconstructed content events"
+  else
+    fail "rzbmhc: slice content — $result"
+  fi
+}
+
+# 7. rzbmhc: sanitize_text is applied to slice content — the fake secret token
+#    must be redacted, never written verbatim.
+test_slice_redacts_credentials() {
+  local slice
+  slice=$(ls "$TMP_DIR"/output/fixture/episodes/github-releases*.json 2>/dev/null | head -1)
+  if [[ -z "$slice" ]]; then
+    fail "rzbmhc: github-releases slice file not found (redaction)"
+    return
+  fi
+  if grep -q "ABCD1234SECRETKEY99" "$slice"; then
+    fail "rzbmhc: slice leaked the raw secret token"
+  elif grep -q "REDACTED" "$slice"; then
+    ok "rzbmhc: slice redacts credential-like strings (sanitize_text active)"
+  else
+    fail "rzbmhc: slice neither leaked nor redacted the secret — sanitizer not applied?"
+  fi
+}
+
 # ── run all tests (ordered — later tests depend on earlier output) ────────────
 
 test_fixture_runs
 test_fixture_output_exists
 test_fixture_check_passes
 test_false_positive_not_counted
+test_cancelled_not_counted
+test_slice_has_content
+test_slice_redacts_credentials
 
 printf '\n'
 printf 'Results: %d passed, %d failed\n' "$PASS" "$FAIL"
