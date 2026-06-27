@@ -10,8 +10,7 @@ run real workflows defined by the project itself, and a human-triggered
 The three families map to three kinds of work:
 
 1. **Review** — skeptical, read-only audits across five dimensions of a project
-   (complexity, structure, tests, consistency, docs), plus `project-review-grill`,
-   which challenges a plan or design interactively. The five dimensions run
+   (complexity, structure, tests, consistency, docs). The five dimensions run
    individually, or all at once via `project-review`, which orchestrates them,
    adversarially verifies every finding, and returns one prioritised action list.
    Every review challenges the artifact from an adversarial stance, cites evidence,
@@ -42,7 +41,6 @@ below also run standalone — cheaper, single-lens, and model-discoverable.
 | `project-review-tests` | Adversarial test quality and coverage review — slow suites, unjustified long tests, coverage gaps, weak or unfalsifiable assertions |
 | `project-review-consistency` | Adversarial pattern and naming divergence review — competing implementations, uneven naming, inconsistent API shapes |
 | `project-review-docs` | Read-only documentation audit — accuracy vs. code, AGENTS.md routing, staleness, missing canonical docs, hollow or duplicated docs |
-| `project-review-grill` | Adversarial grilling of a plan, design, or approach — generates pointed questions with recommended answers and sources, then walks them with you one at a time (interactive, not a written report) |
 
 ### Exec (thin, human-triggered)
 
@@ -111,8 +109,7 @@ Ask for a digest of how the project handles a topic:
 ## Review output structure
 
 The five **dimensional** review skills produce the same output skeleton, defined in
-the shared `project-reviewer` agent (`project-review-grill` is the exception — it
-returns an interactive grill sheet, not this skeleton):
+the shared `project-reviewer` agent:
 
 1. **Verdict** — one label from the skill's domain-specific label set (see below)
 2. *(Optional)* skill-specific opening sections — e.g. `Principle pressure points` in complexity
@@ -167,8 +164,6 @@ project-quality/
     │   ├── references/     (taxonomy, structure, authoring + review guidelines, AGENTS template)
     │   ├── scripts/        (read-only validators: claude-md.sh, inventory.py, validate-routes.py, verify.sh)
     │   └── examples/       (canonical AGENTS.md / docs exemplars)
-    ├── project-review-grill/
-    │   └── SKILL.md        (interactive adversarial grilling — not forked; see RULES.md §6)
     ├── project-exec-testing/
     │   └── SKILL.md
     ├── project-exec-releasing/

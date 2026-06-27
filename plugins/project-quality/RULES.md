@@ -91,17 +91,8 @@ skeleton; it may not drop, rename, or reshape the mandatory sections. There is n
 `skills/_shared/` directory; procedure, principles, and verdict label sets stay
 per-skill.
 
-**Exception — `project-review-grill`.** The grill skill is deliberately **not**
-forked. Grilling walks a sheet of questions with the user one at a time, which a
-forked context cannot do (a fork returns a single result and cannot hold a live
-back-and-forth). So the skill runs in the main loop: it spawns `project-reviewer`
-in *grill mode* to generate the sheet in isolation, then conducts the interactive
-walkthrough itself. Grill mode is also the one sanctioned exception to the agent's
-output skeleton — it returns a grill sheet (question · recommended answer · why ·
-source · `grill-status`) instead of Verdict/Findings/Recommended actions.
-
-**Exception — `project-review`.** The orchestrator (rule 12) also runs unforked, in
-the main loop, because it must author and run a Workflow and then render the merged
+**Exception — `project-review`.** The orchestrator (rule 12) runs unforked, in the
+main loop, because it must author and run a Workflow and then render the merged
 result. Its *finders*, however, are forked `project-reviewer` agents — the fork
 moves down a level, from the skill to each dimension finder.
 
