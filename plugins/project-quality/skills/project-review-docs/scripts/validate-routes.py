@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Note: scripts/check-internal-consistency.py imports this module by hardcoded path;
+# keep that path in sync if this file is ever moved or renamed.
 """validate-routes.py — resolve @-imports and markdown links in CLAUDE.md / AGENTS.md.
 
 Usage:

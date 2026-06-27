@@ -14,12 +14,6 @@ Use with:
 - [project-structure.md](project-structure.md)
 - [project-doc-guidelines.md](project-doc-guidelines.md)
 
-## Why this flow is structured
-
-Past reviews kept producing confident "all good" verdicts that only held up under prodding. The root causes were: pass criteria treated "no findings" as "clean" even when whole categories went unchecked; the model halted at "validator scripts green" and wrote a closing summary; and a single-pass single-agent sweep silently dropped categories it never opened.
-
-This procedure addresses that by (a) requiring scope enumeration *before* checks, (b) fanning out into parallel specialist reviewers with disjoint lenses, (c) requiring a self-skeptical second pass, and (d) gating the pass verdict on positive coverage evidence per category — not absence of findings.
-
 ## Mandatory workflow
 
 Execute every step in order. Do not skip and do not declare the review complete before Step 5.
@@ -94,8 +88,6 @@ The orchestrator passes a concrete repo root and lens definition into each spawn
 ### Step 3 — Self-skeptical second pass
 
 Before writing the headline, the orchestrator must re-walk the **Required coverage categories** table (below) and, for any category not yet positively covered, either run an additional check or move it to **Not checked** with a Tier B/C reason. Cheap (Tier A) checks may not be deferred.
-
-This step exists because every previous review showed the same failure: declaring done after one pass and only finding more under prodding.
 
 ### Step 4 — Aggregate, dedupe, classify
 

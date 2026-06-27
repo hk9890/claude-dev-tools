@@ -1,8 +1,7 @@
 # visualize-mode `/submit` Payload Schema
 
-Single source of truth for the POST `/submit` payload produced by the visualize-mode
-footer (`visualize-template.html` inline script) and read back by Claude on
-re-invocation.
+The POST `/submit` payload produced by the visualize-mode footer
+(`visualize-template.html` inline script) and read back by Claude on re-invocation.
 
 The shared `bin/server.js` is **schema-agnostic** — it accepts any JSON object,
 stamps `submittedAt`, and writes it verbatim. It does not validate the fields
@@ -52,8 +51,6 @@ feedback file and exit 0, re-invoking Claude.
 ---
 
 ## CSRF protection
-
-Identical to every skill in this plugin — it is server behaviour.
 
 The server is bound to `127.0.0.1` and accepts POST requests from any local
 browser tab. The localhost bind is NOT a CSRF boundary. Real protection is a

@@ -76,8 +76,7 @@ parser — skills author semantic HTML directly.
 
 The server listens until the first successful `POST /submit`, writes the feedback
 file, and then calls `exit 0`. It does not keep running. This is what triggers the
-harness to re-invoke Claude with the feedback file path as context (verified
-empirically on 2026-05-22 — see epic `claude-dev-tools-aa9` comment).
+harness to re-invoke Claude with the feedback file path as context.
 
 **Do not make the server persistent or restartable. Any change that prevents
 `exit 0` after first submit breaks the round-trip.**

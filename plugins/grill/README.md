@@ -48,6 +48,7 @@ grill/
 ├── .claude-plugin/
 │   └── plugin.json
 ├── README.md
+├── RULES.md                  (design decisions — read before changing)
 ├── agents/
 │   └── challenger.md         (adversarial challenger persona + grill-sheet contract)
 └── skills/

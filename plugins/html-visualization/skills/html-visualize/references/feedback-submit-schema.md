@@ -1,7 +1,7 @@
 # feedback-mode `/submit` Payload Schema
 
-Single source of truth for the POST `/submit` payload produced by the
-feedback-mode browser document (`assets/feedback/app.js`) and read back by Claude.
+The POST `/submit` payload produced by the feedback-mode browser document
+(`assets/feedback/app.js`) and read back by Claude.
 
 The shared `bin/server.js` is **schema-agnostic** — it accepts any JSON object,
 stamps `submittedAt`, and writes it verbatim. It does not validate the fields
@@ -63,8 +63,6 @@ selections within one block).
 ---
 
 ## CSRF protection
-
-Identical to every skill in this plugin — it is server behaviour.
 
 The server is bound to `127.0.0.1` and accepts POST requests from any local
 browser tab. The localhost bind is NOT a CSRF boundary. Real protection is a

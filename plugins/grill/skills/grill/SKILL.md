@@ -28,10 +28,9 @@ The challenger runs in an isolated context that cannot see this conversation. In
 prompt, include:
 
 - the target description and any plan/design detail that exists only here;
-- the absolute path to the value base so it can ground its answers. Locate it with
-  the same robust + fail-loud approach the `project-review` orchestrator uses — search
-  both the install and the current checkout, with a glob that tolerates the versioned
-  cache layout (`…/grill/<version>/skills/…`):
+- the absolute path to the value base so it can ground its answers. Locate it by
+  searching both the install and the current checkout, with a glob that tolerates the
+  versioned cache layout (`…/grill/<version>/skills/…`):
 
   ```bash
   PRINCIPLES="$(find "$HOME/.claude/plugins" "$PWD" -path "*grill*/skills/grill/references/principles.md" 2>/dev/null | sort -V | tail -1)"
