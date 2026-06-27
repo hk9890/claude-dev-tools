@@ -112,18 +112,22 @@ const epicClosePrompt = (id) =>
 
 // The review leg prefers project-quality's adversarial reviewer persona, but `tasks` does not declare
 // `project-quality` as a dependency, so that agent type is not guaranteed to exist. When it is absent,
-// agent() errors on the unknown agentType; without this fallback the review leg returns null and the
-// record stage's rule 1 ("either leg null → inconclusive") strands every passing task as unclosed.
-// The review procedure lives in reviewPrompt, not the persona, so a built-in agent runs it fine.
+// agent() THROWS on the unknown agentType; without this fallback that throw becomes a null review and
+// record rule 1 ("either leg null → inconclusive") strands every passing task as unclosed. The review
+// procedure lives in reviewPrompt, not the persona, so a built-in agent runs it fine.
 async function runReview(id, impl) {
   const base = { phase: 'Verify', label: `review:${id}`, schema: REVIEW_SCHEMA }
   try {
-    const r = await agent(reviewPrompt(id, impl), { ...base, agentType: 'project-quality:project-reviewer' })
-    if (r) return r
+    // Fall back ONLY on the throw. agent() throws on an unknown agentType (verified: it does not
+    // return null), so the catch fires only when project-quality is absent. A null returned here
+    // means a present-but-incomplete reviewer (skipped/died) — let it propagate so record rule 1
+    // leaves the task open (fail-safe), instead of silently re-running on a weaker built-in reviewer
+    // whose verdict could drive closure via rule 3.
+    return await agent(reviewPrompt(id, impl), { ...base, agentType: 'project-quality:project-reviewer' })
   } catch {
-    // project-quality:project-reviewer not installed (unknown agentType) — fall through to a built-in.
+    // project-quality:project-reviewer not installed (unknown agentType) — fall back to a built-in.
+    return agent(reviewPrompt(id, impl), { ...base, agentType: 'general-purpose' })
   }
-  return agent(reviewPrompt(id, impl), { ...base, agentType: 'general-purpose' })
 }
 
 async function runTask(id) {
