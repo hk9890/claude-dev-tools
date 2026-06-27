@@ -8,7 +8,7 @@ A plugin marketplace for [Claude Code](https://claude.ai/code). Each plugin is a
 |---|---|
 | `plugins/` | One subdirectory per plugin (independently installable) |
 | `.claude-plugin/` | Repo-level marketplace manifest (`marketplace.json`) |
-| `docs/` | Developer guides (OVERVIEW, CODING, TESTING, REVIEWING, RELEASING, MONITORING, CHANGE-WORKFLOW) |
+| `docs/` | Developer guides (OVERVIEW, CODING, TESTING, RUNNING, REVIEWING, RELEASING, MONITORING, CHANGE-WORKFLOW) |
 | `scripts/` | Repo maintenance scripts |
 | `tests/` | Structural validation and smoke tests |
 | `.tasks/` | taskmgr task store for this repo (file-based, the `taskmgr` issue store) |

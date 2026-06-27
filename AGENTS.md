@@ -25,7 +25,11 @@ Load [docs/OVERVIEW.md](docs/OVERVIEW.md) for directory layout and architecture 
 
 ### Testing a plugin
 
-Load [docs/TESTING.md](docs/TESTING.md) for how to run plugins locally, run structural validation, and smoke-test skills and commands.
+Load [docs/TESTING.md](docs/TESTING.md) for structural validation and the in-repo script tests.
+
+### Running a plugin to reproduce a bug or verify a change
+
+Load [docs/RUNNING.md](docs/RUNNING.md) to launch the plugins locally with `scripts/claude-dev` and drive them by hand — reproduce a reported bug, or smoke-test that a skill, command, or hook works after a change.
 
 ### Releasing plugins
 

@@ -32,7 +32,7 @@ CANONICAL_DOCS = [
 # never reported missing when absent. Most repos have no local delta for these
 # topics, so tooling must not nag for a file the project will never add. A
 # project opts in simply by creating the file under docs/.
-OPTIONAL_CANONICAL_DOCS = ["REVIEWING.md"]
+OPTIONAL_CANONICAL_DOCS = ["REVIEWING.md", "RUNNING.md"]
 
 # Personal/local files — optional, gitignored, never written by canonical doc
 # flows. Surfaced so authors know they exist but not counted as missing.

@@ -3,7 +3,7 @@ name: project-explain
 description: "Explain how this project handles a given topic, as a tight digest drawn from the project's own docs."
 user-invocable: true
 disable-model-invocation: true
-argument-hint: "[overview|coding|testing|reviewing|releasing|monitoring|change-workflow]"
+argument-hint: "[overview|coding|testing|running|reviewing|releasing|monitoring|change-workflow]"
 ---
 
 **Explain how this project handles: $ARGUMENTS**
