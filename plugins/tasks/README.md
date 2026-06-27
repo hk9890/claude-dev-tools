@@ -24,10 +24,10 @@ versioned alongside the code. This plugin provides:
   workflow: one `implementer` per task, a verify stage (review ∥ test), and a record stage that closes
   passing tasks. Epics are verified and left for a human to close.
 
-It deliberately does **not** port the full `beads-tasks` methodology: no planning/work-intake
-documents, no serialized-writes orchestrator protocol, no acceptance-review *task* pattern — the
-ready→implement→verify→record loop is a thin, deterministic workflow, not a methodology. See
-[RULES.md](RULES.md) for the design decisions behind that.
+It deliberately keeps the methodology thin: no planning/work-intake documents, no serialized-writes
+orchestrator protocol, no acceptance-review *task* pattern — the ready→implement→verify→record loop
+is a thin, deterministic workflow, not a methodology. See [RULES.md](RULES.md) for the design
+decisions behind that.
 
 ## Skills
 

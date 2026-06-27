@@ -18,7 +18,7 @@ The `plugin.json` `dependencies` field is honored by the Claude Code marketplace
 Use the right pattern for each dependency kind:
 
 - **Plugin depends on another plugin** (e.g. a workflow plugin that reuses another plugin's skills): declare the dependency in `plugin.json` under `dependencies`. The harness handles install, scope, and chained enable/disable.
-- **Plugin depends on a CLI tool** (e.g. `project-explore` → `bd`, `html-visualization` → `node`): the harness cannot install CLI binaries. Add a runtime check at skill load time (Phase 0) that tests whether the CLI is present and stops with guidance if it is missing. Do not add CLI tools to the `dependencies` field.
+- **Plugin depends on a CLI tool** (e.g. `project-explore` → `taskmgr`, `html-visualization` → `node`): the harness cannot install CLI binaries. Add a runtime check at skill load time (Phase 0) that tests whether the CLI is present and stops with guidance if it is missing. Do not add CLI tools to the `dependencies` field.
 
 ## SKILL.md conventions
 
@@ -50,7 +50,7 @@ disable-model-invocation: true
 ---
 ```
 
-Use for skills that perform a consequential, explicit action and should only run when the user types the slash command. Examples: `beads-plan`, `project-explore`, `html-visualize-demo`, the `project-quality` operation skills (`project-run-tests`, `project-trigger-release`, `project-analyze-monitoring`).
+Use for skills that perform a consequential, explicit action and should only run when the user types the slash command. Examples: `tasks-work`, `project-explore`, `html-visualize-demo`, the `project-quality` operation skills (`project-run-tests`, `project-trigger-release`, `project-analyze-monitoring`).
 
 **Schema B — model-discoverable:**
 
@@ -64,7 +64,7 @@ when_to_use: "Use when … Triggers on '…', '…'. Does not apply to …"
 
 Use for skills the model should suggest or auto-invoke from context. `when_to_use` carries the trigger guidance — write positive triggers, exclusions, and (where it helps) the argument shape. Examples: the `project-review-*` skills, `github-releases`, `keep-awake-inspect`.
 
-**Reference libraries** are skill folders loaded *by* sibling skills, not invoked directly. They use `user-invocable: false` and omit `when_to_use`. Examples: `beads-core`, `html-visualize`.
+**Reference libraries** are skill folders loaded *by* sibling skills, not invoked directly. They use `user-invocable: false` and omit `when_to_use`. Examples: `html-visualize`.
 
 Do not mix schemas — a skill with both `disable-model-invocation: true` and `when_to_use:` is contradictory.
 

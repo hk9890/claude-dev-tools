@@ -85,8 +85,6 @@ SKILL_RENAME_ALIASES = {
     "project-ops:project-analyze-monitoring-data": "project-quality:project-analyze-monitoring",
     "project-ops:project-run-tests": "project-quality:project-run-tests",
     "project-ops:project-trigger-release": "project-quality:project-trigger-release",
-    # beads-tasks skills
-    "beads-tasks:coder-beads": "beads-tasks:beads-core",
     # complexity-review plugin era (plugin later renamed; reviews now live in project-quality)
     "complexity-review:complexity-review": "project-quality:project-review-complexity",
     # project-review skills -> project-quality (the test -> tests rename happened in the merge)
@@ -379,8 +377,8 @@ def _skill_args_match(skill_arg, attribution_skill):
     """Return True if skill_arg (from Skill tool input) targets attribution_skill.
 
     Matches either:
-    - exact namespaced match: "beads-tasks:beads-core" == "beads-tasks:beads-core"
-    - stripped name match: "beads-core" == stripped("beads-tasks:beads-core")
+    - exact namespaced match: "tasks:tasks" == "tasks:tasks"
+    - stripped name match: "tasks" == stripped("tasks:tasks")
     """
     if not skill_arg or not attribution_skill:
         return False

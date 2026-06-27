@@ -203,7 +203,7 @@ test_check_fail_extra_content() {
   rm -rf "$dir"
 }
 
-# 14. check FAILS on injected BEADS-style block
+# 14. check FAILS on injected tool-generated block
 test_check_fail_injected_block() {
   local dir; dir=$(tmpdir)
   {

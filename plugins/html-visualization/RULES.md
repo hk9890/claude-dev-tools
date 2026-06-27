@@ -15,7 +15,7 @@ per command skill:
 
 The core `html-visualize` skill holds all the logic (mode references, the shared
 serve procedure, templates). Each command skill is a thin wrapper that fixes the
-mode and loads the core — mirroring the `beads-core` + `beads-plan`/`beads-work`
+mode and loads the core — mirroring the `tasks` core + `tasks-create`/`tasks-work`
 pattern. All modes share `bin/server.js` (the one-shot Node server) and the CSRF,
 temp-dir, and lifecycle rules below. Mode-specific browser assets live under
 `assets/<mode>/`.

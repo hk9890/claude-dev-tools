@@ -6,9 +6,9 @@
 
   "episodes": [
     {
-      "_description": "Episode 1: beads-tasks:beads-core — explicit trigger via Skill tool; includes a Read result whose content embeds the permission-denial magic phrase but is_error=false — must NOT count as a permission_denial",
-      "attribution_skill": "beads-tasks:beads-core",
-      "attribution_plugin": "beads-tasks",
+      "_description": "Episode 1: tasks:tasks — explicit trigger via Skill tool; includes a Read result whose content embeds the permission-denial magic phrase but is_error=false — must NOT count as a permission_denial",
+      "attribution_skill": "tasks:tasks",
+      "attribution_plugin": "tasks",
       "trigger_type": "explicit",
       "turn_count": 5,
       "tool_errors": 1,

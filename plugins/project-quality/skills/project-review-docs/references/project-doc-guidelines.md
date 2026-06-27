@@ -100,7 +100,7 @@ Side-by-side examples for the most common violations. Use these as templates whe
 
 > ## Commits
 > Use the `commit-commands:commit` skill for the standard flow.
-> **Local delta:** include `Refs: bd-NNN` line when a bd issue exists for the change.
+> **Local delta:** include `Refs: <task-id>` line when a taskmgr task exists for the change.
 
 ### Wall of code → file pointer + invariant (A5)
 

@@ -1,6 +1,6 @@
 ---
 name: project-explore
-description: "Research the project and explore it one action at a time, filing findings and questions as beads tasks under a dedicated exploration epic."
+description: "Explore an unfamiliar project step by step, filing findings and open questions as taskmgr tasks under an exploration epic."
 user-invocable: true
 disable-model-invocation: true
 ---
@@ -11,32 +11,33 @@ $ARGUMENTS
 
 ---
 
-## Phase 0 — Beads check and epic creation
+## Phase 0 — Task tracker check and epic creation
 
-### 0.1 Verify beads is initialised
+### 0.1 Verify taskmgr is initialised
 
-Check that beads is usable:
+Check that taskmgr is usable:
 
 ```bash
-ls .beads/ 2>/dev/null && bd list >/dev/null 2>&1
+ls .tasks/ 2>/dev/null && taskmgr list >/dev/null 2>&1
 ```
 
-If `.beads/` does not exist or `bd` is not usable, stop immediately and tell the user:
+If `.tasks/` does not exist or `taskmgr` is not usable, stop immediately and tell the user:
 
-> **beads is not initialised in this repository.** The `project-explore` skill requires beads to open and track the exploration session. Run `bd init` in the project root, then re-invoke this skill.
+> **taskmgr is not initialised in this repository.** The `project-explore` skill requires a `taskmgr` store to open and track the exploration session. If the `taskmgr` binary is missing, install it first; otherwise run `taskmgr init` in the project root, then re-invoke this skill.
 
-Do not proceed to Phase 1 until beads is confirmed usable.
+Do not proceed to Phase 1 until taskmgr is confirmed usable.
 
 ### 0.2 Create the exploration epic
 
-Create a beads epic for this session:
+Create a taskmgr epic for this session:
 
 ```bash
-bd create --type epic --title "Explore <project-name> — <YYYY-MM-DD>" \
-  --description "Assisted exploratory session. Research inline, then one-action-at-a-time exploration loop."
+taskmgr create --type epic --title "Explore <project-name> — <YYYY-MM-DD>" \
+  --description "Assisted exploratory session. Research inline, then one-action-at-a-time exploration loop." \
+  --json
 ```
 
-Capture the epic ID (e.g. `proj-abc`). All tasks created during this session are children of that epic.
+Capture the epic ID from the `--json` output's `id` field (e.g. `explore-nnkr7e`). IDs are opaque — never invent one. All tasks created during this session are children of that epic.
 
 ### 0.3 Confirm scope with the user
 
@@ -58,12 +59,13 @@ Research is done inline here — there is no separate sub-agent.
 ### 1.1 Open a research task under the epic
 
 ```bash
-bd create --type task --title "Research: read docs and history" \
+taskmgr create --type task --title "Research: read docs and history" \
   --parent <epic-id> \
-  --description "Read project structure, docs, and history to produce the exploration understanding file."
+  --description "Read project structure, docs, and history to produce the exploration understanding file." \
+  --json
 ```
 
-Capture the research task ID.
+Capture the research task ID from the `--json` output's `id` field.
 
 ### 1.2 Read canonical project docs
 
@@ -80,8 +82,8 @@ Read these in order, stopping when a file is absent rather than guessing:
 
 Read these sources to understand trajectory and risk:
 
-- Open beads tasks: `bd list --status open`
-- Recently closed: `bd list --status closed --limit 20`
+- Open tasks: `taskmgr list -q 'status == "open"'`
+- Recently closed: `taskmgr list -q 'status == "closed"' --sort closed --reverse --limit 20`
 - GitHub issues (if the project uses GitHub): `gh issue list --state all --limit 30` and `gh issue list --state closed --limit 20`
 - `CHANGELOG.md` or `HISTORY.md` if present
 - Recent commits: `git log --oneline -20`
@@ -91,7 +93,7 @@ Read these sources to understand trajectory and risk:
 Each past `project-explore` session leaves an epic titled `Explore <project> — <YYYY-MM-DD>`. Pull recent ones so this session does not re-tread covered ground or re-file known issues.
 
 ```bash
-bd list --type epic
+taskmgr list -q 'type == "epic"'
 ```
 
 From the results, keep only exploration epics whose **title date is within the last 14 days**. Ignore older epics — their findings may be stale and the project has likely moved on.
@@ -99,8 +101,8 @@ From the results, keep only exploration epics whose **title date is within the l
 For each recent exploration epic, read its wrap-up summary and its still-open children:
 
 ```bash
-bd comments <recent-epic-id>
-bd list --parent <recent-epic-id> --status open
+taskmgr show <recent-epic-id>
+taskmgr list -q 'parent == "<recent-epic-id>" && status == "open"'
 ```
 
 Record, for the understanding file's "Prior exploration" section:
@@ -124,7 +126,7 @@ The file is ephemeral — do not commit it or attach it to the epic.
 ### 1.6 Close the research task
 
 ```bash
-bd close <research-task-id> --reason "done: understanding file written to temp path; research complete"
+taskmgr close <research-task-id> --reason "done: understanding file written to temp path; research complete"
 ```
 
 ---
@@ -178,36 +180,42 @@ Load `references/break-it.md` before the first iteration. Use it as instinct-pro
    **Before filing, dedup**: list open epic children and do a title/text check:
 
    ```bash
-   bd list --parent <epic-id> --status open
+   taskmgr list -q 'parent == "<epic-id>" && status == "open"'
    ```
 
    Also check the open findings and questions from recent sessions recorded in the understanding file's "Prior exploration" section.
 
-   If an existing task — in this epic or a recent prior one — already covers the same issue, add a comment to that task instead of creating a duplicate.
+   If an existing task — in this epic or a recent prior one — already covers the same issue, add a comment to that task instead of creating a duplicate: `taskmgr comment add <task-id> "<note>"` (use `--file -` to pipe a multi-line note from a heredoc).
 
    **Filing a finding** (broken or rough behaviour):
 
    ```bash
-   bd create --type bug --label explore:finding \
+   taskmgr create --type bug --label explore:finding --json \
      --parent <epic-id> \
      --title "<short description>" \
-     --description "What I did: ...
+     --description-file - <<'HEREDOC'
+   What I did: ...
    Expected (source: ...): ...
    Actual: ...
    Severity: ...
-   Repro: ..."
+   Repro: ...
+   HEREDOC
    ```
 
    **Filing a question** (genuine ambiguity):
 
    ```bash
-   bd create --type task --label explore:question \
+   taskmgr create --type task --label explore:question --json \
      --parent <epic-id> \
      --title "<short question>" \
-     --description "Context: ...
+     --description-file - <<'HEREDOC'
+   Context: ...
    What I observed: ...
-   Why this is unclear: ..."
+   Why this is unclear: ...
+   HEREDOC
    ```
+
+   Capture the filed task's ID from the `--json` output's `id` field — report it in step 5 and list it in the Phase 3 wrap-up.
 
 **5. Check in** — report briefly:
    - What you did
@@ -229,7 +237,7 @@ Load `references/break-it.md` before the first iteration. Use it as instinct-pro
 When the user says "stop" or when the session ends naturally, post a summary comment on the epic.
 
 ```bash
-cat << 'HEREDOC' | bd comment <epic-id> --stdin
+cat << 'HEREDOC' | taskmgr comment add <epic-id> --file -
 ...
 HEREDOC
 ```
@@ -242,4 +250,4 @@ The summary must include:
 
 Do not write "all good" or "no issues found". If nothing was filed, write "No findings or questions filed during this session — coverage was limited to: <list>."
 
-The epic and its child tasks are the deliverable. They remain open for normal beads triage.
+The epic and its child tasks are the deliverable. They remain open for normal triage.
