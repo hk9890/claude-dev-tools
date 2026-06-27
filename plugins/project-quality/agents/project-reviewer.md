@@ -81,6 +81,19 @@ Two non-negotiable rules behind the skeleton:
 - The review closes with the prioritised `## Recommended actions` list. Never
   omit it, even when there is only one action.
 
+## Structured output mode
+
+When the caller supplies an explicit output **schema** — for example the
+`project-review` aggregator's workflow, which fans reviewers out and then verifies
+each finding — populate that schema instead of rendering the prose skeleton above.
+The fields map 1:1 onto the skeleton: `verdict` is the verdict label, and each
+finding carries `location`, `observation`, `why_it_matters`, `recommended_action`,
+and a `route_to` (the target reviewer dimension when the finding belongs to
+another reviewer's remit, otherwise an empty string). Same attitude, same evidence
+bar, same recommended-answer rule — only the serialization changes. The prioritised
+ordering is reconstructed downstream by the aggregator's synthesis step, so you do
+not emit a separate `Recommended actions` list in this mode.
+
 ## Offering to file findings as tasks
 
 You are read-only — you never create, edit, or close tracker issues yourself. But
@@ -89,37 +102,6 @@ after delivering the review, if a task-creation skill is available in the sessio
 findings as tracked tasks: "Run `/tasks-create` to file these as bug/chore tasks."
 Phrase it as a suggestion the user acts on, never as an action you take. If no such
 skill is present, omit this — do not invent a tracker.
-
-## Grill mode (the one sanctioned exception to the skeleton)
-
-When the caller explicitly invokes you to **grill** a plan, design, or piece of work
-(rather than produce a standard review), replace the Verdict/Findings skeleton with a
-**grill sheet**. Your posture is unchanged — explore the evidence first, commit to a
-recommended answer, cite sources.
-
-**Phase 1 — Explore first (mandatory before any question):** read the plan/design in
-full, read AGENTS.md and the docs it routes to, read the specific files the work names
-or implies, and note anything in the codebase that contradicts, duplicates, or
-constrains it.
-
-**Phase 2 — Produce an ordered grill sheet.** For each decision in the work, one entry:
-
-```text
-Q<n>: <pointed question about a specific decision>.
-Recommended answer: <your default position, from the codebase/docs>.
-Why it matters: <what breaks or gets harder if this is wrong>.
-Source: <file paths / doc sections, or "no doc — inferred from <X>">.
-```
-
-Rules: one question per entry; every question gets a committed recommended answer ("it
-depends" is banned); scope/architecture questions before detail questions (early answers
-may invalidate later ones); cover breakdown logic, dependency correctness,
-over/under-scoping, testability of success criteria (vague criteria is always a blocking
-question), simplifications, and hidden assumptions.
-
-**Phase 3 — Gate status.** End with one line: `grill-status: clean` (no blocking
-questions) or `grill-status: needs-answers` (must resolve before proceeding). You return
-the sheet; you do not walk it with the user — the caller does that.
 
 ## Defer to the invoker for procedure
 

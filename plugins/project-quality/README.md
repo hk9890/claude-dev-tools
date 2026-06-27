@@ -10,11 +10,13 @@ run real workflows defined by the project itself, and a human-triggered
 The three families map to three kinds of work:
 
 1. **Review** — skeptical, read-only audits across five dimensions of a project
-   (complexity, structure, tests, consistency, docs), plus `project-review-grill`,
-   which challenges a plan or design interactively. Every review challenges the
-   artifact from an adversarial stance, cites evidence, and reports prioritised
-   findings with recommended fixes. Reviews **never** edit — they suggest, and may
-   suggest filing findings as tasks via `tasks:tasks-create` when that skill is present.
+   (complexity, structure, tests, consistency, docs). The five dimensions run
+   individually, or all at once via `project-review`, which orchestrates them,
+   adversarially verifies every finding, and returns one prioritised action list.
+   Every review challenges the artifact from an adversarial stance, cites evidence,
+   and reports prioritised findings with recommended fixes. Reviews **never** edit —
+   they suggest, and may suggest filing findings as tasks via `tasks:tasks-create`
+   when that skill is present.
 2. **Exec** — thin, user-invoked entry points (`project-exec-*`) that run a real
    operation (run the tests, cut a release, analyze monitoring). They carry no
    procedure of their own: the real content lives in the project's own flow for
@@ -27,14 +29,18 @@ The three families map to three kinds of work:
 
 ### Reviews (read-only, adversarial)
 
+`project-review` is the umbrella: it runs the five dimensional reviewers, verifies
+each finding, and merges them into one prioritised list. The dimensional skills
+below also run standalone — cheaper, single-lens, and model-discoverable.
+
 | Skill | Description |
 |---|---|
+| `project-review` | **Orchestrator** — runs the five dimensions (or a chosen subset), adversarially verifies each finding, resolves cross-dimension hand-offs, and returns one prioritised action list. Tiers `--low` / `--medium` / `--high` (default). User-invoked only. |
 | `project-review-complexity` | Skeptical complexity review of requirements, architecture, or code — challenges every abstraction and dependency |
 | `project-review-structure` | Adversarial review of physical project layout — misplaced files, god-files, dead code, tree-vs-docs drift; routes design verdicts to `project-review-complexity` |
 | `project-review-tests` | Adversarial test quality and coverage review — slow suites, unjustified long tests, coverage gaps, weak or unfalsifiable assertions |
 | `project-review-consistency` | Adversarial pattern and naming divergence review — competing implementations, uneven naming, inconsistent API shapes |
 | `project-review-docs` | Read-only documentation audit — accuracy vs. code, AGENTS.md routing, staleness, missing canonical docs, hollow or duplicated docs |
-| `project-review-grill` | Adversarial grilling of a plan, design, or approach — generates pointed questions with recommended answers and sources, then walks them with you one at a time (interactive, not a written report) |
 
 ### Exec (thin, human-triggered)
 
@@ -76,6 +82,15 @@ Are the naming patterns consistent across the codebase?
 Review the docs before I change anything — do they still match the code?
 ```
 
+Run the full, verified review across every dimension (user-invoked; all arguments
+optional — pick a dimension subset and/or a scope to cut cost, choose a tier):
+
+```
+/project-review
+/project-review complexity,tests src/
+/project-review docs --low
+```
+
 Invoke an exec skill by name (they are user-triggered; the argument is optional):
 
 ```
@@ -94,8 +109,7 @@ Ask for a digest of how the project handles a topic:
 ## Review output structure
 
 The five **dimensional** review skills produce the same output skeleton, defined in
-the shared `project-reviewer` agent (`project-review-grill` is the exception — it
-returns an interactive grill sheet, not this skeleton):
+the shared `project-reviewer` agent:
 
 1. **Verdict** — one label from the skill's domain-specific label set (see below)
 2. *(Optional)* skill-specific opening sections — e.g. `Principle pressure points` in complexity
@@ -119,6 +133,11 @@ sequence of pointed questions, each with a recommended answer, and explore the
 codebase before asking. See [RULES.md](RULES.md) for the division of labour
 across the families.
 
+`project-review` consolidates these into one report: it keeps each dimension's own
+verdict label, then merges all surviving findings — each tagged with its verify
+result (CONFIRMED / PLAUSIBLE) — into a single prioritised `Recommended actions`
+list. See [RULES.md](RULES.md) §12 for how the orchestration and the verify pass work.
+
 ## Plugin structure
 
 ```
@@ -129,6 +148,8 @@ project-quality/
 ├── agents/
 │   └── project-reviewer.md   (shared adversarial reviewer persona)
 └── skills/
+    ├── project-review/
+    │   └── SKILL.md        (orchestrator — runs the dimensions, verifies, synthesises; not forked; see RULES.md §12)
     ├── project-review-complexity/
     │   ├── SKILL.md
     │   └── references/     (principles, requirements-review, architecture-review, code-pr-review)
@@ -143,8 +164,6 @@ project-quality/
     │   ├── references/     (taxonomy, structure, authoring + review guidelines, AGENTS template)
     │   ├── scripts/        (read-only validators: claude-md.sh, inventory.py, validate-routes.py, verify.sh)
     │   └── examples/       (canonical AGENTS.md / docs exemplars)
-    ├── project-review-grill/
-    │   └── SKILL.md        (interactive adversarial grilling — not forked; see RULES.md §6)
     ├── project-exec-testing/
     │   └── SKILL.md
     ├── project-exec-releasing/

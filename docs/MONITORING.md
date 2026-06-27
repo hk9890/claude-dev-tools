@@ -126,6 +126,8 @@ SKILL_RENAME_ALIASES = {
     "project-review:project-review-test": "project-quality:project-review-tests",
     # project-explore skill renamed (explore-project -> project-explore)
     "project-explore:explore-project": "project-explore:project-explore",
+    # grill extracted from project-quality into its own standalone plugin
+    "project-quality:project-review-grill": "grill:grill",
 }
 ```
 

@@ -33,6 +33,8 @@ Skill directory name and the `name:` field in frontmatter must match, and both s
 
 Within a plugin, sibling skills share the same domain prefix so they sort and read as a family.
 
+A family may also expose an **umbrella** skill named with the family's shared stem — e.g. `project-review` over the `project-review-<aspect>` skills. This is still the `<plugin-domain>-<topic>` shape (here `project`-`review`), so it needs no exception.
+
 A "main" skill may take the plugin's own name (e.g. `project-explore:project-explore`, `github-releases:github-releases`); this is the only accepted exception.
 
 ### Frontmatter — pick a schema by invocation behaviour
@@ -50,7 +52,7 @@ disable-model-invocation: true
 ---
 ```
 
-Use for skills that perform a consequential, explicit action and should only run when the user types the slash command. Examples: `tasks-work`, `project-explore`, `html-visualize-demo`, the `project-quality` exec skills (`project-exec-testing`, `project-exec-releasing`, `project-exec-monitoring`) and `project-explain`.
+Use for skills that perform a consequential, explicit action and should only run when the user types the slash command. Examples: `tasks-work`, `project-explore`, `html-visualize-demo`, the `project-quality` exec skills (`project-exec-testing`, `project-exec-releasing`, `project-exec-monitoring`), the orchestrated `project-quality:project-review` (a full run spawns many agents), and `project-explain`.
 
 **Schema B — model-discoverable:**
 
