@@ -14,6 +14,10 @@ Load [docs/OVERVIEW.md](docs/OVERVIEW.md) to understand the architecture and how
 
 Load [docs/CHANGE-WORKFLOW.md](docs/CHANGE-WORKFLOW.md) before making commits or opening a PR.
 
+### Reviewing changes
+
+Load [docs/REVIEWING.md](docs/REVIEWING.md) before reviewing a PR or change — follow the project-specific review rules there.
+
 ### Developing or contributing a new plugin
 
 Load [docs/CODING.md](docs/CODING.md) for step-by-step plugin creation, rules files, and scaffolding guidance. 

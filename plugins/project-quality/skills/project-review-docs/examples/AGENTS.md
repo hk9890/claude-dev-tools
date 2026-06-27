@@ -24,6 +24,10 @@ Load [docs/TESTING.md](docs/TESTING.md) to understand how to run tests and verif
 
 Load [docs/CHANGE-WORKFLOW.md](docs/CHANGE-WORKFLOW.md) before git operations or opening a PR.
 
+### Reviewing changes
+
+Load [docs/REVIEWING.md](docs/REVIEWING.md) before reviewing a PR or change — follow the project-specific review rules there.
+
 ### Release
 
 Load [docs/RELEASING.md](docs/RELEASING.md) to create a new release or understand what this project ships.

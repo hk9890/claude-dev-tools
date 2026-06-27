@@ -6,6 +6,7 @@
 - `AGENTS.md`: routing layer (routing table for all AI tools)
 - `CLAUDE.md`: Claude Code entrypoint — **must contain exactly `@AGENTS.md` and nothing else** (one line, optional trailing newline). Any other content is a finding; the recommended fix routes it into AGENTS.md (for routing) or a topic doc under `docs/`. Checkable via `scripts/claude-md.sh check`.
 - `docs/` topic files: durable repo-specific operating guidance
+- `docs/REVIEWING.md` (optional-canonical): project-specific review guidance — canonical when present, never reported missing when absent
 - `.claude.local.md` (optional, personal): per-user local context — gitignored; never written by canonical doc flows (create/update/improve/revise); surfaced by `scripts/inventory.py` so authors know it exists
 
 Create topic docs only when the repository has real local guidance for that topic.
@@ -19,6 +20,7 @@ docs/
   OVERVIEW.md
   CODING.md
   TESTING.md
+  REVIEWING.md       (optional — see below)
   RELEASING.md
   MONITORING.md
   CHANGE-WORKFLOW.md
@@ -27,6 +29,7 @@ docs/
 Notes:
 
 - If a reusable skill fully covers a topic and there is no local delta, do not create a hollow doc for that topic.
+- `REVIEWING.md` is **optional-canonical**: recognized as a canonical doc when a project opts in by creating it, but never reported missing when absent (most repos have no local review delta). `scripts/inventory.py` counts it only when present and never nags for it.
 
 ## File ownership boundaries
 
@@ -91,6 +94,24 @@ Notes:
 
 - Commit/push/branch/PR/review/merge expectations
 - Example: [../examples/docs/CHANGE-WORKFLOW.md](../examples/docs/CHANGE-WORKFLOW.md)
+
+### `docs/REVIEWING.md` (optional-canonical)
+
+- Project-specific review guidance that reviewers — human or AI, including the
+  `project-review-*` skills and the shared `project-reviewer` persona — must
+  honor when reviewing changes in this repo.
+- **Boundary vs the review skills**: the `project-review-*` skills supply the
+  generic, reusable review lenses (complexity, structure, consistency, tests,
+  docs); `REVIEWING.md` holds only the **local delta** those lenses cannot
+  know — repo-specific priorities, must-check rules, and out-of-scope /
+  non-blocking conventions. Do not restate a generic review checklist here
+  (A4); link the skills and state only what is local.
+- **Precedence**: where local policy conflicts with a skill's default lens, the
+  local `REVIEWING.md` rule wins.
+- **Optional-canonical**: create it only when the project has a real review
+  delta; it is never reported missing when absent (see the canonical topic set
+  above).
+- Example: [../examples/docs/REVIEWING.md](../examples/docs/REVIEWING.md)
 
 ## Boundary to project-structure
 

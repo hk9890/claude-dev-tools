@@ -28,6 +28,12 @@ CANONICAL_DOCS = [
     "CHANGE-WORKFLOW.md",
 ]
 
+# Optional-canonical docs/ files — recognized as canonical *when present* but
+# never reported missing when absent. Most repos have no local delta for these
+# topics, so tooling must not nag for a file the project will never add. A
+# project opts in simply by creating the file under docs/.
+OPTIONAL_CANONICAL_DOCS = ["REVIEWING.md"]
+
 # Personal/local files — optional, gitignored, never written by canonical doc
 # flows. Surfaced so authors know they exist but not counted as missing.
 PERSONAL_LOCAL = [".claude.local.md"]
@@ -161,6 +167,24 @@ def inventory(repo_root):
             "non_heading_lines": nhl,
         }
 
+    # ── optional-canonical docs/ docs (counted only when present) ────────────
+    # Recognized as canonical when a project opts in by creating the file, but
+    # never added to the map when absent — so an absent optional doc never
+    # inflates canonical_missing and never triggers a "missing canonical doc"
+    # warning in verify.sh.
+    for name in OPTIONAL_CANONICAL_DOCS:
+        path = os.path.join(repo_root, "docs", name)
+        if not os.path.isfile(path):
+            continue
+        lines, nhl = count_lines(path)
+        canonical[name] = {
+            "present": True,
+            "path": os.path.join("docs", name),
+            "lines": lines,
+            "non_heading_lines": nhl,
+            "optional": True,
+        }
+
     # ── personal/local files (optional) ────────────────────────────────────
 
     personal_local = {}
@@ -195,7 +219,7 @@ def inventory(repo_root):
                         os.path.join("docs", entry.name) + "/"
                     )
                 elif entry.is_file(follow_symlinks=False) and entry.name.endswith(".md"):
-                    if entry.name not in CANONICAL_DOCS:
+                    if entry.name not in CANONICAL_DOCS and entry.name not in OPTIONAL_CANONICAL_DOCS:
                         lines, nhl = count_lines(entry.path)
                         non_canonical_docs.append({
                             "path": os.path.join("docs", entry.name),
@@ -208,7 +232,7 @@ def inventory(repo_root):
 
     location_violations = []
 
-    for name in CANONICAL_DOCS:
+    for name in CANONICAL_DOCS + OPTIONAL_CANONICAL_DOCS:
         wrong_path = os.path.join(repo_root, name)
         if os.path.isfile(wrong_path):
             location_violations.append({
@@ -271,12 +295,13 @@ def inventory(repo_root):
 
 def _fmt_doc(name, entry):
     status = "present" if entry["present"] else "MISSING"
+    label = f"{name} (optional)" if entry.get("optional") else name
     if entry["present"]:
         return (
-            f"  {name}: {status}  "
+            f"  {label}: {status}  "
             f"lines={entry['lines']}  non_heading_lines={entry['non_heading_lines']}"
         )
-    return f"  {name}: {status}"
+    return f"  {label}: {status}"
 
 
 def format_text(data):

@@ -473,6 +473,77 @@ test_personal_local_text_format() {
   rm -rf "$dir"
 }
 
+# 22. Optional-canonical doc (REVIEWING.md) recognized when present in docs/
+test_optional_doc_present() {
+  local dir; dir=$(make_full_fixture)
+  printf '# Reviewing\nLocal review rule.\n' > "$dir/docs/REVIEWING.md"
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  # present and recognized as canonical
+  local present
+  present=$(json_val "$out" "d['canonical']['REVIEWING.md']['present']")
+  assert_eq "optional-present: REVIEWING.md present=True" "True" "$present"
+
+  # flagged as optional in the canonical entry
+  local optional
+  optional=$(json_val "$out" "d['canonical']['REVIEWING.md'].get('optional', False)")
+  assert_eq "optional-present: REVIEWING.md optional=True" "True" "$optional"
+
+  # counted toward canonical_present (3 root + 6 required + 1 optional = 10)
+  local cpresent
+  cpresent=$(json_val "$out" "d['summary']['canonical_present']")
+  assert_eq "optional-present: canonical_present=10" "10" "$cpresent"
+
+  # no missing canonical docs
+  local missing
+  missing=$(json_val "$out" "d['summary']['canonical_missing']")
+  assert_eq "optional-present: canonical_missing=0" "0" "$missing"
+
+  # NOT flagged as a non-canonical consolidation candidate (only EXTRA.md is)
+  local nc
+  nc=$(json_val "$out" "d['summary']['non_canonical_count']")
+  assert_eq "optional-present: REVIEWING.md not counted non-canonical (count=1)" "1" "$nc"
+
+  rm -rf "$dir"
+}
+
+# 23. Optional-canonical doc absent → omitted from the map, never reported missing
+test_optional_doc_absent() {
+  local dir; dir=$(make_full_fixture)   # 6 required docs, no REVIEWING.md
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  # absent optional doc is not present in the canonical map at all
+  local omitted
+  omitted=$(json_val "$out" "'REVIEWING.md' not in d['canonical']")
+  assert_eq "optional-absent: REVIEWING.md omitted when absent" "True" "$omitted"
+
+  # absence does not inflate canonical_missing
+  local missing
+  missing=$(json_val "$out" "d['summary']['canonical_missing']")
+  assert_eq "optional-absent: canonical_missing=0" "0" "$missing"
+
+  rm -rf "$dir"
+}
+
+# 24. Optional-canonical doc at repo root → location violation (expected in docs/)
+test_optional_doc_location_violation() {
+  local dir; dir=$(tmpdir)
+  mkdir -p "$dir/docs"
+  printf '# Reviewing\nMisplaced.\n' > "$dir/REVIEWING.md"   # at root, belongs in docs/
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  local violations
+  violations=$(json_val "$out" "d['summary']['violation_count']")
+  assert_eq "optional-violation: violation_count=1" "1" "$violations"
+
+  assert_contains "optional-violation: REVIEWING.md in violations" "REVIEWING.md" "$out"
+
+  rm -rf "$dir"
+}
+
 # ── run all tests ─────────────────────────────────────────────────────────────
 
 test_no_args
@@ -496,6 +567,9 @@ test_injected_block_unmatched
 test_injected_block_text_format
 test_injected_block_scope
 test_personal_local_text_format
+test_optional_doc_present
+test_optional_doc_absent
+test_optional_doc_location_violation
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"

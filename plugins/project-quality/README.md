@@ -64,7 +64,7 @@ and does not prescribe which file to add.
 
 `project-explain` is `user-invocable` + `disable-model-invocation` and read-only.
 Unlike exec it is a **single** skill, not a per-topic family: explaining is one
-procedure parameterised by topic (`overview`, `change-workflow`, `releasing`, …),
+procedure parameterised by topic (`overview`, `change-workflow`, `releasing`, `reviewing`, …),
 so one skill with an argument covers them all. If the project has no docs for the
 topic it says so rather than inventing an answer; if the topic is ambiguous it
 asks. This is the natural home for topics that are knowledge rather than actions —
@@ -104,6 +104,7 @@ Ask for a digest of how the project handles a topic:
 ```
 /project-explain change-workflow
 /project-explain releasing
+/project-explain reviewing
 ```
 
 ## Review output structure

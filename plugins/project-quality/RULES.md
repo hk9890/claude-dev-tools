@@ -200,3 +200,31 @@ reports by hand. Design decisions behind it:
 - **Finders emit structured output.** Finders and verifiers run the `project-reviewer`
   agent in its structured-output mode (a schema replaces the prose skeleton); the
   field meanings are unchanged (see the agent's "Structured output mode").
+
+## 13. REVIEWING.md is an optional-canonical doc that reviewers consume
+
+`docs/REVIEWING.md` holds a project's **local review delta** — the repo-specific review
+policy, priorities, and out-of-scope rules the generic review lenses cannot know.
+Decisions behind it:
+
+- **Optional-canonical, not full canonical.** `scripts/inventory.py` carries it in a
+  separate `OPTIONAL_CANONICAL_DOCS` tier: recognized as canonical when present, but
+  never reported missing when absent. Most repos have no local review delta, so a
+  full-canonical "REVIEWING.md missing" warning on every repo would be pure noise. It is
+  the one optional-canonical doc; the tier exists so the taxonomy can *name* a doc
+  without *demanding* it.
+- **Reviewers consume it.** The shared `project-reviewer` persona reads
+  `docs/REVIEWING.md` (when present) during its explore-before-judge pass and treats its
+  rules as authoritative local constraints — so all five dimensional reviewers and the
+  `project-review` umbrella's finders honor it from one edit, not five.
+- **Local policy wins.** Where `REVIEWING.md` conflicts with a skill's generic lens, the
+  local rule takes precedence. The doc supplies the delta; the skills supply the reusable
+  lens (see the ownership block in `project-review-docs/references/project-setup.md` and
+  authoring rule A8).
+- **No `project-exec-reviewing`.** Reviewing is the reviews family's job, and "run the
+  project's review" already exists as the `project-review` umbrella (rule 12). The exec
+  family is reserved for operational workflows that *act on* the project (run tests, cut a
+  release, pull monitoring); reviews are read-only by rule 1. An exec-reviewing skill would
+  duplicate the umbrella and miscategorise a read-only operation — the same reasoning that
+  rules out `project-exec-coding` (rule 11). `project-explain reviewing` covers the
+  knowledge side; the umbrella covers the doing side.
