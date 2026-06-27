@@ -114,7 +114,7 @@ const VERIFY_SCHEMA = {
 
 const locate = (dim) =>
   `SKILL="${PLUGIN_DIR}/skills/project-review-${dim}/SKILL.md"; ` +
-  `[ -f "$SKILL" ] || SKILL="$(find "$HOME/.claude/plugins" "$PWD" -path "*project-quality/skills/project-review-${dim}/SKILL.md" 2>/dev/null | head -1)"`
+  `[ -f "$SKILL" ] || SKILL="$(find "$HOME/.claude/plugins" "$PWD" -path "*project-quality*/skills/project-review-${dim}/SKILL.md" 2>/dev/null | sort -V | tail -1)"`
 
 function finderPrompt(dim) {
   return [
