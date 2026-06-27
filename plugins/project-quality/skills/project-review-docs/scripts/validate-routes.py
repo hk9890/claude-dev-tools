@@ -4,7 +4,8 @@
 Usage:
     validate-routes.py <repo-root>
     validate-routes.py <repo-root> --include-docs
-    validate-routes.py <repo-root> [--include-docs] --json
+    validate-routes.py <repo-root> --include-plugins
+    validate-routes.py <repo-root> [--include-docs] [--include-plugins] [--json]
 
 Exits 0 if all references resolve, non-zero if any are unresolved.
 
@@ -246,8 +247,12 @@ def extract_references(filepath, content):
 # Resolution
 # ---------------------------------------------------------------------------
 
-def resolve_reference(ref, repo_root):
+def resolve_reference(ref, repo_root, allow_dir_links=False):
     """Attempt to resolve a reference dict.
+
+    When allow_dir_links is True, a link to an existing directory (no anchor) resolves
+    OK (a valid GitHub navigation target). It defaults to False so the steering-doc/docs
+    scan stays strict; validate() enables it only for refs sourced from plugins/.
 
     Returns (resolved: bool, reason: str).
     """
@@ -260,6 +265,13 @@ def resolve_reference(ref, repo_root):
     target_path = os.path.normpath(os.path.join(source_dir, raw_path))
 
     if not os.path.isfile(target_path):
+        # A link to an existing directory (no anchor) is a valid navigation target on
+        # GitHub (it renders the directory listing). Allowed ONLY when the caller opts in
+        # — the plugins/ scan does (see validate()); the steering-doc/docs scan stays
+        # strict so a file link typo'd as a bare directory name is still flagged. The rule
+        # lives here, in the single resolver, rather than being re-implemented per caller.
+        if allow_dir_links and anchor is None and os.path.isdir(target_path):
+            return True, "ok (directory target)"
         return False, f"file not found: {target_path}"
 
     if anchor is not None:
@@ -294,7 +306,7 @@ def load_file(path):
 # Main validation logic
 # ---------------------------------------------------------------------------
 
-def validate(repo_root, include_docs=False):
+def validate(repo_root, include_docs=False, include_plugins=False):
     """Run validation and return (unresolved_list, checked_count)."""
     files_to_check = []
 
@@ -311,6 +323,15 @@ def validate(repo_root, include_docs=False):
                 if entry.endswith(".md"):
                     files_to_check.append(os.path.join(docs_dir, entry))
 
+    if include_plugins:
+        plugins_dir = os.path.join(repo_root, "plugins")
+        if os.path.isdir(plugins_dir):
+            for dirpath, dirnames, filenames in os.walk(plugins_dir):
+                dirnames.sort()
+                for fn in sorted(filenames):
+                    if fn.endswith(".md"):
+                        files_to_check.append(os.path.join(dirpath, fn))
+
     all_refs = []
     for filepath in files_to_check:
         content = load_file(filepath)
@@ -319,9 +340,14 @@ def validate(repo_root, include_docs=False):
         refs = extract_references(filepath, content)
         all_refs.extend(refs)
 
+    # Directory links resolve OK only inside plugins/** (the original verify.sh behavior);
+    # steering docs (CLAUDE.md/AGENTS.md) and docs/ stay strict.
+    plugins_root = os.path.join(os.path.abspath(repo_root), "plugins") + os.sep
+
     unresolved = []
     for ref in all_refs:
-        ok, reason = resolve_reference(ref, repo_root)
+        allow_dir = os.path.abspath(ref["source_file"]).startswith(plugins_root)
+        ok, reason = resolve_reference(ref, repo_root, allow_dir_links=allow_dir)
         if not ok:
             unresolved.append({
                 "source_file": ref["source_file"],
@@ -364,12 +390,15 @@ def format_json(unresolved, checked):
 def main():
     args = sys.argv[1:]
     include_docs = False
+    include_plugins = False
     output_json = False
     positional = []
 
     for arg in args:
         if arg == "--include-docs":
             include_docs = True
+        elif arg == "--include-plugins":
+            include_plugins = True
         elif arg == "--json":
             output_json = True
         elif arg.startswith("--"):
@@ -380,7 +409,8 @@ def main():
 
     if not positional:
         print(
-            f"Usage: {os.path.basename(sys.argv[0])} <repo-root> [--include-docs] [--json]",
+            f"Usage: {os.path.basename(sys.argv[0])} <repo-root> "
+            f"[--include-docs] [--include-plugins] [--json]",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -391,7 +421,9 @@ def main():
         print(f"Error: {repo_root!r} is not a directory", file=sys.stderr)
         sys.exit(1)
 
-    unresolved, checked = validate(repo_root, include_docs=include_docs)
+    unresolved, checked = validate(
+        repo_root, include_docs=include_docs, include_plugins=include_plugins
+    )
 
     if output_json:
         print(format_json(unresolved, checked))
@@ -420,6 +452,18 @@ def main():
                         scanned.append("docs/ (no .md files)")
                 else:
                     scanned.append("docs/ (missing)")
+            if include_plugins:
+                plugins_dir = os.path.join(repo_root, "plugins")
+                if os.path.isdir(plugins_dir):
+                    md_count = sum(
+                        1
+                        for _dp, _dn, fns in os.walk(plugins_dir)
+                        for f in fns
+                        if f.endswith(".md")
+                    )
+                    scanned.append(f"plugins/ ({md_count} .md file(s), no refs)")
+                else:
+                    scanned.append("plugins/ (missing)")
             print(f"No references found — nothing to check. Scanned: {', '.join(scanned)}")
         else:
             print(f"All {checked} reference(s) resolved OK.")
