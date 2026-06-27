@@ -42,6 +42,10 @@ Add a `docs/RELEASING.md` to your project with the actual commands for your buil
 
 To create or update this file, ask Claude to set up the release workflow (e.g. "set up our release workflow").
 
+## Releasing via CI
+
+This plugin drives a **local, human-driven** release flow. If you want to automate the mechanical *publish* half (build, sign, upload, create the release) in CI, see the `ci-pipeline-guide.md` reference — it covers the decide-vs-publish split, trigger models, security hardening, and how to find your own stack's tooling. It is **generic guidance, not a stack-specific pipeline**: the exact CI config is tech-, provider-, and registry-dependent and intentionally out of scope.
+
 ## Plugin structure
 
 ```
@@ -53,5 +57,6 @@ github-releases/
         ├── SKILL.md
         └── references/     (release-workflow, quality-gates, version-management,
                               release-notes-guide, documentation-checklist,
-                              troubleshooting, setup-modify-release-workflow)
+                              troubleshooting, ci-pipeline-guide,
+                              setup-modify-release-workflow)
 ```
