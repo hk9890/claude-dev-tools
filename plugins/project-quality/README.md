@@ -1,12 +1,13 @@
 # project-quality
 
-A project-quality toolkit with two families of skills: **read-only adversarial
-reviews** that improve project quality, and **thin, human-triggered exec skills**
-that run real workflows defined by the project itself.
+A project-quality toolkit with three families of skills: **read-only adversarial
+reviews** that improve project quality, **thin, human-triggered exec skills** that
+run real workflows defined by the project itself, and a human-triggered
+**explainer** that digests how the project handles a topic from its own docs.
 
 ## Overview
 
-The two families map to two kinds of work:
+The three families map to three kinds of work:
 
 1. **Review** — skeptical, read-only audits across five dimensions of a project
    (complexity, structure, tests, consistency, docs), plus `project-review-grill`,
@@ -15,9 +16,12 @@ The two families map to two kinds of work:
    findings with recommended fixes. Reviews **never** edit — they suggest, and may
    suggest filing findings as tasks via `tasks:tasks-create` when that skill is present.
 2. **Exec** — thin, user-invoked entry points (`project-exec-*`) that run a real
-   operation (run the tests, cut a release, analyze monitoring, implement to the
-   project's conventions). They carry no procedure of their own: the real content
-   lives in the project's own flow for that topic, and the skill defers to it.
+   operation (run the tests, cut a release, analyze monitoring). They carry no
+   procedure of their own: the real content lives in the project's own flow for
+   that topic, and the skill defers to it.
+3. **Explain** — a single user-invoked skill (`project-explain`) that reads the
+   project's own docs for a topic and digests, in ~200 words, how this project
+   handles it. Read-only; it never changes anything.
 
 ## Skills
 
@@ -39,15 +43,26 @@ The two families map to two kinds of work:
 | `project-exec-testing` | `[what-to-test]` | Run the project's tests the way the project's own testing flow defines them |
 | `project-exec-releasing` | `[version-or-scope]` | Cut a release the way the project's own release flow defines it |
 | `project-exec-monitoring` | `[what-to-analyze]` | Analyze monitoring data the way the project's own monitoring flow defines it |
-| `project-exec-coding` | `[what-to-implement]` | Implement a change strictly following the project's own coding conventions |
 
 The exec skills are `user-invocable` and `disable-model-invocation` — a human
 triggers them; the model never auto-runs them. Each takes an optional argument
 that scopes the work. If the project defines no flow for the topic, the skill
 does nothing and reports that the topic is **not configured** — it does not guess
-and does not prescribe which file to add. The one exception is
-`project-exec-coding`: with no documented conventions there is simply nothing
-project-specific to apply, so it implements normally and notes the absence.
+and does not prescribe which file to add.
+
+### Explain (one skill, human-triggered)
+
+| Skill | Argument | Description |
+|---|---|---|
+| `project-explain` | `[topic]` | Read the project's own docs for a topic and explain, in ~200 words, how *this* project handles it |
+
+`project-explain` is `user-invocable` + `disable-model-invocation` and read-only.
+Unlike exec it is a **single** skill, not a per-topic family: explaining is one
+procedure parameterised by topic (`overview`, `change-workflow`, `releasing`, …),
+so one skill with an argument covers them all. If the project has no docs for the
+topic it says so rather than inventing an answer; if the topic is ambiguous it
+asks. This is the natural home for topics that are knowledge rather than actions —
+`overview` and `change-workflow` among them, which is why neither has an exec skill.
 
 ## Usage
 
@@ -67,7 +82,13 @@ Invoke an exec skill by name (they are user-triggered; the argument is optional)
 /project-exec-testing
 /project-exec-releasing
 /project-exec-monitoring
-/project-exec-coding add a --dry-run flag to the importer
+```
+
+Ask for a digest of how the project handles a topic:
+
+```
+/project-explain change-workflow
+/project-explain releasing
 ```
 
 ## Review output structure
@@ -96,7 +117,7 @@ The `structure`, `tests`, `consistency`, and `docs` skills reach the above outpu
 via interrogation-style procedures: they grill the project through a numbered
 sequence of pointed questions, each with a recommended answer, and explore the
 codebase before asking. See [RULES.md](RULES.md) for the division of labour
-across the two families.
+across the families.
 
 ## Plugin structure
 
@@ -130,6 +151,6 @@ project-quality/
     │   └── SKILL.md
     ├── project-exec-monitoring/
     │   └── SKILL.md
-    └── project-exec-coding/
+    └── project-explain/
         └── SKILL.md
 ```

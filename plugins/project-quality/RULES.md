@@ -2,23 +2,28 @@
 
 Non-derivable design decisions and constraints for this plugin. Read before making changes.
 
-## 1. Two families: reviews and exec skills
+## 1. Three families: reviews, exec, and explain
 
-The plugin is organised around exactly two kinds of work, distinguished by what
-they do to the project:
+The plugin is organised around three kinds of work, distinguished by what they do
+to the project:
 
 - **Reviews** (`project-review-*`) — read-only audits that improve quality. They
   challenge the artifact, cite evidence, and report findings with recommended
   fixes. They **never** mutate the project.
 - **Exec skills** (`project-exec-testing`, `project-exec-releasing`,
-  `project-exec-monitoring`, `project-exec-coding`) — real actions that run a
-  project workflow. They carry no procedure of their own; the procedure lives in
-  the project's own flow for that topic.
+  `project-exec-monitoring`) — real actions that run a project workflow. They
+  carry no procedure of their own; the procedure lives in the project's own flow
+  for that topic.
+- **Explain** (`project-explain`) — a single read-only skill that digests how the
+  project handles a topic from the project's own docs. It judges nothing and
+  changes nothing; it just explains.
 
 This split is the organising principle. A skill belongs to exactly one family,
-and its name says which (`project-review-<aspect>` vs `project-exec-<topic>`,
-where `<topic>` names the project flow the skill defers to — testing, releasing,
-monitoring, coding).
+and its name says which (`project-review-<aspect>`, `project-exec-<topic>` where
+`<topic>` names the project flow the skill defers to — testing, releasing,
+monitoring — or `project-explain`). Reviews and exec are families with one skill
+per distinct procedure; explain is a single skill because explaining is one
+procedure parameterised by topic (see rule 11).
 
 ## 2. This plugin is a consolidation of three former plugins
 
@@ -27,7 +32,7 @@ monitoring, coding).
 sits alongside the same "how things should be" knowledge that reviews own (e.g. the canonical
 docs taxonomy under `project-review-docs/references/`). Splitting them across
 plugins would force fragile cross-plugin references; one plugin makes that
-knowledge a first-class internal resource for both families.
+knowledge a first-class internal resource for both the review and exec families.
 
 ## 3. Docs are reviewed, never operated on
 
@@ -52,12 +57,9 @@ a second place to drift.
 
 If the project defines no flow for the topic, the skill does **nothing** and
 reports that the topic is **not configured** for this project. It does not guess,
-and it does not tell the user which file to add. The lone exception is
-`project-exec-coding`: with no documented coding conventions there is simply
-nothing project-specific to apply, so it implements normally and notes the absence
-rather than refusing.
+and it does not tell the user which file to add.
 
-Each exec skill declares an `argument-hint` (`[what-to-test]`, `[what-to-implement]`,
+Each exec skill declares an `argument-hint` (`[what-to-test]`, `[version-or-scope]`,
 …) and threads `$ARGUMENTS` into the body to scope the work. When the project
 offers more than one path and the argument does not settle which, the skill asks
 the user rather than assuming. Any per-action safety (confirm before publishing a
@@ -68,9 +70,9 @@ outward-facing steps regardless.
 ## 5. Skills-only — no commands
 
 There are no slash-command wrappers. Review skills are model-invocable (via their
-`description`) and user-invocable by natural language; exec skills are
-user-invocable. A command wrapper adds a second invocation path to maintain for
-no benefit.
+`description`) and user-invocable by natural language; exec skills and
+`project-explain` are user-invocable (`disable-model-invocation`). A command
+wrapper adds a second invocation path to maintain for no benefit.
 
 ## 6. Reviewer skills run forked and share one persona agent
 
@@ -138,3 +140,28 @@ is conditional and dependency-free: project-quality declares no dependency on th
 `tasks` plugin and the offer is omitted when no such skill is present. This keeps the
 "reviews suggest, the human acts" boundary intact while letting findings flow into a
 tracker when one exists.
+
+## 11. Explain is a single parameterised skill, not a family
+
+`project-explain` is `user-invocable: true` + `disable-model-invocation: true` and
+**read-only** — it shares the reviews' no-mutation contract but, like the exec
+skills, is human-triggered only (a model that could auto-invoke it would fire on
+nearly every "how does X work?" question). It is deliberately **one** skill rather
+than a `project-explain-<topic>` family: the number of skills in a family tracks
+the number of genuinely distinct procedures, and explaining is a single procedure —
+read the project's own docs for the named topic and digest them in ~200 words —
+parameterised only by which topic. Like the exec bodies it names no doc paths (the
+project's own routing locates the source of truth) and invents nothing beyond what
+the docs state; it declines with "not documented" rather than guessing when the
+topic has no docs, and asks the user when the topic is ambiguous. This is the
+natural home for explaining topics that are knowledge rather than actions —
+`overview` and `change-workflow` among them — which is why neither has an exec skill.
+
+This also drew the family's boundary the other way: there is no `project-exec-coding`.
+"Implement a change following the project's conventions" is the agent's ordinary job
+(those conventions already live in the project's steering docs, which the agent reads
+anyway), so a thin exec pointer added an invocation path for behaviour you get for
+free — and it could not honour the family's "do nothing if not configured" invariant
+without a special-case exception. Knowledge *about* the project's coding conventions
+is served by `project-explain coding`; performing the work is not a project-quality
+operation.
