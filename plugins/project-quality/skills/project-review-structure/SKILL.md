@@ -1,7 +1,7 @@
 ---
 name: project-review-structure
-description: "Review how a project is physically organised — file and directory placement, module granularity, dead files, and whether the tree matches the docs."
-when_to_use: "Use when the user wants a project-structure or layout review. Triggers on 'review my project structure', 'is this layout sane?', 'are my files in the right place?', 'do I have god-files?', 'I have orphaned files', 'does the tree match the docs?'. Does not apply to over-engineering or architecture review (use project-review-complexity), test quality or coverage (use project-review-tests), or pattern and naming consistency (use project-review-consistency). Invoke with an optional argument scoping what to review (a path or directory); with no argument it reviews the whole project tree. The review runs in an isolated context and cannot see this conversation."
+description: "Review a project's physical layout — file and directory placement, module granularity, dead files, tree-vs-docs match."
+when_to_use: "Use when the user wants a project-structure or layout review. Triggers on 'is this layout sane?', 'are my files in the right place?', 'do I have god-files?', 'does the tree match the docs?'. Not for over-engineering, test-quality, or consistency reviews — each has its own skill."
 argument-hint: "[what-to-review]"
 context: fork
 agent: project-reviewer

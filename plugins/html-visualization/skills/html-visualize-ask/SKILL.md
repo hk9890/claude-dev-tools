@@ -1,6 +1,6 @@
 ---
 name: html-visualize-ask
-description: "Render a browser HTML question/decision form for the user to answer — ask mode of the html-visualize workflow."
+description: "Render a browser HTML question/decision form for the user to answer — ask mode of html-visualize."
 argument-hint: "[questions-or-decisions]"
 user-invocable: true
 disable-model-invocation: true

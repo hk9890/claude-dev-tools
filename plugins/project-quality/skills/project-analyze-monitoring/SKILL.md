@@ -1,6 +1,6 @@
 ---
 name: project-analyze-monitoring
-description: "Analyze the project's recent monitoring data — derives the procedure from the project's own docs (docs/MONITORING.md, MONITORING routing in AGENTS.md, and any installed monitoring skill), then reviews the data and reports findings."
+description: "Analyze the project's recent monitoring data using the project's own docs and skills, then report findings."
 user-invocable: true
 disable-model-invocation: true
 ---

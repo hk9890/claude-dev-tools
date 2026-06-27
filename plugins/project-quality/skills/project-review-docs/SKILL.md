@@ -1,7 +1,7 @@
 ---
 name: project-review-docs
-description: "Read-only audit of a project's documentation — accuracy against the code, AGENTS.md routing, staleness, missing canonical docs, and hollow or duplicated docs. Reports prioritised suggestions; never edits."
-when_to_use: "Use when the user wants a documentation review or audit. Triggers on 'review the docs before changing anything', 'are our docs stale?', 'does AGENTS still match the repo?', 'do our docs match the code?', 'is anything missing from the docs?', 'audit the documentation'. Does not apply to over-engineering or architecture review (use project-review-complexity), directory layout and file placement (use project-review-structure), pattern and naming consistency (use project-review-consistency), or test quality (use project-review-tests). Invoke with an optional argument scoping what to review (a path or doc area); with no argument it reviews the whole project's documentation. The review runs in an isolated context and cannot see this conversation."
+description: "Read-only audit of a project's docs for accuracy, staleness, gaps, and duplication — reports fixes, never edits."
+when_to_use: "Use when the user wants a documentation review or audit. Triggers on 'are our docs stale?', 'do our docs match the code?', 'does AGENTS still match the repo?', 'audit the documentation'. Not for complexity, structure, consistency, or test reviews — each has its own skill."
 argument-hint: "[what-to-review]"
 context: fork
 agent: project-reviewer

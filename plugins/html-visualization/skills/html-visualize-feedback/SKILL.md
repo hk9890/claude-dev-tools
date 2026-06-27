@@ -1,6 +1,6 @@
 ---
 name: html-visualize-feedback
-description: "Render content — a document, draft, plan, or set of brainstormed options — as a browser HTML page the user marks up with inline comments — feedback mode of the html-visualize workflow."
+description: "Render a document, draft, or plan as a browser HTML page the user marks up with inline comments — feedback mode of html-visualize."
 argument-hint: "[content-to-review]"
 user-invocable: true
 disable-model-invocation: true

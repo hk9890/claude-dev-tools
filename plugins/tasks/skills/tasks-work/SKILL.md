@@ -1,6 +1,6 @@
 ---
 name: tasks-work
-description: "Run ready taskmgr work end to end — confirm scope, then orchestrate implement → verify → record across the selected tasks via a workflow, verifying (never auto-closing) the parent epic."
+description: "Run ready taskmgr tasks end to end — implement → verify → record, then verify (never auto-close) the parent epic."
 user-invocable: true
 disable-model-invocation: true
 ---

@@ -1,6 +1,6 @@
 ---
 name: tasks-create
-description: "Turn findings from the current conversation into well-formed taskmgr issues — classify each as bug/chore/task and write a standard body. Use after a review, /code-review, /simplify, or any session that surfaced actionable findings."
+description: "Turn findings from the current conversation into well-formed taskmgr issues — classified by type with a standard body."
 user-invocable: true
 disable-model-invocation: true
 ---

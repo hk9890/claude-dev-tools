@@ -1,6 +1,6 @@
 ---
 name: project-run-tests
-description: "Run the project's test suite — derives the procedure from the project's own testing docs and any installed testing skills, then executes the tests and reports results."
+description: "Run the project's test suite using its own testing docs and skills, then report results."
 user-invocable: true
 disable-model-invocation: true
 ---
