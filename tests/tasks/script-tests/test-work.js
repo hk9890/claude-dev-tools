@@ -14,6 +14,8 @@
 //   - normalizeArgs returns empty taskIds for absent/garbage input
 //   - the empty-taskIds bailout returns the diagnostic error object without spawning agents
 //   - summarizeActions buckets per-task records by their recorded action
+//   - the reviewer-absent throw is caught and falls back to the general-purpose agent
+//   - a broken runtime (no agent hook, no test sentinel) fails loudly instead of no-op
 
 const fs = require('fs');
 const path = require('path');
@@ -22,15 +24,19 @@ const vm = require('vm');
 const WORK_JS = path.resolve(__dirname, '../../../plugins/tasks/workflows/work.js');
 
 // Load work.js in a sandbox. `globals` supplies workflow-runtime hooks; pass none to
-// load only the exported pure helpers. Returns { exports, ret } where ret is the value
-// the orchestration returned (undefined when it was skipped).
-async function loadWork(globals = {}) {
+// load only the exported pure helpers. By default a __WORK_TEST__ sentinel is injected so
+// work.js knows it is loaded for testing (and skips its orchestration without throwing);
+// pass { sentinel: false } to simulate a broken runtime (no hooks, no sentinel), which
+// work.js must reject loudly. Returns { exports, ret } where ret is the value the
+// orchestration returned (undefined when it was skipped).
+async function loadWork(globals = {}, { sentinel = true } = {}) {
   const src = fs.readFileSync(WORK_JS, 'utf8').replace(/^export const meta/m, 'const meta');
   const moduleObj = { exports: {} };
-  const names = Object.keys(globals);
+  const merged = sentinel ? { __WORK_TEST__: true, ...globals } : { ...globals };
+  const names = Object.keys(merged);
   const wrapper = `(async function(module, exports${names.length ? ', ' + names.join(', ') : ''}) {\n${src}\n})`;
   const fn = vm.runInThisContext(wrapper, { filename: WORK_JS });
-  const ret = await fn(moduleObj, moduleObj.exports, ...names.map((n) => globals[n]));
+  const ret = await fn(moduleObj, moduleObj.exports, ...names.map((n) => merged[n]));
   return { exports: moduleObj.exports, ret };
 }
 
@@ -168,6 +174,18 @@ async function main() {
     ['t1'], fallback.ret && fallback.ret.closed);
   if (fallback.calls.generalPurposeReview) ok('fallback: review ran on the general-purpose agent');
   else bad('fallback: review ran on the general-purpose agent', 'general-purpose reviewer was not used');
+
+  // ── broken-runtime guard ─────────────────────────────────────────────────────
+  // No `agent` hook AND no test sentinel → work.js must throw, not silently return undefined
+  // (which the harness would record as a successful no-op). This pins the loud-fail behavior.
+  let threw = false;
+  try {
+    await loadWork({}, { sentinel: false });
+  } catch (err) {
+    threw = /did not inject the .agent. hook/.test(String(err && err.message));
+  }
+  if (threw) ok('broken-runtime: missing agent hook (no sentinel) fails loudly');
+  else bad('broken-runtime: missing agent hook (no sentinel) fails loudly', 'expected a throw');
 
   // ── summary ────────────────────────────────────────────────────────────────
   console.log(`\nResults: ${pass} passed, ${fail} failed`);

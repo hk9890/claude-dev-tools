@@ -160,8 +160,10 @@ async function runTask(id) {
 
 // ── Orchestration ─────────────────────────────────────────────────────────────
 // Runs only under the Workflow runtime, which injects the `agent` hook (plus args/log/
-// parallel/phase). Under a Node test harness those globals are absent, so this block is
-// skipped and only the pure helpers above are exercised (see the module.exports guard below).
+// parallel/phase). Under the Node test loader those globals are absent but it injects a
+// __WORK_TEST__ sentinel, so the orchestration is skipped and only the pure helpers above
+// are exercised. If neither holds — no `agent` and no sentinel — the runtime contract is
+// broken, and we throw rather than silently no-op (see the else-if).
 if (typeof agent === 'function') {
   const { taskIds, epicId } = normalizeArgs(args)
 
@@ -205,11 +207,16 @@ if (typeof agent === 'function') {
     epic,
     perTask,
   }
+} else if (typeof __WORK_TEST__ === 'undefined') {
+  // No `agent` hook AND not under the Node test loader (which injects __WORK_TEST__): the
+  // Workflow runtime failed to inject its hooks. Fail LOUD — returning undefined here would
+  // be recorded by the harness as status:completed, i.e. a silent no-op.
+  throw new Error('tasks-work: the Workflow runtime did not inject the `agent` hook')
 }
 
 // Test-only: expose the pure helpers to the Node loader in tests/tasks/script-tests.
-// Guarded so it is a no-op under the Workflow runtime (where `module` is undefined, and
-// where the orchestration above has already returned before reaching this line).
+// Reached only under that loader — on the real runtime the orchestration above already
+// returned, and a broken runtime throws above before reaching this line.
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { normalizeArgs, summarizeActions }
 }
