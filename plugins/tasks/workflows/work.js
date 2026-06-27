@@ -12,11 +12,26 @@ export const meta = {
 // args, supplied by the tasks-work skill (which ran taskmgr ready in the main loop):
 //   { taskIds: string[], epicId?: string }
 // The script owns sequencing and null-handling; every taskmgr read/write happens inside an agent.
-const taskIds = (args && args.taskIds) || []
-const epicId = (args && args.epicId) || null
+//
+// Defensive: the runtime may hand `args` over as a JSON *string* rather than a parsed object
+// (observed in practice — a string has no `.taskIds`, so the guard below would trip on every run
+// and the whole workflow would no-op while reporting success). The script can't control how the
+// value arrives, so normalize it before reading fields.
+let parsedArgs = args
+if (typeof parsedArgs === 'string') {
+  try { parsedArgs = JSON.parse(parsedArgs) } catch { parsedArgs = {} }
+}
+const taskIds = (parsedArgs && parsedArgs.taskIds) || []
+const epicId = (parsedArgs && parsedArgs.epicId) || null
 
 if (!taskIds.length) {
-  return { error: 'No taskIds provided. The tasks-work skill must resolve the scope and pass taskIds.' }
+  // A bail-out return surfaces to the harness as status:completed, so a total no-op otherwise looks
+  // like success — log and echo what we received so it is diagnosable instead of silently passing.
+  log(`tasks-work: no taskIds resolved from args (received type "${typeof args}") — nothing to run`)
+  return {
+    error: 'No taskIds provided. The tasks-work skill must resolve the scope and pass taskIds.',
+    received: { type: typeof args },
+  }
 }
 
 const IMPL_SCHEMA = {
@@ -95,6 +110,26 @@ const epicClosePrompt = (id) =>
   `4. Write the per-criterion verdict and evidence as a comment: \`taskmgr comment add ${id} "Acceptance review: <criterion> PASS — <evidence>; … Children all closed. Ready to close."\`\n` +
   `5. Do NOT close the epic. Report allChildrenClosed=true and action "verified-ready-to-close", or "criteria-failed" (comment the gaps and file bugs) if the success criteria are not met.`
 
+// The review leg prefers project-quality's adversarial reviewer persona, but `tasks` does not declare
+// `project-quality` as a dependency, so that agent type is not guaranteed to exist. When it is absent,
+// agent() THROWS on the unknown agentType; without this fallback that throw becomes a null review and
+// record rule 1 ("either leg null → inconclusive") strands every passing task as unclosed. The review
+// procedure lives in reviewPrompt, not the persona, so a built-in agent runs it fine.
+async function runReview(id, impl) {
+  const base = { phase: 'Verify', label: `review:${id}`, schema: REVIEW_SCHEMA }
+  try {
+    // Fall back ONLY on the throw. agent() throws on an unknown agentType (verified: it does not
+    // return null), so the catch fires only when project-quality is absent. A null returned here
+    // means a present-but-incomplete reviewer (skipped/died) — let it propagate so record rule 1
+    // leaves the task open (fail-safe), instead of silently re-running on a weaker built-in reviewer
+    // whose verdict could drive closure via rule 3.
+    return await agent(reviewPrompt(id, impl), { ...base, agentType: 'project-quality:project-reviewer' })
+  } catch {
+    // project-quality:project-reviewer not installed (unknown agentType) — fall back to a built-in.
+    return agent(reviewPrompt(id, impl), { ...base, agentType: 'general-purpose' })
+  }
+}
+
 async function runTask(id) {
   const impl = await agent(implementPrompt(id), { agentType: 'tasks:implementer', phase: 'Implement', label: `impl:${id}`, schema: IMPL_SCHEMA })
   if (!impl) {
@@ -106,7 +141,7 @@ async function runTask(id) {
     return { taskId: id, impl, record: { taskId: id, action: 'skipped', reason: impl.status } }
   }
   const [review, test] = await parallel([
-    () => agent(reviewPrompt(id, impl), { agentType: 'project-quality:project-reviewer', phase: 'Verify', label: `review:${id}`, schema: REVIEW_SCHEMA }),
+    () => runReview(id, impl),
     () => agent(testPrompt(id, impl), { agentType: 'tasks:verifier', phase: 'Verify', label: `test:${id}`, schema: TEST_SCHEMA }),
   ])
   let record = await agent(recordPrompt(id, review, test), { agentType: 'tasks:verifier', phase: 'Record', label: `record:${id}`, schema: RECORD_SCHEMA })
