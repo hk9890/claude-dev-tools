@@ -208,6 +208,83 @@ test_version_uniformity_passes() {
   rm -rf "$tmp_dir"
 }
 
+# 11. Negative / description: a plugin.json description out of sync with its
+#     marketplace entry exits non-zero. Check C is the only check that mirrors
+#     descriptions; isolate it with the three skip flags so a Check A/B/D pass
+#     cannot mask a Check C regression.
+test_bad_description_fails() {
+  local tmp_dir
+  tmp_dir=$(mktemp -d)
+  mkdir -p "$tmp_dir/.claude-plugin" "$tmp_dir/plugins/alpha/.claude-plugin"
+
+  printf '{"name":"alpha","version":"1.0.0","description":"Real description","author":{"name":"T"}}\n' \
+    > "$tmp_dir/plugins/alpha/.claude-plugin/plugin.json"
+  printf '{"name":"t","plugins":[{"name":"alpha","version":"1.0.0","description":"DIFFERENT description","source":"./plugins/alpha"}]}\n' \
+    > "$tmp_dir/.claude-plugin/marketplace.json"
+
+  assert_exit "bad-description: non-zero exit for description mismatch" 1 \
+    python3 "$SCRIPT" \
+      --repo-root "$REPO_ROOT" \
+      --check-versions "$tmp_dir/plugins/alpha/.claude-plugin/plugin.json" \
+      --marketplace "$tmp_dir/.claude-plugin/marketplace.json" \
+      --skip-sections --skip-versions --skip-uniformity
+
+  assert_output_contains \
+    "bad-description: output names the mismatch" \
+    "description mismatch" \
+    python3 "$SCRIPT" \
+      --repo-root "$REPO_ROOT" \
+      --check-versions "$tmp_dir/plugins/alpha/.claude-plugin/plugin.json" \
+      --marketplace "$tmp_dir/.claude-plugin/marketplace.json" \
+      --skip-sections --skip-versions --skip-uniformity
+
+  rm -rf "$tmp_dir"
+}
+
+# 12. Negative / description: a plugin absent from marketplace.json exits non-zero.
+test_missing_description_entry_fails() {
+  local tmp_dir
+  tmp_dir=$(mktemp -d)
+  mkdir -p "$tmp_dir/.claude-plugin" "$tmp_dir/plugins/orphan/.claude-plugin"
+
+  printf '{"name":"orphan","version":"1.0.0","description":"x","author":{"name":"T"}}\n' \
+    > "$tmp_dir/plugins/orphan/.claude-plugin/plugin.json"
+  printf '{"name":"t","plugins":[{"name":"alpha","version":"1.0.0","description":"x","source":"./plugins/alpha"}]}\n' \
+    > "$tmp_dir/.claude-plugin/marketplace.json"
+
+  assert_output_contains \
+    "missing-description: output flags plugin absent from marketplace" \
+    "not found in marketplace.json" \
+    python3 "$SCRIPT" \
+      --repo-root "$REPO_ROOT" \
+      --check-versions "$tmp_dir/plugins/orphan/.claude-plugin/plugin.json" \
+      --marketplace "$tmp_dir/.claude-plugin/marketplace.json" \
+      --skip-sections --skip-versions --skip-uniformity
+
+  rm -rf "$tmp_dir"
+}
+
+# 13. Positive / description: matching descriptions exit 0.
+test_good_description_passes() {
+  local tmp_dir
+  tmp_dir=$(mktemp -d)
+  mkdir -p "$tmp_dir/.claude-plugin" "$tmp_dir/plugins/alpha/.claude-plugin"
+
+  printf '{"name":"alpha","version":"1.0.0","description":"Same description","author":{"name":"T"}}\n' \
+    > "$tmp_dir/plugins/alpha/.claude-plugin/plugin.json"
+  printf '{"name":"t","plugins":[{"name":"alpha","version":"1.0.0","description":"Same description","source":"./plugins/alpha"}]}\n' \
+    > "$tmp_dir/.claude-plugin/marketplace.json"
+
+  assert_exit "good-description: matching descriptions exit 0" 0 \
+    python3 "$SCRIPT" \
+      --repo-root "$REPO_ROOT" \
+      --check-versions "$tmp_dir/plugins/alpha/.claude-plugin/plugin.json" \
+      --marketplace "$tmp_dir/.claude-plugin/marketplace.json" \
+      --skip-sections --skip-versions --skip-uniformity
+
+  rm -rf "$tmp_dir"
+}
+
 # ── run all tests ─────────────────────────────────────────────────────────────
 
 test_live_repo_passes
@@ -220,6 +297,9 @@ test_good_section_ref_passes
 test_good_version_passes
 test_version_uniformity_fails
 test_version_uniformity_passes
+test_bad_description_fails
+test_missing_description_entry_fails
+test_good_description_passes
 
 printf '\n'
 printf 'Results: %d passed, %d failed\n' "$PASS" "$FAIL"
