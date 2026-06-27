@@ -25,14 +25,14 @@
     {
       "name": "project-quality",
       "source": "./plugins/project-quality",
-      "description": "Project-quality toolkit — read-only adversarial reviews (complexity, structure, tests, consistency, docs, plan/design grilling) and thin, human-triggered operations (run tests, cut a release, analyze monitoring)",
+      "description": "Project-quality toolkit — read-only adversarial reviews (complexity, structure, tests, consistency, docs, plan/design grilling) and thin, human-triggered exec skills (run tests, cut a release, analyze monitoring, implement per conventions)",
       "version": "1.17.0",
       "author": {
         "name": "Hans Kohlreiter",
         "email": "hans.kohlreiter@dynatrace.com"
       },
       "category": "code-quality",
-      "keywords": ["review", "complexity", "structure", "tests", "consistency", "docs", "operations", "release", "monitoring", "adversarial", "quality"]
+      "keywords": ["review", "complexity", "structure", "tests", "consistency", "docs", "operations", "release", "monitoring", "coding", "adversarial", "quality"]
     },
     {
       "name": "github-releases",

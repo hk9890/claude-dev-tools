@@ -81,7 +81,7 @@ Skill-level renames (where a skill was renamed within a plugin, or a skill's plu
 
 ```python
 SKILL_RENAME_ALIASES = {
-    # html-ask plugin era
+    # html-ask plugin era (plugin was later renamed to html-visualization)
     "html-ask:html-ask": "html-visualization:html-visualize",
     # intermediate names inside html-visualization before the unified skill
     "html-visualization:html-ask": "html-visualization:html-visualize",
@@ -101,14 +101,18 @@ SKILL_RENAME_ALIASES = {
     "project-docs:project-init-or-update-docs": "project-quality:project-review-docs",
     "project-docs:project-review-docs": "project-quality:project-review-docs",
     "project-docs:project-revise-docs": "project-quality:project-review-docs",
-    # project-ops skills -> project-quality (run-tests / trigger-release / analyze-monitoring)
-    "project-ops:analyze-monitoring-data": "project-quality:project-analyze-monitoring",
-    "project-ops:executes-tests": "project-quality:project-run-tests",
-    "project-ops:project-executes-tests": "project-quality:project-run-tests",
-    "project-ops:trigger-release": "project-quality:project-trigger-release",
-    "project-ops:project-analyze-monitoring-data": "project-quality:project-analyze-monitoring",
-    "project-ops:project-run-tests": "project-quality:project-run-tests",
-    "project-ops:project-trigger-release": "project-quality:project-trigger-release",
+    # project-ops skills -> project-quality exec-* family (testing / releasing / monitoring)
+    "project-ops:analyze-monitoring-data": "project-quality:project-exec-monitoring",
+    "project-ops:executes-tests": "project-quality:project-exec-testing",
+    "project-ops:project-executes-tests": "project-quality:project-exec-testing",
+    "project-ops:trigger-release": "project-quality:project-exec-releasing",
+    "project-ops:project-analyze-monitoring-data": "project-quality:project-exec-monitoring",
+    "project-ops:project-run-tests": "project-quality:project-exec-testing",
+    "project-ops:project-trigger-release": "project-quality:project-exec-releasing",
+    # project-quality ops renamed to the project-exec-* family
+    "project-quality:project-run-tests": "project-quality:project-exec-testing",
+    "project-quality:project-trigger-release": "project-quality:project-exec-releasing",
+    "project-quality:project-analyze-monitoring": "project-quality:project-exec-monitoring",
     # complexity-review plugin era (plugin later renamed; reviews now live in project-quality)
     "complexity-review:complexity-review": "project-quality:project-review-complexity",
     # project-review skills -> project-quality (the test -> tests rename happened in the merge)

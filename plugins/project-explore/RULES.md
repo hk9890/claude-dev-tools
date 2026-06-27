@@ -24,7 +24,7 @@ Findings (broken or rough behaviour) are filed as taskmgr type `bug` with label 
 
 ## 4. taskmgr is a Phase-0 runtime check only — no `dependencies` field
 
-The skill checks at runtime that `.tasks/` exists and `taskmgr` is usable. If taskmgr is absent, the skill stops with guidance. This is the same "stop if no guidance" pattern used by `project-run-tests` in `project-ops`, and the same runtime-check pattern the `tasks` plugin uses for its own `taskmgr` prerequisite.
+The skill checks at runtime that `.tasks/` exists and `taskmgr` is usable. If taskmgr is absent, the skill stops with guidance. This is the same "stop if not configured" pattern used by `project-exec-testing` in `project-quality`, and the same runtime-check pattern the `tasks` plugin uses for its own `taskmgr` prerequisite.
 
 There is no `dependencies` field in `plugin.json` for taskmgr. The `plugin.json` `dependencies` field declares a dependency on another Claude Code marketplace plugin — it is honored by the harness (see [docs/CODING.md](../../docs/CODING.md) and https://code.claude.com/docs/en/plugin-dependencies). taskmgr is a CLI tool, not a marketplace plugin. A `plugin.json` dependency entry cannot cause the harness to install a CLI binary. The runtime check is the canonical pattern for declaring a hard dependency on a CLI tool.
 
