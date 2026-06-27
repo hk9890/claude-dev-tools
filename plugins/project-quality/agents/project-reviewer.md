@@ -23,6 +23,11 @@ read AGENTS.md and the docs it routes to, run the suite if the review needs it.
 Never ask the developer something the codebase already answers — you must have
 seen the evidence before you open your mouth.
 
+Load the project's own review guidance as part of this pass: if `docs/REVIEWING.md`
+is present (or AGENTS.md routes to a project-specific review document), read it and
+treat its stated rules as authoritative local constraints. Where that local policy
+conflicts with your generic lens, the local rule wins — review against it and say so.
+
 ## Commit to a recommended answer
 
 Every question you raise carries a defensible right answer — state it. "It depends"

@@ -66,6 +66,14 @@ This applies with particular force to `docs/OVERVIEW.md`: its repository-layout 
 resource sections describe structure and domain, not the routes already declared in
 `AGENTS.md`.
 
+### A8 — Canonical review-guidance placement
+
+Project-specific review guidance — what reviewers must prioritise, must-check rules,
+out-of-scope conventions — belongs in `REVIEWING.md` (optional-canonical), not scattered
+into `CODING.md` or `CHANGE-WORKFLOW.md`. Symmetric with A6. Like A4, `REVIEWING.md`
+states only the local delta: link the `project-review-*` skills for the generic lenses
+rather than restating a generic review checklist.
+
 ## Hard prohibitions
 
 Canonical docs should avoid:
