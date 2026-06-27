@@ -50,7 +50,7 @@ disable-model-invocation: true
 ---
 ```
 
-Use for skills that perform a consequential, explicit action and should only run when the user types the slash command. Examples: `tasks-work`, `project-explore`, `html-visualize-demo`, the `project-quality` exec skills (`project-exec-testing`, `project-exec-releasing`, `project-exec-monitoring`) and `project-explain`.
+Use for skills that perform a consequential, explicit action and should only run when the user types the slash command. Examples: `tasks-work`, `project-explore`, `html-visualize-demo`, the `project-quality` exec skills (`project-exec-testing`, `project-exec-releasing`, `project-exec-monitoring`), the orchestrated `project-quality:project-review` (a full run spawns many agents), and `project-explain`.
 
 **Schema B — model-discoverable:**
 
