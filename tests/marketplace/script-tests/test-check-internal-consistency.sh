@@ -164,6 +164,50 @@ test_good_version_passes() {
   rm -rf "$tmp_dir"
 }
 
+# 9. Negative / uniformity: an entry out of version lockstep exits non-zero.
+#    Each plugin entry could still mirror its own plugin.json (Check B green),
+#    but one entry diverges from metadata.version — the project-explore-at-1.17
+#    case Check B alone cannot catch. Isolate Check D via the skip flags.
+test_version_uniformity_fails() {
+  local tmp_dir
+  tmp_dir=$(mktemp -d)
+  mkdir -p "$tmp_dir/.claude-plugin"
+  printf '%s\n' \
+    '{"name":"t","metadata":{"version":"1.0.0"},"plugins":[{"name":"alpha","version":"1.0.0","description":"a","source":"./plugins/alpha"},{"name":"beta","version":"1.1.0","description":"b","source":"./plugins/beta"}]}' \
+    > "$tmp_dir/.claude-plugin/marketplace.json"
+
+  assert_exit "uniformity: non-zero exit when an entry breaks version lockstep" 1 \
+    python3 "$SCRIPT" --repo-root "$REPO_ROOT" \
+      --marketplace "$tmp_dir/.claude-plugin/marketplace.json" \
+      --skip-sections --skip-versions --skip-descriptions
+
+  assert_output_contains \
+    "uniformity: output names the lockstep break" \
+    "version lockstep broken" \
+    python3 "$SCRIPT" --repo-root "$REPO_ROOT" \
+      --marketplace "$tmp_dir/.claude-plugin/marketplace.json" \
+      --skip-sections --skip-versions --skip-descriptions
+
+  rm -rf "$tmp_dir"
+}
+
+# 10. Positive / uniformity: metadata.version and all entries equal => exit 0
+test_version_uniformity_passes() {
+  local tmp_dir
+  tmp_dir=$(mktemp -d)
+  mkdir -p "$tmp_dir/.claude-plugin"
+  printf '%s\n' \
+    '{"name":"t","metadata":{"version":"1.0.0"},"plugins":[{"name":"alpha","version":"1.0.0","description":"a","source":"./plugins/alpha"},{"name":"beta","version":"1.0.0","description":"b","source":"./plugins/beta"}]}' \
+    > "$tmp_dir/.claude-plugin/marketplace.json"
+
+  assert_exit "uniformity: all-equal versions exit 0" 0 \
+    python3 "$SCRIPT" --repo-root "$REPO_ROOT" \
+      --marketplace "$tmp_dir/.claude-plugin/marketplace.json" \
+      --skip-sections --skip-versions --skip-descriptions
+
+  rm -rf "$tmp_dir"
+}
+
 # ── run all tests ─────────────────────────────────────────────────────────────
 
 test_live_repo_passes
@@ -174,6 +218,8 @@ test_bad_version_fails
 test_bad_version_message
 test_good_section_ref_passes
 test_good_version_passes
+test_version_uniformity_fails
+test_version_uniformity_passes
 
 printf '\n'
 printf 'Results: %d passed, %d failed\n' "$PASS" "$FAIL"

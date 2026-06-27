@@ -33,6 +33,16 @@ Check C — description mirror:
     matching entry in .claude-plugin/marketplace.json. Any mismatch or missing
     entry => FAIL. On mismatch, shows a one-line diff of the two values.
 
+Check D — version uniformity:
+    Enforces the single-version lockstep documented in docs/RELEASING.md: the
+    marketplace metadata.version and every plugin *entry* version in
+    marketplace.json must be the identical string. More than one distinct value
+    => FAIL. This is marketplace-only by design; combined with Check B (each
+    plugin.json mirrors its entry) it transitively guarantees every plugin.json
+    also shares that one version. It catches a lone plugin bumped out of lockstep
+    even when its own plugin.json and marketplace entry agree — the gap Check B
+    alone cannot see.
+
 All checks run regardless of each other; all failures are reported before exit.
 
 Fixture override flags (used by negative tests):
@@ -42,6 +52,7 @@ Fixture override flags (used by negative tests):
     --skip-sections              skip Check A entirely (useful for version-only tests)
     --skip-versions              skip Check B entirely (useful for section-only tests)
     --skip-descriptions          skip Check C entirely
+    --skip-uniformity            skip Check D entirely
 
 Path resolution for --check-sections: target .md files referenced inside a
 fixture are resolved relative to the fixture file first, then relative to
@@ -393,6 +404,60 @@ def run_version_check(repo_root, plugin_json_files=None, marketplace_path=None):
 
 
 # ---------------------------------------------------------------------------
+# Version-uniformity check — Check D
+# ---------------------------------------------------------------------------
+
+def run_version_uniformity_check(repo_root, marketplace_path=None):
+    """Run Check D — version uniformity.
+
+    Asserts the single-version lockstep from docs/RELEASING.md: marketplace
+    metadata.version and every plugin-entry version in marketplace.json must be
+    the identical string. Marketplace-only by design — Check B already pins each
+    plugin.json to its entry, so B + D together enforce full lockstep while D
+    stays cleanly testable with a --marketplace override.
+
+    Returns list of failure strings.
+    """
+    if marketplace_path is None:
+        marketplace_path = os.path.join(repo_root, ".claude-plugin", "marketplace.json")
+
+    try:
+        with open(marketplace_path, encoding="utf-8") as fh:
+            marketplace = json.load(fh)
+    except (OSError, json.JSONDecodeError) as exc:
+        return [f"cannot load marketplace.json at {marketplace_path}: {exc}"]
+
+    # Collect (source label, version) across every version field in the manifest.
+    seen = []
+
+    meta_version = marketplace.get("metadata", {}).get("version")
+    if meta_version is not None:
+        seen.append(("marketplace.json metadata.version", meta_version))
+
+    for entry in marketplace.get("plugins", []):
+        name = entry.get("name")
+        if name:
+            seen.append((f"marketplace.json plugins[{name}]", entry.get("version")))
+
+    distinct = {version for _, version in seen}
+    if len(distinct) <= 1:
+        return []
+
+    # Lockstep broken — group sources by the version they carry for a clear report.
+    by_version = {}
+    for source, version in seen:
+        by_version.setdefault(version, []).append(source)
+
+    lines = [
+        "version lockstep broken — marketplace metadata.version and all plugin "
+        "entries must share one version (see docs/RELEASING.md); found:"
+    ]
+    for version in sorted(by_version, key=lambda v: (v is None, str(v))):
+        lines.append(f"      {version!r}: {', '.join(by_version[version])}")
+    return ["\n".join(lines)]
+
+
+# ---------------------------------------------------------------------------
 # Description-mirror check — Check C
 # ---------------------------------------------------------------------------
 
@@ -480,6 +545,7 @@ def _parse_args(argv):
         "skip_sections": False,
         "skip_versions": False,
         "skip_descriptions": False,
+        "skip_uniformity": False,
     }
 
     i = 0
@@ -508,6 +574,8 @@ def _parse_args(argv):
             parsed["skip_versions"] = True
         elif arg == "--skip-descriptions":
             parsed["skip_descriptions"] = True
+        elif arg == "--skip-uniformity":
+            parsed["skip_uniformity"] = True
         elif arg.startswith("--"):
             print(f"Unknown option: {arg}", file=sys.stderr)
             sys.exit(1)
@@ -627,6 +695,25 @@ def main():
             all_failures.extend(description_failures)
         else:
             print("CHECK C — description mirror: PASS")
+
+    # ------------------------------------------------------------------
+    # Check D — version uniformity
+    # ------------------------------------------------------------------
+    if parsed["skip_uniformity"]:
+        print("CHECK D — version uniformity: SKIPPED")
+    else:
+        uniformity_failures = run_version_uniformity_check(
+            repo_root,
+            marketplace_path=parsed["marketplace"],
+        )
+
+        if uniformity_failures:
+            print("CHECK D — version uniformity: FAILED")
+            for f in uniformity_failures:
+                print(f"  FAIL: {f}")
+            all_failures.extend(uniformity_failures)
+        else:
+            print("CHECK D — version uniformity: PASS")
 
     # ------------------------------------------------------------------
     # Summary
