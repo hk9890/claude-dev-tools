@@ -1,7 +1,7 @@
 {
   "name": "claude-catppuccin",
   "description": "Visual style for Claude Code: Catppuccin Mocha color theme",
-  "version": "1.19.0",
+  "version": "1.20.0",
   "author": {
     "name": "Hans Kohlreiter",
     "email": "hans.kohlreiter@dynatrace.com"
