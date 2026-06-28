@@ -47,6 +47,7 @@ Known coverage gaps the scripts do **not** catch (must be covered by specialist 
 - Sibling-doc contradictions (two docs stating the same fact differently).
 - Reachability of every `docs/**/*.md` from `AGENTS.md` routing.
 - Audience/purpose drift — content that is accurate but sits outside its file's *Inside* / *Not inside* ownership in `project-setup.md` (R10/C13), e.g. end-user usage in `CODING.md` or test content in `MONITORING.md`.
+- Canonical-topic content under a non-canonical filename — a whole doc whose content *is* a canonical topic (e.g. a `RUNTIME_UI_VERIFICATION.md` that is really `RUNNING.md`) but sits under a non-canonical name (anywhere — top-level `docs/`, a `docs/` subdirectory, or the repo root), or an on-topic doc that the owning canonical doc never links (R11/C14).
 
 ### Step 2 — Specialist reviewer fan-out (parallel)
 
@@ -62,6 +63,7 @@ Required specialists (run all, every time):
 6. **CI and process inventory reviewer** — compare `TESTING.md`'s merge-gate list to `.github/workflows/*.yml`, and compare any "scripts/tools/skills" list to the actual repo. Output: list of omissions and stale entries in both directions.
 7. **README user-first & fresh-eyes reviewer** — read `README.md` cold **as a user/evaluator first**: can you tell what the product is and how to use it? A `README.md` whose opening is build-from-source or dev setup serves the wrong audience and is a finding (R10 — that material belongs in `CONTRIBUTING.md` and the topic docs; BLOCKER when the README is *largely* the wrong genre). *Only then* read `README.md` → `AGENTS.md` → top-level `docs/*.md` as a new contributor. Output: README audience-fit verdict, confusion points, undefined jargon, missing onboarding steps, sections whose claims do not match what `ls` shows in the repo root.
 8. **Audience/purpose-fit reviewer (R10 / C13)** — for **every** canonical doc, check its content against the file's defined audience and *Inside* / *Not inside* ownership in `project-setup.md`. Flag content that sits outside a file's *Inside* even when every statement is accurate — e.g. end-user usage in `CODING.md`, test content absorbed into `MONITORING.md`, a build/test command reference in `CHANGE-WORKFLOW.md`, build/dev material in `README.md`. This specialist produces the evidence for coverage category **C13** across the whole canonical set (specialist #7 covers the README in depth; the orchestrator dedupes the README overlap). Output: per-doc audience-fit verdict (in-boundary / R10-MAJOR / R10-BLOCKER) with the offending lines quoted and the owning file each should route to.
+9. **Canonical-topic placement reviewer (R11 / C14)** — for **every** non-canonical Markdown doc the inventory surfaces — `non_canonical_docs` (top-level `docs/*.md`), `non_canonical_docs_nested` (`docs/` subdirectories, recursively), and `non_canonical_root_docs` (non-canonical root `*.md`, excluding well-known meta) from `inventory.py` — read its content and classify it against the canonical-topic *Inside* boundaries in `project-setup.md`. When it maps to a canonical topic, branch on whether that topic's doc already exists (check the filesystem directly): **slot empty** (no `docs/<TOPIC>.md`) → recommend **renaming** the file to `docs/<TOPIC>.md`; **slot filled** (`docs/<TOPIC>.md` exists) → recommend **linking** the file from `docs/<TOPIC>.md` when it is not already referenced there (grep the canonical doc for the path). A file mapping to no canonical topic is legitimately project-specific — no finding. Use each doc's `AGENTS.md` routing line as a role hint. This is the whole-doc mirror of specialist #8: #8 polices content *inside* a canonical doc (R10); this polices a doc that *is* a canonical topic but is misnamed or unlinked (R11), enforcing the canonical-placement authoring rules A6/A8/A9 at the file level. The check is content-driven — it reads docs that exist and never demands a doc for an absent topic. Output: per-non-canonical-doc verdict (maps-to-`<TOPIC>` → rename / link, or project-specific → leave) with quoted evidence.
 
 Specialist prompt template (use for each):
 
@@ -116,8 +118,9 @@ Every review must produce explicit status for each row. `verified` requires evid
 | C11 | End-to-end runnability of advertised commands (e.g., `release:prepare`) | B |
 | C12 | Live external integrations (registries, dashboards, services) | C |
 | C13 | Each doc's content stays within its file's defined audience/purpose — the *Inside* / *Not inside* ownership in `project-setup.md` (rule R10) | A |
+| C14 | Each non-canonical Markdown doc (`docs/**` and non-canonical root `*.md`) whose content is a canonical topic is renamed to its canonical name (empty slot) or linked from the canonical doc (filled slot); off-topic project-specific docs are confirmed as such (rule R11) | A |
 
-Categories C1–C10 and C13 are Tier A — all must be checked. C11/C12 may be deferred with reason.
+Categories C1–C10, C13, and C14 are Tier A — all must be checked. C11/C12 may be deferred with reason.
 
 ## Findings format
 
@@ -145,6 +148,7 @@ Rule IDs and default severity:
 | `R8` | Layout-block completeness (project-structure blocks match `ls`) | MAJOR |
 | `R9` | Route reachability (every `docs/` file reachable from `AGENTS.md`) | MAJOR |
 | `R10` | Audience/purpose fit (doc content matches the file's defined audience and *Inside* / *Not inside* ownership in `project-setup.md`) | MAJOR — raise to BLOCKER when the doc is *largely* the wrong genre for its owner (e.g. a build/dev-oriented `README.md`, which must serve users/evaluators) |
+| `R11` | Canonical-topic doc placement — a doc whose content *is* a canonical topic (per `project-setup.md` *Inside* boundaries) is named as that canonical doc, or linked from it: rename when the `docs/<TOPIC>.md` slot is empty, link when it is filled | MAJOR |
 | `V1` | Validation coverage (links/anchors/paths resolve) | BLOCKER |
 
 Severity may be raised one level when the violation directly causes wrong behavior in real workflows (e.g., a stale command in `RELEASING.md` is R5/BLOCKER, not R5/MAJOR).
@@ -155,14 +159,14 @@ The orchestrator's final report must include the following sections in order. Mi
 
 1. **Headline** — `Findings: <N> BLOCKER · <N> MAJOR · <N> MINOR — <verdict>` (see verdict rules and headline language constraint below).
 2. **Scope** — bulleted enumeration from Step 0, each item tagged in-scope or out-of-scope-with-reason.
-3. **Coverage table** — the C1–C13 rows above, each marked `verified: <how>`, `findings: <N> (see #IDs)`, or `not-checked: <reason — Tier B/C only>`.
+3. **Coverage table** — the C1–C14 rows above, each marked `verified: <how>`, `findings: <N> (see #IDs)`, or `not-checked: <reason — Tier B/C only>`.
 4. **Findings** — flat list in the standard format, grouped by severity.
 5. **Not checked** — items deliberately deferred (Tier B/C only), each with a one-line reason. Tier A items are not permitted here.
-6. **Recommended actions** — a prioritised list of suggested fixes, each tagged with its dimension: (a) missing canonical doc, (b) stale/inaccurate vs code, (c) structural quality (bloat/duplication/misrouting/hollow), or (d) audience/purpose mismatch (content sits outside the file's *Inside* boundary / wrong genre for its owner).
+6. **Recommended actions** — a prioritised list of suggested fixes, each tagged with its dimension: (a) missing canonical doc, (b) stale/inaccurate vs code, (c) structural quality (bloat/duplication/misrouting/misnamed-or-unlinked canonical-topic doc/hollow), or (d) audience/purpose mismatch (content sits outside the file's *Inside* boundary / wrong genre for its owner).
 
 ## Headline language constraint
 
-The headline and any closing line must not use the words `done`, `complete`, `all good`, `everything checks out`, or equivalents unless **every** Tier A row (C1–C10 and C13) is `verified` (no `findings`, no `not-checked`). Validator scripts passing alone never justify these words.
+The headline and any closing line must not use the words `done`, `complete`, `all good`, `everything checks out`, or equivalents unless **every** Tier A row (C1–C10, C13, and C14) is `verified` (no `findings`, no `not-checked`). Validator scripts passing alone never justify these words.
 
 When categories are mixed, prefer neutral phrasing: "Findings reported; coverage table attached." A green validator run is reported as "validator scripts pass" — not "done."
 
@@ -177,20 +181,20 @@ When categories are mixed, prefer neutral phrasing: "Findings reported; coverage
 Review passes (`clean`) when **all** of:
 
 1. No `BLOCKER` findings remain.
-2. Every Tier A row (C1–C10 and C13) in the coverage table is `verified` (no `findings`, no `not-checked`).
+2. Every Tier A row (C1–C10, C13, and C14) in the coverage table is `verified` (no `findings`, no `not-checked`).
 3. The report includes all required sections (Headline, Scope, Coverage table, Findings, Not checked, Recommended actions).
 
 Other verdicts:
 
-- `minor only` — no BLOCKER or MAJOR, coverage complete on the Tier A rows (C1–C10 and C13).
+- `minor only` — no BLOCKER or MAJOR, coverage complete on the Tier A rows (C1–C10, C13, and C14).
 - `needs work` — MAJOR present, no BLOCKER.
-- `fails` — at least one BLOCKER, **or** any Tier A row (C1–C10 or C13) left unchecked.
+- `fails` — at least one BLOCKER, **or** any Tier A row (C1–C10, C13, or C14) left unchecked.
 - `incomplete` — report is missing a required section; not a content verdict, but the review must be re-run before any verdict is trusted.
 
 ## Orchestrator anti-patterns
 
 - Declaring success after only the three validator scripts ran.
-- Writing "done"/"complete" in the headline while any Tier A row (C1–C10 or C13) is not `verified`.
+- Writing "done"/"complete" in the headline while any Tier A row (C1–C10, C13, or C14) is not `verified`.
 - Skipping Step 0 enumeration and only checking what came to mind.
 - Skipping Step 3 second-pass and submitting the first-pass report directly.
 - Using **Not checked** as a dumping ground for Tier A items the orchestrator did not get to.

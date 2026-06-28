@@ -647,6 +647,76 @@ test_both_optional_present() {
   rm -rf "$dir"
 }
 
+# 29. Nested non-canonical doc (docs/<subdir>/*.md) enumerated for R11
+test_nested_non_canonical_doc() {
+  local dir; dir=$(make_full_fixture)   # has docs/adr/001-decision.md
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  local nested
+  nested=$(json_val "$out" "d['summary']['non_canonical_nested_count']")
+  assert_eq "nested-doc: non_canonical_nested_count=1" "1" "$nested"
+
+  assert_contains "nested-doc: docs/adr/001-decision.md in output" "docs/adr/001-decision.md" "$out"
+
+  # top-level count is unchanged — recursion did not fold nested files into it
+  local top
+  top=$(json_val "$out" "d['summary']['non_canonical_count']")
+  assert_eq "nested-doc: top-level non_canonical_count still=1" "1" "$top"
+
+  rm -rf "$dir"
+}
+
+# 30. Non-canonical root *.md enumerated; canonical root excluded
+test_root_non_canonical_doc() {
+  local dir; dir=$(tmpdir)
+  printf '# Readme\n' > "$dir/README.md"               # canonical root → excluded
+  printf '# Hacking\nDev notes.\n' > "$dir/HACKING.md" # non-canonical root
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  local root
+  root=$(json_val "$out" "d['summary']['non_canonical_root_count']")
+  assert_eq "root-doc: non_canonical_root_count=1" "1" "$root"
+
+  local rootlist
+  rootlist=$(json_val "$out" "sorted(e['path'] for e in d['non_canonical_root_docs'])")
+  assert_eq "root-doc: only HACKING.md listed (README excluded)" "['HACKING.md']" "$rootlist"
+
+  rm -rf "$dir"
+}
+
+# 31. Well-known meta files at root are ignored (not non-canonical root docs)
+test_root_meta_ignored() {
+  local dir; dir=$(tmpdir)
+  printf 'MIT\n' > "$dir/LICENSE.md"
+  printf '# Security\n' > "$dir/SECURITY.md"
+  printf '# Changelog\n' > "$dir/CHANGELOG.md"
+  printf '# CoC\n' > "$dir/CODE_OF_CONDUCT.md"
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  local root
+  root=$(json_val "$out" "d['summary']['non_canonical_root_count']")
+  assert_eq "root-meta: meta files ignored, non_canonical_root_count=0" "0" "$root"
+
+  rm -rf "$dir"
+}
+
+# 32. personal/local and dotfiles are not counted as non-canonical root docs
+test_root_personal_local_excluded() {
+  local dir; dir=$(tmpdir)
+  printf '# Local\n' > "$dir/.claude.local.md"
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  local root
+  root=$(json_val "$out" "d['summary']['non_canonical_root_count']")
+  assert_eq "root-personal: .claude.local.md not counted, non_canonical_root_count=0" "0" "$root"
+
+  rm -rf "$dir"
+}
+
 # ── run all tests ─────────────────────────────────────────────────────────────
 
 test_no_args
@@ -677,6 +747,10 @@ test_optional_running_present
 test_optional_running_absent
 test_optional_running_location_violation
 test_both_optional_present
+test_nested_non_canonical_doc
+test_root_non_canonical_doc
+test_root_meta_ignored
+test_root_personal_local_excluded
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
