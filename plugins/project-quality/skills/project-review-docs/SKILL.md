@@ -112,10 +112,10 @@ genre — most often a build/dev-oriented `README.md` that should serve
 users/evaluators — is R10/BLOCKER, while a localized spill is R10/MAJOR whose
 fix routes the content to the owning file.
 
-Beyond content *inside* a doc, check whole docs by name (R11): a non-canonical `docs/*.md`
-whose content *is* a canonical topic should be **renamed** to `docs/<TOPIC>.md` when that slot
-is empty, or — when the canonical doc already exists — **linked** from it if not already
-referenced. This applies to every category equally (TESTING, RELEASING, RUNNING, MONITORING, …):
+Beyond content *inside* a doc, check whole docs by name (R11): a non-canonical Markdown doc
+(anywhere under `docs/`, including subdirectories, or a non-canonical root `*.md`) whose content
+*is* a canonical topic should be **renamed** to `docs/<TOPIC>.md` when that slot is empty, or —
+when the canonical doc already exists — **linked** from it if not already referenced. This applies to every category equally (TESTING, RELEASING, RUNNING, MONITORING, …):
 e.g. a `RUNTIME_UI_VERIFICATION.md` that is really the RUNNING topic with no `docs/RUNNING.md`
 present → recommend rename; a stray TESTING-flavoured doc while `docs/TESTING.md` already exists
 → recommend link.

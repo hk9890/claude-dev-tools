@@ -45,6 +45,18 @@ OPTIONAL_CANONICAL_ROOT = ["CONTRIBUTING.md"]
 # flows. Surfaced so authors know they exist but not counted as missing.
 PERSONAL_LOCAL = [".claude.local.md"]
 
+# Well-known repo-root Markdown that is meta, not a documentation topic — never a
+# canonical-topic candidate, so excluded from the non-canonical root-doc scan.
+ROOT_META_IGNORE = [
+    "SECURITY.md",
+    "CHANGELOG.md",
+    "CODE_OF_CONDUCT.md",
+    "LICENSE.md",
+    "NOTICE.md",
+    "AUTHORS.md",
+    "MAINTAINERS.md",
+]
+
 
 # ---------------------------------------------------------------------------
 # Injected-block detection
@@ -250,6 +262,56 @@ def inventory(repo_root):
                             "non_heading_lines": nhl,
                         })
 
+    # ── walk docs/ subdirectories recursively (nested non-canonical docs) ─────
+    # The top-level docs/*.md scan above and the directory-only
+    # non_canonical_subdirs list both miss a canonical-topic doc misfiled inside
+    # a subdirectory (e.g. docs/dev/running.md). Enumerate those nested .md files
+    # so the canonical-topic placement review (R11) can classify them too.
+    non_canonical_docs_nested = []
+    if os.path.isdir(docs_dir):
+        docs_abs = os.path.abspath(docs_dir)
+        for dirpath, dirnames, filenames in os.walk(docs_dir):
+            if os.path.abspath(dirpath) == docs_abs:
+                continue  # top level handled above
+            dirnames.sort()
+            for fn in sorted(filenames):
+                if not fn.endswith(".md"):
+                    continue
+                full = os.path.join(dirpath, fn)
+                lines, nhl = count_lines(full)
+                non_canonical_docs_nested.append({
+                    "path": os.path.relpath(full, repo_root),
+                    "lines": lines,
+                    "non_heading_lines": nhl,
+                })
+
+    # ── walk repo root for non-canonical Markdown ─────────────────────────────
+    # Root *.md that is not a canonical/optional-canonical root doc, a canonical
+    # docs/ doc misplaced at root (that is a location_violation, reported below),
+    # a well-known meta file, or a personal/local file. Catches a canonical-topic
+    # doc placed at the root under a non-canonical name.
+    non_canonical_root_docs = []
+    known_root_md = (
+        set(CANONICAL_ROOT)
+        | set(OPTIONAL_CANONICAL_ROOT)
+        | set(CANONICAL_DOCS)
+        | set(OPTIONAL_CANONICAL_DOCS)
+        | set(ROOT_META_IGNORE)
+        | set(PERSONAL_LOCAL)
+    )
+    with os.scandir(repo_root) as it:
+        for entry in sorted(it, key=lambda e: e.name):
+            if not (entry.is_file(follow_symlinks=False) and entry.name.endswith(".md")):
+                continue
+            if entry.name.startswith(".") or entry.name in known_root_md:
+                continue
+            lines, nhl = count_lines(entry.path)
+            non_canonical_root_docs.append({
+                "path": entry.name,
+                "lines": lines,
+                "non_heading_lines": nhl,
+            })
+
     # ── location violations ──────────────────────────────────────────────────
     # Canonical docs/ files found at the repo root (or vice-versa).
 
@@ -296,6 +358,8 @@ def inventory(repo_root):
         "canonical_missing": canonical_missing,
         "non_canonical_count": len(non_canonical_docs),
         "non_canonical_subdir_count": len(non_canonical_subdirs),
+        "non_canonical_nested_count": len(non_canonical_docs_nested),
+        "non_canonical_root_count": len(non_canonical_root_docs),
         "violation_count": len(location_violations),
         "personal_local_present": personal_local_present,
         "injected_block_count": len(injected_blocks),
@@ -305,6 +369,8 @@ def inventory(repo_root):
         "canonical": canonical,
         "personal_local": personal_local,
         "non_canonical_docs": non_canonical_docs,
+        "non_canonical_docs_nested": non_canonical_docs_nested,
+        "non_canonical_root_docs": non_canonical_root_docs,
         "non_canonical_subdirs": non_canonical_subdirs,
         "location_violations": location_violations,
         "injected_blocks": injected_blocks,
@@ -362,6 +428,28 @@ def format_text(data):
         lines.append("  (none)")
 
     lines.append("")
+    lines.append("=== Non-canonical docs/ files (nested in subdirs) ===")
+    if data["non_canonical_docs_nested"]:
+        for entry in data["non_canonical_docs_nested"]:
+            lines.append(
+                f"  {entry['path']}  "
+                f"lines={entry['lines']}  non_heading_lines={entry['non_heading_lines']}"
+            )
+    else:
+        lines.append("  (none)")
+
+    lines.append("")
+    lines.append("=== Non-canonical root Markdown ===")
+    if data["non_canonical_root_docs"]:
+        for entry in data["non_canonical_root_docs"]:
+            lines.append(
+                f"  {entry['path']}  "
+                f"lines={entry['lines']}  non_heading_lines={entry['non_heading_lines']}"
+            )
+    else:
+        lines.append("  (none)")
+
+    lines.append("")
     lines.append("=== Location violations ===")
     if data["location_violations"]:
         for v in data["location_violations"]:
@@ -389,6 +477,8 @@ def format_text(data):
     lines.append(f"  personal_local_present:     {s['personal_local_present']}")
     lines.append(f"  non_canonical_count:        {s['non_canonical_count']}")
     lines.append(f"  non_canonical_subdir_count: {s['non_canonical_subdir_count']}")
+    lines.append(f"  non_canonical_nested_count: {s['non_canonical_nested_count']}")
+    lines.append(f"  non_canonical_root_count:   {s['non_canonical_root_count']}")
     lines.append(f"  violation_count:            {s['violation_count']}")
     lines.append(f"  injected_block_count:       {s['injected_block_count']}")
 

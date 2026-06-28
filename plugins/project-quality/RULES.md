@@ -264,8 +264,10 @@ Decisions behind the check (specialist #9, rule R11, coverage category C14):
   exist — read and classified against the *Inside* boundaries in `project-setup.md` — not a
   heuristic guess about whether the repo "ships a runnable product." File-sniffing for a product
   (a `main`, a `bin` entry, a shell script) is unreliable — nearly every repo has those — so it
-  is deliberately not attempted. `scripts/inventory.py` is unchanged; it only supplies the
-  `non_canonical_docs` list the specialist reads.
+  is deliberately not attempted. `scripts/inventory.py` does no codebase product-sniffing; it
+  only enumerates the candidate docs the specialist reads — `non_canonical_docs` (top-level
+  `docs/`), `non_canonical_docs_nested` (`docs/` subdirectories, recursively), and
+  `non_canonical_root_docs` (non-canonical root `*.md`, excluding well-known meta files).
 - **Rename when the slot is empty, link when it is filled.** If no `docs/<TOPIC>.md` exists,
   recommend renaming the misnamed file into that slot; if it already exists, recommend linking the
   on-topic doc from it (a second file cannot also claim the canonical name). A doc that maps to no
