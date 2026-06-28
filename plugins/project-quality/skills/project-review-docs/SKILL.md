@@ -49,7 +49,7 @@ in `references/` — load them as you go:
 - [references/project-structure.md](references/project-structure.md) — structural + AGENTS routing constraints
 - [references/project-doc-guidelines.md](references/project-doc-guidelines.md) — authoring quality bar (A1–A10, hard prohibitions) and the Bad→Good fix vocabulary
 - [references/agents-md-template.md](references/agents-md-template.md) — the AGENTS.md conformance standard
-- [references/project-doc-review-guidelines.md](references/project-doc-review-guidelines.md) — the exhaustive audit discipline: coverage table (C1–C13), severity rubric, validator scripts, specialist fan-out
+- [references/project-doc-review-guidelines.md](references/project-doc-review-guidelines.md) — the exhaustive audit discipline: coverage table (C1–C14), severity rubric, validator scripts, specialist fan-out
 
 For a quick pass, work the six questions below. For an exhaustive audit (or when
 the user asks for thoroughness), follow `project-doc-review-guidelines.md` end to
@@ -112,8 +112,16 @@ genre — most often a build/dev-oriented `README.md` that should serve
 users/evaluators — is R10/BLOCKER, while a localized spill is R10/MAJOR whose
 fix routes the content to the owning file.
 
-- Recommended answer: _no hollow docs; no AGENTS duplication; every doc on its assigned topic and aimed at its defined audience._
-- Resolve from the code: which docs are hollow, duplicate AGENTS routing, sit on the wrong topic, or serve the wrong audience (R10)?
+Beyond content *inside* a doc, check whole docs by name (R11): a non-canonical `docs/*.md`
+whose content *is* a canonical topic should be **renamed** to `docs/<TOPIC>.md` when that slot
+is empty, or — when the canonical doc already exists — **linked** from it if not already
+referenced. This applies to every category equally (TESTING, RELEASING, RUNNING, MONITORING, …):
+e.g. a `RUNTIME_UI_VERIFICATION.md` that is really the RUNNING topic with no `docs/RUNNING.md`
+present → recommend rename; a stray TESTING-flavoured doc while `docs/TESTING.md` already exists
+→ recommend link.
+
+- Recommended answer: _no hollow docs; no AGENTS duplication; every doc on its assigned topic and aimed at its defined audience; every canonical-topic doc named canonically or linked from its canonical home._
+- Resolve from the code: which docs are hollow, duplicate AGENTS routing, sit on the wrong topic, or serve the wrong audience (R10)? And is any non-canonical doc actually a canonical topic that should be renamed (empty slot) or linked (filled slot) (R11)?
 
 ### 5. Is anything stale — describing removed or renamed features? (dimension b — staleness)
 
@@ -144,10 +152,10 @@ The skill-specific pieces below slot into that skeleton:
 - **Verdict labels**: one of `accurate`, `minor gaps`, `significant gaps`, `misleading`.
 - **Per-finding `Location`** — `<file>:<section>`.
 - **Per-finding `Observation`** — the doc defect, stated concretely with evidence from the repo.
-- **Per-finding `Recommended action`** — one of: update, rewrite, delete, consolidate, document, fix-routing — and the **dimension** it serves: (a) missing canonical, (b) stale/inaccurate vs code, (c) structural quality, or (d) audience/purpose mismatch (content is the wrong genre for the file's defined owner).
+- **Per-finding `Recommended action`** — one of: update, rewrite, delete, consolidate, rename, link, document, fix-routing — and the **dimension** it serves: (a) missing canonical, (b) stale/inaccurate vs code, (c) structural quality (incl. a misnamed or unlinked canonical-topic doc), or (d) audience/purpose mismatch (content is the wrong genre for the file's defined owner).
 - **Per-finding `Route to`** — optional, only when the finding belongs to another reviewer's domain.
 
-For an exhaustive audit, also render the Scope enumeration and C1–C13 coverage
+For an exhaustive audit, also render the Scope enumeration and C1–C14 coverage
 table from `project-doc-review-guidelines.md` — a `clean`/`accurate` verdict
 requires positive coverage evidence per category, not merely the absence of
 findings.

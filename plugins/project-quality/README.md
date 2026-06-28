@@ -40,7 +40,7 @@ below also run standalone — cheaper, single-lens, and model-discoverable.
 | `project-review-structure` | Adversarial review of physical project layout — misplaced files, god-files, dead code, tree-vs-docs drift; routes design verdicts to `project-review-complexity` |
 | `project-review-tests` | Adversarial test quality and coverage review — slow suites, unjustified long tests, coverage gaps, weak or unfalsifiable assertions |
 | `project-review-consistency` | Adversarial pattern and naming divergence review — competing implementations, uneven naming, inconsistent API shapes |
-| `project-review-docs` | Read-only documentation audit — accuracy vs. code, AGENTS.md routing, staleness, missing canonical docs, hollow or duplicated docs, and audience/purpose fit (e.g. a build/dev-oriented README that should serve users) |
+| `project-review-docs` | Read-only documentation audit — accuracy vs. code, AGENTS.md routing, staleness, missing canonical docs, hollow or duplicated docs, misnamed or unlinked canonical-topic docs, and audience/purpose fit (e.g. a build/dev-oriented README that should serve users) |
 
 ### Exec (thin, human-triggered)
 

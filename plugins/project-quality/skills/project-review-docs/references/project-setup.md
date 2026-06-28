@@ -40,6 +40,7 @@ Notes:
 - `REVIEWING.md` is **optional-canonical**: recognized as a canonical doc when a project opts in by creating it, but never reported missing when absent (most repos have no local review delta). `scripts/inventory.py` counts it only when present and never nags for it.
 - `RUNNING.md` is **optional-canonical** on the same terms: create it only when the project ships a product an agent can drive (a CLI, service, TUI, or app). A pure library whose tests are its only exercise path needs none; it is never reported missing when absent.
 - `CONTRIBUTING.md` (repo root, not under `docs/`) is **optional-canonical**: recognized when present, never reported missing when absent (a repo with no external human contributors may legitimately omit it).
+- A doc whose **content** is a canonical topic but lives under a **non-canonical name** is a finding (R11), independent of the rules above: rename it to the canonical name when that slot is empty, or link it from the canonical doc when the slot is already filled. This is content-driven — the review reads docs that already exist and never invents one for an absent topic, so the optional-canonical "never missing when absent" contract stands.
 
 ## File ownership boundaries
 
