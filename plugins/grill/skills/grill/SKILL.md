@@ -42,10 +42,14 @@ prompt, include:
   in the sheet — never pass a path you did not confirm exists.
 
 Ask it to return an ordered list of `Q<n>` entries — each with `Recommended answer`,
-`Why it matters`, and `Source` — and a final `grill-status: clean | needs-answers` line.
+`Why it matters`, `Source`, and `Blocking: yes | no` — and a final
+`grill-status: clean | needs-answers` line.
 
 If a project is present, the challenger explores the code and docs before producing the
 sheet; if the target is a bare idea, it grills against the value base alone.
+
+If the returned sheet has no `grill-status:` line, treat the gate as `needs-answers` —
+never assume clean from a malformed sheet.
 
 ## 2. Walk the sheet with the user — one question at a time
 
@@ -66,8 +70,9 @@ before continuing — never skip a question silently.
 
 Summarize the resolved decisions and any that were deferred, then branch on the gate:
 
-- `grill-status: needs-answers` — confirm every blocking question was resolved; if any
-  remain open, list them and say the work is **not** ready yet.
+- `grill-status: needs-answers` — confirm every question marked `Blocking: yes` was
+  resolved (accepted or overridden — a deferred blocking question counts as open); if
+  any remain open, list them and say the work is **not** ready yet.
 - `grill-status: clean` — say so.
 
 If the resolved decisions imply concrete work and a task-creation skill is available
