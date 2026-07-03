@@ -27,6 +27,7 @@ The [`taskmgr`](https://github.com/hk9890/task-manager) binary must be installed
 project-explore/
 ├── .claude-plugin/
 │   └── plugin.json
+├── README.md
 ├── RULES.md
 └── skills/
     └── project-explore/

@@ -7,7 +7,7 @@ disable-model-invocation: true
 
 Perform an assisted exploratory session on this project. Work through four phases in order. Stop cleanly if a prerequisite is missing — do not proceed to the next phase on an assumption.
 
-$ARGUMENTS
+Focus / constraints (optional): $ARGUMENTS
 
 ---
 
@@ -29,7 +29,7 @@ Stop immediately and tell the user if either check fails:
 - **`command -v taskmgr` fails** → the binary is missing. Tell the user to install it first, then re-invoke this skill.
 - **Binary present but `taskmgr list` fails** → no store resolves from here. Tell the user to run `taskmgr init` in the project root, then re-invoke this skill.
 
-> **taskmgr is not initialised in this repository.** The `project-explore` skill requires a `taskmgr` store to open and track the exploration session.
+> **taskmgr is not available here** — either the binary is not installed, or no store is initialised in this repository. The `project-explore` skill requires a working `taskmgr` store to open and track the exploration session.
 
 Do not proceed to Phase 1 until taskmgr is confirmed usable.
 
@@ -53,6 +53,7 @@ Then open with the epic ID and ask via `AskUserQuestion`:
 
 - If an env is documented: state you'll target it, then ask "focus area or explore freely?".
 - If not: ask both "is there a scratch env for mutating actions?" and "focus area or explore freely?".
+- If a focus was already supplied in the invocation arguments: do not re-ask "focus area or explore freely?" — confirm the stated focus instead ("Focus on <focus> as given — correct?"), alongside the scratch-env question if that is still open.
 
 Record (a) the scratch env (if any) and (b) any focus constraint. Then proceed to Phase 1.
 
@@ -88,7 +89,7 @@ Read these in order, stopping when a file is absent rather than guessing:
 
 Read these sources to understand trajectory and risk:
 
-- Open tasks: `taskmgr list -q 'status == "open"'`
+- Live tasks (open, in progress, or blocked): `taskmgr list -q 'status != "closed"'`
 - Recently closed: `taskmgr list -q 'status == "closed"' --sort closed --reverse --limit 20`
 - GitHub issues (if the project uses GitHub): `gh issue list --state all --limit 30` and `gh issue list --state closed --limit 20`
 - `CHANGELOG.md` or `HISTORY.md` if present
@@ -99,22 +100,24 @@ Read these sources to understand trajectory and risk:
 Each past `project-explore` session leaves an epic titled `Explore <project> — <YYYY-MM-DD>`. Pull recent ones so this session does not re-tread covered ground or re-file known issues.
 
 ```bash
-taskmgr list -q 'type == "epic"'
+taskmgr list --all -q 'type == "epic"'
 ```
+
+(`--all` includes epics already closed during triage — a closed epic's wrap-up still counts as covered ground.)
 
 From the results, keep only exploration epics whose **title date is within the last 14 days**. Ignore older epics — their findings may be stale and the project has likely moved on.
 
-For each recent exploration epic, read its wrap-up summary and its still-open children:
+For each recent exploration epic, read its wrap-up summary and its still-unresolved children (anything not closed — `in_progress` and `blocked` items are still live):
 
 ```bash
 taskmgr show <recent-epic-id>
-taskmgr list -q 'parent == "<recent-epic-id>" && status == "open"'
+taskmgr list -q 'parent == "<recent-epic-id>" && status != "closed"'
 ```
 
 Record, for the understanding file's "Prior exploration" section:
 
 - which areas / flows recent sessions already exercised, and on what date
-- finding and question task IDs still open from those sessions
+- finding and question task IDs still unresolved from those sessions
 
 If no exploration epic falls within the last 14 days, note "No recent exploration sessions" and continue.
 
@@ -183,13 +186,13 @@ Load `references/break-it.md` before the first iteration. Use it as instinct-pro
    - If something is genuinely unclear and cannot be resolved from the available docs and source: file a **question** task.
    - If the action went as expected with nothing notable: record nothing; move to step 5.
 
-   **Before filing, dedup**: list open epic children and do a title/text check:
+   **Before filing, dedup**: list unresolved epic children (not-closed, so `in_progress` and `blocked` items still dedup) and do a title/text check:
 
    ```bash
-   taskmgr list -q 'parent == "<epic-id>" && status == "open"'
+   taskmgr list -q 'parent == "<epic-id>" && status != "closed"'
    ```
 
-   Also check the open findings and questions from recent sessions recorded in the understanding file's "Prior exploration" section.
+   Also check the unresolved findings and questions from recent sessions recorded in the understanding file's "Prior exploration" section.
 
    If an existing task — in this epic or a recent prior one — already covers the same issue, add a comment to that task instead of creating a duplicate: `taskmgr comment add <task-id> "<note>"` (use `--file -` to pipe a multi-line note from a heredoc).
 
