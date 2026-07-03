@@ -13,8 +13,10 @@
 ## Analyzing Changes
 
 ```bash
-# Get last release tag
-LAST_TAG=$(gh release view --json tagName --jq '.tagName')
+# Get last release tag — fall back to the latest git tag when the repo
+# has no GitHub release yet
+LAST_TAG=$(gh release view --json tagName --jq '.tagName' 2>/dev/null)
+LAST_TAG=${LAST_TAG:-$(git describe --tags --abbrev=0 2>/dev/null)}
 
 # List commits since last release
 git log "$LAST_TAG"..HEAD --oneline
@@ -23,6 +25,8 @@ git log "$LAST_TAG"..HEAD --oneline
 gh api "repos/:owner/:repo/compare/$LAST_TAG...HEAD" \
   --jq '.commits[].commit.message'
 ```
+
+If `LAST_TAG` is still empty (first release: no GitHub release and no tags), analyze the full history instead: `git log --oneline` and start from the project's current declared version.
 
 **Bump rules:**
 

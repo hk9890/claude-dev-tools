@@ -31,10 +31,11 @@ Name a version to pin it (e.g. "release 1.2.0"); otherwise the skill determines 
 2. **Quality gates** — tests, build, lint must all pass
 3. **Documentation check** — version consistency across project files
 4. **Version bump** — update version in project files
-5. **Create GitHub release** — tag, release body, assets via gh CLI
+5. **Commit and push** — land the version bump on the default branch before tagging
 6. **Release notes** — structured format (highlights, what's changed, breaking changes)
-7. **Post-release verification** — confirm release is live and correct
-8. **Cleanup** — post-release housekeeping
+7. **Create GitHub release** — tag, release body, assets via gh CLI
+8. **Post-release verification** — confirm release is live and correct
+9. **Cleanup** — post-release housekeeping per the project's release guide
 
 ## Project-Specific Setup
 
