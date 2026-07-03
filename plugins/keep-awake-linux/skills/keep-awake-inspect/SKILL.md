@@ -27,20 +27,33 @@ The plugin's contract is "register an inhibitor with logind". Triggering an actu
 
 ## Workflow
 
-### Step 1 — Resolve the state directory
+Run Steps 1–3 in a single shell invocation — `$STATE_DIR` and `$LOG` do not persist across separate tool calls.
 
-Try, in order:
+### Step 0 — Check tool availability
 
 ```bash
-STATE_DIR=""
-if [ -n "${XDG_RUNTIME_DIR:-}" ] && [ -d "$XDG_RUNTIME_DIR/claude-keep-awake" ]; then
-  STATE_DIR="$XDG_RUNTIME_DIR/claude-keep-awake"
-elif [ -d "/tmp/claude-keep-awake-$(id -u)" ]; then
-  STATE_DIR="/tmp/claude-keep-awake-$(id -u)"
-fi
+command -v systemd-inhibit >/dev/null 2>&1 || echo "systemd-inhibit MISSING"
 ```
 
-If `$STATE_DIR` ends up empty, the plugin has never run on this system (or state was wiped). Report this fact and stop — current state is "no state".
+If `systemd-inhibit` is missing, note it as an environmental issue (the helper itself no-ops in this case) and skip the logind cross-check and the orphan check below — rely on PID markers and the log alone. Do not stop; the rest of the inspection still works.
+
+### Step 1 — Resolve the state directory
+
+Mirror the helper's resolution exactly (`bin/keep-awake` uses the XDG dir unconditionally whenever `XDG_RUNTIME_DIR` is set — it does not fall back to `/tmp` just because the XDG dir is absent):
+
+```bash
+if [ -n "${XDG_RUNTIME_DIR:-}" ]; then
+  STATE_DIR="$XDG_RUNTIME_DIR/claude-keep-awake"
+else
+  STATE_DIR="/tmp/claude-keep-awake-$(id -u)"
+fi
+OTHER_DIR="/tmp/claude-keep-awake-$(id -u)"
+[ "$OTHER_DIR" = "$STATE_DIR" ] && OTHER_DIR=""
+```
+
+Inspect `$STATE_DIR` — that is where the helper writes now. If `$OTHER_DIR` is non-empty and exists, report it as a possible stale or secondary state dir (see the "different STATE_DIR" anomaly row) and summarize its markers/log briefly.
+
+If `$STATE_DIR` does not exist, the plugin has never run under the current resolution (or state was wiped). Skip the marker and log steps (Steps 2–4), but still run the `systemd-inhibit --list` orphan check from Step 2 before concluding idle — orphaned inhibitors survive a wiped state dir.
 
 ### Step 2 — Current state
 
@@ -50,9 +63,7 @@ ls -la "$STATE_DIR/sessions/" 2>/dev/null
 systemd-inhibit --list 2>&1 | head -200
 ```
 
-If `systemd-inhibit` itself is missing (command not found), note that as an environmental issue and skip the cross-check — rely on PID markers alone.
-
-In the captured listing, identify entries by their `--why "Claude session <sid>"` text OR by `claude-keep-awake` appearing in the command. Don't rely on the "Who" column — older systemd versions show the user, not the command.
+In the captured listing, identify the plugin's entries by matching lines containing `claude-keep-awake` (the WHO field — the helper registers with `--who="claude-keep-awake"`) or `Claude session <sid>` (the WHY field). The COMM column shows `systemd-inhibit`, not the plugin name.
 
 For each `<session_id>.pid` marker:
 
@@ -76,7 +87,7 @@ If `$LOG` is missing, but current state shows active sessions: the user probably
 Log line format:
 
 ```
-<ISO timestamp> hook=<EventName|->  sid=<truncated_sid|-> verb=<verb|-> outcome=<outcome> [new_pid=<n>] [old_pid=<n|->] [pid=<n>]
+<ISO timestamp> hook=<EventName|-> sid=<truncated_sid|-> verb=<verb|-> outcome=<outcome> [new_pid=<n>] [old_pid=<n|->] [pid=<n>]
 ```
 
 When invoked via the `hook` verb, two correlated lines appear together: one with `hook=<Event>` (dispatch) and one with `verb=start|stop` (underlying action).
@@ -85,7 +96,7 @@ When invoked via the `hook` verb, two correlated lines appear together: one with
 
 Each hook fire produces TWO log lines: a `hook=<Event> verb=-` dispatch line and a paired `hook=- verb=<start|stop>` action line. **Count events by the `verb=start|stop` lines only** (the action lines); the `hook=...` dispatch lines are correlation aids, not separate events. Counting both will double-report.
 
-Group action lines by `sid=` and within each group give a one-line summary like:
+Group action lines by `sid=`, excluding `sid=-` lines (`no-op-invalid-sid` logs `sid=-`; route those to the Anomalies section instead of reporting a bogus "session -" group), and within each group give a one-line summary like:
 
 ```
 sid=abc12345  3 starts (1 spawned, 2 refreshed), 1 stop (killed). Last event 2 min ago.
@@ -93,7 +104,7 @@ sid=abc12345  3 starts (1 spawned, 2 refreshed), 1 stop (killed). Last event 2 m
 
 Mark a session as **likely-stranded** when ALL of:
 - no `verb=stop` action line ever appears for it, AND
-- the most recent event is older than `KEEP_AWAKE_TTL` seconds (default 1800), AND
+- the most recent event is older than `KEEP_AWAKE_TTL` seconds (default 1800 — the hook environment's actual value is not observable from here; assume the default unless the user says otherwise), AND
 - no live marker remains in `sessions/` (per Step 2).
 
 A long-idle session with a still-alive inhibitor is normal — don't flag it.
@@ -122,7 +133,7 @@ Use this structure. Omit sections that have nothing to report.
 ## Keep-awake — state report
 
 **State directory:** /run/user/1000/claude-keep-awake
-**Logging:** enabled (or "disabled" if KEEP_AWAKE_LOG=0 detected)
+**Logging:** inferred from log presence/recency (`KEEP_AWAKE_LOG` lives in the hook environment and is not observable here)
 
 ### Current state
 
