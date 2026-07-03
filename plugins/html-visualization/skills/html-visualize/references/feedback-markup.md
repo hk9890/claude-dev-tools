@@ -143,7 +143,7 @@ These `id` values are hard-wired in `app.js` and must be present exactly once:
 `page-chrome`, `page-header`, `subtitle`, `comment-count`, `freeform-section`,
 `submit-row`, `apply-btn`, `submit-btn`, `copy-btn`, `submit-error`,
 `state-applying`, `state-submitted`, `state-already-submitted` — all defined in
-`assets/feedback/style.css`. Use them exactly as in `template.html`.
+`assets/feedback/style.css`. Use them exactly as in `feedback-template.html`.
 
 The comment UI classes (`fb-float-btn`, `fb-comment-editor`, `fb-comment-card`,
 `fb-quote`, `fb-highlight`, …) are injected by `app.js` at runtime. **Do not

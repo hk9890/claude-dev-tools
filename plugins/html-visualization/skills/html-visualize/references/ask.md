@@ -21,8 +21,9 @@ Fall back to plain chat in only two cases:
 
 - **Node.js is unavailable** — see pre-flight in `references/serve.md`.
 - **The intent does not fit a form** — e.g. it is a single yes/no question, or it
-  asks you to annotate existing content (that is feedback mode). Say so briefly,
-  then handle it the right way instead of building a form nobody needs.
+  asks you to annotate existing content (that is feedback mode's shape). Say so
+  briefly and handle the request in chat — do NOT silently switch to another
+  mode; the user chooses the mode.
 
 A couple of questions are still fine on a form the user asked for — do not refuse
 on question count alone.
@@ -86,7 +87,7 @@ The template contains example widgets — remove every example widget you do not
 need. Keep the page structure, header, verdict section, freeform section, and
 submit row exactly as in the template. Fill in the content per the markup
 contract in
-`${CLAUDE_PLUGIN_ROOT}/skills/html-visualize/references/ask-markup.md`. Key rules:
+`"$(cat "$HTML_DIR/.plugin-root")/skills/html-visualize/references/ask-markup.md"`. Key rules:
 
 - Replace `[Claude: replace with document title]` in `<h1>` and `<title>` with
   your page title.
@@ -104,7 +105,7 @@ contract in
 - The `/assets/ask/style.css` link and `/assets/ask/app.js` script are correct
   as-is; do not change the paths.
 
-Consult `${CLAUDE_PLUGIN_ROOT}/skills/html-visualize/references/ask-markup.md`
+Consult `"$(cat "$HTML_DIR/.plugin-root")/skills/html-visualize/references/ask-markup.md"`
 for the full vocabulary (classes, data attributes, required IDs, verdict radio
 values).
 
@@ -153,6 +154,11 @@ When the harness re-invokes Claude after server exit, read:
 FEEDBACK_FILE  (the path you computed in Step 2d)
 ```
 
+If the server exited non-zero or `FEEDBACK_FILE` does not exist, the round-trip
+timed out (the server exits code 2 with no file after `--timeout-sec`, default
+1800 s). Tell the user, then offer to re-serve the form or take the answers in
+chat.
+
 The file contains:
 
 ```json
@@ -165,7 +171,7 @@ The file contains:
 }
 ```
 
-Full schema: `${CLAUDE_PLUGIN_ROOT}/skills/html-visualize/references/ask-submit-schema.md`.
+Full schema: `"$(cat "$HTML_DIR/.plugin-root")/skills/html-visualize/references/ask-submit-schema.md"`.
 
 How to interpret each field:
 

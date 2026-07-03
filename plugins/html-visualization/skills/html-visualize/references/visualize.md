@@ -59,18 +59,9 @@ bookmark and share; it should make sense with no prior context from the chat.
 
 ### 2a. Create the temp directory
 
-See `references/serve.md` — temp directory section. Use the prefix
-`html-visualize`. Run the full block from that section, which creates the
-directory **and** writes `$HTML_DIR/.plugin-root`:
-
-```bash
-TMPDIR_BASE=$(node -e "process.stdout.write(require('os').tmpdir())")
-HTML_DIR="$TMPDIR_BASE/html-visualize-$(date +%s)-$$"
-mkdir -p "$HTML_DIR"
-PLUGIN_DIR=$(find "$HOME/.claude/plugins/cache" -maxdepth 3 -type d -name html-visualization | head -1)
-PLUGIN_ROOT=$(find "$PLUGIN_DIR" -maxdepth 1 -mindepth 1 -type d | sort -V | tail -1)
-echo "$PLUGIN_ROOT" > "$HTML_DIR/.plugin-root"
-```
+See `references/serve.md` — temp directory section, the single source of truth
+for this block. Use the prefix `html-visualize`. Run the full block from that
+section, which creates the directory **and** writes `$HTML_DIR/.plugin-root`.
 
 ### 2b. Author the destination from the template
 
@@ -232,12 +223,13 @@ non-blocking in the background.
 
 If the user types a message and clicks **Send**, the server writes a feedback file
 and exits 0 — the harness re-invokes Claude, which reads the file and continues from
-there. If the user clicks **Send** with an empty message, closes the tab, or lets the
-server time out, the server exits 0 silently with no feedback file and Claude is not
-re-invoked.
+there. If the user clicks **Send** with an empty message, the server exits 0
+silently with no feedback file. Closing the tab or navigating away sends nothing —
+the server keeps running until the timeout (default 1800 s), then exits 0 silently.
+In neither case is Claude re-invoked.
 
 Full submit schema (payload shape, three outcomes, CSRF, feedback file format):
-`${CLAUDE_PLUGIN_ROOT}/skills/html-visualize/references/visualize-submit-schema.md`.
+`"$(cat "$HTML_DIR/.plugin-root")/skills/html-visualize/references/visualize-submit-schema.md"`.
 
 If the user later asks to update or re-render the visualization, run the full
 procedure again from Step 1 — create a fresh temp directory, build a new HTML
