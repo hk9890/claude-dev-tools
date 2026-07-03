@@ -1,7 +1,7 @@
 ---
 name: project-review-consistency
 description: "Review a codebase for consistency, naming coherence, and drift from established conventions."
-when_to_use: "Use when the user wants a consistency or naming-coherence review. Triggers on 'are we doing this two different ways?', 'our naming is a mess', 'we have two HTTP clients'. Not for over-engineering, structure, or test reviews — each has its own skill; pure formatting is a linter's job."
+when_to_use: "Use when the user wants a consistency or naming-coherence review. Triggers on 'are we doing this two different ways?', 'our naming is a mess', 'we have two HTTP clients'. Not for over-engineering, structure, docs, or test reviews — each has its own skill; pure formatting is a linter's job. Invoke with an optional argument scoping what to review; with no argument it reviews the whole codebase. The review runs in an isolated context and cannot see this conversation — pass everything it needs (paths or the artifact text itself) in the argument."
 argument-hint: "[what-to-review]"
 context: fork
 agent: project-reviewer
@@ -59,8 +59,9 @@ Work through these questions in sequence. For each one, state the recommended an
 6. **Documented-but-ignored standard**
    Check AGENTS.md, CODING.md, and any RULES.md files for explicit standards. Look for places where the code demonstrably ignores those standards.
    - For each violation: cite the documented rule and the code that ignores it.
-   - State the recommended answer: _the documented standard takes precedence; the code is wrong, not the standard_.
+   - State the recommended answer: _the divergence is a violation to surface; whether to fix the code or change the standard is a policy decision for the user (see the Baseline rule below) — do not default to either_.
    - Resolve from the code: "Is this a deliberate exception (in which case document it) or an oversight?"
+   - If the standard itself looks stale — describing a convention the project has clearly moved past — route the finding to `project-review-docs` rather than judging the doc here.
 
 ## Output
 

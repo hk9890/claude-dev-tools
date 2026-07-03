@@ -148,7 +148,8 @@ read the project's own docs for the named topic and digest them in ~200 words �
 parameterised only by which topic. Like the exec bodies it names no doc paths (the
 project's own routing locates the source of truth) and invents nothing beyond what
 the docs state; it declines with "not documented" rather than guessing when the
-topic has no docs, and asks the user when the topic is ambiguous. This is the
+topic has no docs — it may then *offer* to explain from the code, proceeding only
+on the user's explicit say-so — and asks the user when the topic is ambiguous. This is the
 natural home for explaining topics that are knowledge rather than actions —
 `overview` and `change-workflow` among them — which is why neither has an exec skill.
 

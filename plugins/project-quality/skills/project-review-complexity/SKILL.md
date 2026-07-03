@@ -1,7 +1,7 @@
 ---
 name: project-review-complexity
 description: "Skeptical review for accidental complexity and unjustified abstractions in requirements, designs, PRs, or code."
-when_to_use: "Use when the user wants a complexity or simplicity review of requirements, a design, a PR, or code. Triggers on 'review this for complexity', 'is this over-engineered?', 'does this earn its complexity?'. Not for implementation work or style-only linting."
+when_to_use: "Use when the user wants a complexity or simplicity review of requirements, a design, a PR, or code. Triggers on 'review this for complexity', 'is this over-engineered?', 'does this earn its complexity?'. Not for implementation work or style-only linting, and not for structure, consistency, docs, or test reviews — each has its own skill. Invoke with an optional argument scoping what to review; with no argument it reviews the whole project. The review runs in an isolated context and cannot see this conversation — pass everything it needs (paths or the artifact text itself) in the argument."
 argument-hint: "[what-to-review]"
 context: fork
 agent: project-reviewer
@@ -22,6 +22,12 @@ at face value if it is inline text. For a code review of uncommitted work, the
 target is the working-tree diff (`git diff`).
 
 **If no argument is given, review the whole project.**
+
+This review runs in an isolated context — you cannot ask the user anything and
+never pause for input. Everything to review must be in the invocation above: an
+artifact "from the conversation" is visible only if its text was passed inline.
+Your only deliverable is the structured report — never an edit, an action on the
+user's behalf, or a question awaiting a reply.
 
 ## Workflow routing
 

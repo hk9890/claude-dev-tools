@@ -1,7 +1,7 @@
 ---
 name: project-review-docs
 description: "Read-only audit of a project's docs for accuracy, staleness, gaps, and duplication — reports fixes, never edits."
-when_to_use: "Use when the user wants a documentation review or audit. Triggers on 'are our docs stale?', 'do our docs match the code?', 'does AGENTS still match the repo?', 'audit the documentation'. Not for complexity, structure, consistency, or test reviews — each has its own skill."
+when_to_use: "Use when the user wants a documentation review or audit. Triggers on 'are our docs stale?', 'do our docs match the code?', 'does AGENTS still match the repo?', 'audit the documentation'. Not for complexity, structure, consistency, or test reviews — each has its own skill. Invoke with an optional argument scoping what to review; with no argument it reviews the whole project's documentation. The review runs in an isolated context and cannot see this conversation — pass everything it needs (paths or the artifact text itself) in the argument."
 argument-hint: "[what-to-review]"
 context: fork
 agent: project-reviewer
@@ -27,7 +27,9 @@ purpose its ownership boundary in `project-setup.md` defines — a `README.md`
 written as a build/dev guide is wrong even when every statement is accurate).
 
 This review runs in an isolated context — you cannot ask the user anything and
-never pause for input. **Suggest, never apply:** every finding carries a
+never pause for input. The `Resolve from the code:` lines are **investigation
+prompts**: answer them from the repo yourself and fold the answer into the
+finding. **Suggest, never apply:** every finding carries a
 recommended fix, but applying it is the user's separate, manual step. Your only
 deliverable is the structured report — never an edit, an action on the user's
 behalf, or a question awaiting a reply.
@@ -57,12 +59,15 @@ end — its `scripts/` validators are a cheap, read-only first pass:
 
 This review runs forked, with the working directory set to the repo under review —
 not this skill's directory — so the bundled scripts must be anchored. `$CLAUDE_PLUGIN_ROOT`
-is **not** exported into Bash tool subprocesses; locate the install under `$HOME` instead
-(the repo's house pattern), then run the validators from the resolved path:
+is **not** exported into Bash tool subprocesses; locate the install with the house
+recipe instead (version-sorted so a newer cached copy wins, `$PWD` covered for dev
+installs), check the prerequisites, then run the validators from the resolved path:
 
 ```bash
-PLUGIN_DIR=$(find "$HOME/.claude/plugins/cache" -maxdepth 3 -type d -name project-quality | head -1)
-SCRIPTS="$(find "$PLUGIN_DIR" -maxdepth 1 -mindepth 1 -type d | sort -V | tail -1)/skills/project-review-docs/scripts"
+command -v python3 >/dev/null || echo "python3 missing"
+PLUGIN_DIR=$(dirname "$(find "$HOME/.claude/plugins" "$PWD" -type d -path '*project-quality*/skills' 2>/dev/null | sort -V | tail -1)")
+SCRIPTS="$PLUGIN_DIR/skills/project-review-docs/scripts"
+[ -d "$SCRIPTS" ] || echo "scripts not located"
 
 "$SCRIPTS/claude-md.sh" check <repo-root>                       # CLAUDE.md is exactly @AGENTS.md
 "$SCRIPTS/inventory.py" <repo-root>                             # missing/non-canonical docs, location violations
@@ -71,6 +76,10 @@ SCRIPTS="$(find "$PLUGIN_DIR" -maxdepth 1 -mindepth 1 -type d | sort -V | tail -
 
 `verify.sh` in the same directory runs all three in sequence and prints a combined
 summary — use `"$SCRIPTS/verify.sh" <repo-root>` for a one-shot pass.
+
+If `python3` is missing or the scripts cannot be located, do not stop: perform the
+same three checks manually (read `CLAUDE.md`, walk the `docs/` tree, chase every
+route) and state in the report that the validators did not run and why.
 
 ### 1. Does the documentation match the code? (dimension b — accuracy)
 
@@ -156,7 +165,7 @@ The skill-specific pieces below slot into that skeleton:
 - **Per-finding `Route to`** — optional, only when the finding belongs to another reviewer's domain.
 
 For an exhaustive audit, also render the Scope enumeration and C1–C14 coverage
-table from `project-doc-review-guidelines.md` — a `clean`/`accurate` verdict
+table from `project-doc-review-guidelines.md` — an `accurate` verdict
 requires positive coverage evidence per category, not merely the absence of
 findings.
 
