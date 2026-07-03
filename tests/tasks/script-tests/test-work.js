@@ -14,7 +14,8 @@
 //   - normalizeArgs returns empty taskIds for absent/garbage input
 //   - the empty-taskIds bailout returns the diagnostic error object without spawning agents
 //   - summarizeActions buckets per-task records by their recorded action
-//   - the reviewer-absent throw is caught and falls back to the general-purpose agent
+//   - the reviewer-absent throw is caught and falls back to the general-purpose agent,
+//     and the fallback is surfaced via summary.reviewer_fallback
 //   - a broken runtime (no agent hook, no test sentinel) fails loudly instead of no-op
 
 const fs = require('fs');
@@ -168,12 +169,16 @@ async function main() {
   const happy = await runOneTask(true);
   eq('orchestration: passing task is recorded closed', ['t1'], happy.ret && happy.ret.closed);
   eq('orchestration: summary counts the close', 1, happy.ret && happy.ret.summary && happy.ret.summary.closed);
+  eq('orchestration: no reviewer_fallback flag when reviewer present',
+    false, happy.ret && happy.ret.summary && happy.ret.summary.reviewer_fallback);
 
   const fallback = await runOneTask(false);
   eq('fallback: task still closes when project-quality reviewer is absent',
     ['t1'], fallback.ret && fallback.ret.closed);
   if (fallback.calls.generalPurposeReview) ok('fallback: review ran on the general-purpose agent');
   else bad('fallback: review ran on the general-purpose agent', 'general-purpose reviewer was not used');
+  eq('fallback: summary surfaces reviewer_fallback',
+    true, fallback.ret && fallback.ret.summary && fallback.ret.summary.reviewer_fallback);
 
   // ── broken-runtime guard ─────────────────────────────────────────────────────
   // No `agent` hook AND no test sentinel → work.js must throw, not silently return undefined

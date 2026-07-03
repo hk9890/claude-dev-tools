@@ -1,6 +1,6 @@
 export const meta = {
   name: 'tasks-work',
-  description: 'Run a set of ready taskmgr tasks: implement → verify(review ∥ test) → record(close|comment); then verify (never auto-close) the parent epic',
+  description: 'Run ready taskmgr tasks end to end — implement → verify → record, then verify (never auto-close) the parent epic',
   phases: [
     { title: 'Implement', detail: 'one implementer per task' },
     { title: 'Verify', detail: 'review ∥ test per implemented task' },
@@ -123,7 +123,10 @@ const epicClosePrompt = (id) =>
 // `project-quality` as a dependency, so that agent type is not guaranteed to exist. When it is absent,
 // agent() THROWS on the unknown agentType; without this fallback that throw becomes a null review and
 // record rule 1 ("either leg null → inconclusive") strands every passing task as unclosed. The review
-// procedure lives in reviewPrompt, not the persona, so a built-in agent runs it fine.
+// procedure lives in reviewPrompt, not the persona, so a built-in agent runs it fine. The fallback is
+// surfaced to the caller via summary.reviewer_fallback so the user knows a weaker reviewer judged
+// closure.
+let reviewerFallback = false
 async function runReview(id, impl) {
   const base = { phase: 'Verify', label: `review:${id}`, schema: REVIEW_SCHEMA }
   try {
@@ -135,6 +138,7 @@ async function runReview(id, impl) {
     return await agent(reviewPrompt(id, impl), { ...base, agentType: 'project-quality:project-reviewer' })
   } catch {
     // project-quality:project-reviewer not installed (unknown agentType) — fall back to a built-in.
+    reviewerFallback = true
     return agent(reviewPrompt(id, impl), { ...base, agentType: 'general-purpose' })
   }
 }
@@ -146,7 +150,8 @@ async function runTask(id) {
     return { taskId: id, impl: null, record: { taskId: id, action: 'inconclusive', reason: 'implementer did not complete' } }
   }
   if (impl.status !== 'implemented') {
-    // unready (readiness gate refused) or blocked — no code written, no bug filed, nothing to verify.
+    // unready (readiness gate refused — nothing ran) or blocked (claimed but could not finish;
+    // partial edits and filed bugs are possible) — either way there is no completed change to verify.
     return { taskId: id, impl, record: { taskId: id, action: 'skipped', reason: impl.status } }
   }
   const [review, test] = await parallel([
@@ -199,7 +204,7 @@ if (typeof agent === 'function') {
   const { closed, left_open, inconclusive, skipped } = summarizeActions(perTask)
 
   return {
-    summary: { total: taskIds.length, closed: closed.length, left_open: left_open.length, inconclusive: inconclusive.length, skipped: skipped.length, epic: epic ? epic.action : 'n/a' },
+    summary: { total: taskIds.length, closed: closed.length, left_open: left_open.length, inconclusive: inconclusive.length, skipped: skipped.length, reviewer_fallback: reviewerFallback, epic: epic ? epic.action : 'n/a' },
     closed,
     left_open,
     inconclusive,

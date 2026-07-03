@@ -87,9 +87,10 @@ main loop and passed as `args.taskIds` / `args.epicId`. A workflow script is pur
   worktrees, with an integration/merge step, is a deliberate future enhancement — not v1.
 - **Verify legs are report-only; a separate record stage closes.** Review (read-only) and test run in
   parallel and cannot see each other, so neither closes; the record stage closes only when the test
-  passed *and* review is not `reject`. Four outcomes: closed / left-open (a verification failure — bug
-  filed) / inconclusive (an agent did not complete — left open, no bug) / skipped (the ticket was
-  unready or blocked — the implementer never started, no bug).
+  passed *and* review is not `reject`. Four outcomes: closed / left-open (a verification failure — a
+  failing criterion gets a bug from the test leg; a review rejection is recorded as a comment) /
+  inconclusive (an agent did not complete — left open, no bug) / skipped (unready: the readiness gate
+  refused it and nothing ran; or blocked: the implementer started but could not finish).
 - **Soft cross-plugin dependency.** The review leg spawns `project-quality:project-reviewer`, so
   `tasks-work` (and only that skill) expects the `project-quality` plugin to be installed. It is not a
   hard `plugin.json` dependency — the rest of the `tasks` plugin works without it.
