@@ -41,7 +41,8 @@ The theme maps Catppuccin Mocha colors to Claude Code UI roles:
 | Plan mode | Teal | `#94e2d5` |
 | Bash border | Peach | `#fab387` |
 | IDE indicator | Sky | `#89dceb` |
-| Background | Base | `#1e1e2e` |
+| Text | Text | `#cdd6f4` |
+| Inverse text | Base | `#1e1e2e` |
 | User message bg | Surface 0 | `#313244` |
 | User message bg (hover) | Surface 1 | `#45475a` |
 | Message actions bg | Surface 2 | `#585b70` |
@@ -56,6 +57,8 @@ Diff background colors (`diffAdded`, `diffRemoved`, and their `*Dimmed`/`*Word` 
 claude-catppuccin/
 ├── .claude-plugin/
 │   └── plugin.json
+├── README.md
+├── RULES.md
 └── themes/
     └── catppuccin-mocha.json
 ```
