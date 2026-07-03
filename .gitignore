@@ -29,3 +29,6 @@ output/
 
 # taskmgr local task store (runtime state, not marketplace content)
 .tasks/
+
+# Claude Code per-user local overrides (machine-specific, never shared)
+.claude/settings.local.json

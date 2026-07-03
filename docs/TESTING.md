@@ -2,6 +2,18 @@
 
 How to run this marketplace's automated suites and validators. To launch and drive plugins by hand — reproduce a bug or verify a change — see [RUNNING.md](RUNNING.md).
 
+## Make targets
+
+A `Makefile` at the repo root provides a single discoverable entry point. Run `make` (or `make help`) to see all targets:
+
+| Target | What it runs |
+|---|---|
+| `make test` | Full test suite — all plugins (`tests/run-all.sh`) |
+| `make test-html` | html-visualization browser/server tests only |
+| `make check-consistency` | Cross-reference and version-mirror validation (`scripts/check-internal-consistency.py`) |
+| `make analyze-sessions` | Session-transcript analyser (use `ARGS=` to pass options) |
+| `make lint` | No linter configured — prints a notice and exits 0 |
+
 ## Script tests — `tests/run-all.sh`
 
 In-repo script tests live under `tests/` (see [tests/README.md](../tests/README.md)). Run them with:
@@ -10,7 +22,16 @@ In-repo script tests live under `tests/` (see [tests/README.md](../tests/README.
 bash tests/run-all.sh
 ```
 
-Per-plugin suites under `tests/<plugin-name>/script-tests/` cover committed bash/python helpers (e.g., `project-quality` validator scripts). Empty subdirs are fine for plugins with no script-level tests. A repo-level suite under `tests/marketplace/script-tests/` covers marketplace-wide helpers such as `scripts/check-internal-consistency.py`. `tests/run-all.sh` discovers and runs every suite, per-plugin and marketplace alike.
+A plugin has a `tests/<plugin-name>/script-tests/` suite only when it ships committed bash/python helpers worth testing (e.g., `project-quality` validator scripts); plugins without script-level tests have no `tests/` subdirectory at all. A repo-level suite under `tests/marketplace/script-tests/` covers marketplace-wide helpers such as `scripts/check-internal-consistency.py`. `tests/run-all.sh` discovers and runs every suite, per-plugin and marketplace alike.
+
+### Optional prerequisite: Playwright (browser suite)
+
+The html-visualization browser suite (`tests/html-visualization/script-tests/test-browser.sh`) needs Playwright with Chromium, resolved from the npm `_npx` cache. On machines without it, the suite prints `SKIP` and exits 0 — the rest of the test run is unaffected. To enable it:
+
+```bash
+npx playwright --version        # populates the npm _npx cache
+npx playwright install chromium
+```
 
 ## Structural validation — `plugin-dev:plugin-validator`
 

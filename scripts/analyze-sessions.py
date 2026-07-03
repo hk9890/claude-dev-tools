@@ -8,21 +8,8 @@ output/session-analysis/.
 Usage:
     python3 scripts/analyze-sessions.py [options]
 
-Options:
-    --projects-dir DIR   Root directory containing project subdirs
-                         (default: ~/.claude/projects)
-    --plugins-dir DIR    Root of the marketplace plugins directory
-                         (default: <repo-root>/plugins)
-    --output-dir DIR     Directory for output files
-                         (default: <cwd>/output/session-analysis)
-    --fixture FILE       Run against a single JSONL fixture file and write
-                         output to a subdirectory of --output-dir/fixture/
-    --max-slice-chars N  Max characters kept per tool output in episode slices
-                         (default: 2000)
-    --sample-rocky N     How many rocky episodes to include in slices sample
-                         (default: 5)
-    --sample-random N    How many random baseline episodes in slices sample
-                         (default: 5)
+Run with --help for the option list (--projects-dir, --plugins-dir,
+--output-dir, --fixture, --max-slice-chars, --sample-rocky, --sample-baseline).
 
 Outputs (under output-dir/):
     dataset.json         Per-episode summary records (no raw message content)
@@ -32,8 +19,8 @@ Outputs (under output-dir/):
 Stdlib only. Streams files line-by-line; never loads a whole file into memory.
 """
 
+import argparse
 import json
-import math
 import os
 import re
 import sys
@@ -104,6 +91,8 @@ SKILL_RENAME_ALIASES = {
     "project-explore:explore-project": "project-explore:project-explore",
     # grill extracted from project-quality into its own standalone plugin
     "project-quality:project-review-grill": "grill:grill",
+    # github-releases: stale "release" skill name -> the plugin's actual skill
+    "github-releases:release": "github-releases:github-releases",
 }
 
 # Weight map for friction scoring
@@ -287,9 +276,13 @@ class Episode:
         # Internal tracking for retry detection
         self._tool_calls_seen = {}  # (tool_name, input_repr) -> count
 
+    @property
+    def friction_score(self):
+        """Normalized friction score (0=smooth, higher=rockier)."""
+        return self._compute_friction()
+
     def to_summary_record(self):
         """Return a JSON-serializable summary dict (no raw content)."""
-        friction = self._compute_friction()
         return {
             "episode_id": self.episode_id,
             "session_id": self.session_id,
@@ -311,7 +304,7 @@ class Episode:
             "ended_in_pr": self.ended_in_pr,
             "tests_run": self.tests_run,
             "tests_passed": self.tests_passed,
-            "friction_score": friction,
+            "friction_score": self.friction_score,
         }
 
     def _compute_friction(self):
@@ -434,7 +427,7 @@ def _contains_skill_invocation(content_blocks, attribution_skill):
 # Core parser: one JSONL file -> list of Episode objects
 # ---------------------------------------------------------------------------
 
-def parse_file(filepath, alias_to_canonical, max_slice_chars=2000):
+def parse_file(filepath, alias_to_canonical):
     """Parse a single JSONL file and return (episodes, unmatched_plugins).
 
     episodes: list of Episode objects for plugins that resolve to known marketplace plugins.
@@ -457,7 +450,6 @@ def parse_file(filepath, alias_to_canonical, max_slice_chars=2000):
     current = None  # Episode | None
     prev_skill = None
     current_is_unmatched = False  # True when current episode's plugin is unmatched
-    unmatched_skill = None        # skill name for current unmatched episode
     unmatched_plugin = None       # plugin name for current unmatched episode
     unmatched_turns = 0
 
@@ -487,7 +479,6 @@ def parse_file(filepath, alias_to_canonical, max_slice_chars=2000):
                     unmatched_plugins[unmatched_plugin] += unmatched_turns
                     unmatched_turns = 0
                     unmatched_plugin = None
-                    unmatched_skill = None
                 current_is_unmatched = False
 
                 # Determine canonical plugin for new skill
@@ -524,7 +515,6 @@ def parse_file(filepath, alias_to_canonical, max_slice_chars=2000):
                     # Unknown plugin — track for unmatched summary
                     current_is_unmatched = True
                     unmatched_plugin = effective_plugin or ""
-                    unmatched_skill = skill
                     unmatched_turns = 0
                 else:
                     current_is_unmatched = False
@@ -668,13 +658,11 @@ def parse_file(filepath, alias_to_canonical, max_slice_chars=2000):
 # Walk all project dirs
 # ---------------------------------------------------------------------------
 
-def walk_projects(projects_dir, alias_to_canonical, max_slice_chars=2000):
+def walk_projects(projects_dir, alias_to_canonical):
     """Walk all project subdirectories and parse every *.jsonl file.
 
-    Yields (episode_or_none, unmatched_dict) tuples.
-    Each JSONL file produces:
-      - zero or more Episode objects (yielded with unmatched_dict={} per episode)
-      - one final flush of unmatched_plugins per file (yielded as (None, unmatched_dict))
+    Yields one (episodes, unmatched_plugins) pair per parsed file, exactly as
+    returned by parse_file. Unreadable files are skipped.
     """
     if not os.path.isdir(projects_dir):
         return
@@ -688,11 +676,7 @@ def walk_projects(projects_dir, alias_to_canonical, max_slice_chars=2000):
                 continue
             filepath = os.path.join(proj_dir, filename)
             try:
-                episodes, unmatched = parse_file(filepath, alias_to_canonical, max_slice_chars)
-                for ep in episodes:
-                    yield ep, {}
-                if unmatched:
-                    yield None, unmatched
+                yield parse_file(filepath, alias_to_canonical)
             except OSError:
                 continue
 
@@ -809,8 +793,7 @@ def write_dataset(episodes, output_dir):
     return path
 
 
-def write_summary(episodes, canonical_names, alias_to_canonical, output_dir,
-                  extra_unmatched=None, skill_modes=None):
+def write_summary(episodes, output_dir, extra_unmatched=None, skill_modes=None):
     """Write summary.md with per-skill aggregates and unmatched plugins.
 
     extra_unmatched: dict of {plugin_name: turn_count} for plugins attributed in
@@ -847,7 +830,7 @@ def write_summary(episodes, canonical_names, alias_to_canonical, output_dir,
         stats["count"] += 1
         stats["total_turns"] += ep.turn_count
         stats["total_duration_ms"] += ep.duration_ms
-        stats["total_friction"] += ep.to_summary_record()["friction_score"]
+        stats["total_friction"] += ep.friction_score
         stats["total_tool_errors"] += ep.tool_errors
         stats["total_interruptions"] += ep.interruptions
         stats["total_permission_denials"] += ep.permission_denials
@@ -926,28 +909,26 @@ def write_summary(episodes, canonical_names, alias_to_canonical, output_dir,
     return path
 
 
-def select_slice_sample(episodes, rocky_n=5, random_n=5):
-    """Select episodes for slice output: rockiest N + random baseline N.
+def select_slice_sample(episodes, rocky_n=5, baseline_n=5):
+    """Select episodes for slice output: rockiest N + evenly-spaced baseline N.
 
-    Returns a list of Episode objects (may overlap between the two groups).
+    The baseline is deterministic by design: an evenly-spaced stride over the
+    friction-sorted remainder, so membership is a pure function of the
+    friction ordering (no randomness). Returns a list of Episode objects.
     """
     if not episodes:
         return []
 
-    scored = sorted(
-        episodes,
-        key=lambda e: e.to_summary_record()["friction_score"],
-        reverse=True,
-    )
+    scored = sorted(episodes, key=lambda e: e.friction_score, reverse=True)
 
     # Rocky = top N by friction score
     rocky = scored[:rocky_n]
 
-    # Random baseline: pick evenly spaced from the rest
+    # Baseline: evenly-spaced stride over the remaining episodes
     rest = scored[rocky_n:]
     if rest:
-        step = max(1, len(rest) // random_n)
-        baseline = [rest[i] for i in range(0, len(rest), step)][:random_n]
+        step = max(1, len(rest) // baseline_n)
+        baseline = [rest[i] for i in range(0, len(rest), step)][:baseline_n]
     else:
         baseline = []
 
@@ -965,80 +946,46 @@ def select_slice_sample(episodes, rocky_n=5, random_n=5):
 # Entry point helpers
 # ---------------------------------------------------------------------------
 
-def _find_repo_root(start):
-    """Walk up from start looking for a .git directory."""
-    candidate = os.path.abspath(start)
-    while True:
-        if os.path.isdir(os.path.join(candidate, ".git")):
-            return candidate
-        parent = os.path.dirname(candidate)
-        if parent == candidate:
-            return start
-        candidate = parent
+# This script lives in <repo-root>/scripts/, so the repo root is one level up.
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 
 
 def _parse_args(argv):
-    parsed = {
-        "projects_dir": os.path.expanduser("~/.claude/projects"),
-        "plugins_dir": None,       # resolved later relative to repo root
-        "output_dir": None,        # resolved later
-        "fixture": None,
-        "max_slice_chars": 2000,
-        "sample_rocky": 5,
-        "sample_random": 5,
-    }
-
-    i = 0
-    while i < len(argv):
-        arg = argv[i]
-        if arg == "--projects-dir":
-            i += 1
-            parsed["projects_dir"] = argv[i]
-        elif arg == "--plugins-dir":
-            i += 1
-            parsed["plugins_dir"] = argv[i]
-        elif arg == "--output-dir":
-            i += 1
-            parsed["output_dir"] = argv[i]
-        elif arg == "--fixture":
-            i += 1
-            parsed["fixture"] = argv[i]
-        elif arg == "--max-slice-chars":
-            i += 1
-            parsed["max_slice_chars"] = int(argv[i])
-        elif arg == "--sample-rocky":
-            i += 1
-            parsed["sample_rocky"] = int(argv[i])
-        elif arg == "--sample-random":
-            i += 1
-            parsed["sample_random"] = int(argv[i])
-        elif arg in ("-h", "--help"):
-            print(__doc__)
-            sys.exit(0)
-        else:
-            print(f"Unknown argument: {arg}", file=sys.stderr)
-            sys.exit(1)
-        i += 1
-
-    return parsed
+    parser = argparse.ArgumentParser(
+        description="Offline session-transcript indexer for Claude Code skill episodes.",
+    )
+    parser.add_argument(
+        "--projects-dir", default=os.path.expanduser("~/.claude/projects"),
+        help="root directory containing project subdirs (default: ~/.claude/projects)")
+    parser.add_argument(
+        "--plugins-dir", default=os.path.join(_REPO_ROOT, "plugins"),
+        help="root of the marketplace plugins directory (default: <repo-root>/plugins)")
+    parser.add_argument(
+        "--output-dir", default=os.path.join(os.getcwd(), "output", "session-analysis"),
+        help="directory for output files (default: <cwd>/output/session-analysis)")
+    parser.add_argument(
+        "--fixture", default=None,
+        help="run against a single JSONL fixture file; output goes to <output-dir>/fixture/")
+    parser.add_argument(
+        "--max-slice-chars", type=int, default=2000,
+        help="max characters kept per event text in episode slices (default: 2000)")
+    parser.add_argument(
+        "--sample-rocky", type=int, default=5,
+        help="how many rockiest episodes to include in the slices sample (default: 5)")
+    parser.add_argument(
+        "--sample-baseline", type=int, default=5,
+        help="how many evenly-spaced baseline episodes in the slices sample (default: 5)")
+    return parser.parse_args(argv)
 
 
 def main():
-    parsed = _parse_args(sys.argv[1:])
+    args = _parse_args(sys.argv[1:])
 
-    repo_root = _find_repo_root(os.getcwd())
-
-    if parsed["plugins_dir"] is None:
-        parsed["plugins_dir"] = os.path.join(repo_root, "plugins")
-
-    if parsed["output_dir"] is None:
-        parsed["output_dir"] = os.path.join(os.getcwd(), "output", "session-analysis")
-
-    plugins_dir = parsed["plugins_dir"]
-    output_dir = parsed["output_dir"]
-    max_slice_chars = parsed["max_slice_chars"]
-    rocky_n = parsed["sample_rocky"]
-    random_n = parsed["sample_random"]
+    plugins_dir = args.plugins_dir
+    output_dir = args.output_dir
+    max_slice_chars = args.max_slice_chars
+    rocky_n = args.sample_rocky
+    baseline_n = args.sample_baseline
 
     # Discover plugins
     canonical_names, alias_to_canonical = discover_plugins(plugins_dir)
@@ -1053,13 +1000,13 @@ def main():
     all_episodes = []
     all_unmatched = defaultdict(int)  # plugin_name -> turn count across all files
 
-    if parsed["fixture"]:
+    if args.fixture:
         # Single-file fixture mode
-        fixture_path = os.path.abspath(parsed["fixture"])
+        fixture_path = os.path.abspath(args.fixture)
         output_dir = os.path.join(output_dir, "fixture")
         print(f"Running fixture mode on: {fixture_path}")
         try:
-            eps, unmatched = parse_file(fixture_path, alias_to_canonical, max_slice_chars)
+            eps, unmatched = parse_file(fixture_path, alias_to_canonical)
             all_episodes.extend(eps)
             for k, v in unmatched.items():
                 all_unmatched[k] += v
@@ -1068,14 +1015,14 @@ def main():
             sys.exit(1)
     else:
         # Full scan mode
-        projects_dir = parsed["projects_dir"]
+        projects_dir = args.projects_dir
         print(f"Scanning projects under: {projects_dir}")
-        for ep, unmatched in walk_projects(projects_dir, alias_to_canonical, max_slice_chars):
-            if ep is not None:
-                all_episodes.append(ep)
-                # Print progress every 100 episodes
-                if len(all_episodes) % 100 == 0:
-                    print(f"  ... {len(all_episodes)} episodes so far")
+        for episodes, unmatched in walk_projects(projects_dir, alias_to_canonical):
+            before = len(all_episodes)
+            all_episodes.extend(episodes)
+            # Print progress roughly every 100 episodes
+            if len(all_episodes) // 100 > before // 100:
+                print(f"  ... {len(all_episodes)} episodes so far")
             for k, v in unmatched.items():
                 all_unmatched[k] += v
         print(f"Scan complete. Found {len(all_episodes)} episodes.")
@@ -1085,14 +1032,14 @@ def main():
     print(f"Wrote: {dataset_path}")
 
     summary_path = write_summary(
-        all_episodes, canonical_names, alias_to_canonical, output_dir,
+        all_episodes, output_dir,
         extra_unmatched=dict(all_unmatched),
         skill_modes=skill_modes,
     )
     print(f"Wrote: {summary_path}")
 
     # Select and write slices
-    sample = select_slice_sample(all_episodes, rocky_n, random_n)
+    sample = select_slice_sample(all_episodes, rocky_n, baseline_n)
     slices_dir = os.path.join(output_dir, "episodes")
     expected_slices = set()
     for ep in sample:
@@ -1112,7 +1059,7 @@ def main():
 
     # Summary stats
     if all_episodes:
-        total_friction = sum(e.to_summary_record()["friction_score"] for e in all_episodes)
+        total_friction = sum(e.friction_score for e in all_episodes)
         avg_friction = total_friction / len(all_episodes)
         skills_seen = {e.attribution_skill for e in all_episodes}
         print(

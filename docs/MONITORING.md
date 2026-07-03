@@ -38,7 +38,7 @@ python3 scripts/analyze-sessions.py --projects-dir /path/to/projects
 python3 scripts/analyze-sessions.py --fixture scripts/fixtures/session-fixture.jsonl
 ```
 
-See [`scripts/analyze-sessions.py`](../scripts/analyze-sessions.py) for all options (`--plugins-dir`, `--output-dir`, `--max-slice-chars`, `--sample-rocky`, `--sample-random`).
+Run the script with `--help` for all options (`--plugins-dir`, `--output-dir`, `--max-slice-chars`, `--sample-rocky`, `--sample-baseline`).
 
 ### Output paths
 
@@ -62,107 +62,24 @@ An **episode** is a contiguous run of assistant messages that share the same `at
 
 ### Rename-alias maps
 
-Plugin renames are handled via `RENAME_ALIASES` in the script. The current map:
+Plugin renames are handled via `RENAME_ALIASES` and skill-level renames via `SKILL_RENAME_ALIASES`, both defined in [`scripts/analyze-sessions.py`](../scripts/analyze-sessions.py). The script is the single source of truth — the maps are deliberately not reproduced here. Illustrative entries only:
 
 ```python
-RENAME_ALIASES = {
-    "complexity-review": "project-quality",
-    "html-ask": "html-visualization",
-    # project-review, project-ops, and project-docs were merged into project-quality
-    "project-review": "project-quality",
-    "project-ops": "project-quality",
-    "project-docs": "project-quality",
-}
+RENAME_ALIASES = {"complexity-review": "project-quality", ...}          # old plugin dir -> current
+SKILL_RENAME_ALIASES = {"github-releases:release": "github-releases:github-releases", ...}
 ```
 
-Both the old name and the new name resolve to the canonical current plugin directory name. This keeps historical transcript data from falling into the unmatched bucket after a plugin is renamed.
-
-Skill-level renames (where a skill was renamed within a plugin, or a skill's plugin prefix changed) are handled via `SKILL_RENAME_ALIASES`. This map is applied before the per-skill summary aggregation so renamed skills merge into a single row rather than fragmenting. The current map:
-
-```python
-SKILL_RENAME_ALIASES = {
-    # html-ask plugin era (plugin was later renamed to html-visualization)
-    "html-ask:html-ask": "html-visualization:html-visualize",
-    # intermediate names inside html-visualization before the unified skill
-    "html-visualization:html-ask": "html-visualization:html-visualize",
-    "html-visualization:html-feedback": "html-visualization:html-visualize",
-    "html-visualization:visualize-html": "html-visualization:html-visualize",
-    # project-docs skills -> consolidated into project-quality:project-review-docs (read-only audit)
-    "project-docs:coder-docs": "project-quality:project-review-docs",
-    "project-docs:create-docs": "project-quality:project-review-docs",
-    "project-docs:improve-doc": "project-quality:project-review-docs",
-    "project-docs:project-improve-doc": "project-quality:project-review-docs",
-    "project-docs:init-or-update-docs": "project-quality:project-review-docs",
-    "project-docs:review-docs": "project-quality:project-review-docs",
-    "project-docs:revise-docs": "project-quality:project-review-docs",
-    "project-docs:project-docs": "project-quality:project-review-docs",
-    "project-docs:project-create-docs": "project-quality:project-review-docs",
-    "project-docs:project-improve-docs": "project-quality:project-review-docs",
-    "project-docs:project-init-or-update-docs": "project-quality:project-review-docs",
-    "project-docs:project-review-docs": "project-quality:project-review-docs",
-    "project-docs:project-revise-docs": "project-quality:project-review-docs",
-    # project-ops skills -> project-quality exec-* family (testing / releasing / monitoring)
-    "project-ops:analyze-monitoring-data": "project-quality:project-exec-monitoring",
-    "project-ops:executes-tests": "project-quality:project-exec-testing",
-    "project-ops:project-executes-tests": "project-quality:project-exec-testing",
-    "project-ops:trigger-release": "project-quality:project-exec-releasing",
-    "project-ops:project-analyze-monitoring-data": "project-quality:project-exec-monitoring",
-    "project-ops:project-run-tests": "project-quality:project-exec-testing",
-    "project-ops:project-trigger-release": "project-quality:project-exec-releasing",
-    # project-quality ops renamed to the project-exec-* family
-    "project-quality:project-run-tests": "project-quality:project-exec-testing",
-    "project-quality:project-trigger-release": "project-quality:project-exec-releasing",
-    "project-quality:project-analyze-monitoring": "project-quality:project-exec-monitoring",
-    # complexity-review plugin era (plugin later renamed; reviews now live in project-quality)
-    "complexity-review:complexity-review": "project-quality:project-review-complexity",
-    # project-review skills -> project-quality (the test -> tests rename happened in the merge)
-    "project-review:complexity-review": "project-quality:project-review-complexity",
-    "project-review:consistency-review": "project-quality:project-review-consistency",
-    "project-review:structure-review": "project-quality:project-review-structure",
-    "project-review:test-review": "project-quality:project-review-tests",
-    "project-review:project-review-complexity": "project-quality:project-review-complexity",
-    "project-review:project-review-consistency": "project-quality:project-review-consistency",
-    "project-review:project-review-structure": "project-quality:project-review-structure",
-    "project-review:project-review-test": "project-quality:project-review-tests",
-    # project-explore skill renamed (explore-project -> project-explore)
-    "project-explore:explore-project": "project-explore:project-explore",
-    # grill extracted from project-quality into its own standalone plugin
-    "project-quality:project-review-grill": "grill:grill",
-}
-```
+`RENAME_ALIASES` maps old plugin directory names to the canonical current name, so historical transcript data does not fall into the unmatched bucket after a plugin is renamed. `SKILL_RENAME_ALIASES` handles renames where a skill was renamed within a plugin or its plugin prefix changed; it is applied before the per-skill summary aggregation so renamed skills merge into a single row rather than fragmenting (`dataset.json` keeps the raw attributed name). When a plugin or skill is renamed, add an entry to the corresponding map in the script — the merge is pinned by the fixture test.
 
 ### Friction-score formula
 
-The friction score is a **per-turn normalized weighted sum** of friction signals. From the script:
-
-```python
-FRICTION_WEIGHTS = {
-    "tool_errors": 3.0,
-    "interruptions": 2.0,
-    "permission_denials": 2.0,
-    "user_corrections": 0.5,
-    "retries": 1.0,
-    "ask_user_questions": 0.5,
-}
-```
-
-```python
-raw = (
-    self.tool_errors * FRICTION_WEIGHTS["tool_errors"]
-    + self.interruptions * FRICTION_WEIGHTS["interruptions"]
-    + self.permission_denials * FRICTION_WEIGHTS["permission_denials"]
-    + self.user_corrections * FRICTION_WEIGHTS["user_corrections"]
-    + self.retries * FRICTION_WEIGHTS["retries"]
-    + self.ask_user_questions * FRICTION_WEIGHTS["ask_user_questions"]
-)
-friction_score = round(raw / self.turn_count, 4)  # 0.0 if turn_count == 0
-```
+The friction score is a **per-turn normalized weighted sum** of friction signals: each signal count is multiplied by its weight, the weighted counts are summed, and the sum is divided by the episode's `turn_count` (an episode with zero turns scores 0.0). Tool errors carry the heaviest weight, interruptions and permission denials sit in the middle, and corrections/questions weigh least. The authoritative weights and computation are `FRICTION_WEIGHTS` and `Episode._compute_friction()` in [`scripts/analyze-sessions.py`](../scripts/analyze-sessions.py) — deliberately not mirrored here.
 
 **Field semantics:**
 
 | Field | Source in transcript | How it is counted |
 |-------|----------------------|-------------------|
-| `tool_errors` | `tool_result.is_error == true` inside a user message | +1 per erroring result |
+| `tool_errors` | `tool_result.is_error == true` inside a user message | +1 per erroring result, **except** results whose text matches `"Cancelled: parallel tool call"` — those are the un-run siblings of an interrupted parallel batch (user-initiated cancellations, not tool failures) and are not counted. |
 | `interruptions` | `record.toolUseResult.interrupted == true` on the user record | +1 per interrupted turn |
 | `permission_denials` | `tool_result.content` contains `"doesn't want to proceed"` or `"tool use was rejected"`, **guarded by `is_error == true`** | +1 per denial. The `is_error` guard prevents false positives when file content read by the model happens to contain the phrase (e.g. this file describes the detector strings) — a normal Read result has `is_error == false`. |
 | `user_corrections` | First sentence of user prose matches `\b(no|wrong|stop|don'?t|actually|revert)\b` | +1 per matching turn. Harness-generated blocks inside the user message (`<command-name>`, `<command-args>`, `<local-command-stdout>`, `<bash-stdout>`, `<system-reminder>`, `<attachment>`, etc.) are stripped before the regex runs — slash-command bodies are not user prose. |
@@ -171,6 +88,28 @@ friction_score = round(raw / self.turn_count, 4)  # 0.0 if turn_count == 0
 | `duration_ms` | `system` record with `subtype: "turn_duration"`, field `durationMs` | summed across all system events in the episode |
 
 A `friction_score` of 0.0 means a smooth episode; higher values indicate rockier interactions. Episodes are comparable across different lengths because raw penalties are divided by `turn_count`.
+
+### Outcome signals
+
+Alongside friction, each episode carries four boolean outcome signals:
+
+| Field | Source in transcript | Meaning |
+|-------|----------------------|---------|
+| `ended_in_commit` | Assistant message text matches `COMMIT_RE` (`commit` / `git commit`) | The episode's assistant turns mention making a commit |
+| `ended_in_pr` | Assistant message text matches `PR_RE` (`pull request`, `gh pr create`, `pr url`) | The episode mentions opening a pull request |
+| `tests_run` | A `tool_result` string matches `TEST_RUN_RE` (`pytest`, `npm test`, `go test`, `cargo test`, `make test`, `./test`) | Tests were run during the episode |
+| `tests_passed` | A `tool_result` string matches `TEST_PASS_RE` (e.g. `all tests passed`, `PASSED`) | A test run reported success |
+
+These are heuristic pattern matches (see the `*_RE` constants in the script), not verified outcomes — treat them as coarse signals. They appear per-episode in `dataset.json` and as per-skill aggregate counts (the **Commits** and **PRs** columns) in `summary.md`.
+
+### dataset.json record fields
+
+Each `dataset.json` entry is one episode:
+
+- **Identity** — `episode_id`, `session_id`, `source_file`, `start_line`, `end_line`
+- **Attribution** — `attribution_skill` (raw attributed name; rename aliases are applied only in `summary.md`), `attribution_plugin` (canonical plugin name), `trigger_type` (`explicit` / `ambient`)
+- **Friction signals** — `turn_count`, `tool_errors`, `interruptions`, `permission_denials`, `user_corrections`, `ask_user_questions`, `retries`, `duration_ms`, `friction_score`
+- **Outcome signals** — `ended_in_commit`, `ended_in_pr`, `tests_run`, `tests_passed`
 
 ### Invocation modes (read this before interpreting the Model-invoked column)
 
@@ -198,19 +137,19 @@ For `user-only` skills, every episode is `ambient` by definition.
 The script selects episodes for the `episodes/` slice output:
 
 - Top N by friction score (default 5, `--sample-rocky`)
-- N evenly-spaced from the remaining episodes as a random baseline (default 5, `--sample-random`)
+- N evenly spaced from the remaining episodes as a baseline (default 5, `--sample-baseline`). The baseline is deterministic by design — an evenly-spaced stride over the friction-sorted remainder, so the emitted slice set is a pure function of the friction ordering (no randomness).
 
 Each slice file carries the episode's summary fields plus an `events` array reconstructing the episode's conversation — assistant turns (text + tool names), user prompts, and tool results — so the Phase 2 judge has real content to read, not just stats. Slice content is sanitized: credential-like strings and long hex are redacted, and each event's text is capped at `--max-slice-chars` (default 2000).
 
 ### Fixture tests
 
-A synthetic fixture and expected output live under `scripts/fixtures/`. Run the fixture check with:
+A synthetic fixture and expected output live under `scripts/fixtures/`; the assertion script lives with the tests. Run the fixture check with:
 
 ```bash
 python3 scripts/analyze-sessions.py \
     --fixture scripts/fixtures/session-fixture.jsonl
 
-python3 scripts/fixtures/check-fixture.py \
+python3 tests/marketplace/script-tests/check-fixture.py \
     --actual output/session-analysis/fixture/dataset.json \
     --expected scripts/fixtures/session-fixture-expected.json \
     --summary output/session-analysis/fixture/summary.md

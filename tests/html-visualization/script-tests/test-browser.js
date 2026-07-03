@@ -39,8 +39,11 @@ function findPlaywright() {
 
 const playwrightDir = findPlaywright();
 if (!playwrightDir) {
-  console.error('SKIP: playwright not found in npm _npx cache. Run: npx playwright --version');
-  process.exit(1);
+  // Playwright is an optional prerequisite (see docs/TESTING.md): a machine
+  // without it skips the browser suite instead of failing the whole test run.
+  console.log('SKIP: playwright not found in npm _npx cache — browser suite skipped. '
+            + 'To enable it, run: npx playwright --version && npx playwright install chromium');
+  process.exit(0);
 }
 
 process.env.PLAYWRIGHT_BROWSERS_PATH = path.join(os.homedir(), '.cache', 'ms-playwright');

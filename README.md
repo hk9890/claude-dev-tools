@@ -2,18 +2,7 @@
 
 A plugin marketplace for [Claude Code](https://claude.ai/code). Each plugin is a self-contained unit — commands, skills, and agents — that extends Claude Code's capabilities in a specific domain.
 
-## Repo layout
-
-| Directory | Purpose |
-|---|---|
-| `plugins/` | One subdirectory per plugin (independently installable) |
-| `.claude-plugin/` | Repo-level marketplace manifest (`marketplace.json`) |
-| `docs/` | Developer guides (OVERVIEW, CODING, TESTING, RUNNING, REVIEWING, RELEASING, MONITORING, CHANGE-WORKFLOW) |
-| `scripts/` | Repo maintenance scripts |
-| `tests/` | Structural validation and smoke tests |
-| `.tasks/` | taskmgr task store for this repo (file-based, the `taskmgr` issue store) |
-
-See [docs/OVERVIEW.md](docs/OVERVIEW.md) for the full layout and architecture details.
+For the repo layout and architecture, see [docs/OVERVIEW.md](docs/OVERVIEW.md).
 
 ## Plugins
 
@@ -47,18 +36,6 @@ After installing, the plugin is recorded in your `.claude/settings.json`:
 }
 ```
 
-## Running tests
-
-A `Makefile` at the repo root provides a single discoverable entry point. Run `make` (or `make help`) to see all targets:
-
-| Target | What it runs |
-|---|---|
-| `make test` | Full test suite — all plugins (`tests/run-all.sh`) |
-| `make test-html` | html-visualization browser/server tests only |
-| `make check-consistency` | Cross-reference and version-mirror validation |
-| `make analyze-sessions` | Session-transcript analyser (use `ARGS=` to pass options) |
-| `make lint` | No linter configured — prints a notice and exits 0 |
-
 ## Contributing
 
-See [docs/CODING.md](docs/CODING.md) for how to add a new plugin and [docs/OVERVIEW.md](docs/OVERVIEW.md) for the repo layout, and [docs/CHANGE-WORKFLOW.md](docs/CHANGE-WORKFLOW.md) for the commit and task-tracking workflow used in this repo.
+See [docs/CODING.md](docs/CODING.md) for how to add a new plugin, [docs/OVERVIEW.md](docs/OVERVIEW.md) for the repo layout, [docs/TESTING.md](docs/TESTING.md) for running the test suites, and [docs/CHANGE-WORKFLOW.md](docs/CHANGE-WORKFLOW.md) for the commit and task-tracking workflow used in this repo.

@@ -176,34 +176,46 @@ test_startup_output() {
   ok "startup: Feedback file path printed to stdout"
 }
 
-# 3. GET /assets/<file> serves a real asset file
+# 3. GET /assets/<file> serves a committed asset file. Fetches an asset that
+#    ships with the plugin instead of writing a fixture into the tracked tree —
+#    the test must never mutate plugins/.
 test_get_asset() {
-  # Create a temporary asset file in the assets dir for this test
-  local asset_file="$ASSETS_DIR/test-asset-$$.txt"
-  printf 'hello asset\n' > "$asset_file"
+  local asset_rel="shared/tokens.css"
+  local asset_file="$ASSETS_DIR/$asset_rel"
+  if [[ ! -f "$asset_file" ]]; then
+    fail "GET /assets/<file>: committed asset $asset_rel missing under $ASSETS_DIR"
+    return
+  fi
 
   local tmp_html
   tmp_html=$(mktemp --suffix=.html)
   make_html "$tmp_html"
 
-  start_server "$tmp_html"
+  if ! start_server "$tmp_html"; then
+    fail "GET /assets/<file>: server did not start"
+    rm -f "$tmp_html"
+    return
+  fi
 
-  local status body
-  status=$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/assets/test-asset-$$.txt")
-  body=$(curl -s "$BASE_URL/assets/test-asset-$$.txt")
+  local tmp_body status
+  tmp_body=$(mktemp)
+  status=$(curl -s -o "$tmp_body" -w '%{http_code}' "$BASE_URL/assets/$asset_rel")
 
   kill_server
-  rm -f "$tmp_html" "$asset_file"
+  rm -f "$tmp_html"
 
   if [[ "$status" != "200" ]]; then
     fail "GET /assets/<file>: expected 200, got $status"
+    rm -f "$tmp_body"
     return
   fi
-  if [[ "$body" != "hello asset" ]]; then
-    fail "GET /assets/<file>: expected 'hello asset', got '$body'"
+  if ! cmp -s "$tmp_body" "$asset_file"; then
+    fail "GET /assets/<file>: response body does not match $asset_rel on disk"
+    rm -f "$tmp_body"
     return
   fi
-  ok "GET /assets/<file>: returns 200 with correct body"
+  rm -f "$tmp_body"
+  ok "GET /assets/<file>: returns 200 with the committed asset's exact content"
 }
 
 # 4. GET /assets/../../etc/passwd returns 404 (path traversal)
