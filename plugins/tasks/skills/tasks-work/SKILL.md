@@ -3,14 +3,20 @@ name: tasks-work
 description: "Run ready taskmgr tasks end to end — implement → verify → record, then verify (never auto-close) the parent epic."
 user-invocable: true
 disable-model-invocation: true
+argument-hint: "[epic-id or task-ids]"
 ---
 
 # Running ready work
 
 Take ready taskmgr tasks through implementation, verification, and recording — driven by the bundled
 `work.js` workflow. You confirm the scope here in the main loop, then hand the resolved task ids to
-the workflow, which fans out one `implementer` per task, verifies each (review ∥ test), and records
-the outcome. Epics are verified and left for a human to close.
+the workflow, which runs one `implementer` per task sequentially, verifies each (review ∥ test), and
+records the outcome. Epics are verified and left for a human to close.
+
+**Scope (optional):** an epic id or task ids passed with the command pre-seed the step 3 selection —
+still confirmed there before anything runs.
+
+$ARGUMENTS
 
 ## 1. Preconditions
 
@@ -37,7 +43,8 @@ priority, title).
 
 ## 3. Confirm scope (do not skip)
 
-Ask the user via `AskUserQuestion` which scope to run:
+Ask the user via `AskUserQuestion` which scope to run — when the command carried an argument,
+present that scope as the recommended option instead of an open question:
 
 - **All ready** — every task `taskmgr ready` returned.
 - **A subset** — specific ids the user picks.
@@ -71,13 +78,15 @@ Pass `epicId` only when running an epic (it drives the epic-verification stage).
 all sequencing — it runs the tasks **sequentially** (one implement→verify→record at a time, since
 they share one working tree) — and every taskmgr read/write happens inside its agents. It runs in the
 background; when it completes you receive its summary object (counts of closed / left-open /
-inconclusive / skipped, plus the epic verdict) — then do step 5. No manual polling.
+inconclusive / skipped, a `reviewer_fallback` flag, plus the epic verdict) — then do step 5. No
+manual polling.
 
 ## 5. Report
 
 When the workflow returns, relay its summary: how many tasks were **closed**, **left open** (a
-verification failure — a bug was filed), **inconclusive** (an agent did not complete — left open, no
-bug), or **skipped** (the ticket was unready or blocked — never started, no bug). For an epic, report
-the verification verdict and that it is **ready for the user to close**
-(the workflow never closes an epic). List any filed bug ids and suggest `taskmgr ready` for the next
-batch.
+verification failure), **inconclusive** (an agent did not finish), or **skipped** (readiness gate
+refused it, or the implementer was blocked mid-task) — RULES.md holds the full outcome semantics.
+For an epic, report the verification verdict and that it is **ready for the user to close**
+(the workflow never closes an epic). If the summary has `reviewer_fallback: true`, say the review
+leg ran on the built-in general-purpose agent because `project-quality:project-reviewer` is not
+installed. List any filed bug ids and suggest `taskmgr ready` for the next batch.

@@ -10,6 +10,6 @@ argument-hint: "[version-or-scope]"
 
 Follow the project's own release flow exactly. Do not invent versioning, gates, or steps — if the project defines no release flow, do nothing and report that releasing is not configured for this project.
 
-If the project leaves any choice open and the scope above does not settle it, ask the user — do not assume.
+If the project offers more than one release path and the scope above does not settle which, ask the user — do not assume.
 
 Report the outcome faithfully.

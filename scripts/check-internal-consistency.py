@@ -20,8 +20,8 @@ Check A — section references:
     blocks and inline code spans. Skips any file whose path contains an examples/
     or notes/ directory segment.
 
-    The GitHub heading-slug function is imported from validate-routes.py (not
-    copied) via importlib.
+    The heading-scan, inline-code, and GitHub heading-slug helpers are imported
+    from validate-routes.py (not copied) via importlib.
 
 Check B — version mirror:
     Compares each plugins/*/.claude-plugin/plugin.json "version" against the
@@ -59,6 +59,7 @@ fixture are resolved relative to the fixture file first, then relative to
 --repo-root (defaulting to the nearest .git parent of CWD).
 """
 
+import argparse
 import importlib.util
 import json
 import os
@@ -120,11 +121,6 @@ _SECTION_POSS_RE = re.compile(
 )
 
 
-def _strip_inline_code(line):
-    """Replace inline-code spans with spaces so they are not scanned."""
-    return re.sub(r"`[^`]*`", lambda m: " " * len(m.group()), line)
-
-
 def _path_has_excluded_segment(path):
     """Return True if any path component is 'examples' or 'notes'."""
     parts = path.replace("\\", "/").split("/")
@@ -140,39 +136,6 @@ def _find_target_file(filename, source_dir, repo_root):
     if os.path.isfile(root_path):
         return root_path
     return None
-
-
-def _collect_headings(content, vr_mod):
-    """Return list of (heading_text, slug) for all headings in *content*.
-
-    Uses the validate-routes slug algorithm so duplicate headings get the same
-    -1/-2 suffixes that GitHub generates.
-    """
-    headings = []
-    seen = {}
-    in_fence = False
-
-    for line in content.splitlines():
-        stripped = line.strip()
-        if stripped.startswith("```") or stripped.startswith("~~~"):
-            in_fence = not in_fence
-            continue
-        if in_fence:
-            continue
-        m = re.match(r"^(#{1,6})\s+(.*)", line)
-        if not m:
-            continue
-        heading_text = m.group(2).strip()
-        base_slug = vr_mod._heading_to_slug(heading_text)
-        if base_slug not in seen:
-            seen[base_slug] = 0
-            slug = base_slug
-        else:
-            seen[base_slug] += 1
-            slug = f"{base_slug}-{seen[base_slug]}"
-        headings.append((heading_text, slug))
-
-    return headings
 
 
 _STOP_WORDS = frozenset({
@@ -211,13 +174,7 @@ def _phrase_matches_heading(phrase, heading_text, heading_slug, vr_mod):
     This handles prose like "See the Script tests section in TESTING.md"
     where the intended phrase is "Script tests", not "See the Script tests".
     """
-    seen = set()
     for sub in _candidate_subphrases(phrase):
-        if sub in seen:
-            continue
-        seen.add(sub)
-        if not sub:
-            continue
         # (a) GitHub slug equality
         if vr_mod._heading_to_slug(sub) == heading_slug:
             return True
@@ -253,7 +210,7 @@ def _scan_file_for_section_refs(filepath, vr_mod, repo_root):
             continue
 
         # Strip inline code spans before scanning
-        line = _strip_inline_code(raw_line)
+        line = vr_mod._strip_inline_code(raw_line)
 
         # Collect all (phrase, filename) candidates from this line
         candidates = []
@@ -282,7 +239,7 @@ def _scan_file_for_section_refs(filepath, vr_mod, repo_root):
                 )
                 continue
 
-            headings = _collect_headings(target_content, vr_mod)
+            headings = list(vr_mod.iter_headings(target_content))
             if any(_phrase_matches_heading(phrase, ht, slug, vr_mod) for ht, slug in headings):
                 results.append((lineno, phrase, filename, True, "ok"))
             else:
@@ -336,41 +293,60 @@ def run_section_check(repo_root, vr_mod, target_files=None):
 
 
 # ---------------------------------------------------------------------------
-# Version-mirror check — Check B
+# Mirror checks — Checks B (version) and C (description)
 # ---------------------------------------------------------------------------
 
-def run_version_check(repo_root, plugin_json_files=None, marketplace_path=None):
-    """Run Check B — version mirror.
+def _load_marketplace(marketplace_path):
+    """Parse marketplace.json once. Returns (manifest_dict, error) — exactly one is None."""
+    try:
+        with open(marketplace_path, encoding="utf-8") as fh:
+            return json.load(fh), None
+    except (OSError, json.JSONDecodeError) as exc:
+        return None, f"cannot load marketplace.json at {marketplace_path}: {exc}"
 
-    Compares each plugin.json "version" against the matching entry in
-    marketplace.json. Any mismatch or missing entry => FAIL.
+
+def _discover_plugin_jsons(repo_root):
+    """Return every plugins/*/.claude-plugin/plugin.json path, sorted by plugin name."""
+    plugin_json_files = []
+    plugins_dir = os.path.join(repo_root, "plugins")
+    if os.path.isdir(plugins_dir):
+        for plugin_name in sorted(os.listdir(plugins_dir)):
+            pj = os.path.join(plugins_dir, plugin_name, ".claude-plugin", "plugin.json")
+            if os.path.isfile(pj):
+                plugin_json_files.append(pj)
+    return plugin_json_files
+
+
+def _version_mismatch(pj_path, name, pj_value, market_value):
+    return (
+        f"{pj_path}: version mismatch for {name!r} — "
+        f"plugin.json={pj_value!r}, marketplace.json={market_value!r}"
+    )
+
+
+def _description_mismatch(pj_path, name, pj_value, market_value):
+    return (
+        f"{pj_path}: description mismatch for {name!r}\n"
+        f"  - plugin.json:    {pj_value!r}\n"
+        f"  + marketplace.json: {market_value!r}"
+    )
+
+
+def run_mirror_check(field, marketplace, marketplace_path, plugin_json_files,
+                     format_mismatch):
+    """Shared engine for Checks B and C.
+
+    Compares each plugin.json *field* against the matching entry in the
+    already-parsed *marketplace* manifest. Any mismatch or missing entry =>
+    FAIL, formatted by *format_mismatch*.
 
     Returns list of failure strings.
     """
-    if marketplace_path is None:
-        marketplace_path = os.path.join(repo_root, ".claude-plugin", "marketplace.json")
-
-    try:
-        with open(marketplace_path, encoding="utf-8") as fh:
-            marketplace = json.load(fh)
-    except (OSError, json.JSONDecodeError) as exc:
-        return [f"cannot load marketplace.json at {marketplace_path}: {exc}"]
-
-    # Build lookup: plugin name -> version from marketplace
-    market_versions = {
-        entry.get("name"): entry.get("version")
+    market_values = {
+        entry.get("name"): entry.get(field)
         for entry in marketplace.get("plugins", [])
         if entry.get("name")
     }
-
-    if plugin_json_files is None:
-        plugin_json_files = []
-        plugins_dir = os.path.join(repo_root, "plugins")
-        if os.path.isdir(plugins_dir):
-            for plugin_name in sorted(os.listdir(plugins_dir)):
-                pj = os.path.join(plugins_dir, plugin_name, ".claude-plugin", "plugin.json")
-                if os.path.isfile(pj):
-                    plugin_json_files.append(pj)
 
     failures = []
 
@@ -383,21 +359,19 @@ def run_version_check(repo_root, plugin_json_files=None, marketplace_path=None):
             continue
 
         name = pj.get("name")
-        pj_version = pj.get("version")
 
         if not name:
             failures.append(f"{pj_path}: missing 'name' field")
             continue
 
-        if name not in market_versions:
+        if name not in market_values:
             failures.append(
                 f"{pj_path}: plugin {name!r} not found in marketplace.json "
                 f"({marketplace_path})"
             )
-        elif pj_version != market_versions[name]:
+        elif pj.get(field) != market_values[name]:
             failures.append(
-                f"{pj_path}: version mismatch for {name!r} — "
-                f"plugin.json={pj_version!r}, marketplace.json={market_versions[name]!r}"
+                format_mismatch(pj_path, name, pj.get(field), market_values[name])
             )
 
     return failures
@@ -407,26 +381,18 @@ def run_version_check(repo_root, plugin_json_files=None, marketplace_path=None):
 # Version-uniformity check — Check D
 # ---------------------------------------------------------------------------
 
-def run_version_uniformity_check(repo_root, marketplace_path=None):
+def run_version_uniformity_check(marketplace):
     """Run Check D — version uniformity.
 
     Asserts the single-version lockstep from docs/RELEASING.md: marketplace
-    metadata.version and every plugin-entry version in marketplace.json must be
-    the identical string. Marketplace-only by design — Check B already pins each
-    plugin.json to its entry, so B + D together enforce full lockstep while D
-    stays cleanly testable with a --marketplace override.
+    metadata.version and every plugin-entry version in the already-parsed
+    *marketplace* manifest must be the identical string. Marketplace-only by
+    design — Check B already pins each plugin.json to its entry, so B + D
+    together enforce full lockstep while D stays cleanly testable with a
+    --marketplace override.
 
     Returns list of failure strings.
     """
-    if marketplace_path is None:
-        marketplace_path = os.path.join(repo_root, ".claude-plugin", "marketplace.json")
-
-    try:
-        with open(marketplace_path, encoding="utf-8") as fh:
-            marketplace = json.load(fh)
-    except (OSError, json.JSONDecodeError) as exc:
-        return [f"cannot load marketplace.json at {marketplace_path}: {exc}"]
-
     # Collect (source label, version) across every version field in the manifest.
     seen = []
 
@@ -458,146 +424,45 @@ def run_version_uniformity_check(repo_root, marketplace_path=None):
 
 
 # ---------------------------------------------------------------------------
-# Description-mirror check — Check C
-# ---------------------------------------------------------------------------
-
-def run_description_check(repo_root, plugin_json_files=None, marketplace_path=None):
-    """Run Check C — description mirror.
-
-    Compares each plugins/*/.claude-plugin/plugin.json "description" against
-    the matching entry in .claude-plugin/marketplace.json. Any mismatch or
-    missing entry => FAIL. On mismatch, shows a one-line diff of the two values.
-
-    When plugin_json_files is given, only those files are checked (same scope
-    as --check-versions, so fixture tests stay consistent).
-
-    Returns list of failure strings.
-    """
-    if marketplace_path is None:
-        marketplace_path = os.path.join(repo_root, ".claude-plugin", "marketplace.json")
-
-    try:
-        with open(marketplace_path, encoding="utf-8") as fh:
-            marketplace = json.load(fh)
-    except (OSError, json.JSONDecodeError) as exc:
-        return [f"cannot load marketplace.json at {marketplace_path}: {exc}"]
-
-    # Build lookup: plugin name -> description from marketplace
-    market_descriptions = {
-        entry.get("name"): entry.get("description")
-        for entry in marketplace.get("plugins", [])
-        if entry.get("name")
-    }
-
-    if plugin_json_files is None:
-        plugin_json_files = []
-        plugins_dir = os.path.join(repo_root, "plugins")
-        if os.path.isdir(plugins_dir):
-            for plugin_name in sorted(os.listdir(plugins_dir)):
-                pj = os.path.join(plugins_dir, plugin_name, ".claude-plugin", "plugin.json")
-                if os.path.isfile(pj):
-                    plugin_json_files.append(pj)
-
-    failures = []
-
-    for pj_path in sorted(plugin_json_files):
-        try:
-            with open(pj_path, encoding="utf-8") as fh:
-                pj = json.load(fh)
-        except (OSError, json.JSONDecodeError) as exc:
-            failures.append(f"cannot load {pj_path}: {exc}")
-            continue
-
-        name = pj.get("name")
-        pj_desc = pj.get("description")
-
-        if not name:
-            failures.append(f"{pj_path}: missing 'name' field")
-            continue
-
-        if name not in market_descriptions:
-            failures.append(
-                f"{pj_path}: plugin {name!r} not found in marketplace.json "
-                f"({marketplace_path})"
-            )
-        elif pj_desc != market_descriptions[name]:
-            failures.append(
-                f"{pj_path}: description mismatch for {name!r}\n"
-                f"  - plugin.json:    {pj_desc!r}\n"
-                f"  + marketplace.json: {market_descriptions[name]!r}"
-            )
-
-    return failures
-
-
-# ---------------------------------------------------------------------------
 # Argument parsing
 # ---------------------------------------------------------------------------
 
+# This script lives in <repo-root>/scripts/, so the repo root is one level up.
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+
+
 def _parse_args(argv):
-    """Return a dict with keys: repo_root, check_sections, check_versions, marketplace,
-    skip_sections, skip_versions, skip_descriptions."""
-    parsed = {
-        "repo_root": None,
-        "check_sections": None,   # None = full repo scan
-        "check_versions": None,   # None = full plugin discovery
-        "marketplace": None,
-        "skip_sections": False,
-        "skip_versions": False,
-        "skip_descriptions": False,
-        "skip_uniformity": False,
-    }
+    parser = argparse.ArgumentParser(
+        description="Validate internal cross-references and version mirrors.",
+    )
+    parser.add_argument(
+        "repo_root_pos", nargs="?", metavar="REPO_ROOT", default=None,
+        help="repo root (positional alternative to --repo-root)")
+    parser.add_argument(
+        "--repo-root", dest="repo_root", default=None,
+        help="repo root (default: this script's repository)")
+    parser.add_argument(
+        "--check-sections", nargs="+", metavar="FILE", default=None,
+        help="scan only these markdown files for Check A (default: full repo scan)")
+    parser.add_argument(
+        "--check-versions", nargs="+", metavar="PLUGIN_JSON", default=None,
+        help="check only these plugin.json files for Checks B/C (default: discover all)")
+    parser.add_argument(
+        "--marketplace", default=None,
+        help="marketplace.json to check against (default: <repo-root>/.claude-plugin/marketplace.json)")
+    parser.add_argument("--skip-sections", action="store_true",
+                        help="skip Check A entirely")
+    parser.add_argument("--skip-versions", action="store_true",
+                        help="skip Check B entirely")
+    parser.add_argument("--skip-descriptions", action="store_true",
+                        help="skip Check C entirely")
+    parser.add_argument("--skip-uniformity", action="store_true",
+                        help="skip Check D entirely")
+    args = parser.parse_args(argv)
 
-    i = 0
-    while i < len(argv):
-        arg = argv[i]
-        if arg == "--repo-root":
-            i += 1
-            parsed["repo_root"] = argv[i]
-        elif arg in ("--check-sections", "--check-versions"):
-            i += 1
-            files = []
-            while i < len(argv) and not argv[i].startswith("--"):
-                files.append(argv[i])
-                i += 1
-            if arg == "--check-sections":
-                parsed["check_sections"] = files
-            else:
-                parsed["check_versions"] = files
-            continue
-        elif arg == "--marketplace":
-            i += 1
-            parsed["marketplace"] = argv[i]
-        elif arg == "--skip-sections":
-            parsed["skip_sections"] = True
-        elif arg == "--skip-versions":
-            parsed["skip_versions"] = True
-        elif arg == "--skip-descriptions":
-            parsed["skip_descriptions"] = True
-        elif arg == "--skip-uniformity":
-            parsed["skip_uniformity"] = True
-        elif arg.startswith("--"):
-            print(f"Unknown option: {arg}", file=sys.stderr)
-            sys.exit(1)
-        else:
-            # Bare positional: treat as repo_root
-            if parsed["repo_root"] is None:
-                parsed["repo_root"] = arg
-        i += 1
-
-    return parsed
-
-
-def _find_repo_root(start_dir):
-    """Walk up from start_dir looking for a .git directory."""
-    candidate = os.path.abspath(start_dir)
-    while True:
-        if os.path.isdir(os.path.join(candidate, ".git")):
-            return candidate
-        parent = os.path.dirname(candidate)
-        if parent == candidate:
-            return start_dir  # reached filesystem root
-        candidate = parent
+    if args.repo_root is None:
+        args.repo_root = args.repo_root_pos if args.repo_root_pos else _REPO_ROOT
+    return args
 
 
 # ---------------------------------------------------------------------------
@@ -605,18 +470,15 @@ def _find_repo_root(start_dir):
 # ---------------------------------------------------------------------------
 
 def main():
-    parsed = _parse_args(sys.argv[1:])
+    args = _parse_args(sys.argv[1:])
 
-    if parsed["repo_root"] is None:
-        parsed["repo_root"] = _find_repo_root(os.getcwd())
-
-    repo_root = os.path.abspath(parsed["repo_root"])
+    repo_root = os.path.abspath(args.repo_root)
 
     if not os.path.isdir(repo_root):
         print(f"Error: repo root {repo_root!r} is not a directory", file=sys.stderr)
         sys.exit(1)
 
-    # Load the heading-slug utilities from validate-routes.py
+    # Load the heading-scan/slug utilities from validate-routes.py
     try:
         vr_mod = _load_validate_routes(repo_root)
     except Exception as exc:
@@ -628,13 +490,13 @@ def main():
     # ------------------------------------------------------------------
     # Check A — section references
     # ------------------------------------------------------------------
-    if parsed["skip_sections"]:
+    if args.skip_sections:
         print("CHECK A — section references: SKIPPED")
     else:
         section_failures, section_total = run_section_check(
             repo_root,
             vr_mod,
-            target_files=parsed["check_sections"],
+            target_files=args.check_sections,
         )
 
         if section_failures:
@@ -643,7 +505,7 @@ def main():
                 print(f"  FAIL: {f}")
             all_failures.extend(section_failures)
         else:
-            if section_total == 0 and parsed["check_sections"] is None:
+            if section_total == 0 and args.check_sections is None:
                 # A no-op scanner must not be confused with a passing scanner.
                 # The acceptance criterion requires >=1 real reference be resolved.
                 print(
@@ -657,55 +519,51 @@ def main():
                 )
 
     # ------------------------------------------------------------------
-    # Check B — version mirror
+    # Checks B, C, D share one parsed marketplace.json and one plugin.json
+    # discovery pass.
     # ------------------------------------------------------------------
-    if parsed["skip_versions"]:
-        print("CHECK B — version mirror: SKIPPED")
+    marketplace_path = args.marketplace or os.path.join(
+        repo_root, ".claude-plugin", "marketplace.json")
+    marketplace, load_error = _load_marketplace(marketplace_path)
+    if args.check_versions is not None:
+        plugin_json_files = args.check_versions
     else:
-        version_failures = run_version_check(
-            repo_root,
-            plugin_json_files=parsed["check_versions"],
-            marketplace_path=parsed["marketplace"],
-        )
+        plugin_json_files = _discover_plugin_jsons(repo_root)
 
-        if version_failures:
-            print("CHECK B — version mirror: FAILED")
-            for f in version_failures:
-                print(f"  FAIL: {f}")
-            all_failures.extend(version_failures)
+    mirror_checks = [
+        ("CHECK B — version mirror", args.skip_versions, "version", _version_mismatch),
+        ("CHECK C — description mirror", args.skip_descriptions, "description",
+         _description_mismatch),
+    ]
+    for label, skipped, field, format_mismatch in mirror_checks:
+        if skipped:
+            print(f"{label}: SKIPPED")
+            continue
+        if load_error:
+            failures = [load_error]
         else:
-            print("CHECK B — version mirror: PASS")
-
-    # ------------------------------------------------------------------
-    # Check C — description mirror
-    # ------------------------------------------------------------------
-    if parsed["skip_descriptions"]:
-        print("CHECK C — description mirror: SKIPPED")
-    else:
-        description_failures = run_description_check(
-            repo_root,
-            plugin_json_files=parsed["check_versions"],
-            marketplace_path=parsed["marketplace"],
-        )
-
-        if description_failures:
-            print("CHECK C — description mirror: FAILED")
-            for f in description_failures:
+            failures = run_mirror_check(
+                field, marketplace, marketplace_path, plugin_json_files,
+                format_mismatch,
+            )
+        if failures:
+            print(f"{label}: FAILED")
+            for f in failures:
                 print(f"  FAIL: {f}")
-            all_failures.extend(description_failures)
+            all_failures.extend(failures)
         else:
-            print("CHECK C — description mirror: PASS")
+            print(f"{label}: PASS")
 
     # ------------------------------------------------------------------
     # Check D — version uniformity
     # ------------------------------------------------------------------
-    if parsed["skip_uniformity"]:
+    if args.skip_uniformity:
         print("CHECK D — version uniformity: SKIPPED")
     else:
-        uniformity_failures = run_version_uniformity_check(
-            repo_root,
-            marketplace_path=parsed["marketplace"],
-        )
+        if load_error:
+            uniformity_failures = [load_error]
+        else:
+            uniformity_failures = run_version_uniformity_check(marketplace)
 
         if uniformity_failures:
             print("CHECK D — version uniformity: FAILED")

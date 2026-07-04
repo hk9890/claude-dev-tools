@@ -33,7 +33,8 @@ If ANY check fails, do **not** write code or claim the task. Comment the gap and
 taskmgr comment add <id> "Cannot execute: <specific gaps>. Needs <what> before implementation."
 ```
 
-Report back that the ticket is not ready. A vague ticket wastes the cycle — refuse it.
+Report back that the ticket is not ready — status `unready`. A vague ticket wastes the cycle —
+refuse it.
 
 ## Step 2 — Claim and implement
 

@@ -44,9 +44,15 @@ configuration point — set them directly; do **not** rely on the Workflow `args
   any `'` or `\`, e.g. `'the auth module\'s tests'`), or a stray quote breaks the script.
 - `PLUGIN_DIR` — the absolute path of *this* plugin, so finders can locate each
   dimension's procedure wherever the plugin is installed. Resolve it in the main loop
-  (where `${CLAUDE_PLUGIN_ROOT}` is available), e.g.
-  `find ~/.claude/plugins -maxdepth 5 -type d -path '*project-quality' | head -1`, and
-  paste the absolute path. Leaving it empty makes finders fall back to a best-effort
+  with the house recipe (version-sorted so a newer cached copy wins, `$PWD` covered for
+  dev installs), verify it, and paste the absolute path:
+
+  ```bash
+  PLUGIN_DIR=$(dirname "$(find "$HOME/.claude/plugins" "$PWD" -type d -path '*project-quality*/skills' 2>/dev/null | sort -V | tail -1)")
+  [ -f "$PLUGIN_DIR/skills/project-review/SKILL.md" ] || PLUGIN_DIR=""
+  ```
+
+  Leaving it empty makes finders fall back to a best-effort
   search and fail loudly if they still can't find the procedure.
 
 The finders and verifiers are `project-quality:project-reviewer` agents — finders
@@ -54,7 +60,7 @@ load each dimension's own `SKILL.md` procedure from the installed plugin and rev
 the target repo; verifiers (on a cheaper model) try to **refute** each finding.
 
 If the Workflow tool is unavailable in this session, run the same stages by hand
-with the Task tool (one `project-reviewer` per dimension for Find, one per finding
+by spawning subagents (one `project-reviewer` per dimension for Find, one per finding
 for Verify, and — only at `--high` — one per dimension for Sweep), then apply the
 same synthesis (drop REFUTED, fold `route_to`, dedup, sort) before rendering.
 
@@ -129,7 +135,8 @@ function finderPrompt(dim) {
     `to, then run its interrogation/verdict procedure and use its verdict label set. Explore`,
     `the real code/docs first (Read, Grep, git) — never judge before seeing the evidence.`,
     ``,
-    `REVIEW SCOPE: ${SCOPE_TEXT}.`,
+    `REVIEW SCOPE: ${SCOPE_TEXT}. Where the SKILL.md references its $ARGUMENTS`,
+    `placeholder, this REVIEW SCOPE is that value.`,
     ``,
     `Return the schema. "verdict" is ONLY the single label from this dimension's set`,
     `(e.g. "approve with concerns", "needs work", "minor drift") — nothing else; put ALL`,
@@ -195,11 +202,19 @@ const found = await parallel(
     })),
   ),
 )
-const okFound = found.filter(Boolean) // drop any dimension whose finder thunk rejected
+const okFound = found.filter(Boolean)
+// A dimension is "not run" when its finder thunk rejected or returned verdict "error"
+// (procedure not located). Track these explicitly — never silently drop a dimension.
+const notRun = DIMS.filter((d) => !okFound.some((r) => r.dim === d)).map((d) => ({ dim: d, reason: 'finder failed' }))
+for (const r of okFound.filter((r) => r.verdict === 'error'))
+  notRun.push({ dim: r.dim, reason: (r.findings[0] && r.findings[0].observation) || 'procedure not located' })
+if (notRun.length) log(`find: NOT RUN — ${notRun.map((f) => f.dim).join(', ')}`)
+const okDims = okFound.filter((r) => r.verdict !== 'error')
+const ranDims = okDims.map((r) => r.dim)
 const verdicts = {}
-for (const r of okFound) verdicts[r.dim] = r.verdict
-let candidates = okFound.flatMap((r) => r.findings)
-log(`find: ${candidates.length} candidate findings across ${DIMS.length} dimension(s)`)
+for (const r of okDims) verdicts[r.dim] = r.verdict
+let candidates = okDims.flatMap((r) => r.findings)
+log(`find: ${candidates.length} candidate findings across ${ranDims.length} dimension(s)`)
 
 // ---- Verify ---------------------------------------------------------------
 async function verifyAll(items) {
@@ -234,7 +249,7 @@ if (TIER === 'high') {
   phase('Sweep')
   const sweepFound = (
     await parallel(
-      DIMS.map((d) => () =>
+      ranDims.map((d) => () =>
         agent(sweepPrompt(d, kept), { label: `sweep:${d}`, phase: 'Sweep', agentType: 'project-quality:project-reviewer', schema: FINDINGS_SCHEMA }).then(
           (r) => ((r && r.findings) || []).map((f) => ({ ...f, dimension: d })),
         ),
@@ -275,6 +290,7 @@ unique.sort(
 return {
   tier: TIER,
   dimensions: DIMS,
+  notRun,
   scope: SCOPE_TEXT,
   verdicts,
   counts: { firstPass: candidates.length, reported: unique.length },
@@ -286,7 +302,10 @@ return {
 
 From the workflow's return value, present one consolidated review:
 
-1. **Scope & tier** — one line: dimensions run, scope, tier.
+1. **Scope & tier** — one line: dimensions run, scope, tier. If `notRun` is
+   non-empty, report each listed dimension as **failed / not run** with its reason
+   — never present the result as a full review when a dimension is missing. The
+   same applies to any requested dimension absent from `verdicts`.
 2. **Verdicts** — the per-dimension verdict label from `verdicts` (each dimension
    keeps its own label set: complexity `approve`/…/`reject`, tests `passing`/…, etc.).
 3. **Findings** — grouped by dimension in the sorted order, each with its

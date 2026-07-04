@@ -11,11 +11,15 @@
 #     parallel tool call") must NOT increment tool_errors
 #   - rzbmhc: episode slice files carry reconstructed conversation events, with
 #     credential-like strings redacted by sanitize_text
+#   - slices also redact 32+ char hex blobs to [HEX] and truncate event text
+#     over --max-slice-chars with a "[truncated N chars]" suffix
+#   - the SKILL_RENAME_ALIASES merge is pinned via check-fixture.py's
+#     summary-table assertions (canonical rows present, raw aliases absent)
 set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 SCRIPT="$REPO_ROOT/scripts/analyze-sessions.py"
-CHECK_SCRIPT="$REPO_ROOT/scripts/fixtures/check-fixture.py"
+CHECK_SCRIPT="$REPO_ROOT/tests/marketplace/script-tests/check-fixture.py"
 FIXTURE="$REPO_ROOT/scripts/fixtures/session-fixture.jsonl"
 EXPECTED="$REPO_ROOT/scripts/fixtures/session-fixture-expected.json"
 
@@ -88,13 +92,16 @@ PYEOF
 TMP_DIR=$(mktemp -d)
 trap 'rm -rf "$TMP_DIR"' EXIT
 
-# 1. Script runs against the fixture without error
+# 1. Script runs against the fixture without error.
+#    --max-slice-chars 400 makes the padded pytest event in episode 3 exceed
+#    the cap so the truncation branch of sanitize_text is exercised.
 test_fixture_runs() {
   assert_exit "fixture: analyze-sessions runs without error" 0 \
     python3 "$SCRIPT" \
       --fixture "$FIXTURE" \
       --output-dir "$TMP_DIR/output" \
-      --plugins-dir "$REPO_ROOT/plugins"
+      --plugins-dir "$REPO_ROOT/plugins" \
+      --max-slice-chars 400
 }
 
 # 2. Output dataset.json is produced
@@ -187,6 +194,38 @@ test_slice_redacts_credentials() {
   fi
 }
 
+# 8. Long hex blobs (32+ chars) in slice content must be redacted to [HEX].
+test_slice_redacts_long_hex() {
+  local slice
+  slice=$(ls "$TMP_DIR"/output/fixture/episodes/github-releases_github-releases*.json 2>/dev/null | head -1)
+  if [[ -z "$slice" ]]; then
+    fail "hex redaction: github-releases slice file not found"
+    return
+  fi
+  if grep -q "0123456789abcdef0123456789abcdef" "$slice"; then
+    fail "hex redaction: slice leaked the raw 32-char hex blob"
+  elif grep -qF "[HEX]" "$slice"; then
+    ok "hex redaction: slice redacts 32+ char hex blobs to [HEX]"
+  else
+    fail "hex redaction: slice neither leaked nor redacted the hex blob — LONG_HEX_RE not applied?"
+  fi
+}
+
+# 9. Event text over --max-slice-chars must carry the truncation suffix.
+test_slice_truncates_long_text() {
+  local slice
+  slice=$(ls "$TMP_DIR"/output/fixture/episodes/github-releases_github-releases*.json 2>/dev/null | head -1)
+  if [[ -z "$slice" ]]; then
+    fail "truncation: github-releases slice file not found"
+    return
+  fi
+  if grep -qE '\[truncated [0-9]+ chars\]' "$slice"; then
+    ok "truncation: slice event over --max-slice-chars carries the [truncated N chars] suffix"
+  else
+    fail "truncation: no [truncated N chars] suffix found — truncation branch not applied"
+  fi
+}
+
 # ── run all tests (ordered — later tests depend on earlier output) ────────────
 
 test_fixture_runs
@@ -196,6 +235,8 @@ test_false_positive_not_counted
 test_cancelled_not_counted
 test_slice_has_content
 test_slice_redacts_credentials
+test_slice_redacts_long_hex
+test_slice_truncates_long_text
 
 printf '\n'
 printf 'Results: %d passed, %d failed\n' "$PASS" "$FAIL"

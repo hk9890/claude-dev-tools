@@ -34,7 +34,8 @@
 //   { verdict, answers, comments, freeform }
 //
 // Enforces: zero-length comment texts are filtered OUT (per submit-schema.md).
-// Does NOT validate verdict enum — the server owns that check.
+// Does NOT validate verdict enum — the radio markup constrains the values;
+// the server is schema-agnostic and writes the payload verbatim.
 
 function buildFeedbackPayload(state) {
   var verdict = state.verdict == null ? '' : String(state.verdict);

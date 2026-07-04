@@ -1,7 +1,7 @@
 ---
 name: project-review-structure
 description: "Review a project's physical layout — file and directory placement, module granularity, dead files, tree-vs-docs match."
-when_to_use: "Use when the user wants a project-structure or layout review. Triggers on 'is this layout sane?', 'are my files in the right place?', 'do I have god-files?', 'does the tree match the docs?'. Not for over-engineering, test-quality, or consistency reviews — each has its own skill."
+when_to_use: "Use when the user wants a project-structure or layout review. Triggers on 'is this layout sane?', 'are my files in the right place?', 'do I have god-files?', 'does the tree match the docs?'. Not for over-engineering, test-quality, or consistency reviews — each has its own skill; if the docs are the suspect artifact, use project-review-docs. Invoke with an optional argument scoping what to review; with no argument it reviews the whole project tree. The review runs in an isolated context and cannot see this conversation — pass everything it needs (paths or the artifact text itself) in the argument."
 argument-hint: "[what-to-review]"
 context: fork
 agent: project-reviewer
@@ -30,17 +30,21 @@ rather than moving a file, flag it and route the design verdict to
 
 ## Interrogation procedure
 
+This review runs in an isolated context — you cannot ask the user anything and
+never pause for input. The **Question** blocks are **investigation prompts**:
+answer them from the tree yourself and fold the answer into the finding. Your
+only deliverable is the structured report — never an edit, an action on the
+user's behalf, or a question awaiting a reply.
+
 Work through the steps below in order. Each step is a question directed at the
 project's structure. For every question you must:
 
-1. Inspect the actual layout first — explore the codebase before asking the
-   user anything. Read AGENTS.md, README files, docs/, and any other
-   self-description documents, then walk the directory tree. Do not ask
-   questions whose answer is visible in the files.
+1. Inspect the actual layout first — read AGENTS.md, README files, docs/, and
+   any other self-description documents, then walk the directory tree.
 2. State the recommended answer — the answer a well-structured project would
    give — so the user can immediately judge whether the actual answer deviates.
 3. Call out every deviation as a finding with a concrete recommendation (move,
-   split, delete, or rename).
+   split, merge, delete, or rename).
 
 ### Step 1 — Does the tree match the self-description?
 

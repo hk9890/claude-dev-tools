@@ -18,18 +18,21 @@ This skill covers three release tasks — identify which one the user wants:
 
 The Prerequisites and Workflow below apply to use case 1.
 
-## Prerequisites
+## Prerequisites (Phase 0)
 
 Before starting, verify:
+- `command -v gh` succeeds (GitHub CLI installed)
 - `gh auth status` succeeds (GitHub CLI authenticated)
 - `git status --porcelain` returns empty (clean working tree)
-- You are on the correct branch and in sync with the remote default branch. After `git fetch origin`, derive the default branch — with a fallback for when `origin/HEAD` is not set locally (fresh `git init`, shallow/CI checkouts, new worktrees) — and diff against it:
+- You are on the default branch — releases are cut from the default branch — and in sync with its remote. After `git fetch origin`, derive the default branch — with a fallback for when `origin/HEAD` is not set locally (fresh `git init`, shallow/CI checkouts, new worktrees) — and diff against it:
 
   ```bash
   DEFAULT_BRANCH=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|origin/||')
   DEFAULT_BRANCH=${DEFAULT_BRANCH:-$(git remote show origin | sed -n 's/.*HEAD branch: //p')}
   git diff HEAD "origin/$DEFAULT_BRANCH" --stat   # expect no differences
   ```
+
+If `gh` is missing or unauthenticated, or any check fails, stop and guide the user through fixing it — see [troubleshooting.md](references/troubleshooting.md). Do not start the workflow with a failed prerequisite.
 
 ## Workflow
 
@@ -44,10 +47,11 @@ Use TodoWrite to track progress through these phases:
 - [ ] Quality gates: run tests, build, lint — all must pass with zero failures
 - [ ] Documentation check: verify version consistency across all project files
 - [ ] Version bump: update version in project files (package.json, Cargo.toml, etc.)
-- [ ] Create GitHub release: tag, release body, assets
+- [ ] Commit and push the version bump to the default branch; re-verify clean tree
 - [ ] Write release notes: structured format per release-notes-guide.md
+- [ ] Create GitHub release: tag, release body, assets
 - [ ] Post-release verification: confirm release is live and correct
-- [ ] Cleanup: any post-release housekeeping
+- [ ] Cleanup: post-release steps the project's `docs/RELEASING.md` specifies (announcements, version-file rollover); skip if it defines none
 
 **3. Execute each phase in order**
 

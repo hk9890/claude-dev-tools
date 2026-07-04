@@ -90,11 +90,14 @@ Two non-negotiable rules behind the skeleton:
 
 When the caller supplies an explicit output **schema** — for example the
 `project-review` aggregator's workflow, which fans reviewers out and then verifies
-each finding — populate that schema instead of rendering the prose skeleton above.
-The fields map 1:1 onto the skeleton: `verdict` is the verdict label, and each
+each finding — populate that schema instead of rendering the prose skeleton above,
+whatever shape it takes. When it is the aggregator's findings
+schema, the fields map 1:1 onto the skeleton: `verdict` is the verdict label, and each
 finding carries `location`, `observation`, `why_it_matters`, `recommended_action`,
 and a `route_to` (the target reviewer dimension when the finding belongs to
-another reviewer's remit, otherwise an empty string). Same attitude, same evidence
+another reviewer's remit, otherwise an empty string). When it is a different schema
+(e.g. the aggregator's verifier vote), the skeleton does not apply — fill the
+schema's own fields. Same attitude, same evidence
 bar, same recommended-answer rule — only the serialization changes. The prioritised
 ordering is reconstructed downstream by the aggregator's synthesis step, so you do
 not emit a separate `Recommended actions` list in this mode.

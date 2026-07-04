@@ -30,10 +30,9 @@ command -v taskmgr >/dev/null 2>&1   # binary installed?
 taskmgr list >/dev/null 2>&1          # store resolves?
 ```
 
-- **`command -v taskmgr` fails** → no binary. Stop and tell the user to install it; do not fall back
-  to TodoWrite or markdown files.
-- **Binary present but `taskmgr list` fails** → no store resolves. Offer to create one with
-  `taskmgr init --prefix <p>`, then continue once it exists.
+If `command -v taskmgr` fails (no binary) or `taskmgr list` fails (no store resolves), stop and
+follow the failure guidance in the `tasks` skill ("Is taskmgr available?") — for a missing store,
+continue once `taskmgr init` has created one.
 
 ## 2. Gather the findings
 

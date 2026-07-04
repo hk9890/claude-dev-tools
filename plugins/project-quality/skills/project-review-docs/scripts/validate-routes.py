@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-# Note: scripts/check-internal-consistency.py imports this module by hardcoded path;
-# keep that path in sync if this file is ever moved or renamed.
+# Note: scripts/check-internal-consistency.py imports this module by hardcoded path
+# and uses _heading_to_slug, _strip_inline_code, and iter_headings; keep the path and
+# those names in sync if this file is ever moved or renamed.
 """validate-routes.py — resolve @-imports and markdown links in CLAUDE.md / AGENTS.md.
 
 Usage:
@@ -63,14 +64,13 @@ def _heading_to_slug(text):
     return slug
 
 
-def extract_anchors(content):
-    """Return the set of valid anchor slugs for all headings in *content*.
+def iter_headings(content):
+    """Yield (heading_text, slug) for every heading in *content*.
 
-    Handles duplicate headings by appending -1, -2, ... in document order
-    (the same way GitHub does).
+    Skips headings inside fenced code blocks. Duplicate headings get -1, -2,
+    ... slug suffixes in document order (the same way GitHub does).
     """
-    slugs = set()
-    seen = {}  # slug → count of occurrences so far
+    seen = {}  # base slug → count of occurrences so far
     in_fence = False
 
     for line in content.splitlines():
@@ -93,12 +93,16 @@ def extract_anchors(content):
 
         if base_slug not in seen:
             seen[base_slug] = 0
-            slugs.add(base_slug)
+            slug = base_slug
         else:
             seen[base_slug] += 1
-            slugs.add(f"{base_slug}-{seen[base_slug]}")
+            slug = f"{base_slug}-{seen[base_slug]}"
+        yield heading_text, slug
 
-    return slugs
+
+def extract_anchors(content):
+    """Return the set of valid anchor slugs for all headings in *content*."""
+    return {slug for _, slug in iter_headings(content)}
 
 
 # ---------------------------------------------------------------------------

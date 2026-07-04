@@ -13,7 +13,7 @@ test: ## Run the full test suite (all plugins)
 	bash tests/run-all.sh
 
 test-html: ## Run html-visualization browser/server tests only
-	bash tests/html-visualization/script-tests/run-all.sh
+	bash tests/html-visualization/script-tests/run-all.sh || [ "$$?" -eq 77 ]  # 77 = suites skipped (e.g. Playwright absent), not a failure
 
 check-consistency: ## Validate internal cross-references and version mirrors
 	python3 scripts/check-internal-consistency.py $(ARGS)

@@ -106,7 +106,7 @@ sections exactly as in the template.
 ### 2c. Render the content
 
 Render the content inside `<div id="content">` per the markup contract in
-`${CLAUDE_PLUGIN_ROOT}/skills/html-visualize/references/feedback-markup.md`. Key rules:
+`"$(cat "$HTML_DIR/.plugin-root")/skills/html-visualize/references/feedback-markup.md"`. Key rules:
 
 - Set `<meta name="fb-generation" content="...">` to a fresh, unique value (e.g.
   the output of `date +%s%N`). It MUST differ on every regeneration — see the
@@ -121,7 +121,7 @@ Render the content inside `<div id="content">` per the markup contract in
 - The `/assets/feedback/style.css` link and `/assets/feedback/app.js` script are
   correct as-is; do not change the paths.
 
-Consult `${CLAUDE_PLUGIN_ROOT}/skills/html-visualize/references/feedback-markup.md`
+Consult `"$(cat "$HTML_DIR/.plugin-root")/skills/html-visualize/references/feedback-markup.md"`
 for the full vocabulary (block rules, required IDs, the `fb-generation` meta).
 
 ### 2d. Use HTML to render the content well
@@ -170,6 +170,13 @@ When the harness re-invokes Claude after server exit, read:
 FEEDBACK_FILE  (the path from Step 2e)
 ```
 
+If `FEEDBACK_FILE` is missing or the server exited non-zero, the round timed
+out — recover as in serve.md Cycle C (tell the user; offer to re-serve or take the
+feedback in chat).
+
+After reading and parsing the file, delete it (`rm -f "$FEEDBACK_FILE"`) — see
+serve.md Cycle C for why a stale copy must not linger.
+
 The file contains:
 
 ```json
@@ -190,7 +197,7 @@ The file contains:
 ```
 
 Full schema:
-`${CLAUDE_PLUGIN_ROOT}/skills/html-visualize/references/feedback-submit-schema.md`.
+`"$(cat "$HTML_DIR/.plugin-root")/skills/html-visualize/references/feedback-submit-schema.md"`.
 
 Interpret the comment fields:
 

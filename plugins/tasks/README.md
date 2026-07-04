@@ -55,6 +55,7 @@ use time and stop with guidance if the binary or a `.tasks/` store is missing �
 tasks/
 ├── .claude-plugin/
 │   └── plugin.json
+├── README.md
 ├── RULES.md
 ├── agents/
 │   ├── implementer.md

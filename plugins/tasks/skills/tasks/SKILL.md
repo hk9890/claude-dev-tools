@@ -74,24 +74,24 @@ Two derived views fall out of the dependency graph:
 ```bash
 # Create — title is the only required field
 taskmgr create --title "Fix drill navigation" --type bug --priority 1
-taskmgr create --title "Wire up export" --parent proj-0007 --blocked-by proj-0040 --label area:export
+taskmgr create --title "Wire up export" --parent proj-k4d2vq --blocked-by proj-b81xnm --label area:export
 
 # Find work
 taskmgr ready                       # what can I start now? (priority, then oldest)
-taskmgr show proj-0042              # full detail: fields, edges, description, comments
+taskmgr show proj-o623mw            # full detail: fields, edges, description, comments
 taskmgr blocked                     # what's waiting, and on what
 
 # Progress an issue
-taskmgr update proj-0042 --status in_progress
-taskmgr update proj-0042 --add-label needs-review --priority 0
-taskmgr close  proj-0042 --reason "fixed in <commit>"
+taskmgr update proj-o623mw --status in_progress
+taskmgr update proj-o623mw --add-label needs-review --priority 0
+taskmgr close  proj-o623mw --reason "fixed in <commit>"
 
 # Edges after the fact
-taskmgr dep add proj-0051 proj-0047   # proj-0051 is blocked by proj-0047
-taskmgr rel add proj-0042 proj-0012   # symmetric related link
+taskmgr dep add proj-w7f4jc proj-h9s3tp   # proj-w7f4jc is blocked by proj-h9s3tp
+taskmgr rel add proj-o623mw proj-m2r8ge   # symmetric related link
 
 # Notes
-taskmgr comment add proj-0042 "Repro only on the cold-start path."
+taskmgr comment add proj-o623mw "Repro only on the cold-start path."
 ```
 
 `close --reason` records *why*; a bare `update --status closed` closes without a reason —
@@ -110,7 +110,7 @@ and parentheses. Closed issues are excluded unless the expression selects them o
 
 ```bash
 taskmgr list -q 'status == "open" && priority <= 1'
-taskmgr list -q 'type == bug && label ~ "area:db"'
+taskmgr list -q 'type == "bug" && label ~ "area:db"'
 taskmgr list -q 'ready && priority <= 2'
 taskmgr list -q 'text ~ "drill" && !blocked'
 taskmgr search "export schema"        # shorthand for text ~ "export schema"

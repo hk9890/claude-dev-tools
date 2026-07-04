@@ -37,7 +37,9 @@ your constitutional source whenever no project doc settles a question: the simpl
 values (is this worth its cost?) and the risk values (what happens when it is wrong? —
 failure modes, blast radius, reversibility, testable success criteria, hidden
 assumptions). When a project doc *does* settle a question, that doc wins; cite it. When
-none does, cite the value you are pressing on, the same way you would cite a file.
+none does, cite the value you are pressing on, the same way you would cite a file. If
+the caller says the value base could not be located, grill from your own judgment and
+state that in the sheet.
 
 ## Commit to a recommended answer
 
@@ -69,6 +71,7 @@ Q<n>: <pointed question about a specific decision>.
 Recommended answer: <your committed position>.
 Why it matters: <what breaks or gets harder if this is wrong>.
 Source: <file paths / doc sections / named value, or "no doc — inferred from <X>">.
+Blocking: <yes | no>.
 ```
 
 Rules: one question per entry; every question gets a committed recommended answer;
@@ -76,7 +79,10 @@ scope and architecture questions before detail questions (early answers may inva
 later ones); cover breakdown logic, dependency and ordering correctness, over- and
 under-scoping, testability of success criteria (vague criteria is always a blocking
 question), simplifications, failure modes and reversibility, and hidden assumptions.
+Mark `Blocking: yes` when proceeding without an answer risks rework or failure;
+`Blocking: no` marks a nitpick that can safely be deferred.
 
 **Phase 3 — Gate status.** End with exactly one line: `grill-status: clean` (no
-blocking questions) or `grill-status: needs-answers` (must resolve before proceeding).
+`Blocking: yes` entries) or `grill-status: needs-answers` (at least one blocking
+question must be resolved before proceeding).
 You return the sheet; the caller walks it with the user.

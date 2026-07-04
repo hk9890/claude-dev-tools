@@ -160,7 +160,7 @@ The three verdict radio buttons **must** use exactly these `value` attributes (c
 
 All three radios must share `name="verdict"`.
 
-The verdict is **optional**: if the user submits without selecting one, the payload carries `verdict: ""` and the server accepts it. The server rejects only a *non-empty* verdict value that is not one of the three above (`400`).
+The verdict is **optional**: if the user submits without selecting one, the payload carries `verdict: ""` and the server accepts it. The server is schema-agnostic and does not validate verdict values — the radio markup above is what constrains them to these three.
 
 ---
 

@@ -2,11 +2,11 @@
   "_description": "Expected output for session-fixture.jsonl acceptance verification",
   "_note": "Run the script with --fixture scripts/fixtures/session-fixture.jsonl and diff dataset.json against the 'episodes' array here (ignoring episode_id which is a random UUID)",
 
-  "episode_count": 3,
+  "episode_count": 4,
 
   "episodes": [
     {
-      "_description": "Episode 1: tasks:tasks — explicit trigger via Skill tool; includes a Read result whose content embeds the permission-denial magic phrase but is_error=false — must NOT count as a permission_denial. Negative case for the outcome detectors (no tests, no AskUserQuestion, no commit/PR).",
+      "_description": "Episode 1: tasks:tasks — explicit trigger via Skill tool; includes a Read result whose content embeds the permission-denial magic phrase but is_error=false — must NOT count as a permission_denial. Negative case for the outcome detectors (no tests, no AskUserQuestion, no commit/PR). Also carries the two correction-detector guard messages: one whose correction words live only inside a <command-args> harness block (must be stripped, not counted) and one whose correction words appear only after the first sentence (out of scanning scope) — user_corrections stays 1.",
       "attribution_skill": "tasks:tasks",
       "attribution_plugin": "tasks",
       "trigger_type": "explicit",
@@ -63,6 +63,25 @@
       "tests_passed": true,
       "friction_score": 1.75,
       "_friction_breakdown": "tool_errors=2*3.0 + interruptions=1*2.0 + permission_denials=1*2.0 + ask_user_questions=1*0.5 = 10.5 / 6 turns = 1.75"
+    },
+    {
+      "_description": "Episode 4: github-releases:release — a stale skill-name alias. dataset.json keeps the raw attribution_skill; SKILL_RENAME_ALIASES must merge it into the github-releases:github-releases summary row (see summary_skill_episodes).",
+      "attribution_skill": "github-releases:release",
+      "attribution_plugin": "github-releases",
+      "trigger_type": "ambient",
+      "turn_count": 1,
+      "tool_errors": 0,
+      "user_corrections": 0,
+      "retries": 0,
+      "permission_denials": 0,
+      "interruptions": 0,
+      "ask_user_questions": 0,
+      "duration_ms": 600,
+      "ended_in_commit": false,
+      "ended_in_pr": false,
+      "tests_run": false,
+      "tests_passed": false,
+      "friction_score": 0.0
     }
   ],
 
@@ -70,6 +89,17 @@
     "commit-commands": 4,
     "unknown-plugin": 1
   },
+
+  "summary_skill_episodes": {
+    "tasks:tasks": 1,
+    "project-quality:project-review-complexity": 1,
+    "github-releases:github-releases": 2
+  },
+
+  "summary_absent_skills": [
+    "complexity-review:complexity-review",
+    "github-releases:release"
+  ],
 
   "_design_notes": [
     "commit-commands episodes (4 turns) are filtered from main episode list — plugin not in marketplace.",
@@ -88,6 +118,10 @@
     "Episode 3: permission_denials=1 (git push rejected with 'doesn't want to proceed', is_error=true).",
     "Episode 3: interruptions=1 (sleep tool_result carries toolUseResult.interrupted=true).",
     "Episode 3: ask_user_questions=1 (AskUserQuestion tool_use); tests_run+tests_passed from the pytest result; ended_in_commit+ended_in_pr from the final assistant text.",
-    "Episode 3: the 'Cancelled: parallel tool call' tool_result (user-017b) carries is_error=true but is a user-initiated batch cancellation, so tool_errors stays 2 (would be 3 without the lvdtq4 fix; friction would be 2.25 instead of 1.75). It also embeds 'token: ABCD1234SECRETKEY99', redacted to [REDACTED] in the episode slice — exercising sanitize_text in the slice content (rzbmhc)."
+    "Episode 3: the 'Cancelled: parallel tool call' tool_result (user-017b) carries is_error=true but is a user-initiated batch cancellation, so tool_errors stays 2 (would be 3 without the lvdtq4 fix; friction would be 2.25 instead of 1.75). It also embeds 'token: ABCD1234SECRETKEY99', redacted to [REDACTED] in the episode slice — exercising sanitize_text in the slice content (rzbmhc).",
+    "Episode 1: user-004b's correction words live only inside a <command-args> harness block; HARNESS_BLOCK_RE must strip it so user_corrections stays 1.",
+    "Episode 1: user-004c's correction words appear only after the first sentence ('That looks fine to me.'); first-sentence scoping must keep user_corrections at 1.",
+    "Episode 3: user-015's pytest result also carries a 32-char hex fingerprint (sanitized to [HEX] in the slice) and ~660 chars of padding so the slice event exceeds --max-slice-chars 400 and shows the '[truncated N chars]' suffix.",
+    "Episode 4: attributionSkill github-releases:release is a stale alias; dataset keeps the raw name, the summary table merges it into github-releases:github-releases (2 episodes) and must not show the alias as its own row."
   ]
 }

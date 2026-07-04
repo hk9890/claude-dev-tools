@@ -51,7 +51,7 @@ Known coverage gaps the scripts do **not** catch (must be covered by specialist 
 
 ### Step 2 — Specialist reviewer fan-out (parallel)
 
-Spawn the specialist reviewers below in **a single message with parallel Agent tool calls**, using `subagent_type=general-purpose`. Each reviewer returns findings in the standard format (see below). They are deliberately narrow — the orchestrator merges and de-duplicates afterward.
+Spawn the specialist reviewers below in **a single message with parallel Agent tool calls**, using `subagent_type=general-purpose` — deliberately not `project-reviewer`: specialists are narrow evidence-gatherers, not verdict-issuers; the orchestrating reviewer owns the verdict. Each reviewer returns findings in the standard format (see below). They are deliberately narrow — the orchestrator merges and de-duplicates afterward.
 
 Required specialists (run all, every time):
 
@@ -177,6 +177,9 @@ When categories are mixed, prefer neutral phrasing: "Findings reported; coverage
 - **Tier C** (destructive/irreversible): do not execute during routine review; verify indirectly. May be deferred with reason.
 
 ## Pass criteria
+
+`clean` is this guideline's internal pass term; when reporting through
+`project-review-docs`, it maps to the skill's `accurate` verdict label.
 
 Review passes (`clean`) when **all** of:
 

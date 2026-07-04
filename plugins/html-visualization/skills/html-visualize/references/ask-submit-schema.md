@@ -123,7 +123,7 @@ Returned when the server has already accepted one successful submit and is in th
 
 ## Feedback file format
 
-On success the server writes a `<invocation-id>.feedback.json` to the per-invocation temp directory. The file contains the raw parsed request body plus metadata:
+On success the server writes `<basename-without-ext>.feedback.json` next to the served HTML file in the per-invocation temp directory (e.g. `feedback.html` → `feedback.feedback.json`). The file contains the raw parsed request body plus metadata:
 
 ```json
 {

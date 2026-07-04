@@ -40,10 +40,23 @@ mkdir -p "$HTML_DIR"
 # Resolve the plugin root once and persist it for server-start commands.
 # $CLAUDE_PLUGIN_ROOT is NOT exported into Bash tool subprocesses; locate the
 # install under $HOME so this resolves for any user and marketplace name.
-PLUGIN_DIR=$(find "$HOME/.claude/plugins/cache" -maxdepth 3 -type d -name html-visualization | head -1)
-PLUGIN_ROOT=$(find "$PLUGIN_DIR" -maxdepth 1 -mindepth 1 -type d | sort -V | tail -1)
-echo "$PLUGIN_ROOT" > "$HTML_DIR/.plugin-root"
+PLUGIN_DIR=$(find "$HOME/.claude/plugins/cache" -maxdepth 3 -type d -name html-visualization 2>/dev/null | head -1)
+PLUGIN_ROOT=""
+[ -n "$PLUGIN_DIR" ] && PLUGIN_ROOT=$(find "$PLUGIN_DIR" -maxdepth 1 -mindepth 1 -type d | sort -V | tail -1)
+# Dev fallback: a local --plugin-dir run (e.g. scripts/claude-dev) has no cache copy.
+[ -f "$PLUGIN_ROOT/bin/server.js" ] || PLUGIN_ROOT="$PWD/plugins/html-visualization"
+if [ -f "$PLUGIN_ROOT/bin/server.js" ]; then
+  echo "$PLUGIN_ROOT" > "$HTML_DIR/.plugin-root"
+else
+  echo "ERROR: cannot locate the html-visualization plugin root"
+fi
 ```
+
+If the `ERROR` line prints, stop — do not start a server. Fall back to the
+active mode's chat fallback (as in the Node pre-flight) and tell the user the
+plugin's files could not be located. Note: `sort -V | tail -1` picks the newest
+cached version; when several versions are cached that is normally the enabled
+one, but after a plugin downgrade it may not be.
 
 Replace `<mode>` with `html-ask`, `html-feedback`, or `html-visualize` depending
 on the active mode. The directory must be unique per invocation — never reuse one
@@ -98,6 +111,11 @@ FEEDBACK_FILE="$HTML_DIR/feedback.feedback.json"
 This path is deterministic (the server derives `<html-dir>/<basename-without-ext>.feedback.json`);
 record it when you start the server so you can read it back without globbing.
 
+**Timeout**: if no submit arrives within `--timeout-sec` (default 1800 s), the
+server exits **code 2 and writes no feedback file**. If the server exited
+non-zero or the feedback file does not exist, the round-trip timed out — tell
+the user, then offer to re-serve the form or continue in chat.
+
 **Optional flags**: `--port N` (fixed port), `--timeout-sec N` (default 1800 s).
 
 ### Cycle B — Non-blocking serve-and-continue with optional submit (visualize mode)
@@ -128,8 +146,8 @@ happens:
 | Outcome | What the server does |
 |---|---|
 | User types a non-empty message and clicks **Send** | Writes `<basename>.feedback.json`, exits 0 → harness re-invokes Claude with the feedback file |
-| User clicks **Send** with an empty message, closes the tab, or navigates away | Exits 0 silently — no feedback file written, Claude is not re-invoked |
-| Timeout (default 1800 s) is reached with no submit | Exits 0 silently — no feedback file written, Claude is not re-invoked |
+| User clicks **Send** with an empty message | Exits 0 silently — no feedback file written, Claude is not re-invoked |
+| User closes the tab or navigates away, or the timeout (default 1800 s) is reached with no submit | Nothing is sent on tab close — the server keeps running until the timeout, then exits 0 silently; no feedback file, Claude is not re-invoked |
 
 All three paths exit 0. The only path that produces a feedback file (and a harness
 re-invocation of Claude) is a non-empty `freeform` field in the POST payload.
@@ -176,11 +194,20 @@ The feedback file path is deterministic:
 FEEDBACK_FILE="$HTML_DIR/review.feedback.json"
 ```
 
+**Timeout**: like Cycle A, a round that reaches `--timeout-sec` (default
+1800 s) with no submit exits **code 2 and writes no feedback file**. If the
+server exited non-zero or the feedback file does not exist, the round timed
+out — tell the user, then offer to re-serve or continue in chat.
+
 #### Apply rounds (iterate)
 
 After each `action: "apply"` response:
 
-1. Apply the feedback to the underlying content source.
+1. Apply the feedback to the underlying content source. After reading the
+   feedback file, delete it (`rm -f "$HTML_DIR/review.feedback.json"`) — the
+   server only overwrites it on the next submit, so a stale copy from this
+   round could otherwise be misread as fresh feedback if a later round times
+   out.
 2. Regenerate `$HTML_DIR/review.html` from the updated content with a **fresh
    `fb-generation` value** — this is what triggers the open browser tab to
    auto-reload. The value MUST differ on every regeneration (e.g. `date +%s%N`);

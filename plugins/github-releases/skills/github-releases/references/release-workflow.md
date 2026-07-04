@@ -40,26 +40,48 @@ See [quality-gates.md](quality-gates.md) for the full checklist.
 
 ## Phase 4 — Documentation check
 
-Verify version consistency across all project files that reference the version number.
+Verify version consistency across all project files that reference the version number. At this point the files still carry the *current* version — the pass criterion is that they all agree with each other, not that they match the release version.
 
 See [documentation-checklist.md](documentation-checklist.md) for the full checklist.
 
 ## Phase 5 — Version bump
 
-Determine the new version using semver rules, then update all version references in project files.
+Determine the new version using semver rules, then update all version references in project files. Afterwards re-run the Phase 4 consistency check — now every reference must match the *release* version.
 
 See [version-management.md](version-management.md) for semver rules and which files to update.
 
-## Phase 6 — Create GitHub release
+## Phase 6 — Commit and push the version bump
+
+The tag must point at a commit that contains the version bump. Commit the Phase 5 changes and push them to the default branch before tagging:
 
 ```bash
+# Re-derive in case this runs in a fresh shell (same fallback as Phase 1)
+DEFAULT_BRANCH=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|origin/||')
+DEFAULT_BRANCH=${DEFAULT_BRANCH:-$(git remote show origin | sed -n 's/.*HEAD branch: //p')}
+
+git add <bumped version files>
+git commit -m "Bump version to <version>"
+git push origin "$DEFAULT_BRANCH"
+
+# Re-verify: clean tree, in sync with remote
+git status --porcelain            # expect empty
+git diff HEAD "origin/$DEFAULT_BRANCH" --stat   # expect no differences
+```
+
+If the project's `docs/RELEASING.md` prescribes its own commit/push procedure (e.g. a version-bump PR), follow that instead — but never proceed to Phase 7 with the bump uncommitted or unpushed.
+
+## Phase 7 — Create GitHub release
+
+Write the release notes first, then create the release from them:
+
+```bash
+# Write release notes to a temp file — never create it inside the repo
+NOTES=$(mktemp)
+# ... write structured notes per release-notes-guide.md ...
+
 # Tag the release
 git tag v<version>
 git push origin v<version>
-
-# Write release notes to a temp file — never create it inside the repo
-NOTES=$(mktemp /tmp/release-notes-XXXXXX.md)
-# ... write structured notes per release-notes-guide.md ...
 
 # Create GitHub release
 gh release create v<version> --title "v<version>" --notes-file "$NOTES"
@@ -68,7 +90,7 @@ rm "$NOTES"
 
 See [release-notes-guide.md](release-notes-guide.md) for the required release notes format.
 
-## Phase 7 — Post-release verification
+## Phase 8 — Post-release verification
 
 ```bash
 # Confirm release is live

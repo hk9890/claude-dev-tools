@@ -6,10 +6,12 @@ This repo is a collection of Claude Code plugins. Each plugin lives under `plugi
 
 ```
 claude-dev-tools/
+  .claude/               # repo-committed Claude Code settings shared by contributors
   .tasks/                # taskmgr task store for this repo (file-based issue store)
   .claude-plugin/        # repo-level marketplace manifest
     marketplace.json     # lists all plugins, their versions, and descriptions
-  docs/                  # developer guides (OVERVIEW, CODING, TESTING, RELEASING, …)
+  docs/                  # developer guides: OVERVIEW, CODING, CHANGE-WORKFLOW,
+                         #   TESTING, RUNNING, REVIEWING, RELEASING, MONITORING
   plugins/               # one subdirectory per plugin
   scripts/               # repo maintenance scripts
   tests/                 # structural validation and smoke tests
@@ -28,12 +30,15 @@ plugins/<plugin-name>/
   .claude-plugin/
     plugin.json          # per-plugin manifest: name, version, description, author
   README.md              # user-facing plugin docs
+  RULES.md               # plugin-specific rules — read before changing the plugin
   agents/                # subagents (.md files)
+  assets/                # static files served or bundled by the plugin (e.g. browser CSS/JS)
   bin/                   # executable scripts bundled with the plugin
-  commands/              # slash commands (.md files)
+  commands/              # slash commands (.md files; currently no plugin uses these)
   hooks/                 # Claude Code hook definitions (e.g. hooks.json)
-  skills/                # skills (<skill-name>/SKILL.md + references/)
+  skills/                # skills (<skill-name>/SKILL.md + optional references/, scripts/, examples/)
   themes/                # color theme files
+  workflows/             # Workflow-tool orchestration scripts (.js)
 ```
 
 Not all component types are required — a plugin may have only commands, only skills, or a mix.
