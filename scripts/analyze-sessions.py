@@ -135,7 +135,8 @@ PR_RE = re.compile(r"\bpull.?request\b|\bgh pr create\b|\bpr url\b", re.IGNORECA
 
 # Patterns that suggest tests were run
 TEST_RUN_RE = re.compile(
-    r"\b(pytest|npm test|go test|cargo test|make test|\.\/test)\b", re.IGNORECASE
+    r"\b(pytest|npm test|go test|cargo test|make test|mise r(un)? test|\.\/test)\b",
+    re.IGNORECASE,
 )
 TEST_PASS_RE = re.compile(
     r"\b(all tests pass(ed)?|test(s)? pass(ed)?|ok\b.*test|PASSED)\b",

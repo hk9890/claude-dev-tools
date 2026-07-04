@@ -2,17 +2,17 @@
 
 How to run this marketplace's automated suites and validators. To launch and drive plugins by hand — reproduce a bug or verify a change — see [RUNNING.md](RUNNING.md).
 
-## Make targets
+## mise tasks
 
-A `Makefile` at the repo root provides a single discoverable entry point. Run `make` (or `make help`) to see all targets:
+A `.mise.toml` at the repo root provides a single discoverable entry point. Run `mise tasks` to list them, then `mise run <task>`:
 
-| Target | What it runs |
+| Task | What it runs |
 |---|---|
-| `make test` | Full test suite — all plugins (`tests/run-all.sh`) |
-| `make test-html` | html-visualization browser/server tests only |
-| `make check-consistency` | Cross-reference and version-mirror validation (`scripts/check-internal-consistency.py`) |
-| `make analyze-sessions` | Session-transcript analyser (use `ARGS=` to pass options) |
-| `make lint` | No linter configured — prints a notice and exits 0 |
+| `mise run test` | Full test suite — all plugins (`tests/run-all.sh`) |
+| `mise run test-html` | html-visualization browser/server tests only |
+| `mise run check-consistency` | Cross-reference and version-mirror validation (`scripts/check-internal-consistency.py`) |
+| `mise run analyze-sessions` | Session-transcript analyser (append options as extra args, e.g. `mise run analyze-sessions --help`) |
+| `mise run lint` | No linter configured — prints a notice and exits 0 |
 
 ## Script tests — `tests/run-all.sh`
 

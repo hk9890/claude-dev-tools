@@ -8,7 +8,7 @@ skill's default, this file wins.
 ## What to prioritise
 
 - **Quality gates stay green.** A change must not break `bash tests/run-all.sh` or
-  `make check-consistency` (see [TESTING.md](TESTING.md)). Flag any change that skips
+  `mise run check-consistency` (see [TESTING.md](TESTING.md)). Flag any change that skips
   or weakens these.
 - **Design-decision conformance.** Changes under `plugins/project-quality/` must obey
   its `RULES.md` (the three-family split, the `project-<verb>-<topic>` naming shape,
@@ -29,9 +29,9 @@ skill's default, this file wins.
 
 ## Out of scope / non-blocking
 
-- There is no configured linter (`make lint` is a no-op); do not raise style-only
+- There is no configured linter (`mise run lint` is a no-op); do not raise style-only
   findings a formatter would own.
-- Cross-references and version lockstep are checked by `make check-consistency`
+- Cross-references and version lockstep are checked by `mise run check-consistency`
   (`scripts/check-internal-consistency.py`). Route resolution, the
   `CLAUDE.md` = `@AGENTS.md` contract, and canonical inventory are checked by the docs
   validator (`verify.sh` under `plugins/project-quality/skills/project-review-docs/scripts/`),
