@@ -170,14 +170,12 @@ When the harness re-invokes Claude after server exit, read:
 FEEDBACK_FILE  (the path from Step 2e)
 ```
 
-If the server exited non-zero or `FEEDBACK_FILE` does not exist, the round
-timed out (the server exits code 2 with no file after `--timeout-sec`, default
-1800 s). Tell the user, then offer to re-serve the page or take the feedback in
-chat.
+If `FEEDBACK_FILE` is missing or the server exited non-zero, the round timed
+out — recover as in serve.md Cycle C (tell the user; offer to re-serve or take the
+feedback in chat).
 
-After reading and parsing the file, delete it (`rm -f "$FEEDBACK_FILE"`) — the
-server only overwrites it on the next submit, so a stale copy could otherwise
-be misread as fresh feedback if a later round times out.
+After reading and parsing the file, delete it (`rm -f "$FEEDBACK_FILE"`) — see
+serve.md Cycle C for why a stale copy must not linger.
 
 The file contains:
 

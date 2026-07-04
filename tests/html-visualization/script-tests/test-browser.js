@@ -39,11 +39,19 @@ function findPlaywright() {
 
 const playwrightDir = findPlaywright();
 if (!playwrightDir) {
-  // Playwright is an optional prerequisite (see docs/TESTING.md): a machine
-  // without it skips the browser suite instead of failing the whole test run.
-  console.log('SKIP: playwright not found in npm _npx cache — browser suite skipped. '
-            + 'To enable it, run: npx playwright --version && npx playwright install chromium');
-  process.exit(0);
+  const hint = 'playwright not found in npm _npx cache. '
+             + 'To enable the browser suite, run: npx playwright --version && npx playwright install chromium';
+  if (process.env.REQUIRE_BROWSER) {
+    // CI can opt into hard browser coverage: with REQUIRE_BROWSER set, an
+    // absent prerequisite is a failure, not a silent skip.
+    console.error('FAIL: ' + hint + ' (REQUIRE_BROWSER is set)');
+    process.exit(1);
+  }
+  // Playwright is an optional prerequisite (see docs/TESTING.md). Exit 77 — the
+  // skip convention the run-all.sh scripts recognise — so this suite is reported
+  // as skipped, not folded into a green pass that ran no assertions.
+  console.log('SKIP: ' + hint);
+  process.exit(77);
 }
 
 process.env.PLAYWRIGHT_BROWSERS_PATH = path.join(os.homedir(), '.cache', 'ms-playwright');

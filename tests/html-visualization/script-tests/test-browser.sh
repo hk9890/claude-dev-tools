@@ -7,8 +7,9 @@
 #   find "$TESTS_DIR" -maxdepth 1 -name 'test-*.sh' | sort
 #
 # Exit codes:
-#   0 — all browser assertions passed
-#   1 — one or more assertions failed
+#   0  — all browser assertions passed
+#   1  — one or more assertions failed (or REQUIRE_BROWSER set and Playwright absent)
+#   77 — skipped: Playwright not installed (optional prerequisite)
 
 set -uo pipefail
 

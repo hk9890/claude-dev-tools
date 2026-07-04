@@ -6,8 +6,9 @@
 #   find tests/ -mindepth 3 -maxdepth 3 -name run-all.sh
 #
 # Exit codes:
-#   0 — all suites passed
-#   1 — one or more suites failed
+#   0  — all suites passed
+#   1  — one or more suites failed
+#   77 — no failures, but one or more suites skipped (optional prerequisite absent)
 
 set -uo pipefail
 
@@ -15,6 +16,7 @@ TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 PASS=0
 FAIL=0
+SKIP=0
 
 mapfile -t TEST_SCRIPTS < <(find "$TESTS_DIR" -maxdepth 1 -name 'test-*.sh' | sort)
 
@@ -31,6 +33,9 @@ for test_script in "${TEST_SCRIPTS[@]}"; do
   if [[ "$code" -eq 0 ]]; then
     printf 'SUITE PASS: %s\n' "$name"
     PASS=$((PASS + 1))
+  elif [[ "$code" -eq 77 ]]; then
+    printf 'SUITE SKIP: %s (optional prerequisite absent)\n' "$name"
+    SKIP=$((SKIP + 1))
   else
     printf 'SUITE FAIL: %s (exit %d)\n' "$name" "$code"
     FAIL=$((FAIL + 1))
@@ -38,6 +43,10 @@ for test_script in "${TEST_SCRIPTS[@]}"; do
 done
 
 printf '\n=== run-all summary ===\n'
-printf '%d suite(s) passed, %d suite(s) failed\n' "$PASS" "$FAIL"
+printf '%d suite(s) passed, %d suite(s) failed, %d suite(s) skipped\n' "$PASS" "$FAIL" "$SKIP"
 
-[[ "$FAIL" -eq 0 ]] || exit 1
+if [[ "$FAIL" -gt 0 ]]; then
+  exit 1
+elif [[ "$SKIP" -gt 0 ]]; then
+  exit 77
+fi

@@ -154,10 +154,9 @@ When the harness re-invokes Claude after server exit, read:
 FEEDBACK_FILE  (the path you computed in Step 2d)
 ```
 
-If the server exited non-zero or `FEEDBACK_FILE` does not exist, the round-trip
-timed out (the server exits code 2 with no file after `--timeout-sec`, default
-1800 s). Tell the user, then offer to re-serve the form or take the answers in
-chat.
+If `FEEDBACK_FILE` is missing or the server exited non-zero, the round-trip timed
+out — recover as in serve.md Cycle A (tell the user; offer to re-serve or take the
+answers in chat).
 
 The file contains:
 

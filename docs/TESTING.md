@@ -26,7 +26,7 @@ A plugin has a `tests/<plugin-name>/script-tests/` suite only when it ships comm
 
 ### Optional prerequisite: Playwright (browser suite)
 
-The html-visualization browser suite (`tests/html-visualization/script-tests/test-browser.sh`) needs Playwright with Chromium, resolved from the npm `_npx` cache. On machines without it, the suite prints `SKIP` and exits 0 — the rest of the test run is unaffected. To enable it:
+The html-visualization browser suite (`tests/html-visualization/script-tests/test-browser.sh`) needs Playwright with Chromium, resolved from the npm `_npx` cache. On machines without it, the suite prints `SKIP` and exits with the skip code (77); the `run-all.sh` scripts report it as a skipped suite in their summary line (not a silent pass) and keep the overall run green. Set `REQUIRE_BROWSER=1` to turn an absent Playwright into a hard failure instead — use this in CI that must exercise the browser path. To enable the suite:
 
 ```bash
 npx playwright --version        # populates the npm _npx cache

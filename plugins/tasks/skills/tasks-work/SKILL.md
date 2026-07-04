@@ -84,11 +84,9 @@ manual polling.
 ## 5. Report
 
 When the workflow returns, relay its summary: how many tasks were **closed**, **left open** (a
-verification failure — a failing criterion gets a bug from the test leg; a review rejection is
-recorded as a tracker comment, no bug), **inconclusive** (an agent did not complete — left open, no
-bug), or **skipped** (**unready** — the readiness gate refused it, nothing ran — or **blocked** —
-the implementer started but could not finish; partial edits and filed bugs are possible). For an
-epic, report the verification verdict and that it is **ready for the user to close**
+verification failure), **inconclusive** (an agent did not finish), or **skipped** (readiness gate
+refused it, or the implementer was blocked mid-task) — RULES.md holds the full outcome semantics.
+For an epic, report the verification verdict and that it is **ready for the user to close**
 (the workflow never closes an epic). If the summary has `reviewer_fallback: true`, say the review
 leg ran on the built-in general-purpose agent because `project-quality:project-reviewer` is not
 installed. List any filed bug ids and suggest `taskmgr ready` for the next batch.
