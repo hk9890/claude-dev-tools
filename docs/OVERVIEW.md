@@ -10,8 +10,7 @@ claude-dev-tools/
   .tasks/                # taskmgr task store for this repo (file-based issue store)
   .claude-plugin/        # repo-level marketplace manifest
     marketplace.json     # lists all plugins, their versions, and descriptions
-  docs/                  # developer guides: OVERVIEW, CODING, CHANGE-WORKFLOW,
-                         #   TESTING, RUNNING, REVIEWING, RELEASING, MONITORING
+  docs/                  # developer topic guides — see AGENTS.md for task->doc routing
   plugins/               # one subdirectory per plugin
   scripts/               # repo maintenance scripts
   tests/                 # structural validation and smoke tests
