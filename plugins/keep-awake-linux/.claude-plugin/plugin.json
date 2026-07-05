@@ -1,0 +1,13 @@
+{
+  "name": "keep-awake-linux",
+  "description": "Prevents Linux system sleep while Claude Code is actively working — releases automatically when idle or on session exit",
+  "version": "1.20.0",
+  "author": {
+    "name": "Hans Kohlreiter",
+    "email": "hans.kohlreiter@gmail.com"
+  },
+  "homepage": "https://github.com/hk9890/claude-dev-tools",
+  "repository": "https://github.com/hk9890/claude-dev-tools",
+  "license": "MIT",
+  "keywords": ["linux", "systemd", "sleep", "keep-awake", "inhibit", "hooks"]
+}

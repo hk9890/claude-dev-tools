@@ -1,0 +1,647 @@
+/* style.css — shared styles for ask-mode interactive feedback pages
+ *
+ * Theme: "Editorial" — warm paper, ink text, a single terracotta accent,
+ * a serif display face paired with a refined sans body. Light + dark.
+ *
+ * Design tokens are sourced from /assets/shared/tokens.css (--hv-* variables).
+ *
+ * This file is CSS-only chrome. assets/ask/app.js reads the class names, ids
+ * and data-attributes below as a contract — restyle freely, but do not expect
+ * to rename them here without also changing app.js.
+ *
+ * Widget vocabulary:
+ *   .page-chrome         — outer page layout (max-width container)
+ *   .page-header         — top header with title + subtitle
+ *   .page-footer         — bottom area containing .verdict-section and .submit-row
+ *   .widget              — base class for every question widget
+ *   .widget-text         — free-text (textarea) question
+ *   .widget-radio        — single-choice (radio button) question
+ *   .widget-checkbox     — multi-choice (checkbox) question
+ *   .widget-approaches   — side-by-side approach comparison (two columns)
+ *   .widget-verdict      — overall verdict radio group (approve/approve-with-changes/reject)
+ *   .widget-label        — <label> wrapping question text
+ *   .widget-hint         — supplementary hint text below a label
+ *   .annotatable         — marks a widget that gets an always-visible note field
+ *   .widget-note         — wraps the per-question note label + textarea
+ *   .widget-note-label   — label shown above the per-question note textarea
+ *   .widget-note-input   — the per-question free-text note textarea
+ *   .approach-col        — one column in a .widget-approaches layout
+ *   .approach-header     — heading row in a .widget-approaches column
+ *   .approach-verdict    — per-column approve/reject within .widget-approaches
+ *   .verdict-section     — wraps the overall .widget-verdict
+ *   .freeform-section    — wraps the global free-text textarea
+ *   .submit-row          — wraps the submit button and copy-feedback button
+ *   .submit-btn          — the primary submit button
+ *   .copy-btn            — "Copy feedback" fallback button
+ *   .state-submitted     — shown after successful submit (hidden by default)
+ *   .state-already-submitted — shown after 410 response
+ *   [data-qid]           — identifies a question widget by its question ID
+ *   [data-qtype]         — declares widget type: text | radio | checkbox | approaches
+ *   [data-anchor-id]     — CSS id used as the comment anchor selector (#value)
+ */
+
+@import "/assets/shared/tokens.css";
+
+/* ── Reset / base ─────────────────────────────────────────────────────────── */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--hv-font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--hv-text);
+  background:
+    radial-gradient(1200px 620px at 100% -8%, rgba(var(--hv-accent-rgb),.06), transparent 62%),
+    radial-gradient(900px 520px at -5% 8%, rgba(169,120,26,.05), transparent 60%),
+    var(--hv-bg);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--hv-accent-tint);
+  color: var(--hv-text);
+}
+
+/* ── Motion ───────────────────────────────────────────────────────────────── */
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ── Page chrome ──────────────────────────────────────────────────────────── */
+
+.page-chrome {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 40px 22px 64px;
+}
+
+.page-header {
+  position: relative;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--hv-border);
+  animation: rise 0.5s ease both;
+}
+
+.page-header::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 58px;
+  height: 3px;
+  background: var(--hv-accent);
+  border-radius: 2px;
+}
+
+.page-header h1 {
+  margin: 0 0 7px;
+  font-family: var(--hv-font-display);
+  font-size: 2.1rem;
+  font-weight: 600;
+  line-height: 1.14;
+  letter-spacing: -0.018em;
+  color: var(--hv-text);
+}
+
+.page-header .subtitle {
+  margin: 0;
+  font-family: var(--hv-font-display);
+  font-style: italic;
+  font-size: 1.08rem;
+  line-height: 1.45;
+  color: var(--hv-muted);
+}
+
+/* Staggered entrance for the form body. */
+#main-form > * {
+  animation: rise 0.5s ease both;
+}
+#main-form > *:nth-child(1) { animation-delay: 0.06s; }
+#main-form > *:nth-child(2) { animation-delay: 0.12s; }
+#main-form > *:nth-child(3) { animation-delay: 0.18s; }
+#main-form > *:nth-child(4) { animation-delay: 0.24s; }
+#main-form > *:nth-child(5) { animation-delay: 0.30s; }
+#main-form > *:nth-child(6) { animation-delay: 0.36s; }
+#main-form > *:nth-child(n+7) { animation-delay: 0.42s; }
+
+/* ── Base widget ──────────────────────────────────────────────────────────── */
+
+.widget {
+  position: relative;
+  background: var(--hv-surface);
+  border: 1px solid var(--hv-border);
+  border-radius: var(--hv-radius);
+  padding: 22px 26px;
+  margin-bottom: 18px;
+  box-shadow: var(--hv-shadow);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.widget:focus-within {
+  border-color: var(--hv-accent);
+  box-shadow: var(--hv-shadow-lg);
+}
+
+.widget-label {
+  display: block;
+  font-weight: 600;
+  font-size: 1.01rem;
+  letter-spacing: -0.01em;
+  line-height: 1.4;
+  margin-bottom: 7px;
+  color: var(--hv-text);
+}
+
+/* Editorial accent dash before each question. */
+.widget-label::before {
+  content: "";
+  display: inline-block;
+  width: 15px;
+  height: 2px;
+  margin: 0 9px 4px 0;
+  background: var(--hv-accent);
+  border-radius: 1px;
+  vertical-align: middle;
+}
+
+.widget-hint {
+  display: block;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--hv-muted);
+  margin: -1px 0 12px;
+}
+
+/* ── Text widget ──────────────────────────────────────────────────────────── */
+
+.widget-text textarea {
+  width: 100%;
+  min-height: 96px;
+  padding: 11px 13px;
+  border: 1px solid var(--hv-border);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  resize: vertical;
+  color: var(--hv-text);
+  background: var(--hv-surface-2);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.widget-text textarea::placeholder { color: var(--hv-faint); }
+
+.widget-text textarea:focus {
+  outline: none;
+  border-color: var(--hv-accent);
+  background: var(--hv-surface);
+  box-shadow: 0 0 0 3px var(--hv-accent-tint);
+}
+
+/* ── Radio + checkbox widgets ─────────────────────────────────────────────── */
+
+.widget-radio .radio-options,
+.widget-checkbox .checkbox-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.widget-radio .radio-option,
+.widget-checkbox .checkbox-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 10px 13px;
+  border: 1px solid var(--hv-border);
+  border-radius: 8px;
+  background: var(--hv-surface-2);
+  cursor: pointer;
+  transition: background 0.14s ease, border-color 0.14s ease, transform 0.14s ease;
+}
+
+.widget-radio .radio-option:hover,
+.widget-checkbox .checkbox-option:hover {
+  border-color: var(--hv-accent);
+  transform: translateX(2px);
+}
+
+.widget-radio .radio-option:has(input:checked),
+.widget-checkbox .checkbox-option:has(input:checked) {
+  background: var(--hv-accent-tint);
+  border-color: var(--hv-accent);
+}
+
+.widget-radio .radio-option input,
+.widget-checkbox .checkbox-option input {
+  margin-top: 2px;
+  flex-shrink: 0;
+  accent-color: var(--hv-accent);
+  cursor: pointer;
+}
+
+.widget-radio .radio-option label,
+.widget-checkbox .checkbox-option label,
+.widget-radio .radio-option span,
+.widget-checkbox .checkbox-option span {
+  font-size: 0.95rem;
+  line-height: 1.45;
+  cursor: pointer;
+  color: var(--hv-text);
+  flex: 1;
+}
+
+/* ── Approaches widget ────────────────────────────────────────────────────── */
+
+.widget-approaches .approaches-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 10px;
+}
+
+@media (max-width: 580px) {
+  .widget-approaches .approaches-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.approach-col {
+  border: 1px solid var(--hv-border);
+  border-radius: 9px;
+  padding: 16px 18px;
+  background: var(--hv-surface-2);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.approach-col:has(input[value="approve"]:checked) {
+  border-color: var(--hv-ok);
+  background: var(--hv-ok-tint);
+}
+
+.approach-col:has(input[value="reject"]:checked) {
+  border-color: var(--hv-bad);
+  background: var(--hv-bad-tint);
+}
+
+.approach-header {
+  font-family: var(--hv-font-display);
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+  margin-bottom: 9px;
+  color: var(--hv-text);
+}
+
+.approach-col p {
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--hv-muted);
+  margin: 0 0 14px;
+}
+
+.approach-verdict {
+  display: flex;
+  gap: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--hv-border);
+}
+
+.approach-verdict label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.89rem;
+  cursor: pointer;
+  color: var(--hv-text);
+}
+
+.approach-verdict input[type="radio"] {
+  accent-color: var(--hv-accent);
+  cursor: pointer;
+}
+
+/* ── Verdict section ──────────────────────────────────────────────────────── */
+
+.verdict-section {
+  background: var(--hv-surface);
+  border: 1px solid var(--hv-border);
+  border-radius: var(--hv-radius);
+  padding: 22px 26px;
+  margin-bottom: 18px;
+  box-shadow: var(--hv-shadow);
+}
+
+.verdict-section h2,
+.freeform-section h2 {
+  margin: 0 0 14px;
+  font-family: var(--hv-font-display);
+  font-size: 1.3rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--hv-text);
+}
+
+.widget-verdict .verdict-options {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.widget-verdict .verdict-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  padding: 13px 16px;
+  border: 1.5px solid var(--hv-border);
+  border-radius: 9px;
+  background: var(--hv-surface-2);
+  cursor: pointer;
+  transition: background 0.14s ease, border-color 0.14s ease, transform 0.14s ease;
+}
+
+.widget-verdict .verdict-option:hover {
+  transform: translateX(2px);
+}
+
+.widget-verdict .verdict-option.verdict-approve:hover { border-color: var(--hv-ok); }
+.widget-verdict .verdict-option.verdict-approve-with-changes:hover { border-color: var(--hv-warn); }
+.widget-verdict .verdict-option.verdict-reject:hover { border-color: var(--hv-bad); }
+
+.widget-verdict .verdict-option.verdict-approve:has(input:checked) {
+  background: var(--hv-ok-tint);
+  border-color: var(--hv-ok);
+}
+
+.widget-verdict .verdict-option.verdict-approve-with-changes:has(input:checked) {
+  background: var(--hv-warn-tint);
+  border-color: var(--hv-warn);
+}
+
+.widget-verdict .verdict-option.verdict-reject:has(input:checked) {
+  background: var(--hv-bad-tint);
+  border-color: var(--hv-bad);
+}
+
+.widget-verdict .verdict-option input[type="radio"] {
+  margin-top: 3px;
+  flex-shrink: 0;
+  accent-color: var(--hv-accent);
+  cursor: pointer;
+}
+
+.widget-verdict .verdict-option .verdict-label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.widget-verdict .verdict-option .verdict-label strong {
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: var(--hv-text);
+}
+
+.widget-verdict .verdict-option .verdict-label span {
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: var(--hv-muted);
+}
+
+/* ── Freeform section ─────────────────────────────────────────────────────── */
+
+.freeform-section {
+  background: var(--hv-surface);
+  border: 1px solid var(--hv-border);
+  border-radius: var(--hv-radius);
+  padding: 22px 26px;
+  margin-bottom: 18px;
+  box-shadow: var(--hv-shadow);
+}
+
+.freeform-section textarea {
+  width: 100%;
+  min-height: 104px;
+  padding: 11px 13px;
+  border: 1px solid var(--hv-border);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  resize: vertical;
+  color: var(--hv-text);
+  background: var(--hv-surface-2);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.freeform-section textarea::placeholder { color: var(--hv-faint); }
+
+.freeform-section textarea:focus {
+  outline: none;
+  border-color: var(--hv-accent);
+  background: var(--hv-surface);
+  box-shadow: 0 0 0 3px var(--hv-accent-tint);
+}
+
+/* ── Submit row ───────────────────────────────────────────────────────────── */
+
+.submit-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 22px;
+}
+
+.submit-btn {
+  padding: 12px 30px;
+  background: var(--hv-accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.97rem;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  cursor: pointer;
+  box-shadow: 0 6px 16px -8px rgba(var(--hv-accent-rgb),.7);
+  transition: background 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+.submit-btn:hover:not(:disabled) {
+  background: var(--hv-accent-deep);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px -8px rgba(var(--hv-accent-rgb),.75);
+}
+
+.submit-btn:active:not(:disabled) { transform: translateY(0); }
+
+.submit-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+  box-shadow: none;
+}
+
+.copy-btn {
+  padding: 11px 21px;
+  background: transparent;
+  color: var(--hv-muted);
+  border: 1px solid var(--hv-border);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.13s ease, border-color 0.13s ease, color 0.13s ease;
+}
+
+.copy-btn:hover {
+  background: var(--hv-surface);
+  border-color: var(--hv-accent);
+  color: var(--hv-text);
+}
+
+.copy-btn.copied {
+  color: var(--hv-ok-deep);
+  border-color: var(--hv-ok);
+  background: var(--hv-ok-tint);
+}
+
+.submit-error {
+  color: var(--hv-bad-deep);
+  background: var(--hv-bad-tint);
+  border: 1px solid var(--hv-bad);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  margin-top: 14px;
+  width: 100%;
+}
+
+/* ── Post-submit states ───────────────────────────────────────────────────── */
+
+.state-submitted,
+.state-already-submitted {
+  display: none;
+  border-radius: var(--hv-radius);
+  padding: 34px 30px;
+  text-align: center;
+  margin-top: 24px;
+  box-shadow: var(--hv-shadow);
+  animation: rise 0.45s ease both;
+}
+
+.state-submitted {
+  background: var(--hv-ok-tint);
+  border: 1px solid var(--hv-ok);
+}
+
+.state-already-submitted {
+  background: var(--hv-warn-tint);
+  border: 1px solid var(--hv-warn);
+}
+
+.state-submitted h2,
+.state-already-submitted h2 {
+  margin: 0 0 8px;
+  font-family: var(--hv-font-display);
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.state-submitted h2 { color: var(--hv-ok-deep); }
+.state-already-submitted h2 { color: var(--hv-warn-deep); }
+
+.state-submitted p,
+.state-already-submitted p {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.state-submitted p { color: var(--hv-ok-deep); }
+.state-already-submitted p { color: var(--hv-warn-deep); }
+
+/* ── Per-question note field ─────────────────────────────────────────────── */
+/* Injected by app.js into every .annotatable widget — always visible, so the
+   user can write free text on any question alongside its structured answer. */
+
+.widget-note {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--hv-border);
+}
+
+.widget-note-label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--hv-faint);
+  margin-bottom: 7px;
+}
+
+.widget-note-input {
+  width: 100%;
+  min-height: 58px;
+  padding: 9px 11px;
+  border: 1px solid var(--hv-border);
+  border-radius: 7px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  resize: vertical;
+  color: var(--hv-text);
+  background: var(--hv-surface-2);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.widget-note-input::placeholder { color: var(--hv-faint); }
+
+.widget-note-input:focus {
+  outline: none;
+  border-color: var(--hv-accent);
+  background: var(--hv-surface);
+  box-shadow: 0 0 0 3px var(--hv-accent-tint);
+}
+
+/* ── Responsive tweaks ────────────────────────────────────────────────────── */
+
+@media (max-width: 480px) {
+  .page-chrome {
+    padding: 26px 15px 44px;
+  }
+
+  .page-header h1 { font-size: 1.7rem; }
+
+  .widget,
+  .verdict-section,
+  .freeform-section {
+    padding: 16px 17px;
+  }
+
+  .submit-btn,
+  .copy-btn {
+    width: 100%;
+    text-align: center;
+  }
+}

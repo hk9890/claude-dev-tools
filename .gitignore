@@ -1,0 +1,34 @@
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Python
+__pycache__/
+*.pyc
+
+# Environment
+.env
+.env.local
+
+# Temporary files
+*.tmp
+*.log
+
+# Local-only working files (not for the public marketplace repo)
+private/
+output/
+
+# taskmgr local task store (runtime state, not marketplace content)
+.tasks/
+
+# Claude Code per-user local overrides (machine-specific, never shared)
+.claude/settings.local.json

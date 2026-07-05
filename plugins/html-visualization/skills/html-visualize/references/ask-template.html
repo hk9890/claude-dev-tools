@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Feedback — [Claude: replace with document title]</title>
+  <link rel="stylesheet" href="/assets/ask/style.css">
+</head>
+<body>
+<!-- CSRF token injected here by server:
+     <script>const CSRF_TOKEN = "...";</script>
+     Do NOT add this manually — the server inserts it before </head>. -->
+
+<div class="page-chrome">
+
+  <!-- ── Page header ────────────────────────────────────────────────────── -->
+  <header class="page-header">
+    <h1>[Claude: replace with document title]</h1>
+    <p class="subtitle">[Claude: replace with a one-sentence description of what the user is reviewing]</p>
+  </header>
+
+  <!-- ── Main form ─────────────────────────────────────────────────────── -->
+  <div id="main-form">
+
+    <!-- ── EXAMPLE 1: Text question ────────────────────────────────────── -->
+    <!--
+      Widget type : text
+      data-qid    : unique question ID (printable ASCII, no whitespace)
+      data-qtype  : "text"
+      Text widgets are NOT .annotatable — the <textarea> below already IS the
+      free-text field, so no separate note field is added.
+    -->
+    <div class="widget widget-text"
+         data-qid="q-timeline"
+         data-qtype="text">
+      <label class="widget-label" for="q-timeline-input">
+        [Claude: question text here — e.g. "Is the proposed timeline realistic?"]
+      </label>
+      <span class="widget-hint">[Claude: optional hint — e.g. "Think about dependencies and current workload."]</span>
+      <textarea id="q-timeline-input" name="q-timeline"
+                placeholder="Your answer…"></textarea>
+    </div>
+
+    <!-- ── EXAMPLE 2: Single-choice (radio) question ────────────────────── -->
+    <!--
+      Widget type : radio
+      data-qid    : unique question ID
+      data-qtype  : "radio"
+      Each option : <input type="radio"> with name=data-qid and value=<option-value>
+      .annotatable + data-anchor-id : adds an always-visible free-text note field
+    -->
+    <div class="widget widget-radio annotatable"
+         data-qid="q-priority"
+         data-qtype="radio"
+         data-anchor-id="q-priority"
+         id="q-priority">
+      <span class="widget-label">[Claude: question text — e.g. "What priority should this have?"]</span>
+      <span class="widget-hint">[Claude: optional hint]</span>
+      <div class="radio-options">
+        <label class="radio-option">
+          <input type="radio" name="q-priority" value="high">
+          <span>High — needs immediate attention</span>
+        </label>
+        <label class="radio-option">
+          <input type="radio" name="q-priority" value="medium">
+          <span>Medium — schedule within the sprint</span>
+        </label>
+        <label class="radio-option">
+          <input type="radio" name="q-priority" value="low">
+          <span>Low — backlog is fine</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- ── EXAMPLE 3: Multi-choice (checkbox) question ──────────────────── -->
+    <!--
+      Widget type : checkbox
+      data-qid    : unique question ID
+      data-qtype  : "checkbox"
+      Each option : <input type="checkbox"> with name=data-qid and value=<option-value>
+      Answer value: array of all checked values (may be empty [])
+      .annotatable + data-anchor-id : adds an always-visible free-text note field
+    -->
+    <div class="widget widget-checkbox annotatable"
+         data-qid="q-concerns"
+         data-qtype="checkbox"
+         data-anchor-id="q-concerns"
+         id="q-concerns">
+      <span class="widget-label">[Claude: question text — e.g. "Which concerns apply?"]</span>
+      <span class="widget-hint">[Claude: optional hint — e.g. "Select all that apply."]</span>
+      <div class="checkbox-options">
+        <label class="checkbox-option">
+          <input type="checkbox" name="q-concerns" value="security">
+          <span>Security risk</span>
+        </label>
+        <label class="checkbox-option">
+          <input type="checkbox" name="q-concerns" value="performance">
+          <span>Performance impact</span>
+        </label>
+        <label class="checkbox-option">
+          <input type="checkbox" name="q-concerns" value="complexity">
+          <span>Added complexity</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- ── EXAMPLE 4: Side-by-side approaches ────────────────────────────── -->
+    <!--
+      Widget type      : approaches
+      data-qid         : unique question ID (also the prefix for per-column answer keys)
+      data-qtype       : "approaches"
+      .approach-col    : one column; MUST carry data-approach-id="<col-id>"
+      .approach-header : heading for the column
+      .approach-verdict: per-column approve/reject radios (values: "approve" | "reject")
+      Per-column answer key in payload: "<data-qid>-<data-approach-id>"
+        e.g. data-qid="q-approach" + data-approach-id="a" → answers["q-approach-a"]
+      .annotatable + data-anchor-id : adds an always-visible free-text note field
+    -->
+    <div class="widget widget-approaches annotatable"
+         data-qid="q-approach"
+         data-qtype="approaches"
+         data-anchor-id="q-approach"
+         id="q-approach">
+      <span class="widget-label">[Claude: question text — e.g. "Which implementation approach do you prefer?"]</span>
+      <span class="widget-hint">[Claude: optional hint — e.g. "Evaluate the tradeoffs for your context."]</span>
+      <div class="approaches-grid">
+
+        <div class="approach-col" data-approach-id="a">
+          <div class="approach-header">Approach A: [Claude: name]</div>
+          <p>[Claude: describe approach A — key tradeoffs, risks, effort.]</p>
+          <div class="approach-verdict">
+            <label>
+              <input type="radio" name="q-approach-a" value="approve"> Prefer this
+            </label>
+            <label>
+              <input type="radio" name="q-approach-a" value="reject"> Skip this
+            </label>
+          </div>
+        </div>
+
+        <div class="approach-col" data-approach-id="b">
+          <div class="approach-header">Approach B: [Claude: name]</div>
+          <p>[Claude: describe approach B — key tradeoffs, risks, effort.]</p>
+          <div class="approach-verdict">
+            <label>
+              <input type="radio" name="q-approach-b" value="approve"> Prefer this
+            </label>
+            <label>
+              <input type="radio" name="q-approach-b" value="reject"> Skip this
+            </label>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── Verdict section ─────────────────────────────────────────────── -->
+    <!--
+      .verdict-section wraps the overall verdict widget.
+      .widget-verdict  : the widget; DO NOT add data-qid (not a Q&A question).
+      Verdict radio values MUST be exactly: "approve" | "approve-with-changes" | "reject"
+      The verdict is OPTIONAL — the user may submit without selecting one.
+    -->
+    <div class="verdict-section">
+      <h2>Overall verdict</h2>
+      <div class="widget-verdict">
+        <div class="verdict-options">
+          <label class="verdict-option verdict-approve">
+            <input type="radio" name="verdict" value="approve">
+            <div class="verdict-label">
+              <strong>Approve</strong>
+              <span>Looks good — proceed as described.</span>
+            </div>
+          </label>
+          <label class="verdict-option verdict-approve-with-changes">
+            <input type="radio" name="verdict" value="approve-with-changes">
+            <div class="verdict-label">
+              <strong>Approve with changes</strong>
+              <span>Good direction, but address my feedback before proceeding.</span>
+            </div>
+          </label>
+          <label class="verdict-option verdict-reject">
+            <input type="radio" name="verdict" value="reject">
+            <div class="verdict-label">
+              <strong>Reject</strong>
+              <span>Do not proceed — rethink the approach.</span>
+            </div>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Freeform section ────────────────────────────────────────────── -->
+    <div class="freeform-section">
+      <h2>Additional comments</h2>
+      <textarea id="freeform-input" name="freeform"
+                placeholder="Any other thoughts, context, or concerns not captured above…"></textarea>
+    </div>
+
+    <!-- ── Submit row ─────────────────────────────────────────────────── -->
+    <div class="submit-row">
+      <button type="button" id="submit-btn" class="submit-btn">Submit feedback</button>
+      <button type="button" id="copy-btn" class="copy-btn">Copy feedback</button>
+    </div>
+    <div id="submit-error" class="submit-error" style="display:none;"></div>
+
+  </div><!-- /#main-form -->
+
+  <!-- ── Success state (shown after 200 response) ─────────────────────── -->
+  <div id="state-submitted" class="state-submitted">
+    <h2>Feedback submitted</h2>
+    <p>Thank you. Claude has received your feedback and will continue.</p>
+  </div>
+
+  <!-- ── Already-submitted state (shown after 410 response) ───────────── -->
+  <div id="state-already-submitted" class="state-already-submitted">
+    <h2>Already submitted</h2>
+    <p>This feedback form has already been submitted. Claude has your earlier response.</p>
+  </div>
+
+</div><!-- /.page-chrome -->
+
+<script src="/assets/ask/app.js"></script>
+</body>
+</html>

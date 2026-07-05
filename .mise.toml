@@ -1,0 +1,31 @@
+# mise tasks — discoverable entry point for the local development stack.
+#
+# List tasks:  mise tasks
+# Run a task:  mise run <task> [-- extra args]
+# Extra args are appended to the task command, e.g. mise run check-consistency --help
+
+[tasks.test]
+description = "Run the full test suite (all plugins)"
+dir = "{{config_root}}"
+run = "bash tests/run-all.sh"
+
+[tasks.test-html]
+description = "Run html-visualization browser/server tests only"
+dir = "{{config_root}}"
+# exit 77 = suites skipped (e.g. Playwright absent), treated as success not failure
+run = 'bash tests/html-visualization/script-tests/run-all.sh || [ "$?" -eq 77 ]'
+
+[tasks.check-consistency]
+description = "Validate internal cross-references and version mirrors"
+dir = "{{config_root}}"
+run = "python3 scripts/check-internal-consistency.py"
+
+[tasks.analyze-sessions]
+description = "Analyse Claude Code session transcripts (pass options as extra args)"
+dir = "{{config_root}}"
+run = "python3 scripts/analyze-sessions.py"
+
+[tasks.lint]
+description = "No linter configured (placeholder)"
+dir = "{{config_root}}"
+run = 'echo "No linter configured for this repo."'

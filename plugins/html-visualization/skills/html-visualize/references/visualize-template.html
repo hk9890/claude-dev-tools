@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>[Claude: replace with visualization title]</title>
+
+  <!-- ── Optional: CDN chart library (remove if not needed) ────────────────
+    If you need Chart.js, D3, or Mermaid, add the <script src="https://...">
+    tag here. Remove this comment block if no CDN library is used.
+
+    Examples:
+      Chart.js  → <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+      D3.js     → <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+      Mermaid   → <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+
+    Prefer inline SVG when the visualization can be encoded statically — no
+    network dependency, works offline, renders instantly.
+  -->
+
+  <style>
+    /* ── Theme: "Editorial" ─────────────────────────────────────────────────
+      Warm paper, ink text, a single terracotta accent, a serif display face
+      paired with a refined sans body. Light + dark. This is a neutral scaffold
+      — keep the tokens, retheme the accent if the content calls for it, but do
+      not let the chrome shout over the visualization itself.
+
+      IMPORTANT — TWO COPIES: These :root and @media blocks are a verbatim
+      inline copy of assets/shared/tokens.css. This template must remain
+      fully self-contained (file:// compatible), so it cannot @import that
+      file. Keep both in sync whenever you edit tokens.
+    */
+    :root {
+      color-scheme: light dark;
+
+      /* Backgrounds */
+      --hv-bg:       #f4efe3;
+      --hv-surface:  #fffdf7;
+      --hv-surface-2:#faf5e9;
+
+      /* Text */
+      --hv-text:     #2a251d;
+      --hv-muted:    #6c6353;
+      --hv-faint:    #9a9078;
+
+      /* Borders */
+      --hv-border:   #e2dac6;
+      --hv-border-soft: #ece5d4;
+
+      /* Accent — terracotta */
+      --hv-accent:      #b1492a;
+      --hv-accent-deep: #8d3a20;
+      --hv-accent-tint: #f2e2d8;
+      --hv-accent-rgb: 177, 73, 42;
+
+      /* Semantic colours */
+      --hv-ok:    #51762f;  --hv-ok-tint:   #e7efd9;  --hv-ok-deep:   #3d5b21;
+      --hv-warn:  #a9781a;  --hv-warn-tint: #f4eccd;  --hv-warn-deep: #846010;
+      --hv-bad:   #a33324;  --hv-bad-tint:  #f3e0da;  --hv-bad-deep:  #7e271b;
+
+      /* RGB triplets for use in rgba() */
+      --hv-ok-rgb:  81, 118, 47;
+      --hv-ink-rgb: 42, 32, 14;
+
+      /* Elevation */
+      --hv-shadow: 0 1px 2px rgba(42,32,14,.05), 0 7px 22px -10px rgba(42,32,14,.16);
+      --hv-shadow-lg: 0 2px 4px rgba(42,32,14,.06), 0 16px 38px -14px rgba(42,32,14,.26);
+      --hv-radius: 11px;
+
+      /* Typography */
+      --hv-font-display: "Charter", "Bitstream Charter", "Sitka Text", "Iowan Old Style", Cambria, Georgia, serif;
+      --hv-font-body: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      --hv-font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --hv-bg:       #15130e;
+        --hv-surface:  #211e16;
+        --hv-surface-2:#1b1812;
+
+        --hv-text:     #ece5d6;
+        --hv-muted:    #a89d86;
+        --hv-faint:    #7c735e;
+
+        --hv-border:   #352f23;
+        --hv-border-soft: #2a251c;
+
+        --hv-accent:      #e3895f;
+        --hv-accent-deep: #efa17c;
+        --hv-accent-tint: #3a291f;
+        --hv-accent-rgb: 227, 137, 95;
+
+        --hv-ok:    #95bd6c;  --hv-ok-tint:   #2a331f;  --hv-ok-deep:   #abce84;
+        --hv-warn:  #d8aa50;  --hv-warn-tint: #352c16;  --hv-warn-deep: #e8bf6c;
+        --hv-bad:   #e3897a;  --hv-bad-tint:  #382220;  --hv-bad-deep:  #ed9f90;
+
+        --hv-ok-rgb:  149, 189, 108;
+        --hv-ink-rgb: 0, 0, 0;
+
+        --hv-shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.7);
+        --hv-shadow-lg: 0 2px 6px rgba(0,0,0,.5), 0 18px 40px -16px rgba(0,0,0,.8);
+      }
+    }
+
+    /* ── Base ───────────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background:
+        radial-gradient(1200px 620px at 100% -8%, rgba(var(--hv-accent-rgb),.06), transparent 62%),
+        radial-gradient(900px 520px at -5% 8%, rgba(169,120,26,.05), transparent 60%),
+        var(--hv-bg);
+      background-attachment: fixed;
+      color: var(--hv-text);
+      font-family: var(--hv-font-body);
+      font-size: 16px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    ::selection { background: rgba(var(--hv-accent-rgb),.18); }
+
+    /* ── Motion: a quiet staggered entrance ─────────────────────────────── */
+    @keyframes vis-rise {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: none; }
+    }
+
+    .page-header { animation: vis-rise 0.5s ease both; }
+    .vis-content > * { animation: vis-rise 0.5s ease both; }
+    .vis-content > *:nth-child(1) { animation-delay: 0.08s; }
+    .vis-content > *:nth-child(2) { animation-delay: 0.16s; }
+    .vis-content > *:nth-child(3) { animation-delay: 0.24s; }
+    .vis-content > *:nth-child(n+4) { animation-delay: 0.32s; }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-delay: 0ms !important;
+        transition-duration: 0.001ms !important;
+      }
+    }
+
+    /* ── Page layout ────────────────────────────────────────────────────── */
+    .page-chrome {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem 4rem;
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────────── */
+    .page-header {
+      position: relative;
+      margin-bottom: 2rem;
+      padding-bottom: 1.25rem;
+      border-bottom: 1px solid var(--hv-border);
+    }
+
+    .page-header::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      bottom: -1px;
+      width: 58px;
+      height: 3px;
+      background: var(--hv-accent);
+      border-radius: 2px;
+    }
+
+    .page-header h1 {
+      margin: 0 0 0.45rem;
+      font-family: var(--hv-font-display);
+      font-size: 2.1rem;
+      font-weight: 600;
+      line-height: 1.14;
+      letter-spacing: -0.018em;
+    }
+
+    .page-header .subtitle {
+      margin: 0;
+      font-family: var(--hv-font-display);
+      font-style: italic;
+      font-size: 1.08rem;
+      color: var(--hv-muted);
+    }
+
+    /* ── Main content area ──────────────────────────────────────────────── */
+    .vis-content {
+      /* Add any extra layout rules here for your visualization */
+    }
+
+    /* ── Card: a bordered surface useful for grouping sections ─────────── */
+    .vis-card {
+      background: var(--hv-surface);
+      border: 1px solid var(--hv-border);
+      border-radius: var(--hv-radius);
+      padding: 1.35rem 1.6rem;
+      margin-bottom: 1.5rem;
+      box-shadow: var(--hv-shadow);
+    }
+
+    .vis-card h2 {
+      margin: 0 0 0.75rem;
+      font-family: var(--hv-font-display);
+      font-size: 1.2rem;
+      font-weight: 600;
+      letter-spacing: -0.012em;
+    }
+
+    /* ── Tables ─────────────────────────────────────────────────────────── */
+    .vis-table-wrap {
+      background: var(--hv-surface);
+      border: 1px solid var(--hv-border);
+      border-radius: var(--hv-radius);
+      box-shadow: var(--hv-shadow);
+      overflow: hidden;
+      overflow-x: auto;
+      margin-bottom: 1.5rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+    }
+
+    caption {
+      text-align: left;
+      font-family: var(--hv-font-display);
+      font-size: 1.05rem;
+      font-weight: 600;
+      padding: 0.9rem 1rem 0.3rem;
+      color: var(--hv-text);
+    }
+
+    th, td {
+      text-align: left;
+      padding: 0.6rem 1rem;
+      border-bottom: 1px solid var(--hv-border);
+    }
+
+    th {
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--hv-muted);
+      background: var(--hv-surface-2);
+    }
+
+    tbody tr:nth-child(even) td {
+      background: var(--hv-surface-2);
+    }
+
+    tbody tr:last-child td { border-bottom: none; }
+
+    /* ── Inline SVG container ───────────────────────────────────────────── */
+    .vis-svg-wrap {
+      background: var(--hv-surface);
+      border: 1px solid var(--hv-border);
+      border-radius: var(--hv-radius);
+      box-shadow: var(--hv-shadow);
+      padding: 1.35rem 1.6rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .vis-svg-wrap svg {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    /* ── Footer note ────────────────────────────────────────────────────── */
+    .vis-note {
+      margin-top: 2rem;
+      font-size: 0.82rem;
+      color: var(--hv-muted);
+      border-top: 1px solid var(--hv-border);
+      padding-top: 0.75rem;
+    }
+
+    /* ── Narrow screens ─────────────────────────────────────────────────── */
+    @media (max-width: 480px) {
+      .page-chrome { padding: 1.75rem 1rem 3rem; }
+      .page-header h1 { font-size: 1.7rem; }
+      .vis-card, .vis-svg-wrap { padding: 1rem 1.1rem; }
+    }
+
+    /* ── Feedback footer ────────────────────────────────────────────────── */
+    .vis-footer {
+      margin-top: 2.5rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid var(--hv-border);
+    }
+
+    .vis-footer-label {
+      display: block;
+      margin-bottom: 0.45rem;
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      color: var(--hv-muted);
+    }
+
+    .vis-footer-textarea {
+      display: block;
+      width: 100%;
+      min-height: 72px;
+      padding: 0.6rem 0.75rem;
+      background: var(--hv-surface);
+      color: var(--hv-text);
+      border: 1px solid var(--hv-border);
+      border-radius: calc(var(--hv-radius) - 2px);
+      font-family: var(--hv-font-body);
+      font-size: 0.95rem;
+      line-height: 1.5;
+      resize: vertical;
+      transition: border-color 0.15s;
+    }
+
+    .vis-footer-textarea:focus {
+      outline: none;
+      border-color: var(--hv-accent);
+      box-shadow: 0 0 0 2px rgba(var(--hv-accent-rgb), 0.18);
+    }
+
+    .vis-footer-actions {
+      display: flex;
+      gap: 0.6rem;
+      margin-top: 0.65rem;
+      align-items: center;
+    }
+
+    .vis-btn {
+      padding: 0.42rem 1.1rem;
+      font-family: var(--hv-font-body);
+      font-size: 0.9rem;
+      font-weight: 500;
+      border-radius: calc(var(--hv-radius) - 4px);
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: background 0.12s, opacity 0.12s;
+    }
+
+    .vis-btn-send {
+      background: var(--hv-accent);
+      color: #fff;
+      border-color: var(--hv-accent);
+    }
+
+    .vis-btn-send:hover:not(:disabled) {
+      background: var(--hv-accent-deep);
+      border-color: var(--hv-accent-deep);
+    }
+
+    .vis-btn-send:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+
+    .vis-btn-save {
+      background: var(--hv-surface);
+      color: var(--hv-text);
+      border-color: var(--hv-border);
+    }
+
+    .vis-btn-save:hover {
+      background: var(--hv-surface-2);
+    }
+
+    .vis-footer-status {
+      font-size: 0.85rem;
+      color: var(--hv-muted);
+      margin-left: 0.25rem;
+    }
+  </style>
+</head>
+<body>
+
+<div class="page-chrome">
+
+  <!-- ── Page header ────────────────────────────────────────────────────── -->
+  <header class="page-header">
+    <h1>[Claude: replace with visualization title]</h1>
+    <p class="subtitle">[Claude: replace with a one-sentence description of what the user is viewing]</p>
+  </header>
+
+  <!-- ── Main content ───────────────────────────────────────────────────── -->
+  <!--
+    Replace the example blocks below with the real visualization content.
+    Choose the rendering form that fits your data:
+
+    INLINE SVG (preferred for diagrams, static charts, graphs):
+      Wrap in <div class="vis-svg-wrap">.
+      Use viewBox="0 0 W H" width="100%" so it scales.
+      Use var(--hv-accent), var(--hv-muted) etc. for fills/strokes.
+
+    CDN CHART LIBRARY (for interactive or complex charts):
+      Add the <script src="https://cdn.jsdelivr.net/npm/..."> in <head>.
+      Render into a <canvas> or <div> here.
+      Initialise in the inline <script> block at the bottom of <body>.
+
+    HTML TABLE (for tabular data):
+      Use <table> + <caption> + <thead>/<tbody>.
+      Wrap in <div class="vis-table-wrap"> for horizontal scrolling.
+
+    CARD GROUP (for summary metrics, key-value data, or multi-panel layouts):
+      Use <div class="vis-card"> per panel.
+  -->
+  <main class="vis-content">
+
+    <!-- ── EXAMPLE: Inline SVG placeholder ──────────────────────────────── -->
+    <!--
+      Replace this with real SVG content or remove if using a different form.
+      viewBox coordinates: 0 0 800 300 — adjust to suit your diagram.
+    -->
+    <div class="vis-svg-wrap">
+      <svg viewBox="0 0 800 200" xmlns="http://www.w3.org/2000/svg"
+           role="img" aria-label="[Claude: replace with a description of the diagram]">
+        <!-- [Claude: replace with real SVG paths, shapes, and text] -->
+        <rect x="20" y="20" width="760" height="160" rx="8"
+              fill="var(--hv-surface)" stroke="var(--hv-border)" stroke-width="1.5"/>
+        <text x="400" y="105" text-anchor="middle"
+              fill="var(--hv-muted)" font-family="system-ui, sans-serif" font-size="16">
+          [Claude: replace with real diagram content]
+        </text>
+      </svg>
+    </div>
+
+    <!-- ── EXAMPLE: Table placeholder ──────────────────────────────────── -->
+    <!--
+      Replace or remove this table section.
+    -->
+    <div class="vis-table-wrap">
+      <table>
+        <caption>[Claude: replace with table title]</caption>
+        <thead>
+          <tr>
+            <th scope="col">[Claude: column 1]</th>
+            <th scope="col">[Claude: column 2]</th>
+            <th scope="col">[Claude: column 3]</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>[Claude: row 1, col 1]</td>
+            <td>[Claude: row 1, col 2]</td>
+            <td>[Claude: row 1, col 3]</td>
+          </tr>
+          <tr>
+            <td>[Claude: row 2, col 1]</td>
+            <td>[Claude: row 2, col 2]</td>
+            <td>[Claude: row 2, col 3]</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+
+  <!-- ── Optional footer note ─────────────────────────────────────────── -->
+  <!--
+    Use .vis-note for a footnote, data source citation, or generation timestamp.
+    Remove this block if not needed.
+  -->
+  <p class="vis-note">[Claude: optional footnote — e.g. data source, generated at timestamp, caveats]</p>
+
+  <!-- ── Feedback footer ──────────────────────────────────────────────────── -->
+  <footer class="vis-footer">
+    <label class="vis-footer-label" for="vis-message">Message to Claude</label>
+    <textarea id="vis-message" class="vis-footer-textarea"
+              placeholder="Optional — share feedback or a follow-up request, then click Send."
+              rows="3"></textarea>
+    <div class="vis-footer-actions">
+      <button id="vis-send" class="vis-btn vis-btn-send" type="button">Send</button>
+      <button id="vis-save" class="vis-btn vis-btn-save" type="button">Save</button>
+      <span id="vis-status" class="vis-footer-status" aria-live="polite"></span>
+    </div>
+  </footer>
+
+</div><!-- /.page-chrome -->
+
+<!-- ── Optional: CDN chart initialisation ────────────────────────────────────
+  If you are using a CDN chart library (Chart.js, D3, Mermaid, etc.), add the
+  chart initialisation code in a <script> block here.
+
+  Example skeleton for Chart.js:
+    <script>
+      const ctx = document.getElementById('my-chart').getContext('2d');
+      new Chart(ctx, {
+        type: 'bar',
+        data: { labels: [...], datasets: [{ data: [...] }] },
+        options: { responsive: true }
+      });
+    </script>
+
+  Remove this comment block if no CDN library is used.
+-->
+
+<script>
+(function () {
+  'use strict';
+
+  var sendBtn   = document.getElementById('vis-send');
+  var saveBtn   = document.getElementById('vis-save');
+  var textarea  = document.getElementById('vis-message');
+  var statusEl  = document.getElementById('vis-status');
+
+  // ── Send ──────────────────────────────────────────────────────────────────
+  // The server injects a CSRF token script block before </head>.
+  // When absent (file:// or saved copy) Send is disabled.
+  var token = (typeof CSRF_TOKEN !== 'undefined') ? CSRF_TOKEN : null;
+  if (!token) {
+    sendBtn.disabled = true;
+    sendBtn.title = 'Send is unavailable when the page is opened offline.';
+  }
+
+  sendBtn.addEventListener('click', function () {
+    if (!token) return;
+
+    var message = textarea.value;
+
+    sendBtn.disabled = true;
+    statusEl.textContent = 'Sending…';
+
+    fetch('/submit', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': token
+      },
+      body: JSON.stringify({ freeform: message })
+    })
+      .then(function (res) {
+        if (res.ok) {
+          statusEl.textContent = message.length > 0
+            ? 'Sent. You can close this tab.'
+            : 'Closed.';
+          textarea.disabled = true;
+          saveBtn.disabled = true;
+        } else {
+          statusEl.textContent = 'Error ' + res.status + '. Please try again.';
+          sendBtn.disabled = false;
+        }
+      })
+      .catch(function () {
+        statusEl.textContent = 'Network error. Please try again.';
+        sendBtn.disabled = false;
+      });
+  });
+
+  // ── Save ──────────────────────────────────────────────────────────────────
+  // Produces a clean, self-contained HTML file:
+  //   - strips all <script> blocks that reference CSRF_TOKEN
+  //   - disables the Send button (server is unreachable from a saved file://)
+  //   - the stripped scripts include both the injected token and this block
+  saveBtn.addEventListener('click', function () {
+    var clone = document.documentElement.cloneNode(true);
+
+    // Strip <script> blocks that contain CSRF_TOKEN
+    var scripts = clone.querySelectorAll('script');
+    scripts.forEach(function (s) {
+      if (s.textContent.indexOf('CSRF_TOKEN') !== -1) {
+        s.parentNode.removeChild(s);
+      }
+    });
+
+    // Disable the Send button in the clone
+    var clonedSend = clone.querySelector('#vis-send');
+    if (clonedSend) {
+      clonedSend.disabled = true;
+      clonedSend.title = 'Send is unavailable when the page is opened offline.';
+    }
+
+    var html = '<!DOCTYPE html>\n' + clone.outerHTML;
+    var blob = new Blob([html], { type: 'text/html; charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'visualization.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+}());
+</script>
+
+</body>
+</html>

@@ -1,0 +1,91 @@
+/* tokens.css — shared design tokens for all html-visualization modes.
+ *
+ * Theme: "Editorial" — warm paper, ink text, a single terracotta accent,
+ * a serif display face paired with a refined sans body. Light + dark.
+ *
+ * IMPORTANT: This file has TWO delivery paths:
+ *   1. Linked via @import — used by assets/ask/style.css and
+ *      assets/feedback/style.css, which are served by the local server.
+ *   2. Inlined inside <style> — used by
+ *      skills/html-visualize/references/visualize-template.html, which must
+ *      remain fully self-contained for file:// use.
+ *
+ *   The inline copy in visualize-template.html is a verbatim duplicate of the
+ *   :root and @media blocks below. Keep both in sync whenever you edit tokens.
+ */
+
+/* ── Design tokens ────────────────────────────────────────────────────────── */
+
+:root {
+  color-scheme: light dark;
+
+  /* Backgrounds */
+  --hv-bg:       #f4efe3;
+  --hv-surface:  #fffdf7;
+  --hv-surface-2:#faf5e9;
+
+  /* Text */
+  --hv-text:     #2a251d;
+  --hv-muted:    #6c6353;
+  --hv-faint:    #9a9078;
+
+  /* Borders */
+  --hv-border:   #e2dac6;
+  --hv-border-soft: #ece5d4;
+
+  /* Accent — terracotta */
+  --hv-accent:      #b1492a;
+  --hv-accent-deep: #8d3a20;
+  --hv-accent-tint: #f2e2d8;
+  /* RGB triplet for use in rgba() — matches --hv-accent light value */
+  --hv-accent-rgb: 177, 73, 42;
+
+  /* Semantic colours */
+  --hv-ok:    #51762f;  --hv-ok-tint:   #e7efd9;  --hv-ok-deep:   #3d5b21;
+  --hv-warn:  #a9781a;  --hv-warn-tint: #f4eccd;  --hv-warn-deep: #846010;
+  --hv-bad:   #a33324;  --hv-bad-tint:  #f3e0da;  --hv-bad-deep:  #7e271b;
+
+  /* RGB triplets for use in rgba() */
+  --hv-ok-rgb:  81, 118, 47;
+  --hv-ink-rgb: 42, 32, 14;
+
+  /* Elevation */
+  --hv-shadow:    0 1px 2px rgba(42,32,14,.05), 0 7px 22px -10px rgba(42,32,14,.16);
+  --hv-shadow-lg: 0 2px 4px rgba(42,32,14,.06), 0 16px 38px -14px rgba(42,32,14,.26);
+  --hv-radius: 11px;
+
+  /* Typography */
+  --hv-font-display: "Charter", "Bitstream Charter", "Sitka Text", "Iowan Old Style", Cambria, Georgia, serif;
+  --hv-font-body: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --hv-font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --hv-bg:       #15130e;
+    --hv-surface:  #211e16;
+    --hv-surface-2:#1b1812;
+
+    --hv-text:     #ece5d6;
+    --hv-muted:    #a89d86;
+    --hv-faint:    #7c735e;
+
+    --hv-border:   #352f23;
+    --hv-border-soft: #2a251c;
+
+    --hv-accent:      #e3895f;
+    --hv-accent-deep: #efa17c;
+    --hv-accent-tint: #3a291f;
+    --hv-accent-rgb: 227, 137, 95;
+
+    --hv-ok:    #95bd6c;  --hv-ok-tint:   #2a331f;  --hv-ok-deep:   #abce84;
+    --hv-warn:  #d8aa50;  --hv-warn-tint: #352c16;  --hv-warn-deep: #e8bf6c;
+    --hv-bad:   #e3897a;  --hv-bad-tint:  #382220;  --hv-bad-deep:  #ed9f90;
+
+    --hv-ok-rgb:  149, 189, 108;
+    --hv-ink-rgb: 0, 0, 0;
+
+    --hv-shadow:    0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.7);
+    --hv-shadow-lg: 0 2px 6px rgba(0,0,0,.5), 0 18px 40px -16px rgba(0,0,0,.8);
+  }
+}

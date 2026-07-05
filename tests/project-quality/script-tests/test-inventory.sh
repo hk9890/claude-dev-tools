@@ -1,0 +1,758 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+SCRIPT="$REPO_ROOT/plugins/project-quality/skills/project-review-docs/scripts/inventory.py"
+
+PASS=0
+FAIL=0
+
+# ── helpers ──────────────────────────────────────────────────────────────────
+
+tmpdir() { mktemp -d; }
+
+ok() {
+  echo "PASS: $1"
+  PASS=$((PASS + 1))
+}
+
+fail() {
+  echo "FAIL: $1"
+  FAIL=$((FAIL + 1))
+}
+
+assert_eq() {
+  local label="$1" expected="$2" actual="$3"
+  if [[ "$expected" == "$actual" ]]; then
+    ok "$label"
+  else
+    fail "$label — expected $(printf '%q' "$expected"), got $(printf '%q' "$actual")"
+  fi
+}
+
+assert_contains() {
+  local label="$1" needle="$2" haystack="$3"
+  if echo "$haystack" | grep -qF "$needle"; then
+    ok "$label"
+  else
+    fail "$label — expected to contain $(printf '%q' "$needle")"
+  fi
+}
+
+assert_not_contains() {
+  local label="$1" needle="$2" haystack="$3"
+  if ! echo "$haystack" | grep -qF "$needle"; then
+    ok "$label"
+  else
+    fail "$label — expected NOT to contain $(printf '%q' "$needle")"
+  fi
+}
+
+assert_exit() {
+  local label="$1" expected_code="$2"
+  shift 2
+  local actual_code=0
+  "$@" >/dev/null 2>&1 || actual_code=$?
+  if [[ "$actual_code" -eq "$expected_code" ]]; then
+    ok "$label (exit $expected_code)"
+  else
+    fail "$label — expected exit $expected_code, got $actual_code"
+  fi
+}
+
+json_val() {
+  # Extract a scalar value from JSON using python3 (stdlib only).
+  # Usage: json_val <json-string> <python-expression-on-d>
+  python3 -c "import json,sys; d=json.loads(sys.stdin.read()); print($2)" <<< "$1"
+}
+
+# ── fixture builder ───────────────────────────────────────────────────────────
+
+make_full_fixture() {
+  # Creates a fixture repo with:
+  #   - all canonical root docs
+  #   - all canonical docs/ docs
+  #   - one non-canonical docs/ file
+  #   - one subdir under docs/
+  local dir; dir=$(tmpdir)
+
+  touch "$dir/README.md" "$dir/AGENTS.md"
+  printf '# CLAUDE\nSome content here\nMore content\n' > "$dir/CLAUDE.md"
+
+  mkdir -p "$dir/docs"
+  for name in OVERVIEW.md CODING.md TESTING.md RELEASING.md MONITORING.md CHANGE-WORKFLOW.md; do
+    printf '# %s\nContent line\n' "$name" > "$dir/docs/$name"
+  done
+
+  # Non-canonical file in docs/
+  printf '# Extra\nLine one\nLine two\n' > "$dir/docs/EXTRA.md"
+
+  # Subdir under docs/
+  mkdir -p "$dir/docs/adr"
+  touch "$dir/docs/adr/001-decision.md"
+
+  echo "$dir"
+}
+
+# ── tests ─────────────────────────────────────────────────────────────────────
+
+# 1. Bad invocation — no args → exit 1
+test_no_args() {
+  assert_exit "no-args: exit 1" 1 "$SCRIPT"
+}
+
+# 2. Non-existent directory → exit 1
+test_bad_dir() {
+  assert_exit "bad-dir: exit 1" 1 "$SCRIPT" /nonexistent/path/xyz123
+}
+
+# 3. Valid JSON output
+test_valid_json() {
+  local dir; dir=$(tmpdir)
+  local out
+  out=$("$SCRIPT" "$dir")
+  if python3 -c "import json,sys; json.loads(sys.stdin.read())" <<< "$out" 2>/dev/null; then
+    ok "valid-json: output parses as JSON"
+  else
+    fail "valid-json: output is not valid JSON"
+  fi
+  rm -rf "$dir"
+}
+
+# 4. Empty repo — all canonical docs missing
+test_all_missing() {
+  local dir; dir=$(tmpdir)
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  local missing
+  missing=$(json_val "$out" "d['summary']['canonical_missing']")
+  assert_eq "all-missing: canonical_missing=9" "9" "$missing"
+
+  local present
+  present=$(json_val "$out" "d['summary']['canonical_present']")
+  assert_eq "all-missing: canonical_present=0" "0" "$present"
+
+  rm -rf "$dir"
+}
+
+# 5. Full fixture — all canonical docs present
+test_all_present() {
+  local dir; dir=$(make_full_fixture)
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  local present
+  present=$(json_val "$out" "d['summary']['canonical_present']")
+  assert_eq "all-present: canonical_present=9" "9" "$present"
+
+  local missing
+  missing=$(json_val "$out" "d['summary']['canonical_missing']")
+  assert_eq "all-present: canonical_missing=0" "$missing" "0"
+
+  rm -rf "$dir"
+}
+
+# 6. Non-canonical docs/ file detected
+test_non_canonical_doc() {
+  local dir; dir=$(make_full_fixture)
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  local count
+  count=$(json_val "$out" "d['summary']['non_canonical_count']")
+  assert_eq "non-canonical-doc: count=1" "1" "$count"
+
+  assert_contains "non-canonical-doc: EXTRA.md in output" "EXTRA.md" "$out"
+
+  rm -rf "$dir"
+}
+
+# 7. Non-canonical subdir detected
+test_non_canonical_subdir() {
+  local dir; dir=$(make_full_fixture)
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  local count
+  count=$(json_val "$out" "d['summary']['non_canonical_subdir_count']")
+  assert_eq "non-canonical-subdir: count=1" "1" "$count"
+
+  assert_contains "non-canonical-subdir: docs/adr/ in output" "docs/adr/" "$out"
+
+  rm -rf "$dir"
+}
+
+# 8. Location violation: canonical docs/ file at root
+test_location_violation() {
+  local dir; dir=$(tmpdir)
+  mkdir -p "$dir/docs"
+  # Put OVERVIEW.md at the root instead of docs/
+  printf '# OVERVIEW\nContent\n' > "$dir/OVERVIEW.md"
+
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  local violations
+  violations=$(json_val "$out" "d['summary']['violation_count']")
+  assert_eq "location-violation: violation_count=1" "1" "$violations"
+
+  assert_contains "location-violation: OVERVIEW.md in violations" "OVERVIEW.md" "$out"
+
+  rm -rf "$dir"
+}
+
+# 9. non_heading_lines count is correct
+test_non_heading_lines() {
+  local dir; dir=$(tmpdir)
+  mkdir -p "$dir/docs"
+  # 1 heading, 2 content lines, 1 blank line
+  printf '# Heading\n\nLine one\nLine two\n' > "$dir/docs/OVERVIEW.md"
+
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  local nhl
+  nhl=$(json_val "$out" "d['canonical']['OVERVIEW.md']['non_heading_lines']")
+  assert_eq "non-heading-lines: count=2" "2" "$nhl"
+
+  local total
+  total=$(json_val "$out" "d['canonical']['OVERVIEW.md']['lines']")
+  assert_eq "lines: count=4" "4" "$total"
+
+  rm -rf "$dir"
+}
+
+# 10. --format=text produces readable output
+test_format_text() {
+  local dir; dir=$(make_full_fixture)
+  local out
+  out=$("$SCRIPT" "$dir" --format=text)
+
+  assert_contains "format-text: shows canonical section" "=== Canonical docs ===" "$out"
+  assert_contains "format-text: shows summary section" "=== Summary ===" "$out"
+  assert_contains "format-text: shows EXTRA.md" "EXTRA.md" "$out"
+  assert_contains "format-text: shows docs/adr/" "docs/adr/" "$out"
+
+  rm -rf "$dir"
+}
+
+# 11. Docs-only canonical file present→present and missing→missing
+test_partial_presence() {
+  local dir; dir=$(tmpdir)
+  mkdir -p "$dir/docs"
+  printf '# README\n' > "$dir/README.md"
+  printf '# CODING\nSome content\n' > "$dir/docs/CODING.md"
+
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  # README.md present
+  local readme_present
+  readme_present=$(json_val "$out" "d['canonical']['README.md']['present']")
+  assert_eq "partial: README.md present=True" "True" "$readme_present"
+
+  # AGENTS.md missing
+  local agents_present
+  agents_present=$(json_val "$out" "d['canonical']['AGENTS.md']['present']")
+  assert_eq "partial: AGENTS.md present=False" "False" "$agents_present"
+
+  # CODING.md present
+  local coding_present
+  coding_present=$(json_val "$out" "d['canonical']['CODING.md']['present']")
+  assert_eq "partial: CODING.md present=True" "True" "$coding_present"
+
+  # OVERVIEW.md missing (not created)
+  local overview_present
+  overview_present=$(json_val "$out" "d['canonical']['OVERVIEW.md']['present']")
+  assert_eq "partial: OVERVIEW.md present=False" "False" "$overview_present"
+
+  rm -rf "$dir"
+}
+
+# 12. No docs/ directory — no crash, empty non_canonical_docs
+test_no_docs_dir() {
+  local dir; dir=$(tmpdir)
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  if python3 -c "import json,sys; d=json.loads(sys.stdin.read()); assert d['non_canonical_docs'] == []" <<< "$out" 2>/dev/null; then
+    ok "no-docs-dir: non_canonical_docs is empty list"
+  else
+    fail "no-docs-dir: non_canonical_docs not empty or JSON error"
+  fi
+
+  rm -rf "$dir"
+}
+
+# 13. .claude.local.md present → personal_local tracked
+test_personal_local_present() {
+  local dir; dir=$(tmpdir)
+  printf '# Local\nSome personal notes.\n' > "$dir/.claude.local.md"
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  local present
+  present=$(json_val "$out" "d['personal_local']['.claude.local.md']['present']")
+  assert_eq "personal-local: present=True" "True" "$present"
+
+  local count
+  count=$(json_val "$out" "d['summary']['personal_local_present']")
+  assert_eq "personal-local: summary count=1" "1" "$count"
+
+  # personal-local files are NOT counted as canonical missing
+  local missing
+  missing=$(json_val "$out" "d['summary']['canonical_missing']")
+  assert_eq "personal-local: not counted as canonical_missing (=9)" "9" "$missing"
+
+  rm -rf "$dir"
+}
+
+# 14. .claude.local.md absent → personal_local tracked but absent
+test_personal_local_absent() {
+  local dir; dir=$(tmpdir)
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  local present
+  present=$(json_val "$out" "d['personal_local']['.claude.local.md']['present']")
+  assert_eq "personal-local-absent: present=False" "False" "$present"
+
+  local count
+  count=$(json_val "$out" "d['summary']['personal_local_present']")
+  assert_eq "personal-local-absent: summary count=0" "0" "$count"
+
+  rm -rf "$dir"
+}
+
+# 15. Injected block in AGENTS.md detected
+test_injected_block_agents() {
+  local dir; dir=$(tmpdir)
+  printf '@AGENTS.md\n' > "$dir/CLAUDE.md"
+  {
+    printf '# Agents\n\nNormal routing.\n\n'
+    printf '<!-- BEGIN TRACKER INTEGRATION v:1 hash:abc -->\n'
+    printf '## Tracker\nGenerated content here.\nMore lines.\n'
+    printf '<!-- END TRACKER INTEGRATION -->\n'
+  } > "$dir/AGENTS.md"
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  local count
+  count=$(json_val "$out" "d['summary']['injected_block_count']")
+  assert_eq "injected-block: count=1" "1" "$count"
+
+  local name
+  name=$(json_val "$out" "d['injected_blocks'][0]['name']")
+  assert_eq "injected-block: name normalized (metadata stripped)" "TRACKER INTEGRATION" "$name"
+
+  local file
+  file=$(json_val "$out" "d['injected_blocks'][0]['file']")
+  assert_eq "injected-block: file=AGENTS.md" "AGENTS.md" "$file"
+
+  rm -rf "$dir"
+}
+
+# 16. Injected block in CLAUDE.md detected
+test_injected_block_claude() {
+  local dir; dir=$(tmpdir)
+  {
+    printf '@AGENTS.md\n\n'
+    printf '<!-- BEGIN TOOL X -->\n'
+    printf 'auto-generated\n'
+    printf '<!-- END TOOL X -->\n'
+  } > "$dir/CLAUDE.md"
+  printf '# Agents\n' > "$dir/AGENTS.md"
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  local count
+  count=$(json_val "$out" "d['summary']['injected_block_count']")
+  assert_eq "injected-block-claude: count=1" "1" "$count"
+
+  local file
+  file=$(json_val "$out" "d['injected_blocks'][0]['file']")
+  assert_eq "injected-block-claude: file=CLAUDE.md" "CLAUDE.md" "$file"
+
+  rm -rf "$dir"
+}
+
+# 17. Injected block detection is generic (any name, any metadata)
+test_injected_block_generic() {
+  local dir; dir=$(tmpdir)
+  printf '@AGENTS.md\n' > "$dir/CLAUDE.md"
+  {
+    printf '# Agents\n\n'
+    printf '<!-- BEGIN MYTOOL v:2 profile:full hash:xyz -->\n'
+    printf 'content\n'
+    printf '<!-- END MYTOOL -->\n\n'
+    printf '<!-- BEGIN ANOTHER -->\n'
+    printf 'more content\n'
+    printf '<!-- END ANOTHER -->\n'
+  } > "$dir/AGENTS.md"
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  local count
+  count=$(json_val "$out" "d['summary']['injected_block_count']")
+  assert_eq "injected-block-generic: count=2" "2" "$count"
+
+  rm -rf "$dir"
+}
+
+# 18. Unmatched BEGIN (no END) — not counted
+test_injected_block_unmatched() {
+  local dir; dir=$(tmpdir)
+  printf '@AGENTS.md\n' > "$dir/CLAUDE.md"
+  {
+    printf '# Agents\n\n'
+    printf '<!-- BEGIN ORPHAN -->\n'
+    printf 'no matching end\n'
+  } > "$dir/AGENTS.md"
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  local count
+  count=$(json_val "$out" "d['summary']['injected_block_count']")
+  assert_eq "injected-block-unmatched: orphan BEGIN ignored, count=0" "0" "$count"
+
+  rm -rf "$dir"
+}
+
+# 19. Injected blocks reported in --format=text output
+test_injected_block_text_format() {
+  local dir; dir=$(tmpdir)
+  printf '@AGENTS.md\n' > "$dir/CLAUDE.md"
+  {
+    printf '# Agents\n\n'
+    printf '<!-- BEGIN SOMETHING -->\n'
+    printf 'x\n'
+    printf '<!-- END SOMETHING -->\n'
+  } > "$dir/AGENTS.md"
+  local out
+  out=$("$SCRIPT" "$dir" --format=text)
+
+  assert_contains "injected-block-text: section header" "=== Injected blocks in steering docs ===" "$out"
+  assert_contains "injected-block-text: block name shown" "SOMETHING" "$out"
+
+  rm -rf "$dir"
+}
+
+# 20. Injected blocks NOT scanned in regular docs (only CLAUDE.md + AGENTS.md)
+test_injected_block_scope() {
+  local dir; dir=$(tmpdir)
+  printf '@AGENTS.md\n' > "$dir/CLAUDE.md"
+  printf '# Agents\n' > "$dir/AGENTS.md"
+  mkdir -p "$dir/docs"
+  {
+    printf '# Overview\n\n'
+    printf '<!-- BEGIN IGNORED -->\n'
+    printf 'this should not be flagged in a non-steering doc\n'
+    printf '<!-- END IGNORED -->\n'
+  } > "$dir/docs/OVERVIEW.md"
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  local count
+  count=$(json_val "$out" "d['summary']['injected_block_count']")
+  assert_eq "injected-block-scope: docs/*.md not scanned, count=0" "0" "$count"
+
+  rm -rf "$dir"
+}
+
+# 21. Personal-local file shown in --format=text output
+test_personal_local_text_format() {
+  local dir; dir=$(tmpdir)
+  printf '# Local\nx\n' > "$dir/.claude.local.md"
+  local out
+  out=$("$SCRIPT" "$dir" --format=text)
+
+  assert_contains "personal-local-text: section header" "=== Personal/local files" "$out"
+  assert_contains "personal-local-text: file shown" ".claude.local.md" "$out"
+
+  rm -rf "$dir"
+}
+
+# 22. Optional-canonical doc (REVIEWING.md) recognized when present in docs/
+test_optional_doc_present() {
+  local dir; dir=$(make_full_fixture)
+  printf '# Reviewing\nLocal review rule.\n' > "$dir/docs/REVIEWING.md"
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  # present and recognized as canonical
+  local present
+  present=$(json_val "$out" "d['canonical']['REVIEWING.md']['present']")
+  assert_eq "optional-present: REVIEWING.md present=True" "True" "$present"
+
+  # flagged as optional in the canonical entry
+  local optional
+  optional=$(json_val "$out" "d['canonical']['REVIEWING.md'].get('optional', False)")
+  assert_eq "optional-present: REVIEWING.md optional=True" "True" "$optional"
+
+  # counted toward canonical_present (3 root + 6 required + 1 optional = 10)
+  local cpresent
+  cpresent=$(json_val "$out" "d['summary']['canonical_present']")
+  assert_eq "optional-present: canonical_present=10" "10" "$cpresent"
+
+  # no missing canonical docs
+  local missing
+  missing=$(json_val "$out" "d['summary']['canonical_missing']")
+  assert_eq "optional-present: canonical_missing=0" "0" "$missing"
+
+  # NOT flagged as a non-canonical consolidation candidate (only EXTRA.md is)
+  local nc
+  nc=$(json_val "$out" "d['summary']['non_canonical_count']")
+  assert_eq "optional-present: REVIEWING.md not counted non-canonical (count=1)" "1" "$nc"
+
+  rm -rf "$dir"
+}
+
+# 23. Optional-canonical doc absent → omitted from the map, never reported missing
+test_optional_doc_absent() {
+  local dir; dir=$(make_full_fixture)   # 6 required docs, no REVIEWING.md
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  # absent optional doc is not present in the canonical map at all
+  local omitted
+  omitted=$(json_val "$out" "'REVIEWING.md' not in d['canonical']")
+  assert_eq "optional-absent: REVIEWING.md omitted when absent" "True" "$omitted"
+
+  # absence does not inflate canonical_missing
+  local missing
+  missing=$(json_val "$out" "d['summary']['canonical_missing']")
+  assert_eq "optional-absent: canonical_missing=0" "0" "$missing"
+
+  rm -rf "$dir"
+}
+
+# 24. Optional-canonical doc at repo root → location violation (expected in docs/)
+test_optional_doc_location_violation() {
+  local dir; dir=$(tmpdir)
+  mkdir -p "$dir/docs"
+  printf '# Reviewing\nMisplaced.\n' > "$dir/REVIEWING.md"   # at root, belongs in docs/
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  local violations
+  violations=$(json_val "$out" "d['summary']['violation_count']")
+  assert_eq "optional-violation: violation_count=1" "1" "$violations"
+
+  assert_contains "optional-violation: REVIEWING.md in violations" "REVIEWING.md" "$out"
+
+  rm -rf "$dir"
+}
+
+# 25. Second optional-canonical doc (RUNNING.md) recognized when present in docs/
+test_optional_running_present() {
+  local dir; dir=$(make_full_fixture)
+  printf '# Running\nLaunch with scripts/foo.\n' > "$dir/docs/RUNNING.md"
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  # present and recognized as canonical
+  local present
+  present=$(json_val "$out" "d['canonical']['RUNNING.md']['present']")
+  assert_eq "optional-running-present: RUNNING.md present=True" "True" "$present"
+
+  # flagged as optional in the canonical entry
+  local optional
+  optional=$(json_val "$out" "d['canonical']['RUNNING.md'].get('optional', False)")
+  assert_eq "optional-running-present: RUNNING.md optional=True" "True" "$optional"
+
+  # counted toward canonical_present (3 root + 6 required + 1 optional = 10)
+  local cpresent
+  cpresent=$(json_val "$out" "d['summary']['canonical_present']")
+  assert_eq "optional-running-present: canonical_present=10" "10" "$cpresent"
+
+  # no missing canonical docs
+  local missing
+  missing=$(json_val "$out" "d['summary']['canonical_missing']")
+  assert_eq "optional-running-present: canonical_missing=0" "0" "$missing"
+
+  # NOT flagged as a non-canonical consolidation candidate (only EXTRA.md is)
+  local nc
+  nc=$(json_val "$out" "d['summary']['non_canonical_count']")
+  assert_eq "optional-running-present: RUNNING.md not counted non-canonical (count=1)" "1" "$nc"
+
+  rm -rf "$dir"
+}
+
+# 26. Second optional-canonical doc (RUNNING.md) absent → omitted, never reported missing
+test_optional_running_absent() {
+  local dir; dir=$(make_full_fixture)   # 6 required docs, no RUNNING.md
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  # absent optional doc is not present in the canonical map at all
+  local omitted
+  omitted=$(json_val "$out" "'RUNNING.md' not in d['canonical']")
+  assert_eq "optional-running-absent: RUNNING.md omitted when absent" "True" "$omitted"
+
+  # absence does not inflate canonical_missing
+  local missing
+  missing=$(json_val "$out" "d['summary']['canonical_missing']")
+  assert_eq "optional-running-absent: canonical_missing=0" "0" "$missing"
+
+  rm -rf "$dir"
+}
+
+# 27. Second optional-canonical doc (RUNNING.md) at repo root → location violation
+test_optional_running_location_violation() {
+  local dir; dir=$(tmpdir)
+  mkdir -p "$dir/docs"
+  printf '# Running\nMisplaced.\n' > "$dir/RUNNING.md"   # at root, belongs in docs/
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  local violations
+  violations=$(json_val "$out" "d['summary']['violation_count']")
+  assert_eq "optional-running-violation: violation_count=1" "1" "$violations"
+
+  assert_contains "optional-running-violation: RUNNING.md in violations" "RUNNING.md" "$out"
+
+  rm -rf "$dir"
+}
+
+# 28. Both optional-canonical docs present → both recognized and counted (multi-optional path)
+test_both_optional_present() {
+  local dir; dir=$(make_full_fixture)
+  printf '# Reviewing\nLocal review rule.\n' > "$dir/docs/REVIEWING.md"
+  printf '# Running\nLaunch with scripts/foo.\n' > "$dir/docs/RUNNING.md"
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  # both flagged optional
+  local rev_opt run_opt
+  rev_opt=$(json_val "$out" "d['canonical']['REVIEWING.md'].get('optional', False)")
+  run_opt=$(json_val "$out" "d['canonical']['RUNNING.md'].get('optional', False)")
+  assert_eq "both-optional: REVIEWING.md optional=True" "True" "$rev_opt"
+  assert_eq "both-optional: RUNNING.md optional=True" "True" "$run_opt"
+
+  # counted toward canonical_present (3 root + 6 required + 2 optional = 11)
+  local cpresent
+  cpresent=$(json_val "$out" "d['summary']['canonical_present']")
+  assert_eq "both-optional: canonical_present=11" "11" "$cpresent"
+
+  local missing
+  missing=$(json_val "$out" "d['summary']['canonical_missing']")
+  assert_eq "both-optional: canonical_missing=0" "0" "$missing"
+
+  # neither counted as a non-canonical consolidation candidate (only EXTRA.md is)
+  local nc
+  nc=$(json_val "$out" "d['summary']['non_canonical_count']")
+  assert_eq "both-optional: optional docs not counted non-canonical (count=1)" "1" "$nc"
+
+  rm -rf "$dir"
+}
+
+# 29. Nested non-canonical doc (docs/<subdir>/*.md) enumerated for R11
+test_nested_non_canonical_doc() {
+  local dir; dir=$(make_full_fixture)   # has docs/adr/001-decision.md
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  local nested
+  nested=$(json_val "$out" "d['summary']['non_canonical_nested_count']")
+  assert_eq "nested-doc: non_canonical_nested_count=1" "1" "$nested"
+
+  assert_contains "nested-doc: docs/adr/001-decision.md in output" "docs/adr/001-decision.md" "$out"
+
+  # top-level count is unchanged — recursion did not fold nested files into it
+  local top
+  top=$(json_val "$out" "d['summary']['non_canonical_count']")
+  assert_eq "nested-doc: top-level non_canonical_count still=1" "1" "$top"
+
+  rm -rf "$dir"
+}
+
+# 30. Non-canonical root *.md enumerated; canonical root excluded
+test_root_non_canonical_doc() {
+  local dir; dir=$(tmpdir)
+  printf '# Readme\n' > "$dir/README.md"               # canonical root → excluded
+  printf '# Hacking\nDev notes.\n' > "$dir/HACKING.md" # non-canonical root
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  local root
+  root=$(json_val "$out" "d['summary']['non_canonical_root_count']")
+  assert_eq "root-doc: non_canonical_root_count=1" "1" "$root"
+
+  local rootlist
+  rootlist=$(json_val "$out" "sorted(e['path'] for e in d['non_canonical_root_docs'])")
+  assert_eq "root-doc: only HACKING.md listed (README excluded)" "['HACKING.md']" "$rootlist"
+
+  rm -rf "$dir"
+}
+
+# 31. Well-known meta files at root are ignored (not non-canonical root docs)
+test_root_meta_ignored() {
+  local dir; dir=$(tmpdir)
+  printf 'MIT\n' > "$dir/LICENSE.md"
+  printf '# Security\n' > "$dir/SECURITY.md"
+  printf '# Changelog\n' > "$dir/CHANGELOG.md"
+  printf '# CoC\n' > "$dir/CODE_OF_CONDUCT.md"
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  local root
+  root=$(json_val "$out" "d['summary']['non_canonical_root_count']")
+  assert_eq "root-meta: meta files ignored, non_canonical_root_count=0" "0" "$root"
+
+  rm -rf "$dir"
+}
+
+# 32. personal/local and dotfiles are not counted as non-canonical root docs
+test_root_personal_local_excluded() {
+  local dir; dir=$(tmpdir)
+  printf '# Local\n' > "$dir/.claude.local.md"
+  local out
+  out=$("$SCRIPT" "$dir")
+
+  local root
+  root=$(json_val "$out" "d['summary']['non_canonical_root_count']")
+  assert_eq "root-personal: .claude.local.md not counted, non_canonical_root_count=0" "0" "$root"
+
+  rm -rf "$dir"
+}
+
+# ── run all tests ─────────────────────────────────────────────────────────────
+
+test_no_args
+test_bad_dir
+test_valid_json
+test_all_missing
+test_all_present
+test_non_canonical_doc
+test_non_canonical_subdir
+test_location_violation
+test_non_heading_lines
+test_format_text
+test_partial_presence
+test_no_docs_dir
+test_personal_local_present
+test_personal_local_absent
+test_injected_block_agents
+test_injected_block_claude
+test_injected_block_generic
+test_injected_block_unmatched
+test_injected_block_text_format
+test_injected_block_scope
+test_personal_local_text_format
+test_optional_doc_present
+test_optional_doc_absent
+test_optional_doc_location_violation
+test_optional_running_present
+test_optional_running_absent
+test_optional_running_location_violation
+test_both_optional_present
+test_nested_non_canonical_doc
+test_root_non_canonical_doc
+test_root_meta_ignored
+test_root_personal_local_excluded
+
+echo ""
+echo "Results: $PASS passed, $FAIL failed"
+
+[[ "$FAIL" -eq 0 ]] || exit 1

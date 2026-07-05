@@ -1,0 +1,256 @@
+#!/usr/bin/env bash
+# keep-awake — per-session systemd-inhibit manager for Claude Code
+# Part of the keep-awake-linux plugin.
+#
+# Verbs:
+#   start <session_id>   — spawn/refresh inhibitor for this session
+#   stop  <session_id>   — kill inhibitor and remove marker
+#   status               — print state dir and all active sessions
+#   hook  <event>        — read stdin JSON, dispatch to start/stop
+
+set -euo pipefail
+
+# ── Constants ─────────────────────────────────────────────────────────────────
+
+TTL="${KEEP_AWAKE_TTL:-1800}"
+
+# State directory
+if [ -n "${XDG_RUNTIME_DIR:-}" ]; then
+  STATE_DIR="$XDG_RUNTIME_DIR/claude-keep-awake"
+else
+  STATE_DIR="/tmp/claude-keep-awake-$(id -u)"
+fi
+
+SESSIONS_DIR="$STATE_DIR/sessions"
+LOG_FILE="$STATE_DIR/keep-awake.log"
+LOG_MAX=1048576   # 1 MiB
+
+# ── Logging ───────────────────────────────────────────────────────────────────
+
+log_event() {
+  [[ "${KEEP_AWAKE_LOG:-1}" == "0" ]] && return 0
+  if [ ! -d "$STATE_DIR" ]; then
+    mkdir -p "$STATE_DIR" 2>/dev/null || return 0
+    chmod 0700 "$STATE_DIR" 2>/dev/null || true
+  fi
+  if [ -f "$LOG_FILE" ]; then
+    local size
+    size=$(stat -c %s "$LOG_FILE" 2>/dev/null || echo 0)
+    if [ "$size" -ge "$LOG_MAX" ]; then
+      mv -f "$LOG_FILE" "$LOG_FILE.1" 2>/dev/null || true
+    fi
+  fi
+  local ts
+  ts=$(date -Iseconds 2>/dev/null || date +%Y-%m-%dT%H:%M:%S%z)
+  printf '%s %s\n' "$ts" "$*" >> "$LOG_FILE" 2>/dev/null || true
+}
+
+# ── Dependency check ──────────────────────────────────────────────────────────
+
+if ! command -v systemd-inhibit >/dev/null 2>&1; then
+  log_event "hook=- sid=- verb=${1:-?} outcome=no-op-systemd-inhibit-missing"
+  echo "keep-awake: systemd-inhibit not available, no-op" >&2
+  exit 0
+fi
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+ensure_dirs() {
+  if [ ! -d "$STATE_DIR" ]; then
+    mkdir -p "$STATE_DIR"
+    chmod 0700 "$STATE_DIR"
+  fi
+  if [ ! -d "$SESSIONS_DIR" ]; then
+    mkdir -p "$SESSIONS_DIR"
+    chmod 0700 "$SESSIONS_DIR"
+  fi
+}
+
+validate_sid() {
+  local sid=$1
+  if [[ ! "$sid" =~ ^[A-Za-z0-9_-]{1,128}$ ]]; then
+    echo "keep-awake: invalid session_id, skipping" >&2
+    return 1
+  fi
+  return 0
+}
+
+verify_our_inhibitor() {
+  local pid=$1
+  [ -d "/proc/$pid" ] || return 1
+  local comm
+  comm=$(cat "/proc/$pid/comm" 2>/dev/null || true)
+  [ "$comm" = "systemd-inhibit" ] || return 1
+  grep -q 'claude-keep-awake' "/proc/$pid/cmdline" 2>/dev/null
+}
+
+gc() {
+  ensure_dirs
+  local marker pid
+  shopt -s nullglob
+  for marker in "$SESSIONS_DIR"/*.pid; do
+    pid=$(cat "$marker" 2>/dev/null || true)
+    if [ -z "$pid" ] || ! verify_our_inhibitor "$pid"; then
+      rm -f "$marker"
+    fi
+  done
+  shopt -u nullglob
+}
+
+# ── Verbs ─────────────────────────────────────────────────────────────────────
+
+do_start() {
+  local SID=$1
+  if ! validate_sid "$SID"; then
+    log_event "hook=- sid=- verb=start outcome=no-op-invalid-sid"
+    exit 0
+  fi
+  ensure_dirs
+  gc
+
+  # Capture old PID before overwriting the marker
+  local OLD_PID=""
+  if [ -f "$SESSIONS_DIR/$SID.pid" ]; then
+    OLD_PID=$(cat "$SESSIONS_DIR/$SID.pid" 2>/dev/null || true)
+  fi
+
+  # Spawn new inhibitor in the background
+  setsid systemd-inhibit \
+    --what=idle:sleep \
+    --who="claude-keep-awake" \
+    --why="Claude session $SID" \
+    --mode=block \
+    sleep "$TTL" >/dev/null 2>&1 &
+  local NEW_PID=$!
+
+  # Atomic install of new marker
+  echo "$NEW_PID" > "$SESSIONS_DIR/$SID.pid.tmp"
+  mv -f "$SESSIONS_DIR/$SID.pid.tmp" "$SESSIONS_DIR/$SID.pid"
+
+  # Verify-then-kill the old inhibitor (zero-gap: new one is already live)
+  if [ -n "$OLD_PID" ] && [ "$OLD_PID" != "$NEW_PID" ] && verify_our_inhibitor "$OLD_PID"; then
+    kill "$OLD_PID" 2>/dev/null || true
+    log_event "hook=- sid=${SID:0:8} verb=start outcome=refreshed new_pid=$NEW_PID old_pid=$OLD_PID"
+  else
+    log_event "hook=- sid=${SID:0:8} verb=start outcome=spawned new_pid=$NEW_PID old_pid=${OLD_PID:--}"
+  fi
+}
+
+do_stop() {
+  local SID=$1
+  if ! validate_sid "$SID"; then
+    log_event "hook=- sid=- verb=stop outcome=no-op-invalid-sid"
+    exit 0
+  fi
+  ensure_dirs
+
+  if [ -f "$SESSIONS_DIR/$SID.pid" ]; then
+    local PID
+    PID=$(cat "$SESSIONS_DIR/$SID.pid" 2>/dev/null || true)
+    if [ -n "$PID" ] && verify_our_inhibitor "$PID"; then
+      kill "$PID" 2>/dev/null || true
+      log_event "hook=- sid=${SID:0:8} verb=stop outcome=killed pid=$PID"
+    elif [ -n "$PID" ]; then
+      log_event "hook=- sid=${SID:0:8} verb=stop outcome=skipped-pid-not-ours pid=$PID"
+    else
+      log_event "hook=- sid=${SID:0:8} verb=stop outcome=no-op-empty-marker"
+    fi
+    rm -f "$SESSIONS_DIR/$SID.pid"
+  else
+    log_event "hook=- sid=${SID:0:8} verb=stop outcome=no-op-no-marker"
+  fi
+
+  gc
+}
+
+do_status() {
+  ensure_dirs
+  echo "STATE_DIR: $STATE_DIR"
+  local count=0
+  local marker pid sid status_str
+  shopt -s nullglob
+  for marker in "$SESSIONS_DIR"/*.pid; do
+    sid=$(basename "$marker" .pid)
+    pid=$(cat "$marker" 2>/dev/null || true)
+    if [ -n "$pid" ] && verify_our_inhibitor "$pid"; then
+      status_str="alive"
+    else
+      status_str="dead"
+    fi
+    echo "  session=$sid pid=${pid:-?} status=$status_str"
+    (( count++ )) || true
+  done
+  shopt -u nullglob
+  if [ "$count" -eq 0 ]; then
+    echo "  (no sessions)"
+  fi
+}
+
+do_hook() {
+  local EVENT=$1
+
+  # jq required for hook verb
+  if ! command -v jq >/dev/null 2>&1; then
+    log_event "hook=$EVENT sid=- verb=- outcome=no-op-jq-missing"
+    echo "keep-awake: jq not available, hook no-op" >&2
+    exit 0
+  fi
+
+  local SID
+  SID=$(jq -r '.session_id // empty' 2>/dev/null || true)
+  if [ -z "$SID" ]; then
+    log_event "hook=$EVENT sid=- verb=- outcome=no-op-missing-sid"
+    echo "keep-awake: missing session_id in stdin" >&2
+    exit 0
+  fi
+
+  case "$EVENT" in
+    SessionStart|UserPromptSubmit|PreToolUse|PostToolUse)
+      log_event "hook=$EVENT sid=${SID:0:8} verb=- outcome=routed-to-start"
+      do_start "$SID"
+      ;;
+    SessionEnd)
+      log_event "hook=$EVENT sid=${SID:0:8} verb=- outcome=routed-to-stop"
+      do_stop "$SID"
+      ;;
+    *)
+      log_event "hook=$EVENT sid=${SID:0:8} verb=- outcome=no-op-unknown-event"
+      exit 0
+      ;;
+  esac
+}
+
+# ── Dispatch ──────────────────────────────────────────────────────────────────
+
+VERB="${1:-}"
+
+case "$VERB" in
+  start)
+    if [ -z "${2:-}" ]; then
+      echo "keep-awake: usage: keep-awake start <session_id>" >&2
+      exit 1
+    fi
+    do_start "$2"
+    ;;
+  stop)
+    if [ -z "${2:-}" ]; then
+      echo "keep-awake: usage: keep-awake stop <session_id>" >&2
+      exit 1
+    fi
+    do_stop "$2"
+    ;;
+  status)
+    do_status
+    ;;
+  hook)
+    if [ -z "${2:-}" ]; then
+      echo "keep-awake: usage: keep-awake hook <event>" >&2
+      exit 1
+    fi
+    do_hook "$2"
+    ;;
+  *)
+    echo "keep-awake: usage: keep-awake {start|stop|status|hook} [args]" >&2
+    exit 1
+    ;;
+esac
