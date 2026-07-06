@@ -1,0 +1,11 @@
+version: 2
+updates:
+  # Keep the GitHub Actions pinned in .github/workflows/ up to date.
+  # No application dependency manifests (package.json, requirements.txt) exist
+  # in this repo, so the github-actions ecosystem is the only one configured.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
