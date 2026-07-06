@@ -42,8 +42,8 @@ assert_exit() {
 assert_output_contains() {
   local label="$1" needle="$2"
   shift 2
-  local out code=0
-  out=$("$@" 2>&1) || code=$?
+  local out
+  out=$("$@" 2>&1) || true
   if printf '%s' "$out" | grep -qF "$needle"; then
     ok "$label"
   else
@@ -55,8 +55,8 @@ assert_output_contains() {
 assert_output_matches() {
   local label="$1" pattern="$2"
   shift 2
-  local out code=0
-  out=$("$@" 2>&1) || code=$?
+  local out
+  out=$("$@" 2>&1) || true
   if printf '%s' "$out" | grep -qE "$pattern"; then
     ok "$label"
   else
