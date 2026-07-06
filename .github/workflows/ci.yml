@@ -18,7 +18,7 @@ jobs:
     name: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: jdx/mise-action@v4
       - name: Run test suite
         run: mise run test
@@ -27,7 +27,7 @@ jobs:
     name: consistency
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: jdx/mise-action@v4
       - name: Validate cross-references, version mirrors, and marketplace
         run: mise run check-consistency
@@ -36,7 +36,7 @@ jobs:
     name: manifests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: JSON well-formedness of all plugin and marketplace manifests
         run: |
           set -euo pipefail
@@ -49,7 +49,7 @@ jobs:
     name: shellcheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: ShellCheck (error severity)
         run: git ls-files '*.sh' | xargs -r shellcheck --severity=error
 
@@ -57,7 +57,7 @@ jobs:
     name: gitleaks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Scan for leaked secrets
