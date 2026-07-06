@@ -52,8 +52,7 @@ start_server() {
   SERVER_PID=$!
 
   # Wait up to 5 seconds for the server to print its URL
-  local i
-  for i in $(seq 1 100); do
+  for _ in $(seq 1 100); do
     if grep -q 'URL: http://127.0.0.1:' "$log_file" 2>/dev/null; then
       break
     fi
@@ -296,9 +295,8 @@ test_valid_submit() {
   ok "valid submit: feedback file written"
 
   # Verify feedback file content
-  local verdict answers freeform submitted_at
+  local verdict freeform submitted_at
   verdict=$(python3 -c "import json,sys; d=json.load(open('$FEEDBACK_FILE')); print(d['verdict'])" 2>&1)
-  answers=$(python3 -c "import json,sys; d=json.load(open('$FEEDBACK_FILE')); print(d['answers'])" 2>&1)
   freeform=$(python3 -c "import json,sys; d=json.load(open('$FEEDBACK_FILE')); print(d['freeform'])" 2>&1)
   submitted_at=$(python3 -c "import json,sys; d=json.load(open('$FEEDBACK_FILE')); print(d.get('submittedAt','MISSING'))" 2>&1)
 
