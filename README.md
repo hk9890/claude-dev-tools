@@ -39,3 +39,7 @@ After installing, the plugin is recorded in your `.claude/settings.json`:
 ## Contributing
 
 See [docs/CODING.md](docs/CODING.md) for how to add a new plugin, [docs/OVERVIEW.md](docs/OVERVIEW.md) for the repo layout, [docs/TESTING.md](docs/TESTING.md) for running the test suites, and [docs/CHANGE-WORKFLOW.md](docs/CHANGE-WORKFLOW.md) for the commit and task-tracking workflow used in this repo.
+
+## License
+
+[MIT](LICENSE) © Hans Kohlreiter
