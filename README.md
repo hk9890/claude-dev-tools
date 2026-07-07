@@ -9,7 +9,7 @@ For the repo layout and architecture, see [docs/OVERVIEW.md](docs/OVERVIEW.md).
 | Plugin | Description |
 |---|---|
 | [`tasks`](plugins/tasks/README.md) | Use the `taskmgr` file-based task tracker — data model and commands, a skill to turn review findings into well-formed tasks, generic implementer/verifier agents, and a tasks-work workflow that runs ready work through implement, verify, and record |
-| [`claude-catppuccin`](plugins/claude-catppuccin/README.md) | Visual style for Claude Code: Catppuccin Mocha color theme |
+| [`claude-catppuccin`](plugins/claude-catppuccin/README.md) | Visual style for Claude Code: Catppuccin color themes (Latte, Frappe, Macchiato, Mocha) |
 | [`project-quality`](plugins/project-quality/README.md) | Project-quality toolkit — read-only adversarial reviews (complexity, structure, tests, consistency, docs) runnable individually or as one orchestrated, verified full review, thin human-triggered exec skills (run tests, cut a release, analyze monitoring), and a human-triggered explainer that digests how the project handles a topic from its own docs |
 | [`grill`](plugins/grill/README.md) | Adversarial stress-test on demand — grills any plan, design, change, or decision with pointed questions, each carrying a committed recommended answer and a source, then walks them with you one at a time and ends on a clean / needs-answers gate; read-only and project-agnostic, grounded in a generic critical-engineering value base |
 | [`github-releases`](plugins/github-releases/README.md) | Language-agnostic GitHub release workflow with quality gates, semver, and release notes |

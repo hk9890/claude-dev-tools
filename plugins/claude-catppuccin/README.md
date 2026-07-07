@@ -1,55 +1,81 @@
 # claude-catppuccin
 
-Catppuccin Mocha color theme for Claude Code.
+Catppuccin color themes for Claude Code — all four flavours.
 
 ## Overview
 
-This plugin applies the [Catppuccin Mocha](https://catppuccin.com/) palette to the Claude Code UI — a soothing dark theme with pastel accents. Every UI element maps to a canonical Mocha color: mauve for Claude messages, pink for shimmers, green for success, red for errors, and so on.
+This plugin applies the [Catppuccin](https://catppuccin.com/) palette to the
+Claude Code UI. It ships all four official flavours:
+
+| Flavour | Theme name | Mood |
+| --- | --- | --- |
+| Latte | Catppuccin Latte | Light, soft, readable |
+| Frappé | Catppuccin Frappé | Muted dark pastel |
+| Macchiato | Catppuccin Macchiato | Cozy dark |
+| Mocha | Catppuccin Mocha | Deep dark |
+
+Every UI element maps to a canonical Catppuccin color — mauve for Claude
+messages, pink for shimmers, green for success, red for errors, and so on. The
+same semantic mapping is used for all four flavours; only the underlying palette
+changes.
 
 ## Installation
 
-Install via the Claude Code plugin system. Once installed, activate the theme:
+Install via the Claude Code plugin system. Once installed, activate a theme:
 
 ```
 /config
 ```
 
-Navigate to **Theme** and select **Catppuccin Mocha**.
+Navigate to **Theme** and select one of **Catppuccin Latte / Frappé /
+Macchiato / Mocha**. All four appear automatically once the plugin is enabled.
 
-## Palette
+## Color mapping
 
-The theme maps Catppuccin Mocha colors to Claude Code UI roles:
+Each Claude Code UI role maps to a named Catppuccin palette entry. The role
+mapping is identical across flavours; the hex value is that flavour's palette
+color (see the [official palette](https://catppuccin.com/palette/)).
 
-| Role | Color | Hex |
-|---|---|---|
-| Claude text | Mauve | `#cba6f7` |
-| Claude shimmer | Pink | `#f5c2e7` |
-| Prompt border | Mauve | `#cba6f7` |
-| Prompt border shimmer | Pink | `#f5c2e7` |
-| Success / auto-accept | Green | `#a6e3a1` |
-| Remember | Lavender | `#b4befe` |
-| Error | Red | `#f38ba8` |
-| Warning | Yellow | `#f9e2af` |
-| Inactive | Overlay 0 | `#6c7086` |
-| Subtle | Surface 1 | `#45475a` |
-| Suggestion / match highlight | Mauve | `#cba6f7` |
-| Selection bg | Surface 2 | `#585b70` |
-| Permission | Lavender | `#b4befe` |
-| Permission shimmer | Mauve | `#cba6f7` |
-| Brief label (You) | Lavender | `#b4befe` |
-| Brief label (Claude) | Mauve | `#cba6f7` |
-| Plan mode | Teal | `#94e2d5` |
-| Bash border | Peach | `#fab387` |
-| IDE indicator | Sky | `#89dceb` |
-| Text | Text | `#cdd6f4` |
-| Inverse text | Base | `#1e1e2e` |
-| User message bg | Surface 0 | `#313244` |
-| User message bg (hover) | Surface 1 | `#45475a` |
-| Message actions bg | Surface 2 | `#585b70` |
-| Bash message bg | Mantle | `#181825` |
-| Memory message bg | Crust | `#11111b` |
+| Role | Palette color |
+|---|---|
+| Claude text / suggestion / prompt border / rate-limit fill | Mauve |
+| Claude shimmer / prompt-border shimmer | Pink |
+| Permission / remember / brief label (You) | Lavender |
+| Success / auto-accept | Green |
+| Error | Red |
+| Warning / fast mode | Yellow |
+| Warning shimmer / bash border | Peach |
+| Plan mode / merged | Teal |
+| IDE indicator | Sky |
+| Text | Text |
+| Inverse text | Base |
+| Inactive | Overlay 0 |
+| Subtle / rate-limit empty | Surface 1 |
+| Selection / message actions bg | Surface 2 |
+| User message bg | Surface 0 |
+| Bash message bg | Mantle |
+| Memory message bg | Crust |
 
-Diff background colors (`diffAdded`, `diffRemoved`, and their `*Dimmed`/`*Word` variants) are not from the canonical palette — they are custom dark green/red tints derived from Base for terminal readability.
+Diff background colors (`diffAdded`, `diffRemoved`, and their `*Dimmed`/`*Word`
+variants) are **not** from the canonical palette — the theme system has no alpha
+channel, so they are opaque tints. Dark flavours reuse Mocha's hand-tuned
+per-channel offset from its base, re-anchored on each flavour's own base; Latte
+(light) tints its light base toward the flavour's green/red. See
+[RULES.md](RULES.md).
+
+## Regenerating themes
+
+The four theme files are generated from a single source of truth
+(`scripts/generate-themes.mjs`): one shared role→palette map plus the four
+official palettes. Do not hand-edit `themes/*.json`. To change the mapping or
+palettes, edit the generator and regenerate:
+
+```
+node scripts/generate-themes.mjs
+```
+
+The plugin's script-tests fail if the committed files drift from the generator
+output.
 
 ## Plugin structure
 
@@ -59,6 +85,11 @@ claude-catppuccin/
 │   └── plugin.json
 ├── README.md
 ├── RULES.md
+├── scripts/
+│   └── generate-themes.mjs
 └── themes/
+    ├── catppuccin-latte.json
+    ├── catppuccin-frappe.json
+    ├── catppuccin-macchiato.json
     └── catppuccin-mocha.json
 ```
