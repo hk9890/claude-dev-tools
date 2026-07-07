@@ -35,6 +35,7 @@ plugins/<plugin-name>/
   bin/                   # executable scripts bundled with the plugin
   commands/              # slash commands (.md files; currently no plugin uses these)
   hooks/                 # Claude Code hook definitions (e.g. hooks.json)
+  scripts/               # build-time scripts, e.g. a generator for themes/ (not loaded at runtime)
   skills/                # skills (<skill-name>/SKILL.md + optional references/, scripts/, examples/)
   themes/                # color theme files
   workflows/             # Workflow-tool orchestration scripts (.js)
