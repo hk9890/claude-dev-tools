@@ -19,23 +19,15 @@ would see them — without installing anything.
 
 ## Drive a plugin to reproduce or verify
 
-Inside that session:
+Inside that session, exercise the component directly:
 
-- **Skills** — invoke a skill by *describing its use case* (not by name) and confirm it
-  triggers; then check the output.
+- **Skills** — invoke by *describing the use case* (not by name), confirm it triggers,
+  then check the output.
 - **Commands** — run the slash command and check its output.
 - **Hooks** — perform the action that should fire the hook and confirm it fires.
 
-## Reproduce a reported bug
-
-1. Launch with `./scripts/claude-dev`.
-2. Drive the exact path from the report (the skill use case, the command, or the hook
-   action) and observe the behavior.
-3. If the report came from a real session, the transcript and usage signals described in
-   [MONITORING.md](MONITORING.md) can help recover the input that triggered it.
-
-## Verify a change
-
-Re-drive the same path after the change: confirm a skill still triggers and its output is
-correct, a command produces the expected result, or a hook fires. For structural changes,
-also run the automated checks in [TESTING.md](TESTING.md).
+To **reproduce a reported bug**, drive the exact path from the report; if it came from a
+real session, the transcript and usage signals in [MONITORING.md](MONITORING.md) can help
+recover the input that triggered it. To **verify a change**, re-drive the same path after
+the change, and for structural changes also run the automated checks in
+[TESTING.md](TESTING.md).
