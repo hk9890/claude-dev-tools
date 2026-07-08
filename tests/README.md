@@ -28,7 +28,7 @@ bash tests/run-all.sh
 bash tests/project-quality/script-tests/run-all.sh
 
 # One suite
-bash tests/project-quality/script-tests/test-claude-md.sh
+bash tests/project-quality/script-tests/test-manifest.sh
 ```
 
 ## Path resolution in test scripts

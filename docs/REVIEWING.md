@@ -22,9 +22,11 @@ skill's default, this file wins.
 - Version bumps must stay in lockstep across the marketplace manifest and changed
   plugins (see [RELEASING.md](RELEASING.md)); flag a partial bump.
 - A new canonical doc must be registered in the taxonomy reference
-  (`project-setup.md`) and recognized by the `inventory.py` validator — both under
-  `plugins/project-quality/skills/project-review-docs/` — so it is not flagged as a
-  stray, non-canonical file.
+  (`project-setup.md`) and in `manifest.py`'s canonical lists — both under
+  `plugins/project-quality/skills/project-review-docs/` — otherwise the manifest
+  classifies it as a non-standard doc. That classification is advisory (the review's
+  per-file agents judge placement); registering the topic is a human step, not an
+  automatic gate.
 - Reviews here suggest; they never edit the project or the task tracker.
 
 ## Out of scope / non-blocking
@@ -33,7 +35,7 @@ skill's default, this file wins.
   findings a formatter would own.
 - Cross-references and version lockstep are checked by `mise run check-consistency`
   (`scripts/check-internal-consistency.py`). Route resolution, the
-  `CLAUDE.md` = `@AGENTS.md` contract, and canonical inventory are checked by the docs
-  validator (`verify.sh` under `plugins/project-quality/skills/project-review-docs/scripts/`),
-  run on doc changes per the pre-push checklist in [CHANGE-WORKFLOW.md](CHANGE-WORKFLOW.md).
-  Lean on these rather than re-checking by hand what they already cover.
+  `CLAUDE.md` = `@AGENTS.md` contract, and canonical inventory are reported by the docs
+  manifest (`manifest.py` under `plugins/project-quality/skills/project-review-docs/scripts/`,
+  the deterministic layer of the `project-review-docs` audit). Lean on these rather than
+  re-checking by hand what they already cover.
