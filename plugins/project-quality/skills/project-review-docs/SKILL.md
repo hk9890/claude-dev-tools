@@ -55,12 +55,16 @@ echo "workflow: $SKILL_DIR/workflow/review-docs.js"
 Then invoke the **Workflow** tool:
 
 - `scriptPath`: `<SKILL_DIR>/workflow/review-docs.js`
-- `args`: `{ "repoRoot": "<repo under review>", "scriptsDir": "<SKILL_DIR>/scripts" }`
+- `args`: `{ "repoRoot": "<repo under review>", "scriptsDir": "<SKILL_DIR>/scripts", "level": "medium" }`
   - `repoRoot` defaults to the current repo; if `$ARGUMENTS` scopes the review to
     a path, pass that.
-  - The workflow caps the execution stage at 3 routes by default; pass
-    `"maxExecutionRoutes": -1` in `args` to test every `AGENTS.md` route (slower),
-    or a number to set the cap.
+  - `level` (from `$ARGUMENTS`, default `medium`) sets depth:
+    - `low` — manifest + per-file read-review only; no execution stage. Fast and cheap.
+    - `medium` — full pipeline, execution on ~3 representative `AGENTS.md` routes.
+    - `high` — execution on every route, plus an adversarial verify pass that tries
+      to refute each finding before it is reported (cuts false positives).
+  - Advanced: `"maxExecutionRoutes": <n>` overrides the route cap directly (`-1` = all,
+    `0` = skip execution) regardless of `level`.
 
 The workflow runs in the background and returns a structured report
 (`{ verdict, headline, findings[], cross_file_notes, execution_summary }`).
