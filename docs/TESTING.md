@@ -24,6 +24,22 @@ bash tests/run-all.sh
 
 A plugin has a `tests/<plugin-name>/script-tests/` suite only when it ships committed bash/python helpers worth testing (e.g., `project-quality` validator scripts); plugins without script-level tests have no `tests/` subdirectory at all. A repo-level suite under `tests/marketplace/script-tests/` covers marketplace-wide helpers such as `scripts/check-internal-consistency.py`. `tests/run-all.sh` discovers and runs every suite, per-plugin and marketplace alike.
 
+### Writing a test
+
+A suite is a `test-*.sh` script under `tests/<plugin>/script-tests/` (or `tests/marketplace/script-tests/`); `run-all.sh` discovers every `test-*.sh` at that depth. Model a new one on an existing suite — e.g. [`test-manifest.sh`](../tests/project-quality/script-tests/test-manifest.sh) — resolving the script under test via `git rev-parse --show-toplevel` (see [tests/README.md](../tests/README.md) for the path-resolution idiom). A suite exits `0` on pass, `1` on failure, `77` to skip.
+
+### analyze-sessions fixture check
+
+The `analyze-sessions` monitoring script has a regression suite: a synthetic fixture and expected output under `scripts/fixtures/`, run automatically by `tests/run-all.sh` (via `tests/marketplace/script-tests/test-analyze-sessions.sh`). To run it by hand:
+
+```bash
+python3 scripts/analyze-sessions.py --fixture scripts/fixtures/session-fixture.jsonl
+python3 tests/marketplace/script-tests/check-fixture.py \
+    --actual output/session-analysis/fixture/dataset.json \
+    --expected scripts/fixtures/session-fixture-expected.json \
+    --summary output/session-analysis/fixture/summary.md
+```
+
 ### Optional prerequisite: Playwright (browser suite)
 
 The html-visualization browser suite (`tests/html-visualization/script-tests/test-browser.sh`) needs Playwright with Chromium, resolved from the npm `_npx` cache. On machines without it, the suite prints `SKIP` and exits with the skip code (77); the `run-all.sh` scripts report it as a skipped suite in their summary line (not a silent pass) and keep the overall run green. Set `REQUIRE_BROWSER=1` to turn an absent Playwright into a hard failure instead — use this in CI that must exercise the browser path. To enable the suite:

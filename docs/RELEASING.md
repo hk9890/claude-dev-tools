@@ -36,11 +36,12 @@ find plugins -name plugin.json -path "*/.claude-plugin/*"
 
 ## Release steps
 
-1. Bump `"version"` in all `plugin.json` files found above.
-2. Bump every `"version"` in `.claude-plugin/marketplace.json` to the same new version.
-3. Verify they match: `bash tests/run-all.sh` will catch any version mismatch via `scripts/check-internal-consistency.py`. As a quick manual check: `diff <(jq -r '.plugins[] | "\(.name) \(.version)"' .claude-plugin/marketplace.json | sort) <(find plugins -name plugin.json -path "*/.claude-plugin/*" -exec jq -r '"\(.name) \(.version)"' {} \; | sort)` — should print nothing.
-4. Commit: `git commit -m "Bump all plugins to vX.Y.Z"`
-5. Create the GitHub release with `gh release create vX.Y.Z --title "vX.Y.Z" --generate-notes`
+1. Run the three gates in the **Tests** section above — all must pass before releasing.
+2. Bump `"version"` in all `plugin.json` files found above.
+3. Bump every `"version"` in `.claude-plugin/marketplace.json` to the same new version.
+4. Verify they match: `bash tests/run-all.sh` will catch any version mismatch via `scripts/check-internal-consistency.py`. As a quick manual check: `diff <(jq -r '.plugins[] | "\(.name) \(.version)"' .claude-plugin/marketplace.json | sort) <(find plugins -name plugin.json -path "*/.claude-plugin/*" -exec jq -r '"\(.name) \(.version)"' {} \; | sort)` — should print nothing.
+5. Commit: `git commit -m "Bump all plugins to vX.Y.Z"`
+6. Create the GitHub release with `gh release create vX.Y.Z --title "vX.Y.Z" --generate-notes`
 
 ## Verification
 

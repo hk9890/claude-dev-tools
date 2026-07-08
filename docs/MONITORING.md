@@ -113,7 +113,7 @@ Each `dataset.json` entry is one episode:
 
 ### Invocation modes (read this before interpreting the Model-invoked column)
 
-Each skill belongs to one of three modes, derived from its `SKILL.md` frontmatter (`user-invocable` and `disable-model-invocation`). The `summary.md` table surfaces this in the **Mode** column right next to **Model-invoked**, because the two only make sense together:
+Each skill belongs to one of three modes, derived from its `SKILL.md` frontmatter (`user-invocable` and `disable-model-invocation`). The `summary.md` table carries a **Mode** column alongside **Model-invoked**, because the two only make sense together:
 
 | Mode | Frontmatter | What it means | Expected Model-invoked rate |
 |------|-------------|----------------|-----------------------------|
@@ -143,19 +143,7 @@ Each slice file carries the episode's summary fields plus an `events` array reco
 
 ### Fixture tests
 
-A synthetic fixture and expected output live under `scripts/fixtures/`; the assertion script lives with the tests. Run the fixture check with:
-
-```bash
-python3 scripts/analyze-sessions.py \
-    --fixture scripts/fixtures/session-fixture.jsonl
-
-python3 tests/marketplace/script-tests/check-fixture.py \
-    --actual output/session-analysis/fixture/dataset.json \
-    --expected scripts/fixtures/session-fixture-expected.json \
-    --summary output/session-analysis/fixture/summary.md
-```
-
-The commands above are the manual equivalent; the same fixture check also runs automatically as part of `bash tests/run-all.sh` (via `tests/marketplace/script-tests/test-analyze-sessions.sh`).
+The analyze-sessions regression suite (a synthetic fixture and expected output under `scripts/fixtures/`) is a test suite, run under `bash tests/run-all.sh` — see [TESTING.md](TESTING.md) for how to run it by hand.
 
 ## Phase 2 — Claude-in-the-loop judging
 
