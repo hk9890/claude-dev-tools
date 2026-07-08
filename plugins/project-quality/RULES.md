@@ -119,11 +119,11 @@ documentation defect itself.
 ## 9. project-review-docs ships its own references, scripts, and examples
 
 Unlike the other reviewers, the docs auditor carries a reference library (the
-canonical taxonomy, structure rules, authoring bar, AGENTS template, and the
-exhaustive review guidelines), read-only validator `scripts/`, and `examples/` of
+canonical taxonomy + ownership, authoring bar, and the review process/rubric),
+read-only `scripts/`, the `workflow/` that runs the audit, and `examples/` of
 good docs. These are the "how docs should be" knowledge the audit judges against,
-and the validators (`claude-md.sh`, `inventory.py`, `validate-routes.py`,
-`verify.sh`) are a cheap first pass.
+and the deterministic layer (`manifest.py` for the facts, `validate-routes.py` for
+link resolution) is a cheap first pass.
 
 ## 10. Reviews may suggest task creation, never perform it
 
@@ -206,7 +206,7 @@ reports by hand. Design decisions behind it:
 policy, priorities, and out-of-scope rules the generic review lenses cannot know.
 Decisions behind it:
 
-- **Optional-canonical, not full canonical.** `scripts/inventory.py` carries it in a
+- **Optional-canonical, not full canonical.** `scripts/manifest.py` carries it in a
   separate `OPTIONAL_CANONICAL_DOCS` tier: recognized as canonical when present, but
   never reported missing when absent. Most repos have no local review delta, so a
   full-canonical "REVIEWING.md missing" warning on every repo would be pure noise. The tier
@@ -235,7 +235,7 @@ built product by hand — to reproduce a reported bug or verify an outcome after
 agent-facing: it documents how the *agent* operates the product, which can diverge from the
 human path (a browser-automation tool, a TUI-inspection script). Decisions behind it:
 
-- **Optional-canonical, not full canonical.** Carried in `scripts/inventory.py`'s
+- **Optional-canonical, not full canonical.** Carried in `scripts/manifest.py`'s
   `OPTIONAL_CANONICAL_DOCS` tier alongside `REVIEWING.md` (§13): recognized when present,
   never reported missing when absent. A pure library whose tests are its only exercise path
   has no product to drive, so a full-canonical "RUNNING.md missing" warning would be noise.
@@ -265,10 +265,10 @@ Decisions behind the check (specialist #9, rule R11, coverage category C14):
   exist — read and classified against the *Inside* boundaries in `project-setup.md` — not a
   heuristic guess about whether the repo "ships a runnable product." File-sniffing for a product
   (a `main`, a `bin` entry, a shell script) is unreliable — nearly every repo has those — so it
-  is deliberately not attempted. `scripts/inventory.py` does no codebase product-sniffing; it
-  only enumerates the candidate docs the specialist reads — `non_canonical_docs` (top-level
-  `docs/`), `non_canonical_docs_nested` (`docs/` subdirectories, recursively), and
-  `non_canonical_root_docs` (non-canonical root `*.md`, excluding well-known meta files).
+  is deliberately not attempted. `scripts/manifest.py` does no codebase product-sniffing; it
+  only enumerates every Markdown doc and classifies the non-canonical ones (any `*.md` under
+  `docs/` or at the repo root that is not a canonical topic), which the workflow's per-file
+  agents then read and classify against the *Inside* boundaries.
 - **Rename when the slot is empty, link when it is filled.** If no `docs/<TOPIC>.md` exists,
   recommend renaming the misnamed file into that slot; if it already exists, recommend linking the
   on-topic doc from it (a second file cannot also claim the canonical name). A doc that maps to no

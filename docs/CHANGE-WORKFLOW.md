@@ -27,9 +27,11 @@ These gates apply at PR-open time; re-run at merge time only if new commits were
 2. **Structural validation** (plugin changes only) — Run `plugin-dev:plugin-validator` on every changed plugin. This agent ships in the external `plugin-dev` plugin; see [TESTING.md](TESTING.md) for install instructions. After it passes, post a `gate2:passed` comment on the linked taskmgr task with the validator's summary line. If the change does not touch validator-checked surface (`.claude-plugin/plugin.json`, `agents/`, `skills/`, `commands/`, or `hooks/`), post a `gate2:n/a` comment with a one-line reason instead. This comment is the audit-trail evidence that gate 2 ran. **Important:** this is a process-enforcement gate, not a hard PR-merge block. The gate is enforced at release time (see [RELEASING.md](RELEASING.md)) by `scripts/check-gate2-evidence.sh`, which fails loudly if any PR merged since the previous release is missing its gate2 comment. A PR that skips this step will block the next release.
 3. **Docs validation** (doc changes only) — If you touched canonical docs under `docs/`, run:
    ```bash
-   bash plugins/project-quality/skills/project-review-docs/scripts/verify.sh .
+   SCR=plugins/project-quality/skills/project-review-docs/scripts
+   python3 "$SCR/validate-routes.py" . --include-docs   # hard-fails on broken routes
+   python3 "$SCR/manifest.py" . --format=text           # CLAUDE.md invariant, missing/hollow docs, dead links
    ```
-   Hard failures (broken routes, malformed CLAUDE.md) must be fixed before pushing. Soft warnings are informational.
+   A non-zero `validate-routes.py` (broken routes) must be fixed before pushing. The manifest is informational — check its summary line for a false `claude_md_ok`, missing canonical docs, or unresolved links. For a full content audit, run the `/project-review-docs` skill.
 
 See [RELEASING.md](RELEASING.md) for the release process — it runs gates 1 and 2 above against every plugin, plus version-bump steps.
 

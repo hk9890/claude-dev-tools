@@ -163,8 +163,9 @@ project-quality/
     │   └── SKILL.md
     ├── project-review-docs/
     │   ├── SKILL.md
-    │   ├── references/     (taxonomy, structure, authoring + review guidelines, AGENTS template)
-    │   ├── scripts/        (read-only validators: claude-md.sh, inventory.py, validate-routes.py, verify.sh)
+    │   ├── references/     (doc taxonomy + ownership, authoring rules, review process/rubric)
+    │   ├── scripts/        (manifest.py + validate-routes.py — read-only deterministic facts)
+    │   ├── workflow/       (review-docs.js — the audit pipeline the skill launches)
     │   └── examples/       (canonical AGENTS.md / docs exemplars)
     ├── project-exec-testing/
     │   └── SKILL.md

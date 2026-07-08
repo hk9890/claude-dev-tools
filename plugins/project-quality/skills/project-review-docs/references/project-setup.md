@@ -5,11 +5,11 @@
 - `README.md`: user-facing **product** entrypoint — how to *use* the product
 - `CONTRIBUTING.md` (optional-canonical): human-contributor entrypoint — "`AGENTS.md` for humans"; describes the contribution path and routes to the topic docs without duplicating them. Canonical when present, never reported missing when absent.
 - `AGENTS.md`: routing layer (routing table for all AI tools)
-- `CLAUDE.md`: Claude Code entrypoint — **must contain exactly `@AGENTS.md` and nothing else** (one line, optional trailing newline). Any other content is a finding; the recommended fix routes it into AGENTS.md (for routing) or a topic doc under `docs/`. Checkable via `scripts/claude-md.sh check`.
+- `CLAUDE.md`: Claude Code entrypoint — **must contain exactly `@AGENTS.md` and nothing else** (one line, optional trailing newline). Any other content is a finding; the recommended fix routes it into AGENTS.md (for routing) or a topic doc under `docs/`. Reported by `scripts/manifest.py` (the `CLAUDE.md` invariant).
 - `docs/` topic files: durable repo-specific operating guidance
 - `docs/REVIEWING.md` (optional-canonical): project-specific review guidance — canonical when present, never reported missing when absent
 - `docs/RUNNING.md` (optional-canonical): how the agent launches and drives the built product to reproduce a bug or verify a change — canonical when present, never reported missing when absent
-- `.claude.local.md` (optional, personal): per-user local context — gitignored; never written by canonical doc flows (create/update/improve/revise); surfaced by `scripts/inventory.py` so authors know it exists
+- `.claude.local.md` (optional, personal): per-user local context — gitignored; never written by canonical doc flows (create/update/improve/revise); surfaced by `scripts/manifest.py` (classification `personal-local`) so authors know it exists
 
 Create topic docs only when the repository has real local guidance for that topic.
 
@@ -37,7 +37,7 @@ docs/
 Notes:
 
 - If a reusable skill fully covers a topic and there is no local delta, do not create a hollow doc for that topic.
-- `REVIEWING.md` is **optional-canonical**: recognized as a canonical doc when a project opts in by creating it, but never reported missing when absent (most repos have no local review delta). `scripts/inventory.py` counts it only when present and never nags for it.
+- `REVIEWING.md` is **optional-canonical**: recognized as a canonical doc when a project opts in by creating it, but never reported missing when absent (most repos have no local review delta). `scripts/manifest.py` counts it only when present and never nags for it.
 - `RUNNING.md` is **optional-canonical** on the same terms: create it only when the project ships a product an agent can drive (a CLI, service, TUI, or app). A pure library whose tests are its only exercise path needs none; it is never reported missing when absent.
 - `CONTRIBUTING.md` (repo root, not under `docs/`) is **optional-canonical**: recognized when present, never reported missing when absent (a repo with no external human contributors may legitimately omit it).
 - A doc whose **content** is a canonical topic but lives under a **non-canonical name** (anywhere under `docs/`, including subdirectories, or at the repo root) is a finding (R11), independent of the rules above: rename it to the canonical name when that slot is empty, or link it from the canonical doc when the slot is already filled. This is content-driven — the review reads docs that already exist and never invents one for an absent topic, so the optional-canonical "never missing when absent" contract stands.
@@ -59,7 +59,7 @@ these (R10).
   - topic procedures → the matching `docs/<TOPIC>.md`
   - personal/local notes → `.claude.local.md`
   - auto-injected tool blocks → topic doc under `docs/` or `.claude.local.md` (never in steering docs)
-- Checkable via `scripts/claude-md.sh check`, which hard-fails on extra content.
+- Reported by `scripts/manifest.py` — the `CLAUDE.md` invariant flags any content beyond `@AGENTS.md`.
 
 ### `.claude.local.md` (optional, personal)
 
@@ -67,7 +67,7 @@ these (R10).
 - **Not inside**: shared/team guidance, routing, anything the canonical doc flows write.
 - Personal/local context only; gitignored, never shared with the team
 - Never written by canonical doc flows (create/update/improve/revise) — the user edits this file directly
-- Surfaced by `scripts/inventory.py` under `personal_local` so authors know it exists
+- Surfaced by `scripts/manifest.py` (classification `personal-local`) so authors know it exists
 
 ### `README.md`
 
@@ -90,6 +90,11 @@ these (R10).
 - **Inside**: a 2–3 sentence project summary and task → doc/skill routes.
 - **Not inside**: full procedures, README-style prose, content duplicated from the docs it routes to.
 - Routing table only; avoid duplicating full procedures.
+- **Conformance rules** (the shape a well-formed `AGENTS.md` has; checked against the example):
+  - One `###` section per use case, each naming the doc or skill to load and a one-line reason.
+  - Only include sections with a real backing doc or installed skill — skip hollow entries.
+  - Keep the project summary to 2–3 sentences; it is not a README.
+  - Route to installed skills by name when no local doc exists (e.g. "use the `github-releases` skill for the release workflow").
 - Example: [../examples/AGENTS.md](../examples/AGENTS.md)
 
 ### `docs/OVERVIEW.md`
@@ -178,11 +183,21 @@ these (R10).
   drive; it is never reported missing when absent (see the canonical topic set above).
 - Example: [../examples/docs/RUNNING.md](../examples/docs/RUNNING.md)
 
-## Boundary to project-structure
+## Locations & routing
 
-`project-setup.md` defines **what docs exist and who owns what**.
+All docs live at the project root or under `docs/`:
 
-Use [project-structure.md](project-structure.md) for:
+| File | Location |
+|---|---|
+| `CLAUDE.md`, `AGENTS.md`, `README.md`, `CONTRIBUTING.md` | project root |
+| Topic docs | `docs/` |
 
-- structural constraints
-- AGENTS routing structure rules
+- `CLAUDE.md` contains **exactly** `@AGENTS.md` (one line) — the `@`-import loads the
+  routing table at session start; any other content routes to `AGENTS.md` (routing) or a
+  topic doc under `docs/`.
+- Keep `AGENTS.md` concise and pointer-based — a routing layer, not a handbook. Every route
+  must point to a real file or installed skill.
+- Use the canonical topic names above. Treat a non-standard doc as a consolidation candidate
+  unless explicitly justified: rename it to the canonical name when that slot is empty, or
+  link it from the canonical doc when the slot is filled (R11).
+- Flag stale routes left behind after merges or deletions.
