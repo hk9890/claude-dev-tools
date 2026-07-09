@@ -6,6 +6,7 @@ export const meta = {
     { title: 'Manifest', detail: 'deterministic facts: files, metrics, links, routes' },
     { title: 'Read-review', detail: 'one agent per doc — belongs? accurate? well-formed?' },
     { title: 'Execution', detail: 'per AGENTS route: cold agent does a task, driver grades' },
+    { title: 'Verify', detail: 'adversarially refute each finding (level=high only)' },
     { title: 'Synthesis', detail: 'dedupe + cross-file reconciliation + report' },
   ],
 }
@@ -17,7 +18,15 @@ if (typeof A === 'string') { try { A = JSON.parse(A) } catch (e) { A = {} } }
 A = A || {}
 const repoRoot = A.repoRoot
 const scriptsDir = A.scriptsDir
-const maxExec = (A.maxExecutionRoutes === undefined) ? 3 : A.maxExecutionRoutes
+// The authoring rules the read-review agents apply live next to the scripts.
+const guidelinesFile = scriptsDir ? scriptsDir.replace(/scripts\/?$/, 'references') + '/project-doc-guidelines.md' : ''
+// level bundles the real cost/thoroughness levers: low = read-review only (no
+// execution), medium = execution on a few routes, high = all routes + a verify pass.
+const level = (A.level || 'medium').toLowerCase()
+const LEVEL_ROUTES = { low: 0, medium: 3, high: -1 }
+const maxExec = (A.maxExecutionRoutes !== undefined)
+  ? A.maxExecutionRoutes
+  : (LEVEL_ROUTES[level] === undefined ? 3 : LEVEL_ROUTES[level])
 const scratchDir = A.scratchDir || '/tmp/docreview-scratch'
 
 // ---------------------------------------------------------------------------
@@ -119,8 +128,17 @@ const REPORT_SCHEMA = {
   required: ['verdict', 'headline', 'findings'],
 }
 
+const VERIFY_SCHEMA = {
+  type: 'object',
+  properties: {
+    refuted: { type: 'boolean' },
+    reason: { type: 'string' },
+  },
+  required: ['refuted'],
+}
+
 // ---------------------------------------------------------------------------
-// Phase 0 — Manifest (deterministic facts)
+// Manifest (deterministic facts)
 // ---------------------------------------------------------------------------
 
 phase('Manifest')
@@ -128,7 +146,7 @@ const manifestText = await agent(
   `Run this exact command and return ONLY its raw stdout — no prose, no markdown fences:\n\n` +
   `python3 "${scriptsDir}/manifest.py" "${repoRoot}" --format=json\n\n` +
   `Do not summarize, do not edit the output. Return the JSON exactly as printed.`,
-  { label: 'manifest', phase: 'Manifest', effort: 'low' }
+  { label: 'manifest', phase: 'Manifest', model: 'haiku', effort: 'low' }
 )
 
 function parseManifest(text) {
@@ -153,7 +171,7 @@ log(`Manifest: ${manifest.summary.total_md} docs, ${manifest.summary.canonical_m
     `${manifest.summary.unresolved_links} dead links, ${manifest.summary.orphans} orphans, ${manifest.agents_routes.length} routes`)
 
 // ---------------------------------------------------------------------------
-// Phase 1 — Read-review: one agent per doc
+// Read-review: one agent per doc
 // ---------------------------------------------------------------------------
 
 phase('Read-review')
@@ -172,7 +190,10 @@ function readReviewPrompt(f) {
     `You are auditing ONE documentation file: ${f.path}\n` +
     `Metrics (from the deterministic manifest — do NOT recompute): ${m.lines} lines, ${m.words} words, ${m.non_heading_lines} content lines.\n` +
     `Links were already resolved by the manifest. Unresolved links in this file:\n${dead}\n\n` +
-    `Read the FULL file now, then judge it. You see only THIS file and its contract — there is no doc set to satisfice against.\n`
+    `Read the FULL file now, then judge it. You see only THIS file and its contract — there is no doc set to satisfice against.\n` +
+    (guidelinesFile
+      ? `\nApply the authoring rules — read ${guidelinesFile} once (rules A1–A10 and the hard prohibitions). They define the accuracy, belonging, and form bar; apply them alongside this file's contract.\n`
+      : '')
 
   if (f.contract) {
     const c = f.contract
@@ -187,7 +208,7 @@ function readReviewPrompt(f) {
       `Also judge FORM: is it compact and to-the-point, written for an agent (not narrative human prose, not review-comments/TODO/meta-commentary), and not longer than it needs to be for what it says (${m.lines} lines)? Bloat, hollow sections, or non-agent-facing cruft are form findings.\n\n` +
       `Do not run commands. Read-only. Return findings with concrete evidence (quote the offending lines / cite the repo fact). Empty findings array if the file is genuinely clean — do not invent problems.`
   }
-  // Non-standard file: step-4 placement logic.
+  // Non-standard file: judge placement (does its content belong to a canonical topic?).
   return common +
     `\nThis is a NON-STANDARD doc (not one of the canonical files). Judge placement, not an ownership boundary:\n` +
     `- Does its content actually BELONG to a canonical topic (OVERVIEW / CODING / TESTING / RELEASING / MONITORING / CHANGE-WORKFLOW / RUNNING / REVIEWING / README / CONTRIBUTING)? If so, it is a placement finding: recommend RENAME to docs/<TOPIC>.md when that canonical slot is empty (missing canonical: ${JSON.stringify(manifest.missing_canonical)}), or LINK it from the canonical doc when that slot is filled.\n` +
@@ -201,6 +222,7 @@ const reviewResults = await parallel(
     agent(readReviewPrompt(f), {
       label: `read:${f.path}`,
       phase: 'Read-review',
+      model: 'opus',
       schema: FINDINGS_SCHEMA,
     })
   )
@@ -210,7 +232,7 @@ const readFindingCount = readFindings.reduce((n, r) => n + (r.findings ? r.findi
 log(`Read-review: ${readFindings.length}/${reviewFiles.length} docs reviewed, ${readFindingCount} raw findings`)
 
 // ---------------------------------------------------------------------------
-// Phase 2 — Execution test: does an agent with a task actually succeed via the docs?
+// Execution test: does an agent with a task actually succeed via the docs?
 // ---------------------------------------------------------------------------
 
 phase('Execution')
@@ -226,8 +248,11 @@ let fileRoutes = manifest.agents_routes.filter(r => {
 })
 
 const totalRoutes = fileRoutes.length
-if (maxExec >= 0 && fileRoutes.length > maxExec) {
-  log(`Execution: capping at ${maxExec} of ${totalRoutes} routes for this run (raise maxExecutionRoutes to test all).`)
+if (maxExec === 0) {
+  log(`Execution: skipped (level=${level}).`)
+  fileRoutes = []
+} else if (maxExec > 0 && fileRoutes.length > maxExec) {
+  log(`Execution: capping at ${maxExec} of ${totalRoutes} routes (level=${level}; use level=high or maxExecutionRoutes:-1 for all).`)
   fileRoutes = fileRoutes.slice(0, maxExec)
 }
 
@@ -247,7 +272,7 @@ const execResults = await pipeline(
     `Because you have read the doc, you also hold the correct answer/outcome — record it as the answer key.\n` +
     `Classify the task's safety tier: A = safe/read-only, B = expensive but safe, C = destructive/irreversible (tag/push/publish/delete/prod).\n` +
     `Return {task, expected (the answer key), tier, rationale}.`,
-    { label: `gen:${route.target}`, phase: 'Execution', schema: TASK_SCHEMA }
+    { label: `gen:${route.target}`, phase: 'Execution', model: 'opus', schema: TASK_SCHEMA }
   ),
   // Stage 2: cold action agent attempts the task — uncoached, in an isolated
   // worktree — and appends a live trace to a shared scratch file.
@@ -264,7 +289,7 @@ const execResults = await pipeline(
       `The ONLY constraint: no destructive or irreversible operations (no git push, no publish/deploy, no deleting tracked files) — you are in a throwaway worktree, but behave safely.\n\n` +
       `KEEP A LIVE TRACE: run \`mkdir -p ${scratchDir}\` once, then as you work append to ${tf} — this path is OUTSIDE your worktree so it persists. Log every step: each doc you open (its path), each command with its REAL exit code and a short output snippet, and any obstacle. This trace, not your summary, is what gets graded — make it faithful.\n\n` +
       `When done also return: whether you completed it, your answer/outcome, which docs you consulted, and the commands you ran.`,
-      { label: `do:${route.target}`, phase: 'Execution', schema: ACTION_SCHEMA, isolation: 'worktree' }
+      { label: `do:${route.target}`, phase: 'Execution', model: 'sonnet', schema: ACTION_SCHEMA, isolation: 'worktree' }
     ).then(res => ({ _skipped: false, route: route.target, task, action: res, traceFile: tf }))
   },
   // Stage 3: driver grades the SESSION (the trace file) against its answer key,
@@ -290,7 +315,7 @@ const execResults = await pipeline(
       `- inconclusive: failed for a reason NOT attributable to the doc (missing environment/creds/network, or the agent did something dumb) — discard.\n` +
       `Set attribution to doc / agent / environment / none. If there is a documentation finding, state it and its severity; otherwise finding="" severity=none.\n` +
       `Return {route, verdict, attribution, finding, severity}.`,
-      { label: `grade:${route.target}`, phase: 'Execution', schema: GRADE_SCHEMA }
+      { label: `grade:${route.target}`, phase: 'Execution', model: 'opus', schema: GRADE_SCHEMA }
     )
   }
 )
@@ -298,7 +323,38 @@ const execGraded = execResults.filter(Boolean)
 log(`Execution: ${execGraded.length} route(s) graded` + (totalRoutes > fileRoutes.length ? ` (${totalRoutes - fileRoutes.length} not run this pass)` : ''))
 
 // ---------------------------------------------------------------------------
-// Phase 3 — Synthesis
+// Verify (level=high) — adversarially refute each read-review finding
+// ---------------------------------------------------------------------------
+
+let verifiedFindings = readFindings
+let refutedFindings = []
+if (level === 'high') {
+  phase('Verify')
+  const flat = []
+  for (const r of readFindings) for (const f of (r.findings || [])) flat.push({ file: r.file, ...f })
+  const verdicts = (await parallel(flat.map(f => () =>
+    agent(
+      `Adversarially verify this documentation finding: re-check it against the repo (read-only) and try to REFUTE it. ` +
+      `Default refuted=true if the cited evidence does not clearly hold up on inspection.\n\n` +
+      `File: ${f.file}\nCategory: ${f.category}\nSeverity: ${f.severity}\nClaim: ${f.observation}\nEvidence cited: ${f.evidence}\n\n` +
+      `Return {refuted, reason}.`,
+      { label: `verify:${f.file}`, phase: 'Verify', model: 'opus', schema: VERIFY_SCHEMA }
+    ).then(v => ({ f, refuted: !!(v && v.refuted), reason: v ? (v.reason || '') : 'no verdict' }))
+  ))).filter(Boolean)
+  const survivors = verdicts.filter(v => !v.refuted).map(v => v.f)
+  refutedFindings = verdicts.filter(v => v.refuted).map(v => ({ file: v.f.file, observation: v.f.observation, reason: v.reason }))
+  log(`Verify: ${survivors.length}/${flat.length} findings survived refutation (${refutedFindings.length} dropped)`)
+  const byFile = {}
+  for (const f of survivors) {
+    const { file, ...rest } = f
+    if (!byFile[file]) byFile[file] = { file, findings: [] }
+    byFile[file].findings.push(rest)
+  }
+  verifiedFindings = Object.values(byFile)
+}
+
+// ---------------------------------------------------------------------------
+// Synthesis
 // ---------------------------------------------------------------------------
 
 phase('Synthesis')
@@ -310,7 +366,7 @@ const report = await agent(
   `Non-standard docs: ${JSON.stringify(manifest.files.filter(f => f.classification === 'non-standard').map(f => f.path))}\n` +
   `Orphans (unreachable from AGENTS.md): ${JSON.stringify(manifest.orphans)}\n` +
   `Location violations: ${JSON.stringify(manifest.location_violations)}\n\n` +
-  `PER-FILE READ-REVIEW FINDINGS:\n${JSON.stringify(readFindings, null, 2)}\n\n` +
+  `PER-FILE READ-REVIEW FINDINGS${level === 'high' ? ' (survived adversarial verification)' : ''}:\n${JSON.stringify(verifiedFindings, null, 2)}\n\n` +
   `EXECUTION-TEST VERDICTS (behavioral: could an agent use the docs?):\n${JSON.stringify(execGraded, null, 2)}\n\n` +
   `Do all of the following:\n` +
   `1. Merge and DEDUPE findings (the same defect surfaced by read-review and execution is ONE finding — cite the strongest evidence).\n` +
@@ -320,7 +376,7 @@ const report = await agent(
   `Return the structured object with fields verdict, headline, findings[], cross_file_notes, execution_summary. ` +
   `cross_file_notes and execution_summary are separate PLAIN-TEXT prose fields — never write XML/HTML tags, angle-bracket markers, or field names inside their values. ` +
   `Headline must not claim "done/complete/all good" unless there are zero blocker and major findings.`,
-  { label: 'synthesis', phase: 'Synthesis', schema: REPORT_SCHEMA, effort: 'high' }
+  { label: 'synthesis', phase: 'Synthesis', model: 'opus', schema: REPORT_SCHEMA, effort: 'high' }
 )
 
 return {
@@ -328,7 +384,10 @@ return {
   manifest_summary: manifest.summary,
   report,
   raw: {
+    level,
     read_findings: readFindings,
+    verified_findings: verifiedFindings,
+    refuted: refutedFindings,
     execution: execGraded,
     routes_total: totalRoutes,
     routes_run: fileRoutes.length,

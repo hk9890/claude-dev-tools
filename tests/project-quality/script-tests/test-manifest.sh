@@ -98,12 +98,19 @@ test_classification() {
   rm -rf "$dir"
 }
 
-# 5. missing canonical (RELEASING/MONITORING/CHANGE-WORKFLOW absent in fixture)
+# 5. docs/ are all optional — absent topic docs are NOT missing; only root files are.
 test_missing_canonical() {
-  local dir; dir=$(make_fixture)
+  local dir; dir=$(make_fixture)   # has all 3 root files; lacks docs/RELEASING etc.
   local out; out=$("$SCRIPT" "$dir")
-  assert_contains "missing: RELEASING.md flagged" "RELEASING.md" "$(json_val "$out" "d['missing_canonical']")"
-  rm -rf "$dir"
+  local docs_missing; docs_missing=$(json_val "$out" "[n for n in d['missing_canonical'] if n not in ('README.md','AGENTS.md','CLAUDE.md')]")
+  assert_eq "optional docs: no docs/ file reported missing" "[]" "$docs_missing"
+
+  # A missing REQUIRED root file (AGENTS.md) is still flagged.
+  local dir2; dir2=$(tmpdir); mkdir -p "$dir2/docs"
+  printf '@AGENTS.md\n' > "$dir2/CLAUDE.md"; printf '# r\n' > "$dir2/README.md"   # no AGENTS.md
+  local out2; out2=$("$SCRIPT" "$dir2")
+  assert_contains "required root: missing AGENTS.md flagged" "AGENTS.md" "$(json_val "$out2" "d['missing_canonical']")"
+  rm -rf "$dir" "$dir2"
 }
 
 # 6. dead link detected

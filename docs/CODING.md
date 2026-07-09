@@ -72,10 +72,6 @@ Do not mix schemas — a skill with both `disable-model-invocation: true` and `w
 
 ## Plugin rules files
 
-Rules files live at `plugins/<plugin-name>/RULES.md`. They record facts, constraints, and design decisions that are not derivable from the code — deliberate feature exclusions, chosen approaches, known tradeoffs.
+A plugin's `RULES.md` (`plugins/<plugin-name>/RULES.md`) records facts, constraints, and design decisions not derivable from the code — deliberate feature exclusions, chosen approaches, known tradeoffs. Not every plugin has one; create it only when there is a real decision or constraint to record.
 
 **Before making decisions or changes for a plugin, read its rules file.** Rules override general best-practice suggestions.
-
-Rules files follow the pattern `plugins/<plugin-name>/RULES.md`. Not every plugin has one — only create a file when there is a real decision or constraint to record.
-
-Check `plugins/*/RULES.md` files for plugin-specific design rules.

@@ -55,53 +55,32 @@ Change-landing guidance belongs in `CHANGE-WORKFLOW.md`.
 
 ### A7 — No duplication of AGENTS.md content
 
-`AGENTS.md` is the single routing surface. Canonical `docs/` files MUST NOT restate
-what `AGENTS.md` already provides:
-
-- MUST NOT re-list files, directories, docs, or skills that `AGENTS.md` already routes to.
-- MUST NOT duplicate the project summary, routing table, or task-to-doc/skill mappings.
-- When a doc needs context that lives in `AGENTS.md`, link to it instead of copying it.
-
-This applies with particular force to `docs/OVERVIEW.md`: its repository-layout and
-resource sections describe structure and domain, not the routes already declared in
-`AGENTS.md`.
+`AGENTS.md` is the single routing surface: canonical `docs/` files MUST NOT re-list the
+files, directories, docs, or skills it routes to, nor restate its project summary or
+routing table — link to it instead. Binds `docs/OVERVIEW.md` in particular (describe
+structure and domain, not the routes `AGENTS.md` already declares).
 
 ### A8 — Canonical review-guidance placement
 
-Project-specific review guidance — what reviewers must prioritise, must-check rules,
-out-of-scope conventions — belongs in `REVIEWING.md` (optional-canonical), not scattered
-into `CODING.md` or `CHANGE-WORKFLOW.md`. Symmetric with A6. Like A4, `REVIEWING.md`
-states only the local delta: link the `project-review-*` skills for the generic lenses
-rather than restating a generic review checklist.
+Project-specific review guidance (priorities, must-check rules, out-of-scope conventions)
+belongs in `REVIEWING.md`, not scattered into `CODING.md`/`CHANGE-WORKFLOW.md`. Like A4,
+state only the local delta and link the `project-review-*` skills, not a generic checklist.
 
 ### A9 — Canonical product-operation placement
 
-How-to-operate-the-product guidance — launching the built artifact and driving it by hand
-to reproduce a bug or verify a fix — belongs in `RUNNING.md` (optional-canonical), not in
-`TESTING.md` (which owns the automated suites and gates) or `MONITORING.md` (which owns
-log/usage analysis). Symmetric with A6/A8. Like A4, `RUNNING.md` states only the local
-delta — the repo-specific launch command, entrypoints, and how to reach a given state —
-and links the built-in `run`/`verify` skills for the generic launch-and-drive flow rather
-than restating it. `RUNNING.md` is agent-facing: it documents how the *agent* drives the
-product, which can differ from the human path (e.g. a browser-automation tool or a
-TUI-inspection script where a human would just click).
+How-to-operate-the-product guidance (launch the built artifact and drive it by hand to
+reproduce a bug or verify a fix) belongs in `RUNNING.md`, not `TESTING.md` (automated
+suites) or `MONITORING.md` (log/usage analysis). Like A4, state only the local delta and
+link the `run`/`verify` skills.
 
 ### A10 — Audience/purpose fit
 
-Write content into the file whose **audience** it serves, not merely a file where the
-statement happens to be true. Each canonical file's audience and explicit *Inside* /
-*Not inside* boundary is fixed in [project-setup.md](project-setup.md) (**File ownership
-boundaries**):
-
-- `README.md` is product/usage-facing — build-from-source, dev setup, contributor/PR
-  workflow, and architecture internals route to `CONTRIBUTING.md` and the `docs/` topic files.
-- `CONTRIBUTING.md` (optional-canonical) is the human-contributor front door — it routes to
-  `CODING.md` / `TESTING.md` / `CHANGE-WORKFLOW.md`, it does not restate them.
-
-Misplaced content is a finding even when every statement is accurate. Distinct from A3,
-which is the *topic* axis: two files can share a topic (build-from-source) yet differ by
-audience (`CODING.md` for the agent, `CONTRIBUTING.md` for a human). Symmetric with
-A6/A8/A9; enforced on the review side by R10 (coverage category C13).
+Write content into the file whose **audience** it serves, not merely one where the
+statement is true. Misplaced content is a finding even when every statement is accurate —
+distinct from A3 (the *topic* axis): two files can share a topic yet differ by audience
+(`CODING.md` for the agent, `CONTRIBUTING.md` for a human). Each file's audience and
+*Inside* / *Not inside* boundary is fixed in [project-setup.md](project-setup.md)
+(**File ownership boundaries**); enforced on the review side by R10.
 
 ## Hard prohibitions
 

@@ -95,8 +95,8 @@ Alongside friction, each episode carries four boolean outcome signals:
 
 | Field | Source in transcript | Meaning |
 |-------|----------------------|---------|
-| `ended_in_commit` | Assistant message text matches `COMMIT_RE` (`commit` / `git commit`) | The episode's assistant turns mention making a commit |
-| `ended_in_pr` | Assistant message text matches `PR_RE` (`pull request`, `gh pr create`, `pr url`) | The episode mentions opening a pull request |
+| `ended_in_commit` | The serialized assistant message (whole JSON, incl. tool names/inputs) matches `COMMIT_RE` (`commit` / `git commit`) | The episode's assistant turns mention or invoke making a commit |
+| `ended_in_pr` | The serialized assistant message (whole JSON, incl. tool names/inputs) matches `PR_RE` (`pull request`, `gh pr create`, `pr url`) | The episode mentions or invokes opening a pull request |
 | `tests_run` | A `tool_result` string matches `TEST_RUN_RE` (`pytest`, `npm test`, `go test`, `cargo test`, `make test`, `mise run test`, `./test`) | Tests were run during the episode |
 | `tests_passed` | A `tool_result` string matches `TEST_PASS_RE` (e.g. `all tests passed`, `PASSED`) | A test run reported success |
 
@@ -113,7 +113,7 @@ Each `dataset.json` entry is one episode:
 
 ### Invocation modes (read this before interpreting the Model-invoked column)
 
-Each skill belongs to one of three modes, derived from its `SKILL.md` frontmatter (`user-invocable` and `disable-model-invocation`). The `summary.md` table surfaces this in the **Mode** column right next to **Model-invoked**, because the two only make sense together:
+Each skill belongs to one of three modes, derived from its `SKILL.md` frontmatter (`user-invocable` and `disable-model-invocation`). The `summary.md` table carries a **Mode** column alongside **Model-invoked**, because the two only make sense together:
 
 | Mode | Frontmatter | What it means | Expected Model-invoked rate |
 |------|-------------|----------------|-----------------------------|
@@ -143,19 +143,7 @@ Each slice file carries the episode's summary fields plus an `events` array reco
 
 ### Fixture tests
 
-A synthetic fixture and expected output live under `scripts/fixtures/`; the assertion script lives with the tests. Run the fixture check with:
-
-```bash
-python3 scripts/analyze-sessions.py \
-    --fixture scripts/fixtures/session-fixture.jsonl
-
-python3 tests/marketplace/script-tests/check-fixture.py \
-    --actual output/session-analysis/fixture/dataset.json \
-    --expected scripts/fixtures/session-fixture-expected.json \
-    --summary output/session-analysis/fixture/summary.md
-```
-
-The commands above are the manual equivalent; the same fixture check also runs automatically as part of `bash tests/run-all.sh` (via `tests/marketplace/script-tests/test-analyze-sessions.sh`).
+The analyze-sessions regression suite (a synthetic fixture and expected output under `scripts/fixtures/`) is a test suite, run under `bash tests/run-all.sh` — see [TESTING.md](TESTING.md) for how to run it by hand.
 
 ## Phase 2 — Claude-in-the-loop judging
 
@@ -189,7 +177,7 @@ Claude writes one verdict file per episode to `output/session-analysis/verdicts/
 
 ### Heuristic correction signal vs. Phase 2 authority
 
-The Tier A friction signal `user_corrections` is a **heuristic**: it detects correction-like words (`no`, `wrong`, `stop`, `actually`, `revert`) in the first sentence of user messages. This signal is fuzzy — it will produce false positives (ordinary conversational use of those words) and false negatives (corrections phrased differently).
+The friction signal `user_corrections` is a **heuristic**: it detects correction-like words (`no`, `wrong`, `stop`, `actually`, `revert`) in the first sentence of user messages. This signal is fuzzy — it will produce false positives (ordinary conversational use of those words) and false negatives (corrections phrased differently).
 
 **Phase 2 is the authority.** When in doubt about whether a correction actually occurred or whether friction was meaningful, let the Phase 2 judge decide based on full episode context.
 
