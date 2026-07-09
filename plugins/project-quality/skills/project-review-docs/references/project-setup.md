@@ -9,23 +9,24 @@ boundaries** below):
 - `CONTRIBUTING.md` (optional) — human-contributor entrypoint ("`AGENTS.md` for humans").
 - `AGENTS.md` — the routing layer for all AI tools.
 - `CLAUDE.md` — Claude Code entrypoint: exactly `@AGENTS.md`, nothing else.
-- `docs/` topic files — durable repo-specific operating guidance.
-- `docs/REVIEWING.md`, `docs/RUNNING.md` (optional) — see below.
+- `docs/` topic files (all optional) — durable repo-specific operating guidance; see the topic set below.
 - `.claude.local.md` (optional, personal) — per-user local context; gitignored.
 
-Create a topic doc only when the repository has real local guidance for that topic.
-The **optional-canonical** files (`CONTRIBUTING.md`, `REVIEWING.md`, `RUNNING.md`) are
-recognized when present and never reported missing when absent.
+**Every `docs/` topic file is optional** — create one only when the repository has real
+local guidance for that topic. No topic doc is ever reported missing; the canonical names
+below are the names to *use* when you do document a topic (rule R11), not a required set.
+Only the root steering files (`README.md`, `AGENTS.md`, `CLAUDE.md`) are required
+(`CONTRIBUTING.md` is optional too).
 
 ## Canonical topic set
 
 ```text
-docs/
+docs/                (every file below is optional — add it if you need it)
   OVERVIEW.md
   CODING.md
   TESTING.md
-  RUNNING.md         (optional)
-  REVIEWING.md       (optional)
+  RUNNING.md
+  REVIEWING.md
   RELEASING.md
   MONITORING.md
   CHANGE-WORKFLOW.md
@@ -112,14 +113,14 @@ Each block states the file's audience/purpose and its **Inside** (what belongs) 
 - **Not inside**: build/test command reference (→`docs/CODING.md`/`docs/TESTING.md`), usage, architecture.
 - Example: [../examples/docs/CHANGE-WORKFLOW.md](../examples/docs/CHANGE-WORKFLOW.md)
 
-### `docs/REVIEWING.md` (optional-canonical)
+### `docs/REVIEWING.md`
 
 - **Inside**: repo-specific review priorities, must-check rules, and out-of-scope / non-blocking conventions — the **local delta** the generic `project-review-*` skills cannot know. State only what is local and link the skills (A4).
 - **Not inside**: generic review checklists (those live in the `project-review-*` skills), implementation rules.
 - **Precedence**: where local policy conflicts with a skill's default lens, the local rule wins.
 - Example: [../examples/docs/REVIEWING.md](../examples/docs/REVIEWING.md)
 
-### `docs/RUNNING.md` (optional-canonical)
+### `docs/RUNNING.md`
 
 - **Inside**: how the *agent* builds, starts, and drives the product by hand (start the webapp and inspect pages, run the CLI/TUI) to reproduce a bug or verify a change — the local delta (launch command, entrypoints, how to reach a state, where output lands). State only what is local and link the `run`/`verify` skills (A4).
 - **Not inside**: automated test suites (→`docs/TESTING.md`), coding/implementation (→`docs/CODING.md`), log inspection (→`docs/MONITORING.md`).

@@ -43,13 +43,15 @@ import sys
 # Canonical doc taxonomy (mirrors references/project-setup.md)
 # ---------------------------------------------------------------------------
 
-CANONICAL_ROOT = ["README.md", "AGENTS.md", "CLAUDE.md"]
+CANONICAL_ROOT = ["README.md", "AGENTS.md", "CLAUDE.md"]  # required at repo root
+OPTIONAL_CANONICAL_ROOT = ["CONTRIBUTING.md"]             # optional at repo root
+# Canonical topic docs under docs/. ALL OPTIONAL: create a doc only when there is
+# real local guidance; none is ever reported missing. The names are canonical —
+# use them if you document the topic (rule R11) — but presence is never required.
 CANONICAL_DOCS = [
-    "OVERVIEW.md", "CODING.md", "TESTING.md",
-    "RELEASING.md", "MONITORING.md", "CHANGE-WORKFLOW.md",
+    "OVERVIEW.md", "CODING.md", "TESTING.md", "RELEASING.md",
+    "MONITORING.md", "CHANGE-WORKFLOW.md", "REVIEWING.md", "RUNNING.md",
 ]
-OPTIONAL_CANONICAL_DOCS = ["REVIEWING.md", "RUNNING.md"]
-OPTIONAL_CANONICAL_ROOT = ["CONTRIBUTING.md"]
 PERSONAL_LOCAL = [".claude.local.md"]
 ROOT_META_IGNORE = [
     "SECURITY.md", "CHANGELOG.md", "CODE_OF_CONDUCT.md",
@@ -192,12 +194,10 @@ def classify(rel_path):
         return "personal-local", name
     if at_root and name in ROOT_META_IGNORE:
         return "meta", None
-    # docs/<NAME> directly under docs/
+    # docs/<NAME> directly under docs/ — a canonical topic doc (all optional)
     depth = rel_path.replace("\\", "/").count("/")
     if in_docs and depth == 1 and name in CANONICAL_DOCS:
         return "canonical", name
-    if in_docs and depth == 1 and name in OPTIONAL_CANONICAL_DOCS:
-        return "optional-canonical", name
     return "non-standard", None
 
 
@@ -385,13 +385,14 @@ def build(repo_root):
     else:
         claude["detail"] = "missing"
 
-    # Missing canonical (required only; optional-canonical never 'missing')
-    required = CANONICAL_ROOT + CANONICAL_DOCS
+    # Missing canonical: only the required root files. Every docs/ topic doc is
+    # optional (created when needed), so none is ever reported missing.
+    required = CANONICAL_ROOT
     missing = [n for n in required if n not in present_canonical]
 
     # Location violations: canonical docs/ file found at root, or root file under docs/
     location_violations = []
-    for n in CANONICAL_DOCS + OPTIONAL_CANONICAL_DOCS:
+    for n in CANONICAL_DOCS:
         if os.path.isfile(os.path.join(repo_root, n)):
             location_violations.append({"file": n, "found_at": n, "expected_at": f"docs/{n}"})
     for n in CANONICAL_ROOT + OPTIONAL_CANONICAL_ROOT:
@@ -422,7 +423,7 @@ def build(repo_root):
             "total_md": len(files),
             "canonical_present": len(present_canonical & set(required)),
             "canonical_missing": len(missing),
-            "optional_canonical_present": len(present_canonical & set(OPTIONAL_CANONICAL_DOCS + OPTIONAL_CANONICAL_ROOT)),
+            "optional_canonical_present": len(present_canonical & set(CANONICAL_DOCS + OPTIONAL_CANONICAL_ROOT)),
             "non_standard": len(non_standard),
             "unresolved_links": sum(len(e["unresolved_links"]) for e in files),
             "orphans": len(orphans),
