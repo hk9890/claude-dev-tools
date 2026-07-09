@@ -30,14 +30,38 @@ All plugins are released together under a single repo-level tag — bump every v
 find plugins -name plugin.json -path "*/.claude-plugin/*"
 ```
 
+## Release notes
+
+Write the notes around **what changed for users**, not around the list of PRs that changed it. `--generate-notes` produces a flat bullet per merged PR — useful as raw material for finding what landed, never as the published notes. A reader scanning the release should learn what they can now do, and what will behave differently, without opening a single PR.
+
+Structure the notes as:
+
+1. **A short lede** — one or two sentences naming the release's headline change. If a reader stops here, they should still know the most important thing.
+2. **A section per user-facing feature**, titled by what the feature *does* (`Every Catppuccin flavour, generated from one source`), not by the component or PR that delivered it (`claude-catppuccin changes`). Explain what it enables and, where the design is non-obvious, why it works that way. Collapse several PRs into one section when they built one feature.
+3. **Fixes** — lead with the user-visible symptom, then the cause. State the trade-off when a fix carries one.
+4. **Changed behavior worth knowing** — argument-order changes, removed scripts, new defaults, anything that breaks a habit. Keep this section even when it is short; it is the first place a reader upgrading will look.
+5. **Full Changelog** — the compare link, which is where the per-PR list belongs.
+
+Rules of thumb:
+
+- Omit sections that have no content. A release with no behavior changes drops that heading rather than writing "none".
+- Purely internal work (CI, refactors, test scaffolding) gets at most one short section near the end, or no mention at all. Dependabot bumps are never their own bullet.
+- Name trade-offs and known limitations explicitly. A release note that only markets is a release note nobody trusts twice.
+- Draft in a file and publish with `--notes-file`; do not paste prose into `--notes` on the command line.
+
+Use `gh release create ... --generate-notes` only to produce a scratch list of merged PRs, then read those PRs' descriptions to write the real notes.
+
 ## Release steps
 
 1. Run the three gates in the **Tests** section above — all must pass before releasing.
 2. Bump `"version"` in all `plugin.json` files found above.
-3. Bump every `"version"` in `.claude-plugin/marketplace.json` to the same new version.
+3. Bump every `"version"` in `.claude-plugin/marketplace.json` to the same new version. Edit only the version lines — reformatting these files (e.g. piping them through `jq`) rewrites unrelated compact arrays and buries the bump in churn.
 4. Verify they match: `bash tests/run-all.sh` will catch any version mismatch via `scripts/check-internal-consistency.py`. As a quick manual check: `diff <(jq -r '.plugins[] | "\(.name) \(.version)"' .claude-plugin/marketplace.json | sort) <(find plugins -name plugin.json -path "*/.claude-plugin/*" -exec jq -r '"\(.name) \(.version)"' {} \; | sort)` — should print nothing.
-5. Commit: `git commit -m "Bump all plugins to vX.Y.Z"`
-6. Create the GitHub release with `gh release create vX.Y.Z --title "vX.Y.Z" --generate-notes`
+5. Commit the bump on a `chore/release-X.Y.Z` branch and merge it via PR: `git commit -m "Bump all plugins to vX.Y.Z"`. `master` is protected — see [CHANGE-WORKFLOW.md](CHANGE-WORKFLOW.md) — so the bump cannot be pushed to it directly.
+6. Write the release notes per the **Release notes** section above, into a draft file.
+7. Create the GitHub release from the merged bump commit: `gh release create vX.Y.Z --title "vX.Y.Z" --notes-file <draft> --target master`
+
+The tag and the version fields must carry the same version — `vX.Y.Z` tags the commit whose `plugin.json` files read `X.Y.Z`.
 
 ## Verification
 
