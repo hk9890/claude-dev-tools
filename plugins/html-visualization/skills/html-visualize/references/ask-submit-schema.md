@@ -44,7 +44,7 @@ read-back can rely on all four being present.
 ### `answers` — question IDs and values
 
 - **`qID`** format: non-empty string, printable ASCII only (`0x20`–`0x7E`), no whitespace.  Claude MUST use stable, collision-free IDs within a single invocation (e.g. `q1`, `q2`, or a short slug).
-- **value type**: any JSON scalar or array. Claude documents the expected type per question in the HTML (see `markup.md`). The server stores values as-is without type coercion.
+- **value type**: any JSON scalar or array. Claude documents the expected type per question in the HTML (see this skill's `references/ask-markup.md`). The server stores values as-is without type coercion.
 
 ### `comments` — per-question notes
 

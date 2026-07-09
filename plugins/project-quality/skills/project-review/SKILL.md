@@ -26,10 +26,10 @@ optional:
   - `low` — Find → Verify; report **CONFIRMED only** (fewest, highest-confidence).
   - `medium` — Find → Verify; report CONFIRMED + PLAUSIBLE.
   - `high` — Find → Verify → **Sweep**; report CONFIRMED + PLAUSIBLE (broadest recall).
-  - `ultra` is **not accepted here**, which is why it is absent from the argument hint.
-    It means "the reviewer verifies its own findings", which this skill already does in
-    its Verify phase — with an independent verifier, which is strictly better. If the
-    user passes it, clamp to `high` and say so in the report header.
+  - `ultra` is **not accepted here**. It means "the reviewer verifies its own findings",
+    which this skill already does in its Verify phase — with an independent verifier,
+    which is strictly better. If the user passes it, clamp to `high` and say so in the
+    report header.
 - **dimensions** — a comma- or space-separated subset of
   `complexity,consistency,docs,structure,tests`. Default: **all five**.
 - **what to review** — a path or free-form description (e.g. `src/`, "the auth

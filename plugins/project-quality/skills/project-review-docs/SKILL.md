@@ -65,10 +65,6 @@ Verdict labels: `accurate` · `minor gaps` · `significant gaps` · `misleading`
 clean `accurate` requires no blocker/major finding and positive coverage — a green
 manifest is necessary, never sufficient.
 
-The `project-review` orchestrator runs this workflow directly rather than re-reading
-this file as a procedure, and never passes `cost: ultra` — it verifies every finding
-itself, so that rung would pay twice for the same refutation.
-
 ## Not covered
 
 Code over-engineering → `project-review-complexity`; file/directory layout →

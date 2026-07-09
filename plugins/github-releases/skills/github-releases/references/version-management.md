@@ -36,7 +36,7 @@ If `LAST_TAG` is still empty (first release: no GitHub release and no tags), ana
 
 ## Version Files
 
-Use `docs/RELEASING.md` to identify which files contain version numbers.
+If the project has a `docs/RELEASING.md`, it names the files that carry the version number. Otherwise search for them.
 
 Common patterns: `package.json`, `pyproject.toml`, `Cargo.toml`, `VERSION`, `setup.py`
 

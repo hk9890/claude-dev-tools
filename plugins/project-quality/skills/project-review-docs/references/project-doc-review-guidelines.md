@@ -1,9 +1,7 @@
 # Review Process & Rubric (Read-Only)
 
-The **process** of reviewing project docs is executed by the `project-review-docs`
-workflow (`workflow/review-docs.js`) — not by a human following prose. This file
-is the shared rubric that workflow's agents apply and the vocabulary its report
-uses.
+The rubric for reviewing project docs: the rule codes to apply, the review
+contract, the stages, and the vocabulary the report uses.
 
 Use with:
 
