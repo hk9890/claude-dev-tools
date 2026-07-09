@@ -38,7 +38,7 @@ If `gh` is missing or unauthenticated, or any check fails, stop and guide the us
 
 **1. Read the project release guide**
 
-Check for `docs/RELEASING.md`. If it exists, read it before proceeding — it contains project-specific commands for tests, build, and version bumping. Do not use generic placeholders when project-specific commands are available.
+Check for `docs/RELEASING.md`. If it exists, read it before proceeding — it contains project-specific commands for tests, build, and version bumping, and those replace every generic command this skill suggests. Only fall back to generic commands when the project has no release guide.
 
 **2. Create a release checklist**
 
@@ -56,10 +56,6 @@ Use TodoWrite to track progress through these phases:
 **3. Execute each phase in order**
 
 Work through the checklist, marking items complete as you go. Reference the relevant doc for each phase (see References below). Do not proceed to the next phase if the current one fails.
-
-**4. Filling project-specific steps**
-
-Replace any generic commands with the actual commands from `docs/RELEASING.md`. Only proceed without a project guide if none exists — never leave generic placeholders when real commands are available.
 
 ## References
 

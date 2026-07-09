@@ -107,15 +107,18 @@ Does this look correct? Should I:
 
 **ONLY proceed if user confirms accuracy.**
 
-If user says something is wrong or missing, ask for corrections.
+If user says something is wrong or missing, ask for corrections. Where several candidates
+exist — two build commands, a handful of test scripts — ask which one the release uses
+rather than picking one yourself.
 
 ### 4. Create RELEASING.md
 
 Write `docs/RELEASING.md` with confirmed information.
 
-### 5. CRITICAL: Verify Information
+### 5. Verify Information
 
-**YOU MUST actually execute the commands to verify they work:**
+Execute every command you documented. A release guide nobody ran is worse than no guide,
+because the next release will trust it:
 
 ```bash
 # Verify build works
@@ -222,9 +225,9 @@ Should I update RELEASING.md to include:
 
 Apply approved updates.
 
-### 6. CRITICAL: Re-Verify
+### 6. Re-Verify
 
-**Execute ALL commands again to confirm:**
+Execute every documented command again to confirm the updated guide still holds:
 
 ```bash
 # Run all documented commands
@@ -236,57 +239,3 @@ Apply approved updates.
 
 **Only mark complete when everything verified.**
 
-## When to Ask User
-
-**Always ask if:**
-- Information is ambiguous or missing
-- Multiple options exist (which build command?)
-- Verification fails (command doesn't work)
-- Proposed changes impact release process
-
-**Never assume.** Always confirm with user.
-
-## Example Interaction
-
-```
-Agent: I checked docs/RELEASING.md and found:
-- Build: npm run build ✅ (works)
-- Tests: npm test ✅ (works)
-- Missing: E2E tests (found npm run test:e2e in package.json)
-- Missing: Integration tests (found test:integration script)
-
-Should I add these test commands to RELEASING.md?
-
-User: Yes, add both. E2E tests must pass for release.
-
-Agent: Got it. I'll add:
-- npm run test:integration
-- npm run test:e2e
-
-Both will be marked as required for release. Updating now...
-
-Agent: Updated RELEASING.md. Verifying commands work...
-
-Agent: ✅ npm run test:integration - passed (45 tests)
-Agent: ✅ npm run test:e2e - passed (12 tests)
-
-All verified. RELEASING.md is up to date.
-```
-
-## Summary
-
-**Creation Process:**
-1. Analyze project → detect build/test/version info
-2. Ask user confirmation → get approval
-3. Create RELEASING.md → write file
-4. Verify ALL commands → execute to confirm they work
-
-**Update Process:**
-1. Check current RELEASING.md → verify sections exist
-2. Verify current info → execute all documented commands
-3. Detect changes → compare project to docs
-4. Ask user confirmation → get approval for updates
-5. Update RELEASING.md → apply changes
-6. Re-verify ALL → execute to confirm everything works
-
-**Golden Rule:** Always verify by actually running commands. Never trust documentation without testing it.

@@ -223,21 +223,17 @@ Then branch on `action`:
 
 ### `action: "apply"` — iterate
 
-1. If the content came from a file, `Read` that file first, then apply the
-   feedback to the underlying source.
-2. Regenerate `$HTML_DIR/review.html` from the updated content with a **fresh
+1. Regenerate `$HTML_DIR/review.html` from the updated content with a **fresh
    `fb-generation` value** — see `references/serve.md` Cycle C for the contract.
-3. Re-serve on the same port — see `references/serve.md` Cycle C (Apply rounds).
-4. Tell the user briefly, e.g. "Applied your 3 comments — the review page will
+2. Re-serve on the same port — see `references/serve.md` Cycle C (Apply rounds).
+3. Tell the user briefly, e.g. "Applied your 3 comments — the review page will
    refresh automatically." You do not need to resend the link.
-5. The loop continues: the user comments on the updated page and submits again.
+4. The loop continues: the user comments on the updated page and submits again.
 
 ### `action: "submit"` — finish
 
-1. If the content came from a file, `Read` that file first, then apply the
-   feedback to the underlying source.
-2. Summarise what changed for the user.
-3. Proceed to Step 5 — do **not** re-serve.
+1. Summarise what changed for the user.
+2. Proceed to Step 5 — do **not** re-serve.
 
 ---
 
