@@ -18,6 +18,8 @@ if (typeof A === 'string') { try { A = JSON.parse(A) } catch (e) { A = {} } }
 A = A || {}
 const repoRoot = A.repoRoot
 const scriptsDir = A.scriptsDir
+// The authoring rules the read-review agents apply live next to the scripts.
+const guidelinesFile = scriptsDir ? scriptsDir.replace(/scripts\/?$/, 'references') + '/project-doc-guidelines.md' : ''
 // level bundles the real cost/thoroughness levers: low = read-review only (no
 // execution), medium = execution on a few routes, high = all routes + a verify pass.
 const level = (A.level || 'medium').toLowerCase()
@@ -136,7 +138,7 @@ const VERIFY_SCHEMA = {
 }
 
 // ---------------------------------------------------------------------------
-// Phase 0 — Manifest (deterministic facts)
+// Manifest (deterministic facts)
 // ---------------------------------------------------------------------------
 
 phase('Manifest')
@@ -169,7 +171,7 @@ log(`Manifest: ${manifest.summary.total_md} docs, ${manifest.summary.canonical_m
     `${manifest.summary.unresolved_links} dead links, ${manifest.summary.orphans} orphans, ${manifest.agents_routes.length} routes`)
 
 // ---------------------------------------------------------------------------
-// Phase 1 — Read-review: one agent per doc
+// Read-review: one agent per doc
 // ---------------------------------------------------------------------------
 
 phase('Read-review')
@@ -188,7 +190,10 @@ function readReviewPrompt(f) {
     `You are auditing ONE documentation file: ${f.path}\n` +
     `Metrics (from the deterministic manifest — do NOT recompute): ${m.lines} lines, ${m.words} words, ${m.non_heading_lines} content lines.\n` +
     `Links were already resolved by the manifest. Unresolved links in this file:\n${dead}\n\n` +
-    `Read the FULL file now, then judge it. You see only THIS file and its contract — there is no doc set to satisfice against.\n`
+    `Read the FULL file now, then judge it. You see only THIS file and its contract — there is no doc set to satisfice against.\n` +
+    (guidelinesFile
+      ? `\nApply the authoring rules — read ${guidelinesFile} once (rules A1–A10 and the hard prohibitions). They define the accuracy, belonging, and form bar; apply them alongside this file's contract.\n`
+      : '')
 
   if (f.contract) {
     const c = f.contract
@@ -203,7 +208,7 @@ function readReviewPrompt(f) {
       `Also judge FORM: is it compact and to-the-point, written for an agent (not narrative human prose, not review-comments/TODO/meta-commentary), and not longer than it needs to be for what it says (${m.lines} lines)? Bloat, hollow sections, or non-agent-facing cruft are form findings.\n\n` +
       `Do not run commands. Read-only. Return findings with concrete evidence (quote the offending lines / cite the repo fact). Empty findings array if the file is genuinely clean — do not invent problems.`
   }
-  // Non-standard file: step-4 placement logic.
+  // Non-standard file: judge placement (does its content belong to a canonical topic?).
   return common +
     `\nThis is a NON-STANDARD doc (not one of the canonical files). Judge placement, not an ownership boundary:\n` +
     `- Does its content actually BELONG to a canonical topic (OVERVIEW / CODING / TESTING / RELEASING / MONITORING / CHANGE-WORKFLOW / RUNNING / REVIEWING / README / CONTRIBUTING)? If so, it is a placement finding: recommend RENAME to docs/<TOPIC>.md when that canonical slot is empty (missing canonical: ${JSON.stringify(manifest.missing_canonical)}), or LINK it from the canonical doc when that slot is filled.\n` +
@@ -227,7 +232,7 @@ const readFindingCount = readFindings.reduce((n, r) => n + (r.findings ? r.findi
 log(`Read-review: ${readFindings.length}/${reviewFiles.length} docs reviewed, ${readFindingCount} raw findings`)
 
 // ---------------------------------------------------------------------------
-// Phase 2 — Execution test: does an agent with a task actually succeed via the docs?
+// Execution test: does an agent with a task actually succeed via the docs?
 // ---------------------------------------------------------------------------
 
 phase('Execution')
@@ -349,7 +354,7 @@ if (level === 'high') {
 }
 
 // ---------------------------------------------------------------------------
-// Phase 3 — Synthesis
+// Synthesis
 // ---------------------------------------------------------------------------
 
 phase('Synthesis')

@@ -10,6 +10,12 @@ Use with:
 - [project-setup.md](project-setup.md) — canonical doc set + file ownership (Inside / Not inside)
 - [project-doc-guidelines.md](project-doc-guidelines.md) — authoring rules A1–A10 + hard prohibitions
 
+## Rule codes
+
+- **A1–A10** — the authoring rules (defined in `project-doc-guidelines.md`).
+- **R10** — audience/purpose fit: content outside a file's *Inside* boundary is a finding even when accurate (the review-side of A10).
+- **R11** — canonical-topic placement: a non-canonical doc whose content *is* a canonical topic is renamed (empty slot) or linked (filled slot).
+
 ## Read-only contract (mandatory)
 
 - **No edits:** never modify docs, source, config, or tracker state.

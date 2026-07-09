@@ -290,7 +290,8 @@ def agents_routes(vr, repo_root):
             continue
         if in_fence:
             continue
-        for m in re.finditer(r"`([a-z0-9][\w-]*:[\w-]+)`", vr._strip_inline_code(raw) if False else raw):
+        # skill refs (`plugin:skill`) live inside backticks, so match raw (not stripped) text
+        for m in re.finditer(r"`([a-z0-9][\w-]*:[\w-]+)`", raw):
             routes.append({
                 "line": lineno,
                 "target": m.group(1),
@@ -455,6 +456,7 @@ def format_text(data):
         out.append(f"  MISSING canonical: {', '.join(data['missing_canonical'])}")
     out.append("")
     out.append("--- files ---")
+    orphan_set = set(data["orphans"])  # single source of truth, computed in build()
     for e in data["files"]:
         m = e["metrics"] or {}
         tag = e["canonical_name"] or e["classification"]
@@ -463,7 +465,7 @@ def format_text(data):
             flags.append("HOLLOW")
         if e["unresolved_links"]:
             flags.append(f"{len(e['unresolved_links'])} dead-link")
-        if not e["reachable_from_agents"] and e["path"] != "AGENTS.md":
+        if e["path"] in orphan_set:
             flags.append("ORPHAN")
         flagstr = ("  [" + ", ".join(flags) + "]") if flags else ""
         out.append(f"  {e['path']:<34} {tag:<16} lines={m.get('lines','?'):<4} words={m.get('words','?'):<5} purpose={e['purpose'] or '-'}{flagstr}")
