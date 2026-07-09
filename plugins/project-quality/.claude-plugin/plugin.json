@@ -1,7 +1,7 @@
 {
   "name": "project-quality",
   "description": "Project-quality toolkit — read-only adversarial reviews (complexity, structure, tests, consistency, docs) runnable individually or as one orchestrated, verified full review, thin human-triggered exec skills (run tests, cut a release, analyze monitoring), and a human-triggered explainer that digests how the project handles a topic from its own docs",
-  "version": "1.20.0",
+  "version": "1.21.0",
   "author": {
     "name": "Hans Kohlreiter",
     "email": "hans.kohlreiter@gmail.com"
