@@ -1,27 +1,33 @@
 ---
 name: project-review-complexity
 description: "Skeptical review for accidental complexity and unjustified abstractions in requirements, designs, PRs, or code."
-when_to_use: "Use when the user wants a complexity or simplicity review of requirements, a design, a PR, or code. Triggers on 'review this for complexity', 'is this over-engineered?', 'does this earn its complexity?'. Not for implementation work or style-only linting, and not for structure, consistency, docs, or test reviews — each has its own skill. Invoke with an optional argument scoping what to review; with no argument it reviews the whole project. The review runs in an isolated context and cannot see this conversation — pass everything it needs (paths or the artifact text itself) in the argument."
-argument-hint: "[what-to-review]"
+when_to_use: "Use when the user wants a complexity or simplicity review of requirements, a design, a PR, or code. Triggers on 'review this for complexity', 'is this over-engineered?', 'does this earn its complexity?'. Not for implementation work or style-only linting, and not for structure, consistency, docs, or test reviews — each has its own skill. Invoke with an optional cost rung and an optional argument scoping what to review; with no argument it reviews the whole project. The review runs in an isolated context and cannot see this conversation — pass everything it needs (paths or the artifact text itself) in the argument."
+argument-hint: "[low|medium|high|ultra] [what-to-review]"
 context: fork
 agent: project-reviewer
 ---
 
 ## Invocation
 
-What to review: $ARGUMENTS
+$ARGUMENTS parses as `[low|medium|high|ultra] [what-to-review]`, both optional.
 
-This is a free-form description of what to review — for example "architecture
-review of component X", "challenge the requirements for the export feature", a
-path, a PR or diff reference, or the artifact itself pasted inline (a design
-description or proposal lifted from the conversation).
+**Cost** — a leading `low` | `medium` | `high` | `ultra` token, default `medium`.
+It sets how hard you dig and how much you must prove; see the `Cost` section of the
+`project-reviewer` agent for the rung definitions. It never licenses a softer verdict.
+Only a *bare leading* token counts — if what you are given is an inline artifact that
+happens to begin with the word "high", treat it as the artifact, not the cost.
+
+**What to review** — everything after the cost token: a free-form description, for
+example "architecture review of component X", "challenge the requirements for the
+export feature", a path, a PR or diff reference, or the artifact itself pasted inline
+(a design description or proposal lifted from the conversation).
 
 From it, determine which workflow(s) apply — see the routing table below, and
 pick all that fit — and locate the target: read it if it is a reference, take it
 at face value if it is inline text. For a code review of uncommitted work, the
 target is the working-tree diff (`git diff`).
 
-**If no argument is given, review the whole project.**
+**If nothing is given to review, review the whole project.**
 
 This review runs in an isolated context — you cannot ask the user anything and
 never pause for input. Everything to review must be in the invocation above: an

@@ -33,9 +33,15 @@ The three families map to three kinds of work:
 each finding, and merges them into one prioritised list. The dimensional skills
 below also run standalone — cheaper, single-lens, and model-discoverable.
 
+Every dimensional reviewer takes the same `[low|medium|high|ultra] [what-to-review]`
+arguments. The cost sets how hard the review digs and how much it must prove, never
+how soft the verdict is; it defaults to `medium`. `ultra` adds an adversarial pass
+that tries to refute each finding — `project-review` neither accepts nor advertises
+it, because it already verifies every finding with an independent verifier.
+
 | Skill | Description |
 |---|---|
-| `project-review` | **Orchestrator** — runs the five dimensions (or a chosen subset), adversarially verifies each finding, resolves cross-dimension hand-offs, and returns one prioritised action list. Tiers `--low` / `--medium` / `--high` (default). User-invoked only. |
+| `project-review` | **Orchestrator** — runs the five dimensions (or a chosen subset), adversarially verifies each finding, resolves cross-dimension hand-offs, and returns one prioritised action list. Takes `[low\|medium\|high] [dimensions] [what-to-review]`; cost defaults to `high`. User-invoked only. |
 | `project-review-complexity` | Skeptical complexity review of requirements, architecture, or code — challenges every abstraction and dependency |
 | `project-review-structure` | Adversarial review of physical project layout — misplaced files, god-files, dead code, tree-vs-docs drift; routes design verdicts to `project-review-complexity` |
 | `project-review-tests` | Adversarial test quality and coverage review — slow suites, unjustified long tests, coverage gaps, weak or unfalsifiable assertions |
@@ -83,12 +89,12 @@ Review the docs before I change anything — do they still match the code?
 ```
 
 Run the full, verified review across every dimension (user-invoked; all arguments
-optional — pick a dimension subset and/or a scope to cut cost, choose a tier):
+optional — the cost comes first, then a dimension subset and/or what to review):
 
 ```
 /project-review
-/project-review complexity,tests src/
-/project-review docs --low
+/project-review medium complexity,tests src/
+/project-review low docs
 ```
 
 Invoke an exec skill by name (they are user-triggered; the argument is optional):
