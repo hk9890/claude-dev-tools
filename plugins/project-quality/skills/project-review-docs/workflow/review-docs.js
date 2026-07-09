@@ -256,9 +256,8 @@ if (maxExec === 0) {
   fileRoutes = fileRoutes.slice(0, maxExec)
 }
 
-// Each action agent writes a live trace to a shared scratch file (outside its
-// worktree, so it survives cleanup); the driver grades that trace — the session,
-// not the agent's tidy summary.
+// Each action agent writes a live trace to a shared scratch file outside the
+// repo; the driver grades that trace — the session, not the agent's tidy summary.
 const slugify = (s) => s.replace(/[^a-zA-Z0-9]+/g, '_')
 const traceFile = (route, i) => `${scratchDir}/exec-${i}-${slugify(route.target)}.md`
 
@@ -274,8 +273,8 @@ const execResults = await pipeline(
     `Return {task, expected (the answer key), tier, rationale}.`,
     { label: `gen:${route.target}`, phase: 'Execution', model: 'opus', schema: TASK_SCHEMA }
   ),
-  // Stage 2: cold action agent attempts the task — uncoached, in an isolated
-  // worktree — and appends a live trace to a shared scratch file.
+  // Stage 2: cold action agent attempts the task — uncoached, in the live repo,
+  // so it sees uncommitted doc edits — and appends a live trace to a scratch file.
   (task, route, i) => {
     if (!task) return null
     if (task.tier === 'C') {
@@ -286,10 +285,10 @@ const execResults = await pipeline(
       `Repo root: ${repoRoot}. You have just landed in this repository with a task. Complete it.\n\n` +
       `TASK: ${task.task}\n\n` +
       `You get no hints about how to do it or how hard to try. Work as you normally would. ` +
-      `The ONLY constraint: no destructive or irreversible operations (no git push, no publish/deploy, no deleting tracked files) — you are in a throwaway worktree, but behave safely.\n\n` +
-      `KEEP A LIVE TRACE: run \`mkdir -p ${scratchDir}\` once, then as you work append to ${tf} — this path is OUTSIDE your worktree so it persists. Log every step: each doc you open (its path), each command with its REAL exit code and a short output snippet, and any obstacle. This trace, not your summary, is what gets graded — make it faithful.\n\n` +
+      `The ONLY constraint: no destructive or irreversible operations. You are working directly in the user's live repository — there is no sandbox and nothing is discarded afterwards, so every side effect is real. Never push, tag, publish, deploy, cut a release, rewrite git history, or delete tracked files. Ordinary local edits are allowed where the task needs them; keep them minimal and report every file you touched. If finishing the task would require a forbidden step, stop there and report the command you would have run instead of running it.\n\n` +
+      `KEEP A LIVE TRACE: run \`mkdir -p ${scratchDir}\` once, then as you work append to ${tf} — this path is outside the repo, so it keeps the repo clean. Log every step: each doc you open (its path), each command with its REAL exit code and a short output snippet, and any obstacle. This trace, not your summary, is what gets graded — make it faithful.\n\n` +
       `When done also return: whether you completed it, your answer/outcome, which docs you consulted, and the commands you ran.`,
-      { label: `do:${route.target}`, phase: 'Execution', model: 'sonnet', schema: ACTION_SCHEMA, isolation: 'worktree' }
+      { label: `do:${route.target}`, phase: 'Execution', model: 'sonnet', schema: ACTION_SCHEMA }
     ).then(res => ({ _skipped: false, route: route.target, task, action: res, traceFile: tf }))
   },
   // Stage 3: driver grades the SESSION (the trace file) against its answer key,

@@ -2,7 +2,7 @@
 name: project-review-docs
 description: "Read-only audit of a project's docs for accuracy, staleness, gaps, misplaced content, and whether an agent can actually use them — runs a multi-agent workflow, reports fixes, never edits."
 when_to_use: "Use when the user wants a documentation review or audit. Triggers on 'are our docs stale?', 'do our docs match the code?', 'does AGENTS still match the repo?', 'audit the documentation'. Not for complexity, structure, consistency, or test reviews — each has its own skill."
-argument-hint: "[path] [low|medium|high]"
+argument-hint: "[low|medium|high] [path]"
 ---
 
 Read-only documentation audit. Launch the review workflow — do **not** review the
@@ -10,7 +10,11 @@ docs inline. The workflow returns a structured report; relay it.
 
 ## Run the workflow
 
-1. Resolve the install (`$CLAUDE_PLUGIN_ROOT` is not exported to Bash; locate under
+1. Parse `$ARGUMENTS`. Both parts are optional and may appear in either order: a bare
+   `low` | `medium` | `high` token is the **level** (default `medium`); anything else is
+   the **path** to review (default: the repo root). Most invocations pass only a level.
+
+2. Resolve the install (`$CLAUDE_PLUGIN_ROOT` is not exported to Bash; locate under
    `$HOME`, version-sorted, with `$PWD` covered for dev installs):
 
    ```bash
@@ -20,12 +24,12 @@ docs inline. The workflow returns a structured report; relay it.
    [ -f "$SKILL_DIR/workflow/review-docs.js" ] || echo "skill not located — do not launch; fall back to a manual read"
    ```
 
-2. Invoke the **Workflow** tool:
+3. Invoke the **Workflow** tool:
    - `scriptPath`: `<SKILL_DIR>/workflow/review-docs.js`
-   - `args`: `{ "repoRoot": "<repo, or the $ARGUMENTS path>", "scriptsDir": "<SKILL_DIR>/scripts", "level": "<low|medium|high>" }`
-   - `level` (from `$ARGUMENTS`, default `medium`): `low` = read-review only, no execution; `medium` = execution on ~3 routes; `high` = all routes plus an adversarial verify pass. Advanced: `"maxExecutionRoutes": <n>` overrides the cap (`-1` all, `0` skip).
+   - `args`: `{ "repoRoot": "<the step-1 path>", "scriptsDir": "<SKILL_DIR>/scripts", "level": "<the step-1 level>" }`
+   - `level`: `low` = read-review only, no execution; `medium` = execution on ~3 routes; `high` = all routes plus an adversarial verify pass. Advanced: `"maxExecutionRoutes": <n>` overrides the cap (`-1` all, `0` skip).
 
-3. Relay the report. The workflow returns `{ report: { verdict, headline, findings[], … }, raw, … }`
+4. Relay the report. The workflow returns `{ report: { verdict, headline, findings[], … }, raw, … }`
    — surface `.report`, and do not re-derive it. For a "did you really check X?"
    follow-up, **re-run the skill**; never answer from the report alone, and never
    from `grep`/link-checks.
