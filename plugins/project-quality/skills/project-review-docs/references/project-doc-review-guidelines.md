@@ -14,7 +14,7 @@ Use with:
 
 - **A1–A10** — the authoring rules (defined in `project-doc-guidelines.md`).
 - **R10** — audience/purpose fit: content outside a file's *Inside* boundary is a finding even when accurate (the review-side of A10).
-- **R11** — canonical-topic placement: a non-canonical doc whose content *is* a canonical topic is renamed (empty slot) or linked (filled slot).
+- **R11** — canonical-topic placement: a non-canonical doc whose content *is* a canonical topic is renamed or linked to its canonical home (mechanic in `project-setup.md`).
 
 ## Read-only contract (mandatory)
 

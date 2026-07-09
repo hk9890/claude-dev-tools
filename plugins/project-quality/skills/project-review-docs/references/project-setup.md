@@ -8,28 +8,27 @@ boundaries** below):
 - `README.md` — user-facing product entrypoint: how to *use* the product.
 - `CONTRIBUTING.md` (optional) — human-contributor entrypoint ("`AGENTS.md` for humans").
 - `AGENTS.md` — the routing layer for all AI tools.
-- `CLAUDE.md` — Claude Code entrypoint: exactly `@AGENTS.md`, nothing else.
-- `docs/` topic files (all optional) — durable repo-specific operating guidance; see the topic set below.
+- `CLAUDE.md` — Claude Code entrypoint (the one-line `@AGENTS.md` import).
+- `docs/` topic files — durable repo-specific operating guidance; see the topic set below.
 - `.claude.local.md` (optional, personal) — per-user local context; gitignored.
 
 **Every `docs/` topic file is optional** — create one only when the repository has real
 local guidance for that topic. No topic doc is ever reported missing; the canonical names
-below are the names to *use* when you do document a topic (rule R11), not a required set.
-Only the root steering files (`README.md`, `AGENTS.md`, `CLAUDE.md`) are required
-(`CONTRIBUTING.md` is optional too).
+below are the names to *use* when you document a topic (R11), not a required set. Only the
+root steering files (`README.md`, `AGENTS.md`, `CLAUDE.md`) are required.
 
 ## Canonical topic set
 
 ```text
-docs/                (every file below is optional — add it if you need it)
+docs/
   OVERVIEW.md
   CODING.md
   TESTING.md
-  RUNNING.md
-  REVIEWING.md
   RELEASING.md
   MONITORING.md
   CHANGE-WORKFLOW.md
+  REVIEWING.md
+  RUNNING.md
 ```
 
 - If a reusable skill fully covers a topic with no local delta, do not create a hollow doc for it.
@@ -37,8 +36,9 @@ docs/                (every file below is optional — add it if you need it)
 
 ## File ownership boundaries
 
-Each block states the file's audience/purpose and its **Inside** (what belongs) and
-**Not inside** (what routes elsewhere). The review validates content against these (R10).
+Each block states the file's **Inside** (what belongs) and **Not inside** (what routes
+elsewhere), with an **Audience** or **Purpose** line where it clarifies. The review
+validates content against these (R10).
 
 ### `CLAUDE.md`
 
@@ -60,7 +60,7 @@ Each block states the file's audience/purpose and its **Inside** (what belongs) 
 - **Not inside**: build-from-source / dev setup, dev task lists, contributor/PR workflow, architecture internals, release engineering — these route to `CONTRIBUTING.md` and the topic docs.
 - Example: [../examples/README.md](../examples/README.md)
 
-### `CONTRIBUTING.md` (optional-canonical)
+### `CONTRIBUTING.md` (optional)
 
 - **Audience**: human contributors — the human counterpart to `AGENTS.md`.
 - **Inside**: dev-environment setup, build/test/run from source, and how to propose a change; **routes** to `CODING.md` / `TESTING.md` / `CHANGE-WORKFLOW.md` rather than restating them.
@@ -129,12 +129,9 @@ Each block states the file's audience/purpose and its **Inside** (what belongs) 
 
 ## Locations & routing
 
-All docs live at the project root or under `docs/`:
-
 | File | Location |
 |---|---|
 | `CLAUDE.md`, `AGENTS.md`, `README.md`, `CONTRIBUTING.md` | project root |
 | Topic docs | `docs/` |
 
-- Keep `AGENTS.md` concise and pointer-based; every route must point to a real file or installed skill.
-- Flag stale routes left behind after merges or deletions.
+- Every route in `AGENTS.md` must point to a real file or installed skill; flag stale routes left behind after merges or deletions.
