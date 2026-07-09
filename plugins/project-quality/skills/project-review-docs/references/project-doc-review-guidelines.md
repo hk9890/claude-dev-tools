@@ -20,13 +20,13 @@ Use with:
 
 - **No edits:** never modify docs, source, config, or tracker state.
 - **Suggest, never apply:** every finding carries a recommended fix; applying it is the user's separate step.
-- The execution stage *runs* documented commands, but only in a throwaway git worktree and never destructively — the repo under review is left untouched.
+- The execution stage *runs* documented commands directly in the repo under review, never destructively: no push, tag, publish, deploy, release, history rewrite, or deletion of tracked files. It may leave small local edits behind — it reports them, and reverting them is the user's step.
 
 ## The four stages (what the workflow does)
 
 1. **Manifest** — `scripts/manifest.py` emits the deterministic facts (files, present/missing canonical docs, line/word/byte counts, link + anchor resolution, reachability from `AGENTS.md`, the `CLAUDE.md` invariant, hollow docs, routes). Facts only; scripts never judge belonging or accuracy.
 2. **Read-review** — one agent per doc, each carrying only its own ownership contract. For every unit of content it asks *true?* (verify against the repo) and *belongs here?* (accurate-but-misplaced content is a finding — A10/R10), and judges form (compact, agent-facing, not bloated). Non-standard docs are judged for placement (R11).
-3. **Execution test** — the docs are used, not just read. Per `AGENTS.md` route: a driver generates a task from the target doc and holds the answer key; a cold, uncoached action agent attempts it from `AGENTS.md` in a worktree; the driver grades the session against its key.
+3. **Execution test** — the docs are used, not just read. Per `AGENTS.md` route: a driver generates a task from the target doc and holds the answer key; a cold, uncoached action agent attempts it from `AGENTS.md` in the live repo; the driver grades the session against its key.
 4. **Synthesis** — merge, dedupe, and reconcile across files (sibling contradictions; a missing canonical doc whose content lives under a different name), then verdict + report.
 
 ## Severity
