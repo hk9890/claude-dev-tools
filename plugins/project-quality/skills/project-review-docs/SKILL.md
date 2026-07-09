@@ -2,7 +2,7 @@
 name: project-review-docs
 description: "Read-only audit of a project's docs for accuracy, staleness, gaps, misplaced content, and whether an agent can actually use them — runs a multi-agent workflow, reports fixes, never edits."
 when_to_use: "Use when the user wants a documentation review or audit. Triggers on 'are our docs stale?', 'do our docs match the code?', 'does AGENTS still match the repo?', 'audit the documentation'. Not for complexity, structure, consistency, or test reviews — each has its own skill."
-argument-hint: "[low|medium|high] [path]"
+argument-hint: "[low|medium|high|ultra] [what-to-review]"
 ---
 
 Read-only documentation audit. Launch the review workflow — do **not** review the
@@ -10,9 +10,15 @@ docs inline. The workflow returns a structured report; relay it.
 
 ## Run the workflow
 
-1. Parse `$ARGUMENTS`. Both parts are optional and may appear in either order: a bare
-   `low` | `medium` | `high` token is the **level** (default `medium`); anything else is
-   the **path** to review (default: the repo root). Most invocations pass only a level.
+1. Parse `$ARGUMENTS` as `[low|medium|high|ultra] [what-to-review]`. Both are optional.
+   A leading `low` | `medium` | `high` | `ultra` token is the **cost** (default
+   `medium`); everything after it is **what to review**. Most invocations pass only a
+   cost.
+
+   Unlike the other reviewers, what-to-review here must resolve to a **path** —
+   `manifest.py` takes a directory, not a free-form description. Default: the repo root.
+   If the argument is a description rather than a path, resolve it to a directory or
+   fall back to the root.
 
 2. Resolve the install (`$CLAUDE_PLUGIN_ROOT` is not exported to Bash; locate under
    `$HOME`, version-sorted, with `$PWD` covered for dev installs):
@@ -26,8 +32,15 @@ docs inline. The workflow returns a structured report; relay it.
 
 3. Invoke the **Workflow** tool:
    - `scriptPath`: `<SKILL_DIR>/workflow/review-docs.js`
-   - `args`: `{ "repoRoot": "<the step-1 path>", "scriptsDir": "<SKILL_DIR>/scripts", "level": "<the step-1 level>" }`
-   - `level`: `low` = read-review only, no execution; `medium` = execution on ~3 routes; `high` = all routes plus an adversarial verify pass. Advanced: `"maxExecutionRoutes": <n>` overrides the cap (`-1` all, `0` skip).
+   - `args`: `{ "repoRoot": "<the step-1 path>", "scriptsDir": "<SKILL_DIR>/scripts", "cost": "<the step-1 cost>" }`
+   - `cost` rungs, on top of the per-file read-review that always runs:
+     `low` = no execution phase; `medium` = execution on ~3 AGENTS routes;
+     `high` = execution on every route; `ultra` = `high` plus an adversarial pass that
+     tries to refute each finding and drops the ones that fail.
+     Advanced: `"maxExecutionRoutes": <n>` overrides the route cap (`-1` all, `0` skip).
+   - The execution phase runs a cold agent **in the live working tree** — so it audits
+     your uncommitted doc edits, not `HEAD` — under a hard read-only contract. Tier-C
+     (destructive) tasks are never executed.
 
 4. Relay the report. The workflow returns `{ report: { verdict, headline, findings[], … }, raw, … }`
    — surface `.report`, and do not re-derive it. For a "did you really check X?"
@@ -51,6 +64,10 @@ load it.
 Verdict labels: `accurate` · `minor gaps` · `significant gaps` · `misleading`. A
 clean `accurate` requires no blocker/major finding and positive coverage — a green
 manifest is necessary, never sufficient.
+
+The `project-review` orchestrator runs this workflow directly rather than re-reading
+this file as a procedure, and never passes `cost: ultra` — it verifies every finding
+itself, so that rung would pay twice for the same refutation.
 
 ## Not covered
 

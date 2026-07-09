@@ -3,7 +3,7 @@ name: project-review
 description: "Run the full project review — orchestrate the dimension reviewers, verify each finding, and deliver one prioritized action list."
 user-invocable: true
 disable-model-invocation: true
-argument-hint: "[dimensions] [scope] [--low|--medium|--high]"
+argument-hint: "[low|medium|high] [dimensions] [what-to-review]"
 ---
 
 # Orchestrated full project review
@@ -19,18 +19,25 @@ skill is cheaper; this skill is the deliberate, verified, whole-project pass.
 
 ## 1. Parse the invocation
 
-`$ARGUMENTS` carries, in any order and all optional:
+`$ARGUMENTS` is `[low|medium|high] [dimensions] [what-to-review]`, positional, all
+optional:
 
+- **cost** — a **leading** `low` | `medium` | `high` token. Default: **`high`**.
+  - `low` — Find → Verify; report **CONFIRMED only** (fewest, highest-confidence).
+  - `medium` — Find → Verify; report CONFIRMED + PLAUSIBLE.
+  - `high` — Find → Verify → **Sweep**; report CONFIRMED + PLAUSIBLE (broadest recall).
+  - `ultra` is **not accepted here**, which is why it is absent from the argument hint.
+    It means "the reviewer verifies its own findings", which this skill already does in
+    its Verify phase — with an independent verifier, which is strictly better. If the
+    user passes it, clamp to `high` and say so in the report header.
 - **dimensions** — a comma- or space-separated subset of
   `complexity,consistency,docs,structure,tests`. Default: **all five**.
-- **scope** — a path or free-form description of what to review (e.g. `src/`,
-  "the auth module"). Default: **the whole project**.
-- **tier** — `--low` | `--medium` | `--high`. Default: **`high`**.
-  - `--low` — Find → Verify; report **CONFIRMED only** (fewest, highest-confidence).
-  - `--medium` — Find → Verify; report CONFIRMED + PLAUSIBLE.
-  - `--high` — Find → Verify → **Sweep**; report CONFIRMED + PLAUSIBLE (broadest recall).
+- **what to review** — a path or free-form description (e.g. `src/`, "the auth
+  module"). Default: **the whole project**.
 
-Anything that is not a known dimension token or a `--tier` flag is the scope.
+Only a bare cost token in **first position** is read as the cost; anything else is a
+dimension list or, failing that, what to review. The cost is forwarded to every
+dimension.
 
 ## 2. Run the review workflow
 
@@ -39,30 +46,44 @@ it **via the Workflow tool** (pass it as `script`). These constants are the sing
 configuration point — set them directly; do **not** rely on the Workflow `args` global
 (it is not guaranteed to reach the script):
 
-- `DIMS`, `TIER` — from step 1.
+- `DIMS`, `COST` — from step 1.
 - `SCOPE` — the scope text, written as a **properly escaped JS string literal** (escape
   any `'` or `\`, e.g. `'the auth module\'s tests'`), or a stray quote breaks the script.
 - `PLUGIN_DIR` — the absolute path of *this* plugin, so finders can locate each
-  dimension's procedure wherever the plugin is installed. Resolve it in the main loop
-  with the house recipe (version-sorted so a newer cached copy wins, `$PWD` covered for
-  dev installs), verify it, and paste the absolute path:
+  dimension's procedure and workflow-backed dimensions can locate their script. Resolve
+  it in the main loop with the house recipe (version-sorted so a newer cached copy wins,
+  `$PWD` covered for dev installs), verify it, and paste the absolute path:
 
   ```bash
   PLUGIN_DIR=$(dirname "$(find "$HOME/.claude/plugins" "$PWD" -type d -path '*project-quality*/skills' 2>/dev/null | sort -V | tail -1)")
   [ -f "$PLUGIN_DIR/skills/project-review/SKILL.md" ] || PLUGIN_DIR=""
+  REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
   ```
 
-  Leaving it empty makes finders fall back to a best-effort
-  search and fail loudly if they still can't find the procedure.
+  Leaving `PLUGIN_DIR` empty makes prose finders fall back to a best-effort search and
+  fail loudly if they still can't find the procedure; workflow-backed dimensions cannot
+  fall back and are reported as **not run**.
+- `REPO_ROOT` — the absolute repo root from the snippet above. Workflow-backed
+  dimensions need a real directory; the script has no filesystem access to derive one.
 
-The finders and verifiers are `project-quality:project-reviewer` agents — finders
-load each dimension's own `SKILL.md` procedure from the installed plugin and review
-the target repo; verifiers (on a cheaper model) try to **refute** each finding.
+**Two kinds of dimension.** A *prose* dimension (`complexity`, `consistency`,
+`structure`, `tests`) is a procedure document: a `project-quality:project-reviewer`
+agent reads its `SKILL.md` and follows it. A *workflow-backed* dimension (`docs`) is a
+multi-agent pipeline that a single agent cannot reproduce — it is invoked with the
+`workflow()` hook and its report is adapted into the shared finding shape. Never hand a
+workflow-backed dimension's `SKILL.md` to an agent as a procedure; that file is a
+launcher, not a review. Verifiers (on a cheaper model) then try to **refute** every
+finding from either kind.
 
-If the Workflow tool is unavailable in this session, run the same stages by hand
-by spawning subagents (one `project-reviewer` per dimension for Find, one per finding
-for Verify, and — only at `--high` — one per dimension for Sweep), then apply the
-same synthesis (drop REFUTED, fold `route_to`, dedup, sort) before rendering.
+Workflow-backed dimensions are always invoked below `ultra`, because this skill's own
+Verify phase is what `ultra` would duplicate.
+
+If the Workflow tool is unavailable in this session, run the prose stages by hand by
+spawning subagents (one `project-reviewer` per dimension for Find, one per finding for
+Verify, and — only at `high` — one per dimension for Sweep), then apply the same
+synthesis (drop REFUTED, fold `route_to`, dedup, sort) before rendering. Workflow-backed
+dimensions cannot be run this way: report them as **not run** and tell the user to run
+their standalone skill (e.g. `/project-review-docs`) directly.
 
 ```js
 export const meta = {
@@ -76,13 +97,23 @@ export const meta = {
 }
 
 // ─── CONFIG — the skill fills these in (steps 1-2) before running. Defaults below
-//     = a full, whole-project, high-tier review. ───────────────────────────────
+//     = a full, whole-project, high-cost review. ───────────────────────────────
 const DIMS = ['complexity', 'consistency', 'docs', 'structure', 'tests']
 const SCOPE = '' // a path/description to scope the review; '' = whole project
-const TIER = 'high' // 'low' | 'medium' | 'high'
+const RAW_COST = 'high' // 'low' | 'medium' | 'high'
 const PLUGIN_DIR = '' // absolute path of the project-quality plugin; '' = finders search
+const REPO_ROOT = '.' // absolute repo root; workflow-backed dimensions need a real dir
 // ─────────────────────────────────────────────────────────────────────────────
 const SCOPE_TEXT = SCOPE || 'the whole project at the current working directory'
+// 'ultra' means "the reviewer verifies itself" — this skill's Verify phase already
+// does that, so it is never forwarded. Clamp defensively in case step 1 let it through.
+const COST = RAW_COST === 'ultra' ? 'high' : RAW_COST
+
+// Dimensions whose review is a multi-agent pipeline, not a procedure document. A single
+// finder agent cannot reproduce these — invoke the script with the workflow() hook.
+const WORKFLOW_DIMS = {
+  docs: { script: '/skills/project-review-docs/workflow/review-docs.js', scripts: '/skills/project-review-docs/scripts' },
+}
 
 const FINDINGS_SCHEMA = {
   type: 'object',
@@ -137,6 +168,10 @@ function finderPrompt(dim) {
     ``,
     `REVIEW SCOPE: ${SCOPE_TEXT}. Where the SKILL.md references its $ARGUMENTS`,
     `placeholder, this REVIEW SCOPE is that value.`,
+    `COST: ${COST}. Apply ONLY that rung's evidence bar, as defined in the Cost section`,
+    `of your agent definition. Do NOT run its sweep or self-refutation passes: this`,
+    `orchestrator runs a Sweep phase and an adversarial Verify pass over every finding.`,
+    `Cost never softens the verdict.`,
     ``,
     `Return the schema. "verdict" is ONLY the single label from this dimension's set`,
     `(e.g. "approve with concerns", "needs work", "minor drift") — nothing else; put ALL`,
@@ -193,15 +228,47 @@ const verifyOpts = (f) => ({ label: `verify:${f.dimension}`, phase: 'Verify', ag
 
 // ---- Find -----------------------------------------------------------------
 phase('Find')
-const found = await parallel(
-  DIMS.map((d) => () =>
-    agent(finderPrompt(d), finderOpts(d, 'Find')).then((r) => ({
-      dim: d,
-      verdict: (r && r.verdict) || 'unknown',
-      findings: ((r && r.findings) || []).map((f) => ({ ...f, dimension: d })),
+
+// A prose dimension: one agent reads the dimension's SKILL.md and follows it.
+const runProseDim = (d) =>
+  agent(finderPrompt(d), finderOpts(d, 'Find')).then((r) => ({
+    dim: d,
+    verdict: (r && r.verdict) || 'unknown',
+    findings: ((r && r.findings) || []).map((f) => ({ ...f, dimension: d })),
+  }))
+
+// A workflow-backed dimension: run its pipeline, adapt its report into the shared
+// finding shape. Failures return verdict 'error' so they land in notRun with a reason
+// rather than vanishing — a dimension that did not run is never silently dropped.
+async function runWorkflowDim(d) {
+  const cfg = WORKFLOW_DIMS[d]
+  const fail = (why) => ({ dim: d, verdict: 'error', findings: [{ location: d, observation: why }] })
+  if (!PLUGIN_DIR) return fail(`${d}: PLUGIN_DIR unresolved — its workflow could not be located`)
+  let out
+  try {
+    out = await workflow({ scriptPath: PLUGIN_DIR + cfg.script }, { repoRoot: REPO_ROOT, scriptsDir: PLUGIN_DIR + cfg.scripts, cost: COST })
+  } catch (e) {
+    return fail(`${d}: workflow failed — ${String(e)}`)
+  }
+  const rep = out && out.report
+  if (!rep) return fail(`${d}: workflow returned no report`)
+  return {
+    dim: d,
+    verdict: rep.verdict || 'unknown',
+    notes: { cross_file: rep.cross_file_notes || '', execution: rep.execution_summary || '' },
+    findings: (rep.findings || []).map((f) => ({
+      location: f.file,
+      observation: f.observation,
+      why_it_matters: f.why_it_matters,
+      recommended_action: f.recommended_action,
+      route_to: '',
+      severity: f.severity,
+      dimension: d,
     })),
-  ),
-)
+  }
+}
+
+const found = await parallel(DIMS.map((d) => () => (WORKFLOW_DIMS[d] ? runWorkflowDim(d) : runProseDim(d))))
 const okFound = found.filter(Boolean)
 // A dimension is "not run" when its finder thunk rejected or returned verdict "error"
 // (procedure not located). Track these explicitly — never silently drop a dimension.
@@ -213,6 +280,9 @@ const okDims = okFound.filter((r) => r.verdict !== 'error')
 const ranDims = okDims.map((r) => r.dim)
 const verdicts = {}
 for (const r of okDims) verdicts[r.dim] = r.verdict
+// Prose notes a workflow-backed dimension produced that do not fit the finding shape.
+const notes = {}
+for (const r of okDims) if (r.notes) notes[r.dim] = r.notes
 let candidates = okDims.flatMap((r) => r.findings)
 log(`find: ${candidates.length} candidate findings across ${ranDims.length} dimension(s)`)
 
@@ -239,17 +309,25 @@ function foldRoutes(items) {
   return items
 }
 
+// Every finding is verified here, including those from workflow-backed dimensions:
+// they are never run at 'ultra', so nothing has verified itself upstream.
 phase('Verify')
 let kept = foldRoutes((await verifyAll(candidates)).filter((f) => f.vote !== 'REFUTED'))
-if (TIER === 'low') kept = kept.filter((f) => f.vote === 'CONFIRMED')
-log(`verify: ${kept.length} survived (${TIER === 'low' ? 'CONFIRMED only' : 'CONFIRMED + PLAUSIBLE'})`)
+if (COST === 'low') kept = kept.filter((f) => f.vote === 'CONFIRMED')
+log(`verify: ${kept.length} survived (${COST === 'low' ? 'CONFIRMED only' : 'CONFIRMED + PLAUSIBLE'})`)
 
 // ---- Sweep (high only) ----------------------------------------------------
-if (TIER === 'high') {
+if (COST === 'high') {
   phase('Sweep')
+  // A sweep agent works by re-reading the dimension's SKILL.md procedure, so it only
+  // applies to prose dimensions. Recall for a workflow-backed dimension is governed by
+  // the cost rung already forwarded into its own pipeline.
+  const sweepDims = ranDims.filter((d) => !WORKFLOW_DIMS[d])
+  const skipped = ranDims.filter((d) => WORKFLOW_DIMS[d])
+  if (skipped.length) log(`sweep: not sweeping ${skipped.join(', ')} — workflow-backed; recall set by cost=${COST}`)
   const sweepFound = (
     await parallel(
-      ranDims.map((d) => () =>
+      sweepDims.map((d) => () =>
         agent(sweepPrompt(d, kept), { label: `sweep:${d}`, phase: 'Sweep', agentType: 'project-quality:project-reviewer', schema: FINDINGS_SCHEMA }).then(
           (r) => ((r && r.findings) || []).map((f) => ({ ...f, dimension: d })),
         ),
@@ -288,11 +366,13 @@ unique.sort(
 )
 
 return {
-  tier: TIER,
+  cost: COST,
+  clamped: RAW_COST !== COST ? RAW_COST : undefined,
   dimensions: DIMS,
   notRun,
   scope: SCOPE_TEXT,
   verdicts,
+  notes,
   counts: { firstPass: candidates.length, reported: unique.length },
   findings: unique,
 }
@@ -302,15 +382,19 @@ return {
 
 From the workflow's return value, present one consolidated review:
 
-1. **Scope & tier** — one line: dimensions run, scope, tier. If `notRun` is
-   non-empty, report each listed dimension as **failed / not run** with its reason
-   — never present the result as a full review when a dimension is missing. The
-   same applies to any requested dimension absent from `verdicts`.
+1. **Scope & cost** — one line: dimensions run, scope, cost. If `clamped` is set, say
+   that `ultra` was clamped to `high` and why (this skill verifies findings itself). If
+   `notRun` is non-empty, report each listed dimension as **failed / not run** with its
+   reason — never present the result as a full review when a dimension is missing. The
+   same applies to any requested dimension absent from `verdicts`. When a workflow-backed
+   dimension failed, point the user at its standalone skill.
 2. **Verdicts** — the per-dimension verdict label from `verdicts` (each dimension
    keeps its own label set: complexity `approve`/…/`reject`, tests `passing`/…, etc.).
 3. **Findings** — grouped by dimension in the sorted order, each with its
    `Location`, `Observation`, `Why it matters`, `Recommended action`, and the
-   verify `vote` (CONFIRMED / PLAUSIBLE).
+   verify `vote` (CONFIRMED / PLAUSIBLE). If `notes` carries entries for a dimension
+   (a workflow-backed dimension's cross-file or execution summary), render them as a
+   short prose note under that dimension's group.
 4. **Recommended actions** — one prioritized list across all dimensions, the
    highest-priority items first (the deliverable: it tells the user what to fix first).
 

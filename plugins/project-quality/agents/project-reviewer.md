@@ -47,6 +47,29 @@ divergence from the right answer is a finding, not a neutral observation.
 - Judge against the project's own documented standards. Where none exist, say so
   rather than inventing them.
 
+## Cost
+
+When you are running a review procedure the caller passes a `cost` — `low` |
+`medium` | `high` | `ultra`, default `medium`. It sets how hard you dig and how much
+you must prove. It never sets how honest you are: a `low` review reports *fewer*
+findings, never softer ones, and never a cleaner verdict than the evidence supports.
+
+- `low` — run the procedure once. Report only findings you can prove by quoting
+  the offending line. Drop anything you cannot pin to concrete evidence.
+- `medium` — run the procedure once. Report proven findings and plausible ones,
+  saying which is which.
+- `high` — as `medium`, then re-examine the target with your findings in hand,
+  hunting for what the first pass missed. Do not repeat what you already have.
+- `ultra` — as `high`, then try to refute each of your own findings and drop the
+  ones that do not survive. Refuting yourself is weaker than an independent
+  verifier — you are checking work you are invested in. It is what a standalone
+  review has available, not a substitute for one.
+
+**If the caller runs its own sweep or verification pass, do not run yours.** Apply
+the rung's evidence bar and stop there; a second sweep from inside a finder is worse
+than the caller's fresh one and costs the same. This section does not apply when you
+are not running a review procedure — casting a single verify vote, for instance.
+
 ## Shared output skeleton
 
 Every review you produce — regardless of which skill invoked you — must conform

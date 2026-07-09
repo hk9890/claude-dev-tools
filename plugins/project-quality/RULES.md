@@ -180,17 +180,26 @@ reports by hand. Design decisions behind it:
   dimensional skills stay model-discoverable for cheap single-lens use.
 - **Not forked** — see the rule 6 exception. It runs in the main loop, authors a
   Workflow (Find → Verify → Sweep → Synthesise), runs it, and renders the result. If
-  the Workflow tool is absent it falls back to the same stages via the Task tool.
-- **No procedure duplication.** Each finder reads the dimension's own `SKILL.md` as
-  the single source of truth and follows it; the orchestrator carries no copy of any
+  the Workflow tool is absent it falls back to the same stages via the Task tool for the
+  prose dimensions only; a workflow-backed dimension cannot be reconstructed by hand and
+  is reported as not run, pointing the user at its standalone skill.
+- **No procedure duplication.** Each prose finder reads the dimension's own `SKILL.md`
+  as the single source of truth and follows it; the orchestrator carries no copy of any
   dimension's procedure. This is why the dimensional procedures were *not* extracted
   into shared `references/` — that would relocate the one copy and add an indirection
   hop without removing any duplication.
+- **Two kinds of dimension (rule 16).** A prose dimension is a procedure document an
+  agent follows. A workflow-backed dimension (`docs`) is a pipeline the orchestrator
+  invokes with `workflow()`, adapting its report into the shared finding shape. Handing
+  a workflow-backed `SKILL.md` to an agent as a procedure produces a silently weaker
+  review — it is a launcher, not a review.
 - **Verify pass.** Every candidate finding is judged by a separate adversarial
   `project-reviewer` verifier (on a cheaper model) that tries to *refute* it; REFUTED
-  findings are dropped. Tiers tune recall vs. cost: `--low` keeps CONFIRMED only;
-  `--medium` keeps CONFIRMED + PLAUSIBLE; `--high` (default) adds a Sweep gap-finder
-  pass. The verify pass applies even to a single-dimension run.
+  findings are dropped. Cost tunes recall: `low` keeps CONFIRMED only; `medium` keeps
+  CONFIRMED + PLAUSIBLE; `high` (default) adds a Sweep gap-finder pass over the prose
+  dimensions. The verify pass applies even to a single-dimension run. The orchestrator
+  never passes `ultra` to a dimension — that rung *is* self-verification, and this pass
+  already supplies it.
 - **Cross-dimension hand-off (rule 8) is consumed here.** A finding whose `route_to`
   names another reviewer in the run is folded into that dimension during synthesis —
   the one place the `route_to` field is acted on rather than merely reported.
@@ -280,3 +289,38 @@ Decisions behind the check (specialist #9, rule R11, coverage category C14):
   against its boundary; R11/C14 (specialist #9) polices a doc that *is* a canonical topic but is
   misnamed or unlinked. Together they enforce the canonical-placement authoring rules A6/A8/A9
   from both the content and the file-naming directions.
+
+## 16. Every reviewer takes the same cost + what-to-review arguments
+
+All five dimensional reviewers share one argument contract — a leading cost token,
+then a free-form description of what to review — and `project-review` prefixes it with
+a dimension list. Each skill's `argument-hint` **spells the rungs it actually
+supports** rather than the placeholder `[cost]`, so the caller can see the choices
+without opening the file:
+
+- dimensional reviewers — `[low|medium|high|ultra] [what-to-review]`
+- `project-review` — `[low|medium|high] [dimensions] [what-to-review]`, no `ultra`
+
+The rungs are defined **once**, in `agents/project-reviewer.md`, and each `SKILL.md`
+states only what its own rungs do:
+
+- `low` — procedure once; report only findings provable by quoting a line.
+- `medium` — procedure once; report proven and plausible findings.
+- `high` — as `medium`, plus a sweep for what the first pass missed.
+- `ultra` — as `high`, plus an adversarial pass that tries to refute each finding.
+
+Cost tunes recall and the evidence bar. It never tunes honesty: a `low` review reports
+*fewer* findings, never softer ones, and never a cleaner verdict than the evidence earns.
+
+`ultra` is the self-verification rung, so `project-review` never passes it and never
+advertises it — the orchestrator supplies verification itself, with an *independent*
+verifier rather than the finder grading its own work (rule 12). This is the rule that
+lets a dimension become workflow-backed without the orchestrator paying twice: **the
+child finds, the parent verifies.** `project-review-docs` is the only dimension that
+implements `ultra` as a real verifier phase today; the prose reviewers implement it as
+self-refutation, which is weaker and says so. When another dimension grows a workflow,
+its self-verify pass belongs at the same rung and the same exclusion applies unchanged.
+
+A workflow-backed dimension may narrow what its what-to-review argument accepts —
+`project-review-docs` requires a path, because `manifest.py` takes a directory — but
+never renames the parameter or drops a supported rung from its hint.
