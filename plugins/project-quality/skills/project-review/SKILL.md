@@ -112,7 +112,7 @@ const COST = RAW_COST === 'ultra' ? 'high' : RAW_COST
 // Dimensions whose review is a multi-agent pipeline, not a procedure document. A single
 // finder agent cannot reproduce these — invoke the script with the workflow() hook.
 const WORKFLOW_DIMS = {
-  docs: { script: '/skills/project-review-docs/workflow/review-docs.js', scripts: '/skills/project-review-docs/scripts' },
+  docs: { script: '/skills/project-review-docs/workflows/review-docs.js', scripts: '/skills/project-review-docs/scripts' },
 }
 
 const FINDINGS_SCHEMA = {
