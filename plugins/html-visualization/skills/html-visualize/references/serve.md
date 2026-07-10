@@ -43,8 +43,8 @@ mkdir -p "$HTML_DIR"
 PLUGIN_DIR=$(find "$HOME/.claude/plugins/cache" -maxdepth 3 -type d -name html-visualization 2>/dev/null | head -1)
 PLUGIN_ROOT=""
 [ -n "$PLUGIN_DIR" ] && PLUGIN_ROOT=$(find "$PLUGIN_DIR" -maxdepth 1 -mindepth 1 -type d | sort -V | tail -1)
-# Dev fallback: a local --plugin-dir run (e.g. scripts/claude-dev) has no cache copy.
-[ -f "$PLUGIN_ROOT/bin/server.js" ] || PLUGIN_ROOT="$PWD/plugins/html-visualization"
+# Dev fallback: a --plugin-dir run loads from a working tree and has no cache copy.
+[ -f "$PLUGIN_ROOT/bin/server.js" ] || PLUGIN_ROOT=$(find "$PWD" -maxdepth 4 -type d -name html-visualization -exec test -f '{}/bin/server.js' \; -print -quit 2>/dev/null)
 if [ -f "$PLUGIN_ROOT/bin/server.js" ]; then
   echo "$PLUGIN_ROOT" > "$HTML_DIR/.plugin-root"
 else

@@ -77,8 +77,9 @@ wrapper adds a second invocation path to maintain for no benefit.
 
 ## 6. Reviewer skills run forked and share one persona agent
 
-Each review skill runs in a forked context (`context: fork`) and delegates to a
-single shared agent, `agents/project-reviewer.md`. That agent encodes:
+Each review skill runs in a forked context (`context: fork`) — bar the two
+exceptions below — and delegates to a single shared agent,
+`agents/project-reviewer.md`. That agent encodes:
 
 - the *attitude* common to every review — the read-only contract,
   explore-before-judging, the recommended-answer rule, the adversarial
@@ -92,10 +93,17 @@ skeleton; it may not drop, rename, or reshape the mandatory sections. There is n
 `skills/_shared/` directory; procedure, principles, and verdict label sets stay
 per-skill.
 
-**Exception — `project-review`.** The orchestrator (rule 12) runs unforked, in the
-main loop, because it must author and run a Workflow and then render the merged
-result. Its *finders*, however, are forked `project-reviewer` agents — the fork
-moves down a level, from the skill to each dimension finder.
+**Exceptions — the two skills that launch a Workflow.** Both run unforked, in the
+main loop, because a skill must be in the main loop to call the Workflow tool and
+relay its result:
+
+- `project-review` (rule 12) authors its own script, runs it, and renders the merged
+  report. Its *finders*, however, are forked `project-reviewer` agents — the fork
+  moves down a level, from the skill to each dimension finder.
+- `project-review-docs` (rule 9) is a thin launcher for the bundled
+  `workflows/review-docs.js`; the audit's own agents run inside that workflow.
+
+The other four dimensional reviewers carry a prose procedure and stay forked.
 
 ## 7. complexity is verdict-first; the other reviews interrogate
 
@@ -120,7 +128,7 @@ documentation defect itself.
 
 Unlike the other reviewers, the docs auditor carries a reference library (the
 canonical taxonomy + ownership, authoring bar, and the review process/rubric),
-read-only `scripts/`, the `workflow/` that runs the audit, and `examples/` of
+read-only `scripts/`, the `workflows/` that runs the audit, and `examples/` of
 good docs. These are the "how docs should be" knowledge the audit judges against,
 and the deterministic layer (`manifest.py` for the facts, `validate-routes.py` for
 link resolution) is a cheap first pass.
@@ -301,13 +309,9 @@ without opening the file:
 - dimensional reviewers — `[low|medium|high|ultra] [what-to-review]`
 - `project-review` — `[low|medium|high] [dimensions] [what-to-review]`, no `ultra`
 
-The rungs are defined **once**, in `agents/project-reviewer.md`, and each `SKILL.md`
-states only what its own rungs do:
-
-- `low` — procedure once; report only findings provable by quoting a line.
-- `medium` — procedure once; report proven and plausible findings.
-- `high` — as `medium`, plus a sweep for what the first pass missed.
-- `ultra` — as `high`, plus an adversarial pass that tries to refute each finding.
+The rungs are defined **once**, in the Cost section of `agents/project-reviewer.md`.
+Neither this file nor any `SKILL.md` restates them; each `SKILL.md` says only what its
+own rungs do.
 
 Cost tunes recall and the evidence bar. It never tunes honesty: a `low` review reports
 *fewer* findings, never softer ones, and never a cleaner verdict than the evidence earns.

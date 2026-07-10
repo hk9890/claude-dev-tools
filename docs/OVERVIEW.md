@@ -36,9 +36,9 @@ plugins/<plugin-name>/
   commands/              # slash commands (.md files; currently no plugin uses these)
   hooks/                 # Claude Code hook definitions (e.g. hooks.json)
   scripts/               # build-time scripts, e.g. a generator for themes/ (not loaded at runtime)
-  skills/                # skills (<skill-name>/SKILL.md + optional references/, scripts/, examples/)
+  skills/                # skills (<skill-name>/SKILL.md + optional references/, scripts/, examples/, workflows/)
   themes/                # color theme files
-  workflows/             # Workflow-tool orchestration scripts (.js)
+  workflows/             # Workflow-tool orchestration scripts (.js) — at plugin root, or inside the one skill that owns them
 ```
 
 Not all component types are required — a plugin may have only commands, only skills, or a mix.

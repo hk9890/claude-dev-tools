@@ -41,7 +41,7 @@ taskmgr ready --json        # open tasks with no open blockers — priority, the
 If nothing is ready, report that and stop. Otherwise present the ready queue briefly (id, type,
 priority, title).
 
-## 3. Confirm scope (do not skip)
+## 3. Confirm scope
 
 Ask the user via `AskUserQuestion` which scope to run — when the command carried an argument,
 present that scope as the recommended option instead of an open question:
@@ -85,7 +85,7 @@ manual polling.
 
 When the workflow returns, relay its summary: how many tasks were **closed**, **left open** (a
 verification failure), **inconclusive** (an agent did not finish), or **skipped** (readiness gate
-refused it, or the implementer was blocked mid-task) — RULES.md holds the full outcome semantics.
+refused it, or the implementer was blocked mid-task).
 For an epic, report the verification verdict and that it is **ready for the user to close**
 (the workflow never closes an epic). If the summary has `reviewer_fallback: true`, say the review
 leg ran on the built-in general-purpose agent because `project-quality:project-reviewer` is not

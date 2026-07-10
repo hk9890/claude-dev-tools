@@ -68,8 +68,4 @@ The skill-specific pieces below slot into that skeleton:
 - **Per-finding `Recommended action`** — frame it as the simpler alternative
   or the explicit justification the artifact owes.
 
-## Mode-specific emphasis
-
-- **Requirements review** — explicitly state the minimal acceptable scope, the non-goals that should stay out, and the top sources of accidental complexity in the requirement set.
-- **Architecture review** — explicitly name the core model, the main sources of accidental complexity, the simplest credible alternative, and the complexity that is justified and why.
-- **Code / PR review** — explicitly call out abstraction, dependency, compatibility, and readability impact.
+Each workflow's reference file adds a mode-specific `Output emphasis` on top of this.

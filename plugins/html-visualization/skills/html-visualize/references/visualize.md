@@ -18,10 +18,7 @@ This file covers visualize-specific content authoring and rendering guidance.
 The user invoked visualize mode explicitly — build the visualization. Visualize
 mode produces a rich page — a dependency graph, metric dashboard, timeline,
 comparison chart, data table, architecture diagram, or any rich visual the user
-opens in a browser. It is served non-blocking: Claude continues immediately after
-surfacing the URL. The footer is always on (no opt-out flag); if the user types a
-message and clicks Send, the harness re-invokes Claude asynchronously with a
-feedback file — but that is optional and Claude need not wait for it.
+opens in a browser.
 
 Fall back to plain chat in only two cases:
 
@@ -96,9 +93,8 @@ Render the visualization inside `<main class="vis-content">`. Use the full HTML
 visual toolbox — see [Choosing a rendering approach](#choosing-a-rendering-approach)
 and [Visual quality rules](#visual-quality-rules) below.
 
-Author extra or overriding styles in the existing `<style>` block in `<head>` —
-do NOT reference `/assets/…` server-served files; the page must be self-contained
-so it opens correctly as a `file://` URL if the user saves it.
+Author extra or overriding styles in the existing `<style>` block in `<head>` — see
+[Visual quality rules](#visual-quality-rules) for the self-contained constraint.
 
 The template already contains the always-on footer (`.vis-footer`) and the Send /
 Save JavaScript — do not remove or modify these. Do not add a second submit form or
@@ -203,7 +199,7 @@ Wait until you see the startup line:
 
 There is no "Feedback file" line in `--no-wait` mode — do not wait for one.
 
-Surface the URL to the user as a markdown link, then continue immediately:
+Surface the URL to the user as a markdown link:
 
 > Your visualization is ready → **[Open visualization](http://127.0.0.1:PORT/)**
 >
@@ -221,14 +217,8 @@ self-terminates on timeout (default 1800 s) with exit 0.
 After surfacing the URL, continue the conversation immediately. The server runs
 non-blocking in the background.
 
-If the user types a message and clicks **Send**, the server writes a feedback file
-and exits 0 — the harness re-invokes Claude, which reads the file and continues from
-there. If the user clicks **Send** with an empty message, the server exits 0
-silently with no feedback file. Closing the tab or navigating away sends nothing —
-the server keeps running until the timeout (default 1800 s), then exits 0 silently.
-In neither case is Claude re-invoked.
-
-Full submit schema (payload shape, three outcomes, CSRF, feedback file format):
+The three submit outcomes are tabulated in `references/serve.md` — Cycle B. Full
+submit schema (payload shape, CSRF, feedback file format):
 `"$(cat "$HTML_DIR/.plugin-root")/skills/html-visualize/references/visualize-submit-schema.md"`.
 
 If the user later asks to update or re-render the visualization, run the full

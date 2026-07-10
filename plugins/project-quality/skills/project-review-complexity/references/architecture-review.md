@@ -43,4 +43,8 @@ When possible, recommend in this order:
 
 These items supplement the shared output skeleton defined in the `project-reviewer` agent (Verdict, Principle pressure points, Findings, Open questions, Recommended actions); all mandatory sections still apply.
 
-For architecture review, ensure you explicitly name the core model and the main sources of accidental complexity.
+The review must explicitly include:
+- the core model
+- the main sources of accidental complexity
+- the simplest credible alternative
+- the complexity that is justified, and why

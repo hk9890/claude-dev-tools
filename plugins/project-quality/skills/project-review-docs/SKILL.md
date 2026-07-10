@@ -27,11 +27,11 @@ docs inline. The workflow returns a structured report; relay it.
    command -v python3 >/dev/null || echo "python3 missing"
    PLUGIN_DIR=$(dirname "$(find "$HOME/.claude/plugins" "$PWD" -type d -path '*project-quality*/skills' 2>/dev/null | sort -V | tail -1)")
    SKILL_DIR="$PLUGIN_DIR/skills/project-review-docs"
-   [ -f "$SKILL_DIR/workflow/review-docs.js" ] || echo "skill not located — do not launch; fall back to a manual read"
+   [ -f "$SKILL_DIR/workflows/review-docs.js" ] || echo "skill not located — do not launch; fall back to a manual read"
    ```
 
 3. Invoke the **Workflow** tool:
-   - `scriptPath`: `<SKILL_DIR>/workflow/review-docs.js`
+   - `scriptPath`: `<SKILL_DIR>/workflows/review-docs.js`
    - `args`: `{ "repoRoot": "<the step-1 path>", "scriptsDir": "<SKILL_DIR>/scripts", "cost": "<the step-1 cost>" }`
    - `cost` rungs, on top of the per-file read-review that always runs:
      `low` = no execution phase; `medium` = execution on ~3 AGENTS routes;
@@ -64,10 +64,6 @@ load it.
 Verdict labels: `accurate` · `minor gaps` · `significant gaps` · `misleading`. A
 clean `accurate` requires no blocker/major finding and positive coverage — a green
 manifest is necessary, never sufficient.
-
-The `project-review` orchestrator runs this workflow directly rather than re-reading
-this file as a procedure, and never passes `cost: ultra` — it verifies every finding
-itself, so that rung would pay twice for the same refutation.
 
 ## Not covered
 

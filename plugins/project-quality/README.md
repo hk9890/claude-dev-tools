@@ -171,7 +171,7 @@ project-quality/
     │   ├── SKILL.md
     │   ├── references/     (doc taxonomy + ownership, authoring rules, review process/rubric)
     │   ├── scripts/        (manifest.py + validate-routes.py — read-only deterministic facts)
-    │   ├── workflow/       (review-docs.js — the audit pipeline the skill launches)
+    │   ├── workflows/      (review-docs.js — the audit pipeline the skill launches)
     │   └── examples/       (canonical AGENTS.md / docs exemplars)
     ├── project-exec-testing/
     │   └── SKILL.md
