@@ -25,10 +25,10 @@ A plugin gets a `tests/<plugin-name>/script-tests/` subdir only when it ships co
 bash tests/run-all.sh
 
 # One plugin
-bash tests/project-quality/script-tests/run-all.sh
+bash tests/project-review/script-tests/run-all.sh
 
 # One suite
-bash tests/project-quality/script-tests/test-manifest.sh
+bash tests/project-review/script-tests/test-manifest.sh
 ```
 
 ## Path resolution in test scripts

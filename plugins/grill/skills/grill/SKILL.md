@@ -1,7 +1,7 @@
 ---
 name: grill
 description: "Adversarially stress-test a plan, design, change, or decision — pointed questions, each with a committed recommended answer and source, walked with you one at a time and gated clean or needs-answers."
-when_to_use: "Use when the user wants a plan, design, change, decision, or idea challenged before committing — 'grill me on this', 'poke holes in this', 'challenge this plan', 'stress-test this approach', 'what am I missing?', 'talk me out of this'. Produces an interactive question-by-question walkthrough, not a written report. Not a code/PR or whole-project audit — for those, use the project-quality reviews."
+when_to_use: "Use when the user wants a plan, design, change, decision, or idea challenged before committing — 'grill me on this', 'poke holes in this', 'challenge this plan', 'stress-test this approach', 'what am I missing?', 'talk me out of this'. Produces an interactive question-by-question walkthrough, not a written report. Not a code/PR or whole-project audit — for those, use the project-review reviews."
 argument-hint: "[what-to-grill]"
 ---
 

@@ -88,5 +88,5 @@ verification failure), **inconclusive** (an agent did not finish), or **skipped*
 refused it, or the implementer was blocked mid-task).
 For an epic, report the verification verdict and that it is **ready for the user to close**
 (the workflow never closes an epic). If the summary has `reviewer_fallback: true`, say the review
-leg ran on the built-in general-purpose agent because `project-quality:project-reviewer` is not
+leg ran on the built-in general-purpose agent because `project-review:project-reviewer` is not
 installed. List any filed bug ids and suggest `taskmgr ready` for the next batch.

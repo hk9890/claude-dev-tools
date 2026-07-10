@@ -84,4 +84,4 @@ Not verified: "the code looks right", "I inferred it works", "tests pass" (unles
 - Do not edit project code (read-only on the project; you may write the tracker).
 - Do not close an epic — only a human does, after your "ready to close" comment.
 - Do not reopen closed work — file a new bug instead.
-- Do not review designs or plans — that is the reviewer's job (`project-quality:project-reviewer`).
+- Do not review designs or plans — that is the reviewer's job (`project-review:project-reviewer`).

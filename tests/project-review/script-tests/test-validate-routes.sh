@@ -18,7 +18,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
-SCRIPT="$REPO_ROOT/plugins/project-quality/skills/project-review-docs/scripts/validate-routes.py"
+SCRIPT="$REPO_ROOT/plugins/project-review/skills/project-review-docs/scripts/validate-routes.py"
 
 PASS=0
 FAIL=0

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""manifest.py — the deterministic layer of the project-docs review.
+"""manifest.py — the deterministic layer of the project-review docs review.
 
 Usage:
     manifest.py <repo-root> [--format=json|text]

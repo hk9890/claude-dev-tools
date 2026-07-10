@@ -32,12 +32,20 @@ from collections import defaultdict
 # ---------------------------------------------------------------------------
 
 RENAME_ALIASES = {
-    "complexity-review": "project-quality",
     "html-ask": "html-visualization",
-    # project-review, project-ops, and project-docs were merged into project-quality
-    "project-review": "project-quality",
-    "project-ops": "project-quality",
-    "project-docs": "project-quality",
+    # These plugins were folded, whole, into a single current plugin.
+    "complexity-review": "project-review",
+    "project-ops": "project-execute",
+    "project-docs": "project-review",
+    # Deliberately absent:
+    #   "project-quality" — it was SPLIT (exec/explain skills -> project-execute, review
+    #     skills -> project-review). Which half an episode belongs to depends on its skill,
+    #     not its plugin, so no plugin->plugin entry can be right. canonical_plugin() below
+    #     resolves a namespaced skill through SKILL_RENAME_ALIASES and takes the plugin from
+    #     the canonical skill's prefix, which does express the split.
+    #   "project-review" — it is a live plugin directory again. discover_plugins() writes
+    #     identity mappings after this dict, so an entry here would be silently overwritten;
+    #     listing it would only mislead a future reader.
 }
 
 # Skill-level rename aliases.  Keys are the raw attribution_skill strings that
@@ -50,43 +58,55 @@ SKILL_RENAME_ALIASES = {
     "html-visualization:html-ask": "html-visualization:html-visualize",
     "html-visualization:html-feedback": "html-visualization:html-visualize",
     "html-visualization:visualize-html": "html-visualization:html-visualize",
-    # project-docs skills -> consolidated into project-quality:project-review-docs (read-only audit)
-    "project-docs:coder-docs": "project-quality:project-review-docs",
-    "project-docs:create-docs": "project-quality:project-review-docs",
-    "project-docs:improve-doc": "project-quality:project-review-docs",
-    "project-docs:project-improve-doc": "project-quality:project-review-docs",
-    "project-docs:init-or-update-docs": "project-quality:project-review-docs",
-    "project-docs:review-docs": "project-quality:project-review-docs",
-    "project-docs:revise-docs": "project-quality:project-review-docs",
-    "project-docs:project-docs": "project-quality:project-review-docs",
-    "project-docs:project-create-docs": "project-quality:project-review-docs",
-    "project-docs:project-improve-docs": "project-quality:project-review-docs",
-    "project-docs:project-init-or-update-docs": "project-quality:project-review-docs",
-    "project-docs:project-review-docs": "project-quality:project-review-docs",
-    "project-docs:project-revise-docs": "project-quality:project-review-docs",
-    # project-ops skills -> project-quality exec-* family (testing / releasing / monitoring)
-    "project-ops:analyze-monitoring-data": "project-quality:project-exec-monitoring",
-    "project-ops:executes-tests": "project-quality:project-exec-testing",
-    "project-ops:project-executes-tests": "project-quality:project-exec-testing",
-    "project-ops:trigger-release": "project-quality:project-exec-releasing",
-    "project-ops:project-analyze-monitoring-data": "project-quality:project-exec-monitoring",
-    "project-ops:project-run-tests": "project-quality:project-exec-testing",
-    "project-ops:project-trigger-release": "project-quality:project-exec-releasing",
+    # project-docs skills -> consolidated into the read-only docs audit
+    "project-docs:coder-docs": "project-review:project-review-docs",
+    "project-docs:create-docs": "project-review:project-review-docs",
+    "project-docs:improve-doc": "project-review:project-review-docs",
+    "project-docs:project-improve-doc": "project-review:project-review-docs",
+    "project-docs:init-or-update-docs": "project-review:project-review-docs",
+    "project-docs:review-docs": "project-review:project-review-docs",
+    "project-docs:revise-docs": "project-review:project-review-docs",
+    "project-docs:project-docs": "project-review:project-review-docs",
+    "project-docs:project-create-docs": "project-review:project-review-docs",
+    "project-docs:project-improve-docs": "project-review:project-review-docs",
+    "project-docs:project-init-or-update-docs": "project-review:project-review-docs",
+    "project-docs:project-review-docs": "project-review:project-review-docs",
+    "project-docs:project-revise-docs": "project-review:project-review-docs",
+    # project-ops skills -> the project-exec-* family (testing / releasing / monitoring)
+    "project-ops:analyze-monitoring-data": "project-execute:project-exec-monitoring",
+    "project-ops:executes-tests": "project-execute:project-exec-testing",
+    "project-ops:project-executes-tests": "project-execute:project-exec-testing",
+    "project-ops:trigger-release": "project-execute:project-exec-releasing",
+    "project-ops:project-analyze-monitoring-data": "project-execute:project-exec-monitoring",
+    "project-ops:project-run-tests": "project-execute:project-exec-testing",
+    "project-ops:project-trigger-release": "project-execute:project-exec-releasing",
     # project-quality ops renamed to the project-exec-* family
-    "project-quality:project-run-tests": "project-quality:project-exec-testing",
-    "project-quality:project-trigger-release": "project-quality:project-exec-releasing",
-    "project-quality:project-analyze-monitoring": "project-quality:project-exec-monitoring",
-    # complexity-review plugin era (plugin later renamed; reviews now live in project-quality)
-    "complexity-review:complexity-review": "project-quality:project-review-complexity",
-    # project-review skills -> project-quality (the test -> tests rename happened in the merge)
-    "project-review:complexity-review": "project-quality:project-review-complexity",
-    "project-review:consistency-review": "project-quality:project-review-consistency",
-    "project-review:structure-review": "project-quality:project-review-structure",
-    "project-review:test-review": "project-quality:project-review-tests",
-    "project-review:project-review-complexity": "project-quality:project-review-complexity",
-    "project-review:project-review-consistency": "project-quality:project-review-consistency",
-    "project-review:project-review-structure": "project-quality:project-review-structure",
-    "project-review:project-review-test": "project-quality:project-review-tests",
+    "project-quality:project-run-tests": "project-execute:project-exec-testing",
+    "project-quality:project-trigger-release": "project-execute:project-exec-releasing",
+    "project-quality:project-analyze-monitoring": "project-execute:project-exec-monitoring",
+    # project-quality era: the plugin was split into project-execute + project-review.
+    # These are the skill names as they appeared while project-quality existed.
+    "project-quality:project-exec-testing": "project-execute:project-exec-testing",
+    "project-quality:project-exec-releasing": "project-execute:project-exec-releasing",
+    "project-quality:project-exec-monitoring": "project-execute:project-exec-monitoring",
+    "project-quality:project-explain": "project-execute:project-explain",
+    "project-quality:project-review": "project-review:project-review-all",
+    "project-quality:project-review-complexity": "project-review:project-review-complexity",
+    "project-quality:project-review-consistency": "project-review:project-review-consistency",
+    "project-quality:project-review-structure": "project-review:project-review-structure",
+    "project-quality:project-review-tests": "project-review:project-review-tests",
+    "project-quality:project-review-docs": "project-review:project-review-docs",
+    # complexity-review plugin era (plugin later renamed; reviews live in project-review)
+    "complexity-review:complexity-review": "project-review:project-review-complexity",
+    # first project-review era (the test -> tests rename happened in the project-quality merge).
+    # Only keys that are NOT current skill names may appear here: project-review is a live
+    # plugin again, so an entry keyed on a live "project-review:project-review-*" name would
+    # rewrite present-day episodes onto a dead row.
+    "project-review:complexity-review": "project-review:project-review-complexity",
+    "project-review:consistency-review": "project-review:project-review-consistency",
+    "project-review:structure-review": "project-review:project-review-structure",
+    "project-review:test-review": "project-review:project-review-tests",
+    "project-review:project-review-test": "project-review:project-review-tests",
     # project-explore skill renamed (explore-project -> project-explore)
     "project-explore:explore-project": "project-explore:project-explore",
     # grill extracted from project-quality into its own standalone plugin
@@ -236,6 +256,32 @@ def discover_skill_modes(plugins_dir):
 def resolve_plugin(plugin_name, alias_to_canonical):
     """Resolve a plugin name to its canonical name, or None if unknown."""
     return alias_to_canonical.get(plugin_name)
+
+
+def canonical_plugin(skill, plugin, alias_to_canonical):
+    """Resolve an episode's (skill, plugin) pair to (canonical_plugin, effective_plugin).
+
+    The skill is authoritative when it is namespaced, because a plugin that was *split*
+    (project-quality -> project-execute + project-review) cannot be resolved from its
+    plugin name alone: project-quality:project-exec-testing and
+    project-quality:project-review-docs came from one plugin and land in different ones.
+    SKILL_RENAME_ALIASES already records which current skill each historical skill became,
+    and its values are canonical "plugin:skill" pairs, so the prefix of the aliased skill
+    is the canonical plugin.
+
+    Falls back to the plugin-level alias when the skill is bare (not namespaced), which is
+    all a folded — as opposed to split — plugin ever needs.
+
+    Returns (None, effective_plugin) when the plugin is unknown, so the caller can count
+    the episode as unmatched.
+    """
+    if skill:
+        parts = SKILL_RENAME_ALIASES.get(skill, skill).split(":")
+        if len(parts) >= 2:
+            return resolve_plugin(parts[0], alias_to_canonical), parts[0]
+    if plugin:
+        return resolve_plugin(plugin, alias_to_canonical), plugin
+    return None, plugin
 
 
 # ---------------------------------------------------------------------------
@@ -482,17 +528,11 @@ def parse_file(filepath, alias_to_canonical):
                     unmatched_plugin = None
                 current_is_unmatched = False
 
-                # Determine canonical plugin for new skill
-                canonical = None
-                effective_plugin = plugin
-                if plugin:
-                    canonical = resolve_plugin(plugin, alias_to_canonical)
-                elif skill:
-                    # attribution_skill is namespaced: "plugin:skill" or bare "skill"
-                    parts = skill.split(":")
-                    if len(parts) >= 2:
-                        effective_plugin = parts[0]
-                        canonical = resolve_plugin(parts[0], alias_to_canonical)
+                # Determine canonical plugin for new skill. attribution_skill is either
+                # namespaced ("plugin:skill") or bare ("skill"); see canonical_plugin.
+                canonical, effective_plugin = canonical_plugin(
+                    skill, plugin, alias_to_canonical
+                )
 
                 if skill and canonical:
                     # Known plugin — start a matched episode

@@ -21,13 +21,20 @@ docs inline. The workflow returns a structured report; relay it.
    fall back to the root.
 
 2. Resolve the install (`$CLAUDE_PLUGIN_ROOT` is not exported to Bash; locate under
-   `$HOME`, version-sorted, with `$PWD` covered for dev installs):
+   `$HOME`, version-sorted, with `$PWD` covered for dev installs). The glob must stay a
+   `*project-review*` **substring** — cached installs live at
+   `…/project-review/<version>/skills`, and only a `*` spanning the version segment reaches
+   them. That breadth also matches a long-dead `project-review` plugin still in the cache,
+   so walk candidates newest-first and take the first that actually carries this workflow:
 
    ```bash
    command -v python3 >/dev/null || echo "python3 missing"
-   PLUGIN_DIR=$(dirname "$(find "$HOME/.claude/plugins" "$PWD" -type d -path '*project-quality*/skills' 2>/dev/null | sort -V | tail -1)")
+   PLUGIN_DIR=$(find "$HOME/.claude/plugins" "$PWD" -type d -path '*project-review*/skills' 2>/dev/null |
+     sort -V | tac | while read -r d; do
+       [ -f "${d%/skills}/skills/project-review-docs/workflows/review-docs.js" ] && { printf '%s\n' "${d%/skills}"; break; }
+     done)
    SKILL_DIR="$PLUGIN_DIR/skills/project-review-docs"
-   [ -f "$SKILL_DIR/workflows/review-docs.js" ] || echo "skill not located — do not launch; fall back to a manual read"
+   [ -n "$PLUGIN_DIR" ] && [ -f "$SKILL_DIR/workflows/review-docs.js" ] || echo "skill not located — do not launch; fall back to a manual read"
    ```
 
 3. Invoke the **Workflow** tool:

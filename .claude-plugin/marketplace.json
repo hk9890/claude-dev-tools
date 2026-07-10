@@ -23,16 +23,28 @@
       "keywords": ["tasks", "taskmgr", "task-tracking", "issues", "dependencies"]
     },
     {
-      "name": "project-quality",
-      "source": "./plugins/project-quality",
-      "description": "Project-quality toolkit — read-only adversarial reviews (complexity, structure, tests, consistency, docs) runnable individually or as one orchestrated, verified full review, thin human-triggered exec skills (run tests, cut a release, analyze monitoring), and a human-triggered explainer that digests how the project handles a topic from its own docs",
+      "name": "project-review",
+      "source": "./plugins/project-review",
+      "description": "Read-only adversarial project reviews — complexity, structure, tests, consistency, and docs — each runnable as a standalone lens, or all together via project-review-all, which orchestrates the dimension reviewers, adversarially verifies every finding, and returns one prioritized action list",
       "version": "1.22.0",
       "author": {
         "name": "Hans Kohlreiter",
         "email": "hans.kohlreiter@gmail.com"
       },
       "category": "code-quality",
-      "keywords": ["review", "complexity", "structure", "tests", "consistency", "docs", "operations", "release", "monitoring", "explain", "adversarial", "quality"]
+      "keywords": ["review", "complexity", "structure", "tests", "consistency", "docs", "adversarial", "quality"]
+    },
+    {
+      "name": "project-execute",
+      "source": "./plugins/project-execute",
+      "description": "Thin human-triggered skills that execute a project's own defined flows — run its tests, cut a release, analyze its monitoring data — plus an explainer that digests how the project handles a given topic from its own docs; every skill follows what the project documents and invents nothing",
+      "version": "1.22.0",
+      "author": {
+        "name": "Hans Kohlreiter",
+        "email": "hans.kohlreiter@gmail.com"
+      },
+      "category": "workflow",
+      "keywords": ["operations", "testing", "release", "monitoring", "explain", "execute"]
     },
     {
       "name": "grill",

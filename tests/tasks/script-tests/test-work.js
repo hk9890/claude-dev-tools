@@ -139,7 +139,7 @@ async function main() {
 
   // ── orchestration: one task, happy path + reviewer-absent fallback ───────────
   // Drives the full implement → review∥test → record pipeline through stubbed hooks.
-  // `reviewerPresent:false` makes the project-quality reviewer agentType THROW, which
+  // `reviewerPresent:false` makes the project-review reviewer agentType THROW, which
   // must trigger runReview's general-purpose fallback (not strand the task) — the
   // throw-vs-null safety the work.js comments call out as highest-risk.
   const runOneTask = async (reviewerPresent) => {
@@ -147,8 +147,8 @@ async function main() {
     const agent = async (_prompt, opts = {}) => {
       const { agentType, label = '' } = opts;
       if (agentType === 'tasks:implementer') return { status: 'implemented', changedFiles: [], summary: 'did x' };
-      if (agentType === 'project-quality:project-reviewer') {
-        if (!reviewerPresent) throw new Error('unknown agentType: project-quality:project-reviewer');
+      if (agentType === 'project-review:project-reviewer') {
+        if (!reviewerPresent) throw new Error('unknown agentType: project-review:project-reviewer');
         return { verdict: 'ok' };
       }
       if (agentType === 'general-purpose') { calls.generalPurposeReview = true; return { verdict: 'ok' }; }
@@ -173,7 +173,7 @@ async function main() {
     false, happy.ret && happy.ret.summary && happy.ret.summary.reviewer_fallback);
 
   const fallback = await runOneTask(false);
-  eq('fallback: task still closes when project-quality reviewer is absent',
+  eq('fallback: task still closes when project-review reviewer is absent',
     ['t1'], fallback.ret && fallback.ret.closed);
   if (fallback.calls.generalPurposeReview) ok('fallback: review ran on the general-purpose agent');
   else bad('fallback: review ran on the general-purpose agent', 'general-purpose reviewer was not used');

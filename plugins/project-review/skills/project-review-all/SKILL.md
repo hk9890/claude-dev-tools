@@ -1,5 +1,5 @@
 ---
-name: project-review
+name: project-review-all
 description: "Run the full project review — orchestrate the dimension reviewers, verify each finding, and deliver one prioritized action list."
 user-invocable: true
 disable-model-invocation: true
@@ -52,11 +52,19 @@ configuration point — set them directly; do **not** rely on the Workflow `args
 - `PLUGIN_DIR` — the absolute path of *this* plugin, so finders can locate each
   dimension's procedure and workflow-backed dimensions can locate their script. Resolve
   it in the main loop with the house recipe (version-sorted so a newer cached copy wins,
-  `$PWD` covered for dev installs), verify it, and paste the absolute path:
+  `$PWD` covered for dev installs), and paste the absolute path.
+
+  The glob must stay a `*project-review*` **substring** — cached installs live at
+  `…/project-review/<version>/skills`, and only a `*` spanning the version segment reaches
+  them. That breadth also matches a long-dead `project-review` plugin still sitting in the
+  cache, so walk candidates newest-first and take the first one that actually carries this
+  skill; the marker file, not the glob, is what rejects the impostor:
 
   ```bash
-  PLUGIN_DIR=$(dirname "$(find "$HOME/.claude/plugins" "$PWD" -type d -path '*project-quality*/skills' 2>/dev/null | sort -V | tail -1)")
-  [ -f "$PLUGIN_DIR/skills/project-review/SKILL.md" ] || PLUGIN_DIR=""
+  PLUGIN_DIR=$(find "$HOME/.claude/plugins" "$PWD" -type d -path '*project-review*/skills' 2>/dev/null |
+    sort -V | tac | while read -r d; do
+      [ -f "${d%/skills}/skills/project-review-all/SKILL.md" ] && { printf '%s\n' "${d%/skills}"; break; }
+    done)
   REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
   ```
 
@@ -67,7 +75,7 @@ configuration point — set them directly; do **not** rely on the Workflow `args
   dimensions need a real directory; the script has no filesystem access to derive one.
 
 **Two kinds of dimension.** A *prose* dimension (`complexity`, `consistency`,
-`structure`, `tests`) is a procedure document: a `project-quality:project-reviewer`
+`structure`, `tests`) is a procedure document: a `project-review:project-reviewer`
 agent reads its `SKILL.md` and follows it. A *workflow-backed* dimension (`docs`) is a
 multi-agent pipeline that a single agent cannot reproduce — it is invoked with the
 `workflow()` hook and its report is adapted into the shared finding shape. Never hand a
@@ -87,7 +95,7 @@ their standalone skill (e.g. `/project-review-docs`) directly.
 
 ```js
 export const meta = {
-  name: 'project-review',
+  name: 'project-review-all',
   description: 'Full project review: fan out dimension reviewers → verify each finding → synthesize one prioritized list',
   phases: [
     { title: 'Find', detail: 'one reviewer per dimension' },
@@ -101,7 +109,7 @@ export const meta = {
 const DIMS = ['complexity', 'consistency', 'docs', 'structure', 'tests']
 const SCOPE = '' // a path/description to scope the review; '' = whole project
 const RAW_COST = 'high' // 'low' | 'medium' | 'high'
-const PLUGIN_DIR = '' // absolute path of the project-quality plugin; '' = finders search
+const PLUGIN_DIR = '' // absolute path of the project-review plugin; '' = finders search
 const REPO_ROOT = '.' // absolute repo root; workflow-backed dimensions need a real dir
 // ─────────────────────────────────────────────────────────────────────────────
 const SCOPE_TEXT = SCOPE || 'the whole project at the current working directory'
@@ -149,14 +157,18 @@ const VERIFY_SCHEMA = {
   required: ['vote', 'evidence'],
 }
 
+// The `*project-review*` substring is required to reach versioned cache installs, and it
+// also matches a long-dead `project-review` plugin still in the cache — whose dimension
+// procedures are the WRONG generation. So walk candidates newest-first and take the first
+// whose install also carries project-review-all; never merely the newest candidate.
 const locate = (dim) =>
   `SKILL="${PLUGIN_DIR}/skills/project-review-${dim}/SKILL.md"; ` +
-  `[ -f "$SKILL" ] || SKILL="$(find "$HOME/.claude/plugins" "$PWD" -path "*project-quality*/skills/project-review-${dim}/SKILL.md" 2>/dev/null | sort -V | tail -1)"`
+  `[ -f "$SKILL" ] || SKILL="$(find "$HOME/.claude/plugins" "$PWD" -path "*project-review*/skills/project-review-${dim}/SKILL.md" 2>/dev/null | sort -V | tac | while read -r f; do s=$(dirname "$(dirname "$f")"); [ -f "$s/project-review-all/SKILL.md" ] && { printf '%s\\n' "$f"; break; }; done)"`
 
 function finderPrompt(dim) {
   return [
-    `You are the "${dim}" reviewer in project-quality's orchestrated full review.`,
-    `Review the TARGET REPOSITORY at the current working directory — NOT the project-quality plugin.`,
+    `You are the "${dim}" reviewer in project-review's orchestrated full review.`,
+    `Review the TARGET REPOSITORY at the current working directory — NOT the project-review plugin.`,
     ``,
     `PROCEDURE — locate this dimension's own review procedure and follow it exactly:`,
     `  ${locate(dim)}`,
@@ -223,8 +235,8 @@ function sweepPrompt(dim, known) {
   ].join('\n')
 }
 
-const finderOpts = (dim, ph) => ({ label: `find:${dim}`, phase: ph, agentType: 'project-quality:project-reviewer', schema: FINDINGS_SCHEMA })
-const verifyOpts = (f) => ({ label: `verify:${f.dimension}`, phase: 'Verify', agentType: 'project-quality:project-reviewer', model: 'sonnet', schema: VERIFY_SCHEMA })
+const finderOpts = (dim, ph) => ({ label: `find:${dim}`, phase: ph, agentType: 'project-review:project-reviewer', schema: FINDINGS_SCHEMA })
+const verifyOpts = (f) => ({ label: `verify:${f.dimension}`, phase: 'Verify', agentType: 'project-review:project-reviewer', model: 'sonnet', schema: VERIFY_SCHEMA })
 
 // ---- Find -----------------------------------------------------------------
 phase('Find')
@@ -328,7 +340,7 @@ if (COST === 'high') {
   const sweepFound = (
     await parallel(
       sweepDims.map((d) => () =>
-        agent(sweepPrompt(d, kept), { label: `sweep:${d}`, phase: 'Sweep', agentType: 'project-quality:project-reviewer', schema: FINDINGS_SCHEMA }).then(
+        agent(sweepPrompt(d, kept), { label: `sweep:${d}`, phase: 'Sweep', agentType: 'project-review:project-reviewer', schema: FINDINGS_SCHEMA }).then(
           (r) => ((r && r.findings) || []).map((f) => ({ ...f, dimension: d })),
         ),
       ),

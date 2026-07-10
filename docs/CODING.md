@@ -27,12 +27,12 @@ These apply to every `SKILL.md` under `plugins/<plugin-name>/skills/<skill-name>
 
 Skill directory name and the `name:` field in frontmatter must match, and both should be **domain-prefixed**: `<plugin-domain>-<topic>`. The qualified reference (`<plugin>:<skill>`) then carries the domain in both segments.
 
-- ✅ `keep-awake-linux:keep-awake-inspect`, `html-visualization:html-visualize-ask`, `project-quality:project-review-docs`
+- ✅ `keep-awake-linux:keep-awake-inspect`, `html-visualization:html-visualize-ask`, `project-review:project-review-docs`
 - ❌ `keep-awake-linux:inspect` — bare verb, no domain
 
 Within a plugin, sibling skills share the same domain prefix so they sort and read as a family.
 
-A family may also expose an **umbrella** skill named with the family's shared stem — e.g. `project-review` over the `project-review-<aspect>` skills. This is still the `<plugin-domain>-<topic>` shape (here `project`-`review`), so it needs no exception.
+A family may also expose an **umbrella** skill that runs the whole family — e.g. `project-review-all` over the `project-review-<aspect>` skills. Give it its own topic (`-all`) rather than the bare family stem: a skill named for its plugin's own domain reads as `project-review:project-review` at the call site.
 
 A "main" skill may take the plugin's own name (e.g. `project-explore:project-explore`, `github-releases:github-releases`); this is the only accepted exception.
 
@@ -51,7 +51,7 @@ disable-model-invocation: true
 ---
 ```
 
-Use for skills that perform a consequential, explicit action and should only run when the user types the slash command. Examples: `tasks-work`, `project-explore`, `html-visualize-demo`, the `project-quality` exec skills (`project-exec-testing`, `project-exec-releasing`, `project-exec-monitoring`), the orchestrated `project-quality:project-review` (a full run spawns many agents), and `project-explain`.
+Use for skills that perform a consequential, explicit action and should only run when the user types the slash command. Examples: `tasks-work`, `project-explore`, `html-visualize-demo`, the `project-execute` exec skills (`project-exec-testing`, `project-exec-releasing`, `project-exec-monitoring`), the orchestrated `project-review:project-review-all` (a full run spawns many agents), and `project-explain`.
 
 **Schema B — model-discoverable:**
 

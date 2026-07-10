@@ -1,7 +1,7 @@
 # Reviewing
 
 Project-specific review rules for this plugin marketplace. The generic review lenses
-(complexity, structure, consistency, tests, docs) are covered by the `project-quality`
+(complexity, structure, consistency, tests, docs) are covered by the `project-review`
 review skills — this file records only the local delta. Where it conflicts with a
 skill's default, this file wins.
 
@@ -20,7 +20,7 @@ skill's default, this file wins.
   plugins (see [RELEASING.md](RELEASING.md)); flag a partial bump.
 - A new canonical doc must be registered in the taxonomy reference
   (`project-setup.md`) and in `manifest.py`'s canonical lists — both under
-  `plugins/project-quality/skills/project-review-docs/` — otherwise the manifest
+  `plugins/project-review/skills/project-review-docs/` — otherwise the manifest
   classifies it as a non-standard doc. That classification is advisory (the review's
   per-file agents judge placement); registering the topic is a human step, not an
   automatic gate.
@@ -33,6 +33,6 @@ skill's default, this file wins.
 - Cross-references and version lockstep are checked by `mise run check-consistency`
   (`scripts/check-internal-consistency.py`). Route resolution, the
   `CLAUDE.md` = `@AGENTS.md` contract, and canonical inventory are reported by the docs
-  manifest (`manifest.py` under `plugins/project-quality/skills/project-review-docs/scripts/`,
+  manifest (`manifest.py` under `plugins/project-review/skills/project-review-docs/scripts/`,
   the deterministic layer of the `project-review-docs` audit). Lean on these rather than
   re-checking by hand what they already cover.
