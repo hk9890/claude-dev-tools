@@ -33,8 +33,12 @@ from collections import defaultdict
 
 RENAME_ALIASES = {
     "html-ask": "html-visualization",
+    # Plugin renamed whole (grill -> challenge, when kiss and are-you-sure joined it).
+    "grill": "challenge",
     # These plugins were folded, whole, into a single current plugin.
-    "complexity-review": "project-review",
+    # complexity-review's one skill went project-review -> challenge:kiss, so its
+    # bare-skill episodes now belong to challenge, not project-review.
+    "complexity-review": "challenge",
     "project-ops": "project-execute",
     "project-docs": "project-review",
     # Deliberately absent:
@@ -91,26 +95,32 @@ SKILL_RENAME_ALIASES = {
     "project-quality:project-exec-monitoring": "project-execute:project-exec-monitoring",
     "project-quality:project-explain": "project-execute:project-explain",
     "project-quality:project-review": "project-review:project-review-all",
-    "project-quality:project-review-complexity": "project-review:project-review-complexity",
+    "project-quality:project-review-complexity": "challenge:kiss",
     "project-quality:project-review-consistency": "project-review:project-review-consistency",
     "project-quality:project-review-structure": "project-review:project-review-structure",
     "project-quality:project-review-tests": "project-review:project-review-tests",
     "project-quality:project-review-docs": "project-review:project-review-docs",
-    # complexity-review plugin era (plugin later renamed; reviews live in project-review)
-    "complexity-review:complexity-review": "project-review:project-review-complexity",
+    # complexity-review plugin era (plugin later renamed; the skill now lives in challenge)
+    "complexity-review:complexity-review": "challenge:kiss",
     # first project-review era (the test -> tests rename happened in the project-quality merge).
     # Only keys that are NOT current skill names may appear here: project-review is a live
     # plugin again, so an entry keyed on a live "project-review:project-review-*" name would
     # rewrite present-day episodes onto a dead row.
-    "project-review:complexity-review": "project-review:project-review-complexity",
+    "project-review:complexity-review": "challenge:kiss",
     "project-review:consistency-review": "project-review:project-review-consistency",
     "project-review:structure-review": "project-review:project-review-structure",
     "project-review:test-review": "project-review:project-review-tests",
     "project-review:project-review-test": "project-review:project-review-tests",
     # project-explore skill renamed (explore-project -> project-explore)
     "project-explore:explore-project": "project-explore:project-explore",
-    # grill extracted from project-quality into its own standalone plugin
-    "project-quality:project-review-grill": "grill:grill",
+    # grill extracted from project-quality into its own standalone plugin, which was
+    # then renamed grill -> challenge. Values are the current canonical name, not a
+    # chain: the map is applied once, never transitively.
+    "project-quality:project-review-grill": "challenge:grill",
+    "grill:grill": "challenge:grill",
+    # complexity left project-review entirely — it is now the on-demand challenge:kiss.
+    # Safe to key on the old name: project-review-complexity is no longer a live skill.
+    "project-review:project-review-complexity": "challenge:kiss",
     # github-releases: stale "release" skill name -> the plugin's actual skill
     "github-releases:release": "github-releases:github-releases",
 }

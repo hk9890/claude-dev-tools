@@ -31,7 +31,7 @@ optional:
     which is strictly better. If the user passes it, clamp to `high` and say so in the
     report header.
 - **dimensions** — a comma- or space-separated subset of
-  `complexity,consistency,docs,structure,tests`. Default: **all five**.
+  `consistency,docs,structure,tests`. Default: **all four**.
 - **what to review** — a path or free-form description (e.g. `src/`, "the auth
   module"). Default: **the whole project**.
 
@@ -74,7 +74,7 @@ configuration point — set them directly; do **not** rely on the Workflow `args
 - `REPO_ROOT` — the absolute repo root from the snippet above. Workflow-backed
   dimensions need a real directory; the script has no filesystem access to derive one.
 
-**Two kinds of dimension.** A *prose* dimension (`complexity`, `consistency`,
+**Two kinds of dimension.** A *prose* dimension (`consistency`,
 `structure`, `tests`) is a procedure document: a `project-review:project-reviewer`
 agent reads its `SKILL.md` and follows it. A *workflow-backed* dimension (`docs`) is a
 multi-agent pipeline that a single agent cannot reproduce — it is invoked with the
@@ -106,7 +106,7 @@ export const meta = {
 
 // ─── CONFIG — the skill fills these in (steps 1-2) before running. Defaults below
 //     = a full, whole-project, high-cost review. ───────────────────────────────
-const DIMS = ['complexity', 'consistency', 'docs', 'structure', 'tests']
+const DIMS = ['consistency', 'docs', 'structure', 'tests']
 const SCOPE = '' // a path/description to scope the review; '' = whole project
 const RAW_COST = 'high' // 'low' | 'medium' | 'high'
 const PLUGIN_DIR = '' // absolute path of the project-review plugin; '' = finders search
@@ -190,7 +190,7 @@ function finderPrompt(dim) {
     `detail, including any principle/open-question notes, into the findings array.`,
     `"findings" is empty if genuinely clean — do not pad. Every finding cites an exact`,
     `path and line where possible. Set route_to to another dimension`,
-    `(complexity|consistency|docs|structure|tests) ONLY when the finding truly belongs to`,
+    `(consistency|docs|structure|tests) ONLY when the finding truly belongs to`,
     `that reviewer's remit; otherwise set route_to to "".`,
   ].join('\n')
 }
@@ -211,7 +211,7 @@ function verifyPrompt(f) {
     ),
     ``,
     `Vote exactly one:`,
-    `- CONFIRMED: verified real at the cited location. For complexity/structure/tests, name`,
+    `- CONFIRMED: verified real at the cited location. For structure/tests, name`,
     `  the concrete cost or failure; for docs/consistency, confirm the cited rule, divergence,`,
     `  or inaccuracy actually exists. Quote the proving line in evidence.`,
     `- PLAUSIBLE: the mechanism is real but you could not fully confirm the trigger or cost.`,
@@ -369,7 +369,7 @@ for (const f of kept) {
 }
 
 // Sort: dimension priority, then CONFIRMED before PLAUSIBLE.
-const dimRank = { complexity: 0, structure: 1, tests: 2, consistency: 3, docs: 4 }
+const dimRank = { structure: 0, tests: 1, consistency: 2, docs: 3 }
 const voteRank = { CONFIRMED: 0, PLAUSIBLE: 1 }
 unique.sort(
   (a, b) =>
@@ -401,7 +401,7 @@ From the workflow's return value, present one consolidated review:
    same applies to any requested dimension absent from `verdicts`. When a workflow-backed
    dimension failed, point the user at its standalone skill.
 2. **Verdicts** — the per-dimension verdict label from `verdicts` (each dimension
-   keeps its own label set: complexity `approve`/…/`reject`, tests `passing`/…, etc.).
+   keeps its own label set: structure `approve`/…/`reject`, tests `passing`/…, etc.).
 3. **Findings** — grouped by dimension in the sorted order, each with its
    `Location`, `Observation`, `Why it matters`, `Recommended action`, and the
    verify `vote` (CONFIRMED / PLAUSIBLE). If `notes` carries entries for a dimension

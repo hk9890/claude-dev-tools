@@ -90,7 +90,7 @@ When no documented convention exists, the dominant pattern is the de facto stand
 ## What this review does not cover
 
 - Pure formatting: whitespace, indentation, bracket placement, trailing commas. These belong to linters and formatters.
-- Whether the shared pattern is the right design — that is project-review-complexity's domain.
+- Whether the shared pattern is the right design — that is `challenge:kiss`'s domain.
 - Whether the directory layout makes sense — that is project-review-structure's domain.
 - Whether tests are adequate — that is project-review-tests's domain.
 

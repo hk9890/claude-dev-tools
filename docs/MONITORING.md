@@ -65,7 +65,7 @@ An **episode** is a contiguous run of assistant messages that share the same `at
 Plugin renames are handled via `RENAME_ALIASES` and skill-level renames via `SKILL_RENAME_ALIASES`, both defined in [`scripts/analyze-sessions.py`](../scripts/analyze-sessions.py). The script is the single source of truth — the maps are deliberately not reproduced here. Illustrative entries only:
 
 ```python
-RENAME_ALIASES = {"complexity-review": "project-review", ...}          # old plugin dir -> current
+RENAME_ALIASES = {"grill": "challenge", ...}                          # old plugin dir -> current
 SKILL_RENAME_ALIASES = {"github-releases:release": "github-releases:github-releases", ...}
 ```
 

@@ -27,8 +27,9 @@ answer for each one, and expose mismatches between what the tree contains and
 what the project claims to be.
 
 **Layering hand-off rule**: if a smell requires redesigning a module boundary
-rather than moving a file, flag it and route the design verdict to
-`project-review-complexity` — do not judge the architecture here.
+rather than moving a file, flag it as a structural observation and stop — do not
+judge the architecture here. Design verdicts are outside every review dimension;
+point the user at `challenge:kiss`.
 
 ---
 
@@ -125,8 +126,9 @@ interface. Cross-layer imports go in one direction only.
 
 **Hand-off rule**: If you find a layering smell, flag it here as a structural
 observation (e.g. "module A imports from `B/internal/`"). Do not issue a design
-verdict. Route the question "is this boundary worth having and is it correctly
-drawn?" to `project-review-complexity`.
+verdict. The question "is this boundary worth having and is it correctly drawn?"
+belongs to `challenge:kiss`, which is not a review dimension — surface it in the
+finding text rather than routing to it.
 
 ---
 
@@ -139,6 +141,6 @@ The skill-specific pieces below slot into that skeleton:
   `broken`.
 - **Per-finding `Recommended action`** — exactly one of: move, split, merge,
   delete, or rename.
-- **Per-finding `Route to`** — set to `project-review-complexity` only when
-  the finding touches a design boundary (a layering smell) rather than a
-  placement error. Apply the layering hand-off rule above.
+- **Per-finding `Route to`** — leave empty. A design-boundary finding (a layering
+  smell) has no reviewer to route to; say so in the finding text instead. Apply
+  the layering hand-off rule above.

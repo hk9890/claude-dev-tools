@@ -61,7 +61,7 @@ Resolve the selection to a concrete list of task ids:
 Nothing runs until the user confirms.
 
 > Grilling is **advisory** here, not a gate — `tasks-work` does not require a plan-review pass before
-> running. If the user wants the plan challenged first, point them at `/grill`.
+> running. If the user wants the plan challenged first, point them at `/challenge:grill`.
 
 ## 4. Launch the workflow
 

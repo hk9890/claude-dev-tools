@@ -1,7 +1,7 @@
 ---
 name: project-review-docs
 description: "Read-only audit of a project's docs for accuracy, staleness, gaps, misplaced content, and whether an agent can actually use them — runs a multi-agent workflow, reports fixes, never edits."
-when_to_use: "Use when the user wants a documentation review or audit. Triggers on 'are our docs stale?', 'do our docs match the code?', 'does AGENTS still match the repo?', 'audit the documentation'. Not for complexity, structure, consistency, or test reviews — each has its own skill."
+when_to_use: "Use when the user wants a documentation review or audit. Triggers on 'are our docs stale?', 'do our docs match the code?', 'does AGENTS still match the repo?', 'audit the documentation'. Not for structure, consistency, or test reviews — each has its own skill."
 argument-hint: "[low|medium|high|ultra] [what-to-review]"
 ---
 
@@ -74,6 +74,6 @@ manifest is necessary, never sufficient.
 
 ## Not covered
 
-Code over-engineering → `project-review-complexity`; file/directory layout →
-`project-review-structure`; naming/pattern consistency → `project-review-consistency`;
-test quality → `project-review-tests`.
+File/directory layout → `project-review-structure`; naming/pattern consistency →
+`project-review-consistency`; test quality → `project-review-tests`. Code
+over-engineering is not a review dimension — use `challenge:kiss`.

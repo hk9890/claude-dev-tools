@@ -1,7 +1,7 @@
 # Reviewing
 
 Project-specific review rules for this plugin marketplace. The generic review lenses
-(complexity, structure, consistency, tests, docs) are covered by the `project-review`
+(structure, consistency, tests, docs) are covered by the `project-review`
 review skills — this file records only the local delta. Where it conflicts with a
 skill's default, this file wins.
 

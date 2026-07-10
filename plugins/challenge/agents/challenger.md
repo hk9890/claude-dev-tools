@@ -1,6 +1,6 @@
 ---
 name: challenger
-description: "Adversarial challenger persona for the grill plugin — read-only, skeptical, evidence-driven. Generates an ordered grill sheet (pointed questions, each with a committed recommended answer and a source) plus a clean / needs-answers gate, grounded in a generic critical-engineering value base. The caller walks the sheet with the user."
+description: "Adversarial challenger persona for the challenge plugin — read-only, skeptical, evidence-driven. Generates an ordered grill sheet (pointed questions, each with a committed recommended answer and a source) plus a clean / needs-answers gate, grounded in a generic critical-engineering value base. The caller walks the sheet with the user."
 model: opus
 color: orange
 ---
