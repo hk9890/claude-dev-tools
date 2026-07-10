@@ -20,7 +20,7 @@ Load [docs/REVIEWING.md](docs/REVIEWING.md) before reviewing a PR or change — 
 
 ### Developing or contributing a new plugin
 
-Load [docs/CODING.md](docs/CODING.md) for step-by-step plugin creation, rules files, and scaffolding guidance.
+Load [docs/CODING.md](docs/CODING.md) for step-by-step plugin creation and scaffolding guidance.
 Load [docs/OVERVIEW.md](docs/OVERVIEW.md) for directory layout and architecture reference.
 
 ### Testing a plugin

@@ -28,8 +28,6 @@ For the full list of plugins, see the [plugin table in README.md](../README.md#p
 plugins/<plugin-name>/
   .claude-plugin/
     plugin.json          # per-plugin manifest: name, version, description, author
-  README.md              # user-facing plugin docs
-  RULES.md               # plugin-specific rules — read before changing the plugin
   agents/                # subagents (.md files)
   assets/                # static files served or bundled by the plugin (e.g. browser CSS/JS)
   bin/                   # executable scripts bundled with the plugin
@@ -43,5 +41,5 @@ plugins/<plugin-name>/
 
 Not all component types are required — a plugin may have only commands, only skills, or a mix.
 
-For implementation steps (adding a plugin, rules files, scaffolding) see [CODING.md](CODING.md).
+For implementation steps (adding a plugin, scaffolding) see [CODING.md](CODING.md).
 

@@ -48,4 +48,4 @@ External contributors fork the repo, branch off their fork's `master`, and open 
 
 ## Task tracking
 
-Tasks are tracked with the `taskmgr` CLI via the `tasks` plugin. Typical workflow: `taskmgr ready` to find available work, `taskmgr create` to capture follow-ups discovered while working, `taskmgr close` when a task is done. See [plugins/tasks/README.md](../plugins/tasks/README.md) for the full workflow.
+Tasks are tracked with the `taskmgr` CLI via the `tasks` plugin. Typical workflow: `taskmgr ready` to find available work, `taskmgr create` to capture follow-ups discovered while working, `taskmgr close` when a task is done. See [the `tasks` skill](../plugins/tasks/skills/tasks/SKILL.md) for the full workflow.

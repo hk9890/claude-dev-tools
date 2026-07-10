@@ -10,9 +10,6 @@ skill's default, this file wins.
 - **Quality gates stay green.** A change must not break `bash tests/run-all.sh` or
   `mise run check-consistency` (see [TESTING.md](TESTING.md)). Flag any change that skips
   or weakens these.
-- **Design-decision conformance.** Changes under `plugins/project-quality/` must obey
-  its `RULES.md` (the three-family split, the `project-<verb>-<topic>` naming shape,
-  the read-only review contract). A violation of a recorded design decision is blocking.
 - **Skill triggering.** A skill's `description` and `when_to_use` frontmatter are
   load-bearing for routing. Review wording changes for trigger accuracy and overlap
   with sibling skills, not just prose quality.

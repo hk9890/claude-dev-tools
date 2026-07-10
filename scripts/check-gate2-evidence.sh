@@ -109,7 +109,7 @@ main() {
 
   if ! command -v taskmgr >/dev/null 2>&1; then
     printf 'ERROR: taskmgr (task-manager CLI) is not installed or not on PATH.\n' >&2
-    printf 'Install taskmgr (see plugins/tasks/README.md) to get the binary.\n' >&2
+    printf 'Install taskmgr (https://github.com/hk9890/task-manager) to get the binary.\n' >&2
     exit 2
   fi
 

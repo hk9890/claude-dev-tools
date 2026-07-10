@@ -8,14 +8,14 @@ For the repo layout and architecture, see [docs/OVERVIEW.md](docs/OVERVIEW.md).
 
 | Plugin | Description |
 |---|---|
-| [`tasks`](plugins/tasks/README.md) | Use the `taskmgr` file-based task tracker — data model and commands, a skill to turn review findings into well-formed tasks, generic implementer/verifier agents, and a tasks-work workflow that runs ready work through implement, verify, and record |
-| [`claude-catppuccin`](plugins/claude-catppuccin/README.md) | Visual style for Claude Code: Catppuccin color themes (Latte, Frappe, Macchiato, Mocha) |
-| [`project-quality`](plugins/project-quality/README.md) | Project-quality toolkit — read-only adversarial reviews (complexity, structure, tests, consistency, docs) runnable individually or as one orchestrated, verified full review, thin human-triggered exec skills (run tests, cut a release, analyze monitoring), and a human-triggered explainer that digests how the project handles a topic from its own docs |
-| [`grill`](plugins/grill/README.md) | Adversarial stress-test on demand — grills any plan, design, change, or decision with pointed questions, each carrying a committed recommended answer and a source, then walks them with you one at a time and ends on a clean / needs-answers gate; read-only and project-agnostic, grounded in a generic critical-engineering value base |
-| [`github-releases`](plugins/github-releases/README.md) | Language-agnostic GitHub release workflow with quality gates, semver, and release notes |
-| [`html-visualization`](plugins/html-visualization/README.md) | Interactive HTML the user opens in a browser — a shared `html-visualize` core skill plus three user-invoked command skills: `html-visualize-ask` (question and decision forms), `html-visualize-feedback` (comment on rendered content), and `html-visualize-demo` (rich visualization with an always-on footer for optional follow-up messages); a shared one-shot Node server captures the response and re-invokes Claude |
-| [`keep-awake-linux`](plugins/keep-awake-linux/README.md) | Prevents Linux system sleep while Claude Code is actively working — releases automatically when idle or on session exit |
-| [`project-explore`](plugins/project-explore/README.md) | Assisted exploratory testing — researches a project, then plays around with the product one action at a time, filing findings as tasks |
+| [`tasks`](plugins/tasks/) | Use the `taskmgr` file-based task tracker — data model and commands, a skill to turn review findings into well-formed tasks, generic implementer/verifier agents, and a tasks-work workflow that runs ready work through implement, verify, and record |
+| [`claude-catppuccin`](plugins/claude-catppuccin/) | Visual style for Claude Code: Catppuccin color themes (Latte, Frappe, Macchiato, Mocha) |
+| [`project-quality`](plugins/project-quality/) | Project-quality toolkit — read-only adversarial reviews (complexity, structure, tests, consistency, docs) runnable individually or as one orchestrated, verified full review, thin human-triggered exec skills (run tests, cut a release, analyze monitoring), and a human-triggered explainer that digests how the project handles a topic from its own docs |
+| [`grill`](plugins/grill/) | Adversarial stress-test on demand — grills any plan, design, change, or decision with pointed questions, each carrying a committed recommended answer and a source, then walks them with you one at a time and ends on a clean / needs-answers gate; read-only and project-agnostic, grounded in a generic critical-engineering value base |
+| [`github-releases`](plugins/github-releases/) | Language-agnostic GitHub release workflow with quality gates, semver, and release notes |
+| [`html-visualization`](plugins/html-visualization/) | Interactive HTML the user opens in a browser — a shared `html-visualize` core skill plus three user-invoked command skills: `html-visualize-ask` (question and decision forms), `html-visualize-feedback` (comment on rendered content), and `html-visualize-demo` (rich visualization with an always-on footer for optional follow-up messages); a shared one-shot Node server captures the response and re-invokes Claude |
+| [`keep-awake-linux`](plugins/keep-awake-linux/) | Prevents Linux system sleep while Claude Code is actively working — releases automatically when idle or on session exit |
+| [`project-explore`](plugins/project-explore/) | Assisted exploratory testing — researches a project, then plays around with the product one action at a time, filing findings as tasks |
 
 ## Installation
 
