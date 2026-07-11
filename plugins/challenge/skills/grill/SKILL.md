@@ -1,0 +1,21 @@
+---
+name: grill
+description: "Grill a plan, design, or decision before committing to it."
+when_to_use: "Use when the user wants their thinking challenged before they act — 'grill me on this', or any ask to poke holes in a plan. To challenge an artifact's complexity or over-engineering rather than a decision, use kiss. Not a code, PR, or whole-project audit; for those use the project-review skills."
+argument-hint: "[what-to-grill]"
+---
+
+What to grill: $ARGUMENTS. If no argument is given, grill the plan, design, or work
+currently under discussion.
+
+Interview me relentlessly about every aspect of this plan until we reach a shared
+understanding. Walk down each branch of the design tree, resolving dependencies between
+decisions one-by-one. For each question, provide your recommended answer.
+
+Ask the questions one at a time, waiting for feedback on each question before continuing.
+Asking multiple questions at once is bewildering.
+
+If a *fact* can be found by exploring the codebase, look it up rather than asking me. The
+*decisions*, though, are mine — put each one to me and wait for my answer.
+
+Do not enact the plan until I confirm we have reached a shared understanding.

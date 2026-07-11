@@ -22,11 +22,11 @@ In-repo script tests live under `tests/` (see [tests/README.md](../tests/README.
 bash tests/run-all.sh
 ```
 
-A plugin has a `tests/<plugin-name>/script-tests/` suite only when it ships committed bash/python helpers worth testing (e.g., `project-quality` validator scripts); plugins without script-level tests have no `tests/` subdirectory at all. A repo-level suite under `tests/marketplace/script-tests/` covers marketplace-wide helpers such as `scripts/check-internal-consistency.py`. `tests/run-all.sh` discovers and runs every suite, per-plugin and marketplace alike.
+A plugin has a `tests/<plugin-name>/script-tests/` suite only when it ships committed bash/python helpers worth testing (e.g., the `project-review` validator scripts); plugins without script-level tests have no `tests/` subdirectory at all. A repo-level suite under `tests/marketplace/script-tests/` covers marketplace-wide helpers such as `scripts/check-internal-consistency.py`. `tests/run-all.sh` discovers and runs every suite, per-plugin and marketplace alike.
 
 ### Writing a test
 
-A suite is a `test-*.sh` script under `tests/<plugin>/script-tests/` (or `tests/marketplace/script-tests/`); `run-all.sh` discovers every `test-*.sh` at that depth. Model a new one on an existing suite — e.g. [`test-manifest.sh`](../tests/project-quality/script-tests/test-manifest.sh) — resolving the script under test via `git rev-parse --show-toplevel` (see [tests/README.md](../tests/README.md) for the path-resolution idiom). A suite exits `0` on pass, `1` on failure, `77` to skip.
+A suite is a `test-*.sh` script under `tests/<plugin>/script-tests/` (or `tests/marketplace/script-tests/`); `run-all.sh` discovers every `test-*.sh` at that depth. Model a new one on an existing suite — e.g. [`test-manifest.sh`](../tests/project-review/script-tests/test-manifest.sh) — resolving the script under test via `git rev-parse --show-toplevel` (see [tests/README.md](../tests/README.md) for the path-resolution idiom). A suite exits `0` on pass, `1` on failure, `77` to skip.
 
 ### analyze-sessions fixture check
 

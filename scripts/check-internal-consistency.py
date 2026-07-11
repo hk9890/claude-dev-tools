@@ -71,10 +71,10 @@ import sys
 # ---------------------------------------------------------------------------
 
 def _load_validate_routes(repo_root):
-    """Import the validate_routes module from the project-quality plugin script."""
+    """Import the validate_routes module from the project-review plugin script."""
     vr_path = os.path.join(
         repo_root,
-        "plugins", "project-quality", "skills", "project-review-docs", "scripts", "validate-routes.py",
+        "plugins", "project-review", "skills", "project-review-docs", "scripts", "validate-routes.py",
     )
     spec = importlib.util.spec_from_file_location("validate_routes", vr_path)
     if spec is None or spec.loader is None:
