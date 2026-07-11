@@ -50,8 +50,8 @@ divergence from the right answer is a finding, not a neutral observation.
 ## Evidence bar
 
 Run the procedure once. Report both proven findings and plausible ones, saying which
-is which — a lighter review reports *fewer* findings, never softer ones, and never a
-cleaner verdict than the evidence supports.
+is which. Report only what the evidence supports — never soften a finding, and never a
+cleaner verdict than the evidence warrants.
 
 ## Shared output skeleton
 
