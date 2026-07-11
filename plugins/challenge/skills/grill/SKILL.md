@@ -1,11 +1,9 @@
 ---
 name: grill
-description: "Grill the user relentlessly about a plan or design — one question at a time, each with a recommended answer, until you reach a shared understanding."
-when_to_use: "Use when the user wants a plan, design, change, decision, or idea challenged before committing — 'grill me on this', 'poke holes in this', 'challenge this plan', 'stress-test this approach', 'what am I missing?', 'talk me out of this'. Produces an interactive question-by-question walkthrough, not a written report. Not a code/PR or whole-project audit — for those, use the project-review reviews."
+description: "Grill a plan, design, or decision before committing to it."
+when_to_use: "Use when the user wants their thinking challenged before they act — 'grill me on this', or any ask to poke holes in a plan. Not a code, PR, or whole-project audit; for those use the project-review skills."
 argument-hint: "[what-to-grill]"
 ---
-
-<!-- Adapted from https://github.com/mattpocock/skills (MIT), Copyright (c) Matt Pocock. -->
 
 What to grill: $ARGUMENTS. If no argument is given, grill the plan, design, or work
 currently under discussion.
