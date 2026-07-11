@@ -1,7 +1,7 @@
 ---
 name: grill
 description: "Grill a plan, design, or decision before committing to it."
-when_to_use: "Use when the user wants their thinking challenged before they act — 'grill me on this', or any ask to poke holes in a plan. Not a code, PR, or whole-project audit; for those use the project-review skills."
+when_to_use: "Use when the user wants their thinking challenged before they act — 'grill me on this', or any ask to poke holes in a plan. To challenge an artifact's complexity or over-engineering rather than a decision, use kiss. Not a code, PR, or whole-project audit; for those use the project-review skills."
 argument-hint: "[what-to-grill]"
 ---
 
