@@ -5,6 +5,9 @@
 #     classification (drives the summary.md Mode column)
 #   - select_slice_sample: rocky top-N ordering, evenly-spaced baseline stride,
 #     and no-duplicate output on lists larger than the fixture provides
+#   - RENAME_ALIASES / SKILL_RENAME_ALIASES invariants: no alias key is a live
+#     name (the retired-name-reuse guard), every value resolves to a live plugin,
+#     and the maps are single-application (no value is also a key)
 set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
@@ -107,6 +110,60 @@ check([ep.episode_id for ep in small] == ["ep-00", "ep-01"],
 sample = mod.select_slice_sample(episodes[:7], rocky_n=3, baseline_n=10)
 check(len(sample) == 7,
       "select_slice_sample: baseline_n larger than remainder → all episodes, no crash")
+
+# ── rename-alias invariants ──────────────────────────────────────────────────
+# The PR that split project-quality warned the retired-name-reuse hazard "recurs
+# on the next rename": an alias keyed on a name that later goes live again would
+# silently rewrite present-day episodes onto a dead row. Pin the invariants that
+# keep the two alias maps honest, so the next rename cannot reintroduce the hazard.
+
+repo_root = os.path.dirname(os.path.dirname(os.path.abspath(sys.argv[1])))
+plugins_root = os.path.join(repo_root, "plugins")
+live_plugins = {
+    name for name in os.listdir(plugins_root)
+    if os.path.isfile(os.path.join(plugins_root, name, ".claude-plugin", "plugin.json"))
+}
+live_skills = set(mod.discover_skill_modes(plugins_root))
+
+# (a) No skill-alias key is a live skill — else it rewrites present-day episodes.
+live_key = sorted(k for k in mod.SKILL_RENAME_ALIASES if k in live_skills)
+check(live_key == [],
+      "SKILL_RENAME_ALIASES: no key is a live skill name"
+      + (f" (offenders: {live_key})" if live_key else ""))
+
+# (b) Every skill-alias value attributes to a live plugin. The skill segment may be
+#     a deliberately-retired name kept for grouping (e.g. project-review-all), so only
+#     the plugin prefix must resolve.
+dead_target = sorted(
+    v for v in mod.SKILL_RENAME_ALIASES.values()
+    if v.split(":", 1)[0] not in live_plugins
+)
+check(dead_target == [],
+      "SKILL_RENAME_ALIASES: every value's plugin prefix is a live plugin"
+      + (f" (offenders: {dead_target})" if dead_target else ""))
+
+# (c) No value is itself a key — the map is applied once, never transitively.
+transitive = sorted(
+    v for v in mod.SKILL_RENAME_ALIASES.values() if v in mod.SKILL_RENAME_ALIASES
+)
+check(transitive == [],
+      "SKILL_RENAME_ALIASES: no value is also a key (applied once, not chained)"
+      + (f" (offenders: {transitive})" if transitive else ""))
+
+# (d) Every plugin-alias value is a live plugin.
+dead_plugin = sorted(v for v in mod.RENAME_ALIASES.values() if v not in live_plugins)
+check(dead_plugin == [],
+      "RENAME_ALIASES: every value is a live plugin"
+      + (f" (offenders: {dead_plugin})" if dead_plugin else ""))
+
+# (e) No plugin-alias key is a live plugin — the plugin-level twin of (a). A live
+#     plugin's identity mapping is written after this dict, so an entry here would be
+#     silently overwritten (see the "deliberately absent" note in analyze-sessions.py).
+live_pkey = sorted(k for k in mod.RENAME_ALIASES if k in live_plugins)
+check(live_pkey == [],
+      "RENAME_ALIASES: no key is a live plugin name"
+      + (f" (offenders: {live_pkey})" if live_pkey else ""))
+
 
 print(f"\nResults: {PASS} passed, {FAIL} failed")
 sys.exit(1 if FAIL else 0)
