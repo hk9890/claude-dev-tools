@@ -20,7 +20,7 @@ plugin into single-remit plugins.
 |---|--------|-------|--------|
 | 1 | `challenge` | On-demand adversarial passes over anything, project-agnostic | grill, kiss, are-you-sure |
 | 2 | `project-execute` | Shortcuts to a repo's own standard dev operations | project-exec-testing, project-exec-releasing, project-exec-monitoring, project-explain |
-| 3 | `project-review` | Read-only reviews of a PR, a component, or the whole repo | project-review-all, -consistency, -docs, -structure, -tests |
+| 3 | `project-review` | Read-only reviews of a PR, a component, or the whole repo | project-review-consistency, -docs, -structure, -tests (each standalone; no umbrella) |
 | 4 | `project-auto-work` | Unattended, budget-bounded automatic work on a repo | project-auto-find-bug, project-auto-improve-test, … *(deferred — later round)* |
 
 `project-explore` stays as-is (assisted, human-in-the-loop exploratory testing) alongside the
@@ -49,10 +49,15 @@ Unchanged and out of scope: `tasks`, `github-releases`, `html-visualization`,
   consistency gate green. Considered complete.
 - **Drop cost rungs from the three standalone review skills** (consistency, structure,
   tests). Their `[low|medium|high|ultra]` argument and Cost paragraph are gone; they now run
-  at the reviewer agent's default `medium`. The agent's dead `ultra` rung was removed
-  (nothing reached it once standalone cost was gone; `project-review-all` already clamped it).
-  `project-review-all` keeps its own cost — it still forwards an explicit rung to the
-  reviewers it spawns, which is why the agent's Cost section stays.
+  at the reviewer agent's default `medium`.
+- **Remove `project-review-all` entirely.** The 415-line orchestrator is deleted; the plugin
+  is now four independent standalone review skills, no umbrella. With the orchestrator gone,
+  nothing passes a cost, so the reviewer agent's whole Cost section and its schema-driven
+  Structured-output mode were dead — both removed; the agent's default (report proven +
+  plausible findings once) is now its only mode. References cleaned from README, plugin.json /
+  marketplace.json descriptions, and `CODING.md` (the umbrella-skill guidance had no other
+  example). The `analyze-sessions.py` alias keeps the retired name so historical umbrella
+  episodes still resolve to the live `project-review` plugin.
 
 The move surfaced two non-obvious fixes in `scripts/analyze-sessions.py`, both landed:
 session attribution now derives the plugin from the aliased *skill* prefix (a split can't be
@@ -61,11 +66,8 @@ newest-first behind a marker file so a stale cached generation is never fed to r
 
 ### Considered and declined (kept as-is)
 
-Weighed during the review-simplification pass and deliberately **not** done, to keep the
-landing change small:
+Weighed during the review-simplification pass and deliberately **not** done:
 
-- **Remove `project-review-all`** — it's the biggest complexity sink (45% of the plugin), but
-  it's the flagship "one prioritized list" workflow. Kept.
 - **Merge `project-review-structure` into `-consistency`** — rejected: they are distinct axes
   (where files live vs. are we coherent), and merging re-introduces the multi-remit smell the
   `project-quality` split removed. Kept separate.

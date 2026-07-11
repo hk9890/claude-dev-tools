@@ -94,6 +94,9 @@ SKILL_RENAME_ALIASES = {
     "project-quality:project-exec-releasing": "project-execute:project-exec-releasing",
     "project-quality:project-exec-monitoring": "project-execute:project-exec-monitoring",
     "project-quality:project-explain": "project-execute:project-explain",
+    # project-review-all was removed; the old umbrella episodes keep its retired name so
+    # they group together and attribute to the live project-review plugin (resolved by
+    # prefix), rather than being mismerged into a surviving single-dimension skill.
     "project-quality:project-review": "project-review:project-review-all",
     "project-quality:project-review-complexity": "challenge:kiss",
     "project-quality:project-review-consistency": "project-review:project-review-consistency",

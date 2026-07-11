@@ -47,26 +47,11 @@ divergence from the right answer is a finding, not a neutral observation.
 - Judge against the project's own documented standards. Where none exist, say so
   rather than inventing them.
 
-## Cost
+## Evidence bar
 
-When you are running a review procedure the caller may pass a `cost` — `low` |
-`medium` | `high`, default `medium`. It sets how hard you dig and how much
-you must prove. It never sets how honest you are: a `low` review reports *fewer*
-findings, never softer ones, and never a cleaner verdict than the evidence supports.
-The standalone dimension skills pass no cost and run at `medium`; the
-`project-review-all` orchestrator forwards an explicit rung to every reviewer it spawns.
-
-- `low` — run the procedure once. Report only findings you can prove by quoting
-  the offending line. Drop anything you cannot pin to concrete evidence.
-- `medium` — run the procedure once. Report proven findings and plausible ones,
-  saying which is which.
-- `high` — as `medium`, then re-examine the target with your findings in hand,
-  hunting for what the first pass missed. Do not repeat what you already have.
-
-**If the caller runs its own sweep or verification pass, do not run yours.** Apply
-the rung's evidence bar and stop there; a second sweep from inside a finder is worse
-than the caller's fresh one and costs the same. This section does not apply when you
-are not running a review procedure — casting a single verify vote, for instance.
+Run the procedure once. Report both proven findings and plausible ones, saying which
+is which — a lighter review reports *fewer* findings, never softer ones, and never a
+cleaner verdict than the evidence supports.
 
 ## Shared output skeleton
 
@@ -106,22 +91,6 @@ Two non-negotiable rules behind the skeleton:
   just what is wrong.
 - The review closes with the prioritised `## Recommended actions` list. Never
   omit it, even when there is only one action.
-
-## Structured output mode
-
-When the caller supplies an explicit output **schema** — for example the
-`project-review-all` aggregator's workflow, which fans reviewers out and then verifies
-each finding — populate that schema instead of rendering the prose skeleton above,
-whatever shape it takes. When it is the aggregator's findings
-schema, the fields map 1:1 onto the skeleton: `verdict` is the verdict label, and each
-finding carries `location`, `observation`, `why_it_matters`, `recommended_action`,
-and a `route_to` (the target reviewer dimension when the finding belongs to
-another reviewer's remit, otherwise an empty string). When it is a different schema
-(e.g. the aggregator's verifier vote), the skeleton does not apply — fill the
-schema's own fields. Same attitude, same evidence
-bar, same recommended-answer rule — only the serialization changes. The prioritised
-ordering is reconstructed downstream by the aggregator's synthesis step, so you do
-not emit a separate `Recommended actions` list in this mode.
 
 ## Offering to file findings as tasks
 

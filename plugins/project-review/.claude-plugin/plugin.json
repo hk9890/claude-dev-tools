@@ -1,6 +1,6 @@
 {
   "name": "project-review",
-  "description": "Read-only adversarial project reviews — structure, tests, consistency, and docs — each runnable as a standalone lens, or all together via project-review-all, which orchestrates the dimension reviewers, adversarially verifies every finding, and returns one prioritized action list",
+  "description": "Read-only adversarial project reviews — structure, tests, consistency, and docs — each a standalone lens that challenges the artifact against the project's own standards and returns a prioritized action list",
   "version": "1.22.0",
   "author": {
     "name": "Hans Kohlreiter",
