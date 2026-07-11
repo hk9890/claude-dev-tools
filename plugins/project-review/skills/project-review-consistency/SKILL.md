@@ -1,23 +1,16 @@
 ---
 name: project-review-consistency
 description: "Review a codebase for consistency, naming coherence, and drift from established conventions."
-when_to_use: "Use when the user wants a consistency or naming-coherence review. Triggers on 'are we doing this two different ways?', 'our naming is a mess', 'we have two HTTP clients'. Not for over-engineering, structure, docs, or test reviews — each has its own skill; pure formatting is a linter's job. Invoke with an optional cost rung and an optional argument scoping what to review; with no argument it reviews the whole codebase. The review runs in an isolated context and cannot see this conversation — pass everything it needs (paths or the artifact text itself) in the argument."
-argument-hint: "[low|medium|high|ultra] [what-to-review]"
+when_to_use: "Use when the user wants a consistency or naming-coherence review. Triggers on 'are we doing this two different ways?', 'our naming is a mess', 'we have two HTTP clients'. Not for over-engineering, structure, docs, or test reviews — each has its own skill; pure formatting is a linter's job. Invoke with an optional argument scoping what to review; with no argument it reviews the whole codebase. The review runs in an isolated context and cannot see this conversation — pass everything it needs (paths or the artifact text itself) in the argument."
+argument-hint: "[what-to-review]"
 context: fork
 agent: project-reviewer
 ---
 
 ## Invocation
 
-$ARGUMENTS parses as `[low|medium|high|ultra] [what-to-review]`, both optional.
-
-**Cost** — a leading `low` | `medium` | `high` | `ultra` token, default `medium`.
-It sets how hard you dig and how much you must prove; see the `Cost` section of the
-`project-reviewer` agent for the rung definitions. It never licenses a softer verdict.
-
-**What to review** — everything after the cost token: a free-form description, for
-example "naming across the service layer" or a path. If it is empty, review the whole
-codebase.
+$ARGUMENTS is what to review: a free-form description, for example "naming across the
+service layer" or a path. If it is empty, review the whole codebase.
 
 ## Role and contract
 

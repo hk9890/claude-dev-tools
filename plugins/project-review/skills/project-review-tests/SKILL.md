@@ -1,23 +1,16 @@
 ---
 name: project-review-tests
 description: "Adversarial review of test quality and coverage — gaps, weak assertions, brittleness, and missing edge cases."
-when_to_use: "Use when the user wants a test-quality or coverage review. Triggers on 'are these tests any good?', 'what am I not testing?', 'are my tests brittle?', 'are my tests fast enough?'. Not for over-engineering, structure, or consistency reviews — each has its own skill. Invoke with an optional cost rung and an optional argument scoping what to review; with no argument it reviews the whole test suite. The review runs in an isolated context and cannot see this conversation — pass everything it needs (paths or the artifact text itself) in the argument."
-argument-hint: "[low|medium|high|ultra] [what-to-review]"
+when_to_use: "Use when the user wants a test-quality or coverage review. Triggers on 'are these tests any good?', 'what am I not testing?', 'are my tests brittle?', 'are my tests fast enough?'. Not for over-engineering, structure, or consistency reviews — each has its own skill. Invoke with an optional argument scoping what to review; with no argument it reviews the whole test suite. The review runs in an isolated context and cannot see this conversation — pass everything it needs (paths or the artifact text itself) in the argument."
+argument-hint: "[what-to-review]"
 context: fork
 agent: project-reviewer
 ---
 
 ## Invocation
 
-$ARGUMENTS parses as `[low|medium|high|ultra] [what-to-review]`, both optional.
-
-**Cost** — a leading `low` | `medium` | `high` | `ultra` token, default `medium`.
-It sets how hard you dig and how much you must prove; see the `Cost` section of the
-`project-reviewer` agent for the rung definitions. It never licenses a softer verdict.
-
-**What to review** — everything after the cost token: a free-form description, for
-example "the unit tests for the parser" or a path. If it is empty, review the whole
-test suite.
+$ARGUMENTS is what to review: a free-form description, for example "the unit tests for the
+parser" or a path. If it is empty, review the whole test suite.
 
 ## Role and contract
 
