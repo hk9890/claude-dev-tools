@@ -32,7 +32,12 @@ Skill directory name and the `name:` field in frontmatter must match, and both s
 
 Within a plugin, sibling skills share the same domain prefix so they sort and read as a family.
 
-A "main" skill may take the plugin's own name (e.g. `project-explore:project-explore`, `github-releases:github-releases`); this is the only accepted exception.
+Two exceptions allow a name that isn't domain-prefixed:
+
+- A "main" skill may take the plugin's own name (e.g. `project-explore:project-explore`, `github-releases:github-releases`).
+- When a plugin's skills are each named for a distinct, self-sufficient concept that does the triggering on its own — a leading word, not a generic operation like `inspect` — the bare name is preferred, because a shared prefix would only dilute it (e.g. `challenge:grill`, `challenge:kiss`, `challenge:are-you-sure`).
+
+Either way, the qualified `<plugin>:<skill>` reference still carries the domain in its plugin segment.
 
 ### Frontmatter — pick a schema by invocation behaviour
 

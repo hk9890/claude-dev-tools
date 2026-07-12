@@ -22,7 +22,7 @@ const scriptsDir = A.scriptsDir
 const guidelinesFile = scriptsDir ? scriptsDir.replace(/scripts\/?$/, 'references') + '/project-doc-guidelines.md' : ''
 // cost bundles the real thoroughness levers: low = read-review only (no execution),
 // medium = execution on a few routes, high = every route, ultra = high + a verify
-// pass. project-review never passes ultra — it runs its own verify pass.
+// pass.
 const cost = (A.cost || 'medium').toLowerCase()
 const COST_ROUTES = { low: 0, medium: 3, high: -1, ultra: -1 }
 const maxExec = (A.maxExecutionRoutes !== undefined)
@@ -326,7 +326,7 @@ log(`Execution: ${execGraded.length} route(s) graded` + (totalRoutes > fileRoute
 
 // ---------------------------------------------------------------------------
 // Verify (cost=ultra) — adversarially refute each read-review finding.
-// project-review never reaches this phase: it verifies every finding itself.
+// Reached only when the caller invokes this workflow with cost=ultra.
 // ---------------------------------------------------------------------------
 
 let verifiedFindings = readFindings
