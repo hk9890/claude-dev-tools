@@ -106,6 +106,11 @@ const PERSONA =
   `"clean" must be earned by a genuine attempt to break the thing.\n` +
   `HARD READ-ONLY CONTRACT: you are in the user's live repository. Never create, edit, move, rename, ` +
   `or delete anything; never change git state. Read-only inspection (read, grep, git log/diff, walking the tree) is fine.\n` +
+  `SCOPE YOUR WALK TO WHAT GIT TRACKS: discover files with \`git ls-files\` rather than a raw \`find\`/\`ls -R\`, and ` +
+  `ignore the .git directory, untracked build output (dist/, node_modules/), and any nested git worktree ` +
+  `(commonly under .git/ or .claude/worktrees/ — check \`git worktree list\`). A nested second checkout otherwise ` +
+  `surfaces phantom duplicate hits in recursive grep and makes "which copy is authoritative" ambiguous; a file's ` +
+  `absence from \`git ls-files\` is itself evidence (untracked/orphaned), not a reason to walk the untracked tree.\n` +
   `Explore before you judge: read AGENTS.md and the docs it routes to before forming any view. If docs/REVIEWING.md ` +
   `exists or AGENTS.md routes to project-specific review guidance, its rules are authoritative local constraints — ` +
   `where they conflict with your generic lens, the local rule wins; review against it and say so.\n` +
@@ -260,16 +265,21 @@ const report = await agent(
   `PER-DIMENSION RESULTS${ultra ? ' (findings already survived adversarial refutation)' : ''}:\n` +
   `${JSON.stringify(reviews, null, 2)}\n\n` +
   `Do all of the following:\n` +
-  `1. Merge and DEDUPE findings across dimensions — the same defect surfaced by two dimensions is ONE finding: keep ` +
+  `1. SPOT-VERIFY the load-bearing findings before you report them: for EVERY blocker and major finding, independently ` +
+  `re-check its cited evidence against the repo yourself (read-only — \`wc -l\`, \`grep\`, read the cited lines). Drop ` +
+  `a finding whose evidence does not hold up, or downgrade its severity to match what you can actually confirm, and ` +
+  `record what you dropped or downgraded in cross_dimension_notes. Do this first so a hallucinated or overstated ` +
+  `major cannot anchor the report${ultra ? ' (findings already passed a per-finding refutation pass, so treat this as a fast final confirmation, not a re-litigation)' : ''}.\n` +
+  `2. Merge and DEDUPE findings across dimensions — the same defect surfaced by two dimensions is ONE finding: keep ` +
   `the strongest evidence and tag it with the dimension whose recommended action is most actionable.\n` +
-  `2. Reconcile conflicts the dimension agents could not see: where two dimensions recommend incompatible actions on ` +
+  `3. Reconcile conflicts the dimension agents could not see: where two dimensions recommend incompatible actions on ` +
   `the same files (e.g. consistency says rename, structure says delete), resolve to one coherent recommendation and ` +
   `note the conflict in cross_dimension_notes.\n` +
-  `3. Assign final per-dimension verdicts (clean / minor issues / significant issues / broken) — start from each ` +
-  `dimension agent's verdict, adjusting only where dedupe or refutation changed the picture` +
+  `4. Assign final per-dimension verdicts (clean / minor issues / significant issues / broken) — start from each ` +
+  `dimension agent's verdict, adjusting where dedupe, refutation, or your step-1 spot-verify changed the picture` +
   `${missing.length ? `; a dimension that did not complete (${missing.join(', ')}) gets no verdict better than "minor issues" and a note that it did not run` : ''} — ` +
   `and ONE overall verdict, never cleaner than the worst dimension.\n` +
-  `4. Produce recommended_actions: a prioritised list ordered by what the developer should tackle first, each entry ` +
+  `5. Produce recommended_actions: a prioritised list ordered by what the developer should tackle first, each entry ` +
   `referencing its finding(s). Mandatory even when there is only one action — the ordering is itself the deliverable.\n\n` +
   `Each finding's why_it_matters states the concrete cost, risk, or trap — not a restatement of the observation. ` +
   `cross_dimension_notes is a PLAIN-TEXT prose field. ` +
