@@ -117,6 +117,18 @@
       },
       "category": "workflow",
       "keywords": ["html", "feedback", "interactive", "questions", "review", "browser", "node"]
+    },
+    {
+      "name": "project-auto-work",
+      "source": "./plugins/project-auto-work",
+      "description": "Unattended adversarial audits that work the project on their own and report back — first skill test-tests: an empirical, language-independent test-suite strength audit that injects mutants, no-op edits, and delays to prove whether the tests actually detect bugs; reports findings and proposals, never keeps an edit.",
+      "version": "1.22.0",
+      "author": {
+        "name": "Hans Kohlreiter",
+        "email": "hans.kohlreiter@gmail.com"
+      },
+      "category": "code-quality",
+      "keywords": ["test-strength", "mutation-testing", "flaky-tests", "test-audit", "workflow", "language-independent"]
     }
   ]
 }
