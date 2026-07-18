@@ -1,10 +1,8 @@
+<!-- Source: adapted from mattpocock/skills codebase-design (MIT); terms trace to Ousterhout and Feathers. -->
 # Design vocabulary for the architecture dimension
 
 Use these terms precisely in findings — substituting near-synonyms ("component",
-"service", "API", "boundary") blurs what the finding claims. Vocabulary adapted
-from Matt Pocock's `codebase-design` skill (github.com/mattpocock/skills, MIT),
-which builds on John Ousterhout's *A Philosophy of Software Design* and Michael
-Feathers' seam concept.
+"service", "API", "boundary") blurs what the finding claims.
 
 ## Glossary
 

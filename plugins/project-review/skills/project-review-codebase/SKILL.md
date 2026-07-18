@@ -5,8 +5,9 @@ when_to_use: "Use when the user wants a codebase review for consistency, layout,
 argument-hint: "[ultra] [what-to-review]"
 ---
 
-Read-only codebase review. Launch the review workflow — do **not** review inline.
-The workflow returns a structured report; relay it.
+Read-only codebase review across three dimensions — consistency, structure, and
+architecture. Launch the review workflow — do **not** review inline. The
+workflow returns a structured report; relay it.
 
 ## Run the workflow
 
@@ -44,32 +45,13 @@ The workflow returns a structured report; relay it.
 4. Relay the report. The workflow returns
    `{ report: { verdict, dimension_verdicts, headline, findings[], recommended_actions[], … }, raw, … }`
    — surface `.report` including the prioritised `recommended_actions`, and do
-   not re-derive it. For a "did you really check X?" follow-up, **re-run the
-   skill**; never answer from the report alone.
+   not re-derive or re-label it. For a "did you really check X?" follow-up,
+   **re-run the skill**; never answer from the report alone.
 
 If the Workflow tool is unavailable or the workflow cannot launch, run the three
 dimension procedures inline yourself — they are embedded in
 `workflows/review-codebase.js`; read them from there — and state that the
 workflow did not run.
-
-## Dimensions
-
-- **Consistency** — does the codebase agree with itself? Competing
-  implementations for one concern, naming divergence, inconsistent API shapes
-  across siblings, import-convention drift, file-casing drift,
-  documented-but-ignored standards. A documented convention is authoritative;
-  otherwise the dominant pattern is the de facto standard.
-- **Structure** — is the physical layout sane? Tree-vs-docs match, files in the
-  directories their role implies, dead and orphaned files.
-- **Architecture** — are the module boundaries earning their keep? Shallow
-  pass-through modules (deletion test), unjustified seams (one-adapter rule),
-  missing seams and testability traps, layering violations, module granularity.
-  Vocabulary in [references/design-vocabulary.md](references/design-vocabulary.md).
-
-Verdict labels, per dimension and overall: `clean` · `minor issues` ·
-`significant issues` · `broken`. The overall verdict is never cleaner than the
-worst dimension, and `clean` must be earned by a genuine attempt to find
-problems — never merely by an absence of findings.
 
 ## Not covered
 
