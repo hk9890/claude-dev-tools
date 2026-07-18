@@ -74,7 +74,7 @@ For each finding, in this order:
 - Recommended action — one concrete change (move, split, delete, rename,
   inline, normalise, document, …)
 - Route to — optional, only when the finding belongs in another reviewer's
-  domain (e.g. "project-review-structure")
+  domain (e.g. "project-review-docs")
 
 [Optional skill-specific middle sections — e.g. Open questions]
 
