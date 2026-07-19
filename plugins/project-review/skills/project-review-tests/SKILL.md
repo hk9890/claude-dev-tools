@@ -138,7 +138,7 @@ infrastructure is a liability.
 
 ## Output
 
-Follow the shared output skeleton defined in the `project-reviewer` agent.
+Follow the output skeleton defined in the `project-reviewer` agent.
 The skill-specific pieces below slot into that skeleton:
 
 - **Verdict labels**: one of `passing`, `needs work`, `unreliable`.
