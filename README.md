@@ -17,6 +17,7 @@ For the repo layout and architecture, see [docs/OVERVIEW.md](docs/OVERVIEW.md).
 | [`html-visualization`](plugins/html-visualization/) | Interactive HTML the user opens in a browser — a shared `html-visualize` core skill plus three user-invoked command skills: `html-visualize-ask` (question and decision forms), `html-visualize-feedback` (comment on rendered content), and `html-visualize-demo` (rich visualization with an always-on footer for optional follow-up messages); a shared one-shot Node server captures the response and re-invokes Claude |
 | [`keep-awake-linux`](plugins/keep-awake-linux/) | Prevents Linux system sleep while Claude Code is actively working — releases automatically when idle or on session exit |
 | [`project-explore`](plugins/project-explore/) | Assisted exploratory testing — researches a project, then plays around with the product one action at a time, filing findings as tasks |
+| [`project-auto-work`](plugins/project-auto-work/) | Unattended adversarial audits that work the project on their own and report back — first skill `test-tests`: an empirical, language-independent test-suite strength audit that injects mutants, no-op edits, and delays to prove whether the tests actually detect bugs; reports findings and proposals, never keeps an edit |
 
 ## Installation
 
