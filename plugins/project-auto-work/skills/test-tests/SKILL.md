@@ -24,8 +24,11 @@ Nothing is ever committed, no test is written, nothing is installed.
    - `low` — top 3 components by churn, 3 mutants each, ~6 agents. Quick signal.
    - `medium` (recommended) — all components (cap 8), 5 mutants + no-ops + delay
      probes each, ~12 agents. The standard audit.
-   - `high` — cap 12, 8 mutants, 5 reruns + shuffle, plus an adversarial pass that
-     refutes equivalent mutants, ~25 agents. The trustworthy-numbers audit.
+   - `high` — cap 12, 8 mutants, 5 reruns, plus an adversarial pass that refutes
+     equivalent mutants, ~25 agents. The trustworthy-numbers audit.
+
+   At every level, one rerun uses the runner's native order-shuffle flag (fixed
+   seed) when one exists.
 
    Wall time is dominated by the suite's own speed in every tier.
 

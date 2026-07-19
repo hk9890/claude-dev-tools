@@ -65,6 +65,7 @@ const BASELINE_SCHEMA = {
     filter_syntax: { type: 'string' },
     can_slice: { type: 'boolean' },
     worktree_ok: { type: 'boolean' },
+    worktree_setup: { type: 'string' },
     worktree_fail_reason: { type: 'string' },
     dirty_tree: { type: 'boolean' },
     notes: { type: 'string' },
@@ -197,7 +198,7 @@ const REPORT_SCHEMA = {
       items: {
         type: 'object',
         properties: {
-          axis: { type: 'string', enum: ['sensitivity', 'specificity', 'reliability', 'speed', 'auditability'] },
+          axis: { type: 'string', enum: ['sensitivity', 'specificity', 'reliability', 'timing', 'speed', 'auditability'] },
           component: { type: 'string' },
           severity: { type: 'string', enum: ['blocker', 'major', 'minor'] },
           observation: { type: 'string' },
@@ -283,29 +284,35 @@ const baseline = await agent(
   `You are the baseline agent of a language-independent test-suite strength audit.\n` +
   `Target repository: ${repoRoot}\n${READ_ONLY_RULES}\n\n` +
   `Do the following, in order:\n\n` +
-  `1. DISCOVER the test command from the project's OWN documentation and config — TESTING.md, AGENTS.md, ` +
-  `README, Makefile/justfile, package.json scripts, pyproject.toml, go.mod conventions, CI workflows. ` +
+  `1. DISCOVER the test command from the project's OWN documentation and config — its testing/contributor/agent docs, ` +
+  `README, build and task files, package manifests, CI workflows: whatever this repo itself provides. ` +
   `Use exactly what the repo documents; never invent a framework invocation it doesn't document. Record where you found it (cmd_source).\n\n` +
   `2. BASELINE RUN: run the command once, cleanly, in the live tree, wrapped in \`timeout 590\`. Time it (wrap with \`date +%s\` or the runner's own timing). ` +
   `If the timeout kills it, record wall_s=601 (meaning "exceeds the cap"), green=false, and note the timeout in notes — that IS a valid measurement, not a failure of yours. ` +
   `If it is RED, capture the failing tests' names and output excerpt in red_details, set green=false, and still attempt steps 4-6 cheaply if possible; accuracy of red_details matters most.\n` +
-  `Also capture per-test timings if the runner offers them cheaply (--durations, reporter flags already available); summarize the slowest tests in slow_tests.\n\n` +
-  `3. COVERAGE: produce line coverage in any format the toolchain already supports WITHOUT installing anything ` +
-  `(lcov, Cobertura XML, coverage.py JSON, or Go coverprofile — e.g. \`go test ./... -coverprofile\`, an existing pytest-cov/jest/vitest coverage config, kcov if already installed). ` +
+  `Also capture per-test timings if the runner offers them cheaply (a timing/durations flag or reporter it already has); summarize the slowest tests in slow_tests. ` +
+  `If the runner offers no per-test timing output, record that fact in slow_tests and MOVE ON — do not dig for it.\n\n` +
+  `3. COVERAGE: produce line coverage WITHOUT installing anything, using whatever coverage route this toolchain already supports, ` +
+  `in one of the four formats the bundled normalizer accepts: LCOV, Cobertura XML, coverage.py JSON, or Go coverprofile. ` +
   `Write the raw coverage file under ${scratchDir}, then normalize it:\n` +
   `   ${covTool} <coverage-file> --repo-root ${repoRoot} > ${scratchDir}/coverage_summary.json\n` +
   `CONTRACT: obtained=true is valid ONLY if BOTH files exist on disk — the raw coverage file AND the normalized summary — ` +
   `and then coverage_file, summary_file, format, and pct must ALL be filled in (downstream agents consume these paths verbatim). ` +
   `If coverage is NOT obtainable with what is installed, set obtained=false and put the exact invocation or tooling that WOULD enable it into how_to_enable.\n\n` +
-  `4. RUNNER FEATURES: record the runner's native order-shuffle flag if one exists (go test -shuffle=on, rspec --order random, ` +
-  `pytest-randomly ONLY if already installed) in shuffle_flag, and the test-filter syntax (how to run a subset — a path, -k EXPR, ./pkg/..., -run REGEX) in filter_syntax. ` +
-  `Set can_slice=true only if a subset can actually be run with that syntax.\n\n` +
+  `4. RUNNER FEATURES: record the runner's native order-shuffle flag if one exists (only a flag/plugin that is ALREADY available — never install one) ` +
+  `in shuffle_flag, and the test-filter syntax (however this runner selects a subset — a path, a name filter, a package pattern) in filter_syntax. ` +
+  `Set can_slice=true only after PROVING it by actually running one small subset.\n\n` +
   `5. WORKSPACE PROBE: create a throwaway worktree and check the suite runs there:\n` +
   `   git -C ${repoRoot} worktree add ${scratchDir}/probe-wt HEAD\n` +
   `   (run the test command inside ${scratchDir}/probe-wt)\n` +
-  `   git -C ${repoRoot} worktree remove --force ${scratchDir}/probe-wt\n` +
-  `worktree_ok=true only if the suite is as green there as in the live tree. If it fails there (missing node_modules/venv/build cache), ` +
-  `record why in worktree_fail_reason — the audit will then run sequentially in the live tree instead.\n\n` +
+  `A fresh worktree contains ONLY committed files, and suites often depend on uncommitted, gitignored runtime state. ` +
+  `So if the suite fails in the worktree although it was green in the live tree, that is a WORKSPACE defect, not a suite defect: ` +
+  `diagnose from the actual error what uncommitted state the suite needs, make it available from the live checkout by linking or copying ` +
+  `(never install anything, never write to the live checkout), and re-run. Record the exact repair commands VERBATIM in worktree_setup — ` +
+  `later agents replay them in their own worktrees, adjusting only the worktree path.\n` +
+  `worktree_ok=true only if the suite ends as green there as in the live tree (with at most that repair); worktree_fail_reason must then stay empty. ` +
+  `If you cannot reach green, set worktree_ok=false with the diagnosis in worktree_fail_reason — the audit will then run sequentially in the live tree.\n` +
+  `When done: git -C ${repoRoot} worktree remove --force ${scratchDir}/probe-wt\n\n` +
   `6. Record dirty_tree = whether \`git -C ${repoRoot} status --porcelain\` is non-empty.\n\n` +
   `Return the structured baseline object. Be precise: every number measured, not estimated.`,
   { label: 'baseline', phase: 'Baseline', schema: BASELINE_SCHEMA }
@@ -361,12 +368,16 @@ const grouping = await agent(
   `Partition the codebase into COMPONENTS: a component is a cohesive production-code slice plus the tests that exercise it, ` +
   `derived from directory structure, naming conventions, and the coverage summary. Do NOT rely on per-test coverage (not portable).\n` +
   `Rules:\n` +
-  `- Aim for 3-10 components. SMALL-REPO RULE: if the suite runs in under ~60 s or has fewer than ~20 test files, return exactly ONE component covering the whole suite (test_selector = the full command).\n` +
+  `- SMALL-REPO RULE (check this FIRST): if the suite runs in under ~60 s AND has fewer than ~20 test files, return exactly ONE component covering the whole suite ` +
+  `(test_selector = the full command, churn_rank = 1 — skip the churn computation entirely). ` +
+  `A fast suite with MANY test files still gets split into components: selectors are cheap to validate, and more components mean more mutation sites audited.\n` +
+  `- Aim for 3-10 components.\n` +
   `- test_selector: the exact shell command that runs only that component's tests, built from the documented filter syntax. ` +
   `It MUST be portable: executed with the repo root (or a fresh worktree of it) as the working directory — so use repo-relative paths only, ` +
   `never absolute paths and never a leading \`cd\`. It will be validated before use.\n` +
   `- est_runtime_s: your estimate of the selector's wall time (from baseline timings where possible).\n` +
-  `- coverage_pct: the component's aggregate line coverage from the summary.\n` +
+  `- coverage_pct: the component's aggregate line coverage computed from the per-file summary entries of its prod_paths — ` +
+  `never totals.pct (the totals may include test helpers/fixtures and would skew the figure).\n` +
   `- churn_rank: 1 = most-churned. Compute from \`git -C ${repoRoot} log --since="6 months ago" --name-only --pretty=format:\` file-change counts aggregated per component.\n` +
   `Return the components list ordered by churn_rank (most-churned first), plus a short rationale.`,
   { label: 'grouping', phase: 'Grouping', schema: COMPONENTS_SCHEMA }
@@ -402,6 +413,9 @@ if (mode === 'worktree' && dial.hermeticity && components.length > 1) {
     `Hermeticity probe ${n} of a test-suite audit. Target repo: ${repoRoot}.\n` +
     `Create a worktree, run ONE test slice in it, remove the worktree, report the outcome:\n` +
     `  git -C ${repoRoot} worktree add ${scratchDir}/herm-${n} HEAD\n` +
+    (baseline.worktree_setup
+      ? `  (replay the baseline's workspace setup verbatim, adjusting only the worktree path: ${baseline.worktree_setup})\n`
+      : '') +
     `  cd ${scratchDir}/herm-${n} && ${smallest.test_selector}\n` +
     `  git -C ${repoRoot} worktree remove --force ${scratchDir}/herm-${n}\n` +
     `Another probe runs the SAME slice at the same time in its own worktree — do not coordinate with it.\n` +
@@ -435,8 +449,14 @@ function workerPrompt(comp, idx) {
   const workspaceInstructions = mode === 'worktree'
     ? `WORKSPACE (worktree mode): create your own worktree and do ALL work inside it — the user's tree is never touched:\n` +
       `  git -C ${repoRoot} worktree add ${wt} HEAD\n` +
+      (baseline.worktree_setup
+        ? `Then replay the baseline's workspace setup verbatim, adjusting only the worktree path:\n  ${baseline.worktree_setup}\n`
+        : '') +
       `Work in ${wt}. Apply edits, run tests, and revert freely with \`git -C ${wt} checkout -- .\` between probes.\n` +
-      `When completely done: git -C ${repoRoot} worktree remove --force ${wt}\n` +
+      `WORKSPACE TRIAGE: a fresh worktree holds only committed files. If your selector fails here although the baseline was green in the live tree, ` +
+      `that is a defect of YOUR WORKSPACE, not of the suite — diagnose what uncommitted state is missing from the actual error, ` +
+      `link or copy it from the live checkout (never install anything, never write to the live checkout), and continue.\n` +
+      `When completely done: remove any links your setup created, then git -C ${repoRoot} worktree remove --force ${wt}\n` +
       `INTEGRITY GATE: before removing, \`git -C ${wt} status --porcelain\` must be empty (ignoring untracked artifacts) and one final clean run of your selector must be green.`
     : `WORKSPACE (live-tree mode — the suite cannot run in a fresh worktree): you work in the USER'S LIVE TREE at ${repoRoot}. ` +
       `Follow this safety protocol with zero exceptions:\n` +
@@ -456,10 +476,15 @@ function workerPrompt(comp, idx) {
     `  ${scratchDir}/coverage_summary.json is the normalized summary (plain JSON — just read it); for line detail run\n` +
     `  ${covTool} "${baseline.coverage.coverage_file}" --file <prod-file-repo-relative-path> --repo-root ${repoRoot}\n\n` +
     `${workspaceInstructions}\n\n` +
-    `Never install anything. Every command within the 600 s cap. Work SEQUENTIALLY through the protocol:\n\n` +
+    `Never install anything. Every command within the 600 s cap. ` +
+    `Tee every selector/suite run to a log file under ${scratchDir} and extract failures/details from the log — NEVER re-run the suite just to re-read its output. ` +
+    `Work SEQUENTIALLY through the protocol:\n\n` +
     `1. VALIDATE SELECTOR: run \`${comp.test_selector}\` once. It must be green and complete well under 600 s. ` +
-    `If not, STOP: return audited=false with not_audited_reason describing what happened — never silently substitute a different selector. Record slice_wall_s.\n\n` +
-    `2. RELIABILITY: run the selector ${dial.R} more times${dial.R >= 5 && baseline.shuffle_flag ? `, plus ONE run with the shuffle flag (${baseline.shuffle_flag})` : ''}. ` +
+    `If it fails, first apply the workspace triage above; if the selector itself is invalid, or the failure persists in a correctly set-up workspace, ` +
+    `STOP: return audited=false with not_audited_reason describing what happened — never silently substitute a different selector. Record slice_wall_s.\n\n` +
+    `2. RELIABILITY: ${baseline.shuffle_flag
+      ? `run the selector ${Math.max(1, dial.R - 1)} more time(s) as-is, plus ONE run with the shuffle flag (${baseline.shuffle_flag}) using a FIXED seed you record`
+      : `run the selector ${dial.R} more times`}. ` +
     `Any test whose outcome differs across runs is a flake: record {test, symptom (what differed, and the shuffle seed/order if the shuffled run exposed it)}.\n\n` +
     `3. SENSITIVITY — ${dial.K} mutants. Pick sites on COVERED lines only (check the coverage detail), preferring branch-dense, recently-churned production code; one mutant per site; spread across files where possible. ` +
     `Operators: negate a condition; flip a comparison (< ↔ <=, == ↔ !=); ±1 on a boundary constant; delete a guard clause/early return; swap same-typed arguments; replace a constant (0, 1, "", null-equivalent); && ↔ ||; delete a statement whose result is unused; return a constant instead of the computed value.\n` +
@@ -597,9 +622,7 @@ phase('Synthesis')
 const notChecked = [
   ...skippedComponents.map(n => `component ${n} — beyond the level=${level} cap`),
   ...components.filter((c, i) => !workerResults[i]).map(c => `component ${c.name} — worker agent failed`),
-  ...(!baseline.shuffle_flag
-    ? ['test-order shuffle — the runner has no native shuffle flag']
-    : (dial.R >= 5 ? [] : ['test-order shuffle — a shuffle flag exists but the shuffled run only executes at level=high'])),
+  ...(baseline.shuffle_flag ? [] : ['test-order shuffle — the runner has no native shuffle flag']),
   ...(dial.verify ? [] : ['equivalent-mutant verification — runs at level=high only; survivors are candidates']),
   ...(dial.hermeticity ? [] : ['hermeticity probe — skipped at level=low; workers were serialized instead']),
   ...(dial.M === 0 ? ['specificity (no-op probes) — skipped at level=low'] : []),
@@ -616,13 +639,14 @@ const report = await agent(
   `NOT-CHECKED LIST (include verbatim, plus anything you notice is missing):\n${JSON.stringify(notChecked, null, 2)}\n\n` +
   `Build the report:\n` +
   `1. scores: kill_rate = killed / total mutants across AUDITED components; brittle_breaks = no-ops that broke tests; flaky_tests = distinct flaky tests; timing_sensitive = distinct tests broken by delay injection; suite_wall_s = baseline wall.\n` +
-  `2. findings: one per proven weakness. axis: sensitivity (survived mutant), specificity (brittle break), reliability (flake), speed (slow suite/tests), auditability. ` +
+  `2. findings: one per proven weakness. axis: sensitivity (survived mutant), specificity (brittle break), reliability (flake), timing (test broken by delay injection), speed (slow suite/tests), auditability. ` +
   `Each carries the concrete evidence (the diff or run-log excerpt), an implication stating what broken behavior would ship undetected or what the weakness costs, and candidate: ` +
   `${dial.verify
     ? 'false for verify-confirmed survivors and brittle breaks — EXCEPT items flagged verify_failed=true (their verify agent failed), which stay candidate=true; '
     : 'true for ALL survivors and brittle breaks (no verify pass ran); '}` +
   `delay-injection findings are ALWAYS candidate=true (a latency contract may be legitimate). Dedupe: the same weakness surfaced twice is ONE finding with the strongest evidence.\n` +
-  `Severity rubric: blocker = a core behavior could be fully inverted/removed undetected or a test is proven vacuous; major = a meaningful branch, bound, or computation is unpinned, or a proven flake/brittle break; minor = a narrow edge case or an inefficiency.\n` +
+  `Severity rubric: blocker = a core behavior could be fully inverted/removed undetected or a test is proven vacuous; major = a meaningful branch, bound, or computation is unpinned, or a proven flake/brittle break; minor = a narrow edge case or an inefficiency. ` +
+  `Timing findings: major when multiple tests share the timing dependence, minor for an isolated test.\n` +
   `3. proposals: concrete next actions — "add a test that kills this survivor in <file>:<line> (assert <behavior>)", "quarantine flaky test X", "split/exclude slow test Y". Each tied to its finding. No code, just the actions.\n` +
   `4. components table: per component kill_rate, flakes, brittle, slice_wall_s, audited.\n` +
   `5. checked: one compact prose line — components audited, mutants applied, no-ops, delays, reruns, coverage pct, mode.\n` +
