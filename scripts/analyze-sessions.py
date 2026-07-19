@@ -99,8 +99,8 @@ SKILL_RENAME_ALIASES = {
     # prefix), rather than being mismerged into a surviving single-dimension skill.
     "project-quality:project-review": "project-review:project-review-all",
     "project-quality:project-review-complexity": "challenge:kiss",
-    "project-quality:project-review-consistency": "project-review:project-review-consistency",
-    "project-quality:project-review-structure": "project-review:project-review-structure",
+    "project-quality:project-review-consistency": "project-review:project-review-codebase",
+    "project-quality:project-review-structure": "project-review:project-review-codebase",
     "project-quality:project-review-tests": "project-review:project-review-tests",
     "project-quality:project-review-docs": "project-review:project-review-docs",
     # complexity-review plugin era (plugin later renamed; the skill now lives in challenge)
@@ -110,10 +110,15 @@ SKILL_RENAME_ALIASES = {
     # plugin again, so an entry keyed on a live "project-review:project-review-*" name would
     # rewrite present-day episodes onto a dead row.
     "project-review:complexity-review": "challenge:kiss",
-    "project-review:consistency-review": "project-review:project-review-consistency",
-    "project-review:structure-review": "project-review:project-review-structure",
+    "project-review:consistency-review": "project-review:project-review-codebase",
+    "project-review:structure-review": "project-review:project-review-codebase",
     "project-review:test-review": "project-review:project-review-tests",
     "project-review:project-review-test": "project-review:project-review-tests",
+    # consistency + structure merged into the single codebase review skill; their
+    # episodes attribute to the successor (a merge is a rename with one live target,
+    # unlike the removed project-review-all umbrella, which kept a retired name).
+    "project-review:project-review-consistency": "project-review:project-review-codebase",
+    "project-review:project-review-structure": "project-review:project-review-codebase",
     # project-explore skill renamed (explore-project -> project-explore)
     "project-explore:explore-project": "project-explore:project-explore",
     # grill extracted from project-quality into its own standalone plugin, which was
