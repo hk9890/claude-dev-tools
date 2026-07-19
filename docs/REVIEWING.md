@@ -12,7 +12,11 @@ skill's default, this file wins.
   or weakens these.
 - **Skill triggering.** A skill's `description` and `when_to_use` frontmatter are
   load-bearing for routing. Review wording changes for trigger accuracy and overlap
-  with sibling skills, not just prose quality.
+  with sibling skills, not just prose quality. When a change adds or reshapes a skill
+  that overlaps a sibling, the carve-out must be bidirectional — the sibling's
+  `when_to_use` has to point back too, not just the new skill's. A one-directional
+  exclusion still mis-routes the shared queries, so flag a new skill whose sibling was
+  left untouched.
 
 ## Project-specific rules
 
