@@ -449,6 +449,7 @@ function workerPrompt(comp, idx) {
   const workspaceInstructions = mode === 'worktree'
     ? `WORKSPACE (worktree mode): create your own worktree and do ALL work inside it — the user's tree is never touched:\n` +
       `  git -C ${repoRoot} worktree add ${wt} HEAD\n` +
+      `(If worktree add fails with a git lock/contention error — other workers create worktrees concurrently — retry once after a short pause.)\n` +
       (baseline.worktree_setup
         ? `Then replay the baseline's workspace setup verbatim, adjusting only the worktree path:\n  ${baseline.worktree_setup}\n`
         : '') +
@@ -459,7 +460,7 @@ function workerPrompt(comp, idx) {
       `When completely done: remove any links your setup created, then git -C ${repoRoot} worktree remove --force ${wt}\n` +
       `INTEGRITY GATE: before removing, \`git -C ${wt} status --porcelain\` must be empty (ignoring untracked artifacts) and one final clean run of your selector must be green.`
     : `WORKSPACE (live-tree mode — the suite cannot run in a fresh worktree): you work in the USER'S LIVE TREE at ${repoRoot}. ` +
-      `Follow this safety protocol with zero exceptions:\n` +
+      `Every deviation from this protocol risks destroying the user's uncommitted work, which nothing can restore — so follow it exactly:\n` +
       `  - BEFORE touching any file, mirror its repo-relative path under the backup dir (this is collision-free — never flatten paths):\n` +
       `      mkdir -p ${backupDir}/$(dirname <relpath>) && cp -p ${repoRoot}/<relpath> ${backupDir}/<relpath>\n` +
       `  - NEVER use git checkout/restore/stash to revert — that would destroy the user's uncommitted edits. Restore ONLY by copying the backup back.\n` +

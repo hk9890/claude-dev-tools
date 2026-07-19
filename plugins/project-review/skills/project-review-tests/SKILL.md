@@ -1,7 +1,7 @@
 ---
 name: project-review-tests
 description: "Adversarial review of test quality and coverage — gaps, weak assertions, brittleness, and missing edge cases."
-when_to_use: "Use when the user wants a test-quality or coverage review. Triggers on 'are these tests any good?', 'what am I not testing?', 'are my tests brittle?', 'are my tests fast enough?'. Not for over-engineering, structure, or consistency reviews — each has its own skill. Invoke with an optional argument scoping what to review; with no argument it reviews the whole test suite. The review runs in an isolated context and cannot see this conversation — pass everything it needs (paths or the artifact text itself) in the argument."
+when_to_use: "Use when the user wants a test-quality or coverage review. Triggers on 'are these tests any good?', 'what am I not testing?', 'are my tests brittle?', 'are my tests fast enough?'. Not for over-engineering, structure, or consistency reviews — each has its own skill. To empirically PROVE the tests catch injected bugs — mutation kill-rate, measured flakes/brittleness/speed — use project-auto-work:test-tests; this skill is the reading-based judgment lens. Invoke with an optional argument scoping what to review; with no argument it reviews the whole test suite. The review runs in an isolated context and cannot see this conversation — pass everything it needs (paths or the artifact text itself) in the argument."
 argument-hint: "[what-to-review]"
 context: fork
 agent: project-reviewer

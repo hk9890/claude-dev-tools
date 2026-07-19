@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""coverage_summary.py — normalize a line-coverage report into compact JSON.
+"""coverage-summary.py — normalize a line-coverage report into compact JSON.
 
 Language-independent: accepts the four mainstream interchange formats and emits
 one schema, so agents never parse raw coverage files.
@@ -11,8 +11,8 @@ Supported input formats (auto-detected):
   - Go coverprofile          (go test -coverprofile=...; first line "mode: ...")
 
 Usage:
-  coverage_summary.py COVERAGE_FILE [--repo-root DIR]            # per-file summary
-  coverage_summary.py COVERAGE_FILE --file PATH [--repo-root DIR] # line detail for one file
+  coverage-summary.py COVERAGE_FILE [--repo-root DIR]            # per-file summary
+  coverage-summary.py COVERAGE_FILE --file PATH [--repo-root DIR] # line detail for one file
 
 Output (summary mode):
   { "format": "...", "totals": {"files": N, "lines_total": N, "lines_covered": N, "pct": F},
@@ -204,7 +204,7 @@ def main(argv):
             positional.append(args[i])
         i += 1
     if len(positional) != 1:
-        die(2, "usage: coverage_summary.py COVERAGE_FILE [--file PATH] [--repo-root DIR]")
+        die(2, "usage: coverage-summary.py COVERAGE_FILE [--file PATH] [--repo-root DIR]")
 
     try:
         with open(positional[0], encoding="utf-8", errors="replace") as f:

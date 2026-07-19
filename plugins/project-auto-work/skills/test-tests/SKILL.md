@@ -97,14 +97,18 @@ Nothing is ever committed, no test is written, nothing is installed.
    alone.
 
 If `python3` is missing or the workflow cannot launch, do not improvise an inline
-audit — report which prerequisite is missing and stop.
+audit — report which prerequisite is missing and stop. If the workflow returns an
+object with `error` and no `report` (bad arguments, or the baseline agent died),
+relay the error verbatim, state that the audit did not run, and do not improvise
+findings — still run the step-5 integrity check.
 
 ## Verdicts
 
 `strong` must be earned: kill rate ≥ ~0.75 across audited components AND zero flakes
-AND zero brittle breaks AND a fast suite. `untrustworthy` = red or flaky baseline.
-`weak` = low kill rate or proven vacuous tests. `not-auditable` = an abort report
-with remediation proposals. Below `high`, surviving mutants are labeled
+AND zero brittle breaks AND a fast suite. `adequate` = no disqualifying weakness
+found, but strength was not proven (the default middle verdict). `untrustworthy` =
+red or flaky baseline. `weak` = low kill rate or proven vacuous tests.
+`not-auditable` = an abort report with remediation proposals. Below `high`, surviving mutants are labeled
 `candidate: true` — possible equivalent mutants, presented with their diff, never as
 proof. Delay-injection findings are always candidates: a test failing under an added
 delay may be brittle or may encode a legitimate latency contract — the user decides.
