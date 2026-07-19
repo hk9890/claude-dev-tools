@@ -34,7 +34,8 @@ const DIALS = {
 }
 const dial = DIALS[level]
 
-const covTool = `python3 "${scriptsDir}/coverage-summary.py"`
+const validateTool = `python3 "${scriptsDir}/validate-coverage-summary.py"`
+const schemaRef = `${scriptsDir.replace(/\/scripts$/, '')}/references/coverage-summary-schema.md`
 
 // ---------------------------------------------------------------------------
 // Schemas
@@ -53,10 +54,11 @@ const BASELINE_SCHEMA = {
       type: 'object',
       properties: {
         obtained: { type: 'boolean' },
-        format: { type: 'string' },
-        coverage_file: { type: 'string' },
+        producer_cmd: { type: 'string' },
+        producer_source: { type: 'string' },
         summary_file: { type: 'string' },
         pct: { type: 'number' },
+        validation_errors: { type: 'string' },
         how_to_enable: { type: 'string' },
       },
       required: ['obtained'],
@@ -292,13 +294,15 @@ const baseline = await agent(
   `If it is RED, capture the failing tests' names and output excerpt in red_details, set green=false, and still attempt steps 4-6 cheaply if possible; accuracy of red_details matters most.\n` +
   `Also capture per-test timings if the runner offers them cheaply (a timing/durations flag or reporter it already has); summarize the slowest tests in slow_tests. ` +
   `If the runner offers no per-test timing output, record that fact in slow_tests and MOVE ON — do not dig for it.\n\n` +
-  `3. COVERAGE: produce line coverage WITHOUT installing anything, using whatever coverage route this toolchain already supports, ` +
-  `in one of the four formats the bundled normalizer accepts: LCOV, Cobertura XML, coverage.py JSON, or Go coverprofile. ` +
-  `Write the raw coverage file under ${scratchDir}, then normalize it:\n` +
-  `   ${covTool} <coverage-file> --repo-root ${repoRoot} > ${scratchDir}/coverage_summary.json\n` +
-  `CONTRACT: obtained=true is valid ONLY if BOTH files exist on disk — the raw coverage file AND the normalized summary — ` +
-  `and then coverage_file, summary_file, format, and pct must ALL be filled in (downstream agents consume these paths verbatim). ` +
-  `If coverage is NOT obtainable with what is installed, set obtained=false and put the exact invocation or tooling that WOULD enable it into how_to_enable.\n\n` +
+  `3. COVERAGE: this audit does NOT parse coverage formats. The repository must provide a command that emits a coverage summary as JSON on stdout, ` +
+  `in the neutral schema documented at ${schemaRef} (a "files" array of {repo-relative path, covered_ranges, uncovered_ranges}). ` +
+  `DISCOVER that command the same way you found the test command — from the project's OWN docs (testing/contributor/agent docs, README, task files); ` +
+  `record it in producer_cmd and where you found it in producer_source. Do not invent one the repo does not document, and never install anything.\n` +
+  `Run it (wrapped in \`timeout 590\`), capture stdout to ${scratchDir}/coverage_raw.json, then validate + normalize:\n` +
+  `   ${validateTool} ${scratchDir}/coverage_raw.json --repo-root ${repoRoot} > ${scratchDir}/coverage_summary.json\n` +
+  `CONTRACT: obtained=true is valid ONLY if the validator exits 0 AND ${scratchDir}/coverage_summary.json exists — then fill summary_file and pct (the summary's totals.pct).\n` +
+  `If the repo documents NO such command, set obtained=false and put into how_to_enable exactly what to add (a command emitting the schema at ${schemaRef}, and where to document it).\n` +
+  `If a command exists but the validator REJECTS its output (exit 3), set obtained=false, record the command in producer_cmd, and put the validator's stderr verbatim into validation_errors.\n\n` +
   `4. RUNNER FEATURES: record the runner's native order-shuffle flag if one exists (only a flag/plugin that is ALREADY available — never install one) ` +
   `in shuffle_flag, and the test-filter syntax (however this runner selects a subset — a path, a name filter, a package pattern) in filter_syntax. ` +
   `Set can_slice=true only after PROVING it by actually running one small subset.\n\n` +
@@ -321,7 +325,7 @@ const baseline = await agent(
 if (!baseline) return { error: 'baseline agent failed', repoRoot, level }
 
 log(`Baseline: cmd="${baseline.test_cmd}" green=${baseline.green} wall=${baseline.wall_s}s ` +
-    `coverage=${baseline.coverage.obtained ? ((baseline.coverage.pct != null ? baseline.coverage.pct : '?') + '% ' + (baseline.coverage.format || '')) : 'NONE'} ` +
+    `coverage=${baseline.coverage.obtained ? ((baseline.coverage.pct != null ? baseline.coverage.pct : '?') + '%') : 'NONE'} ` +
     `worktree_ok=${baseline.worktree_ok} can_slice=${baseline.can_slice}`)
 
 // Abort gates — each abort is a remediation report. Order matters: a timed-out
@@ -342,15 +346,21 @@ if (!baseline.green) {
     'Fix or quarantine the failing tests so the suite is green, then re-run the audit. Name each failing test and the quarantine/skip mechanism this runner supports.'
   )
 }
-if (!baseline.coverage.obtained ||
-    !baseline.coverage.coverage_file || !baseline.coverage.summary_file) {
+if (!baseline.coverage.obtained || !baseline.coverage.summary_file) {
+  const noProducer = !baseline.coverage.producer_cmd
   return await abortReport(
-    'line coverage unobtainable — audit would mutate blind',
+    'coverage summary unavailable — audit would mutate blind',
     `Command: ${baseline.test_cmd}\n` +
-    `Coverage attempt: ${baseline.coverage.obtained
-      ? 'agent reported obtained=true but did not produce the coverage artifacts (coverage_file/summary_file missing)'
-      : (baseline.coverage.how_to_enable || '(no route found)')}`,
-    'Enable line coverage with the exact invocation in the evidence (or install the named tool), then re-run the audit.'
+    (noProducer
+      ? `No coverage-summary command is documented in this repo. The audit needs one that emits the neutral schema on stdout.\n` +
+        `How to enable: ${baseline.coverage.how_to_enable || '(agent found no route)'}`
+      : `Coverage command: ${baseline.coverage.producer_cmd}\n` +
+        `Its output did not conform to the coverage-summary schema:\n${baseline.coverage.validation_errors || '(no validator output captured)'}`),
+    `The repository must expose a command that emits a coverage summary as JSON on stdout, conforming to the schema at ${schemaRef} ` +
+    `(a "files" array of {repo-relative path, covered_ranges, uncovered_ranges}), documented where the test command is documented. ` +
+    (noProducer
+      ? 'Add and document that command, then re-run.'
+      : 'Fix the command so its output conforms (the validator errors above pinpoint what to change), then re-run.')
   )
 }
 
@@ -473,9 +483,9 @@ function workerPrompt(comp, idx) {
     `Component: ${comp.name}\nProduction paths: ${JSON.stringify(comp.prod_paths)}\n` +
     `Test selector (run tests with exactly this): ${comp.test_selector}\n` +
     `Suite facts: filter syntax ${baseline.filter_syntax || 'n/a'}; shuffle flag ${baseline.shuffle_flag || 'none'}.\n` +
-    `Coverage detail per file (covered line ranges — mutate ONLY inside covered ranges):\n` +
-    `  ${scratchDir}/coverage_summary.json is the normalized summary (plain JSON — just read it); for line detail run\n` +
-    `  ${covTool} "${baseline.coverage.coverage_file}" --file <prod-file-repo-relative-path> --repo-root ${repoRoot}\n\n` +
+    `Coverage detail per file (mutate ONLY inside covered ranges):\n` +
+    `  read ${scratchDir}/coverage_summary.json — one normalized document, plain JSON. Find each production file by its repo-relative path in the "files" array; ` +
+    `its covered_ranges are the only mutable lines, uncovered_ranges are off-limits.\n\n` +
     `${workspaceInstructions}\n\n` +
     `Never install anything. Every command within the 600 s cap. ` +
     `Tee every selector/suite run to a log file under ${scratchDir} and extract failures/details from the log — NEVER re-run the suite just to re-read its output. ` +

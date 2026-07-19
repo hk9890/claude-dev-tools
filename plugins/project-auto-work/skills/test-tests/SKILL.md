@@ -65,8 +65,10 @@ Nothing is ever committed, no test is written, nothing is installed.
    The workflow measures four axes — sensitivity (mutants must be killed),
    specificity (no-op edits must not break tests), reliability (reruns, shuffle,
    delay injection), speed — and aborts *with a remediation report* when the suite
-   is red, coverage is unobtainable, or the suite is too slow to slice: the report
-   then tells the user exactly how to make the repo auditable.
+   is red, the repository exposes no conforming coverage-summary command (see
+   [Coverage comes from the repository](#coverage-comes-from-the-repository)), or the
+   suite is too slow to slice: the report then tells the user exactly how to make the
+   repo auditable.
 
 5. **Verify tree integrity** — after the workflow returns *or* fails:
 
@@ -101,6 +103,18 @@ audit — report which prerequisite is missing and stop. If the workflow returns
 object with `error` and no `report` (bad arguments, or the baseline agent died),
 relay the error verbatim, state that the audit did not run, and do not improvise
 findings — still run the step-5 integrity check.
+
+## Coverage comes from the repository
+
+This audit never parses coverage formats — that is what keeps the plugin
+technology-independent. The target repository must expose a command, discovered from
+its own docs like the test command, that emits a coverage summary as JSON on stdout
+conforming to [`references/coverage-summary-schema.md`](references/coverage-summary-schema.md)
+(a `files` array of repo-relative path + covered/uncovered line ranges). The workflow
+runs it, validates the output with `scripts/validate-coverage-summary.py`, and mutates
+only covered lines. No conforming command → the audit aborts with a remediation report
+telling the user what command to add and how to document it. All format-specific work
+lives in the repo, never here.
 
 ## Verdicts
 
