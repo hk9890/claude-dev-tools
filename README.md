@@ -18,6 +18,7 @@ For the repo layout and architecture, see [docs/OVERVIEW.md](docs/OVERVIEW.md).
 | [`keep-awake-linux`](plugins/keep-awake-linux/) | Prevents Linux system sleep while Claude Code is actively working — releases automatically when idle or on session exit |
 | [`project-explore`](plugins/project-explore/) | Assisted exploratory testing — researches a project, then plays around with the product one action at a time, filing findings as tasks |
 | [`project-auto-work`](plugins/project-auto-work/) | Unattended adversarial audits that work the project on their own and report back — first skill `test-tests`: an empirical, language-independent test-suite strength audit that injects mutants, no-op edits, and delays to prove whether the tests actually detect bugs; reports findings and proposals, never keeps an edit |
+| [`instruction-writing`](plugins/instruction-writing/) | Guidance for writing the artifacts an agent harness reads — project docs, skills, agents, workflow prompts — so they stay token-efficient and predictable; first skill `writing-skills`: the vocabulary and principles for authoring and editing Claude Code skills |
 
 ## Installation
 
