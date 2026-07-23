@@ -10,26 +10,19 @@ git diff-index --quiet HEAD -- || echo "FAIL: uncommitted changes"
 
 # Untracked files
 git ls-files --others --exclude-standard | head -5
-
-# Up to date with remote (derive the default branch; fall back when origin/HEAD is unset)
-DEFAULT_BRANCH=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|origin/||')
-DEFAULT_BRANCH=${DEFAULT_BRANCH:-$(git remote show origin | sed -n 's/.*HEAD branch: //p')}
-git fetch origin && git diff HEAD "origin/$DEFAULT_BRANCH" --stat
 ```
+
+Then verify sync with the remote default branch — derive `DEFAULT_BRANCH` and diff as in [release-workflow.md — Phase 1](release-workflow.md).
 
 ## Gate 2: Tests Pass
 
-Run the project's full test suite — unit, integration, and E2E tests.
-
-Use the project-specific release guide (`docs/RELEASING.md`) to identify test commands. If unsure, ask the user.
+Run the project's full test suite — unit, integration, and E2E tests — with the commands established in Phase 2 of [release-workflow.md](release-workflow.md). If unsure, ask the user.
 
 All test suites MUST pass. Do not skip any.
 
 ## Gate 3: Build Succeeds
 
-Build the project using its standard build tooling.
-
-Use the project-specific release guide (`docs/RELEASING.md`) to identify the build command. If unsure, ask the user.
+Build the project with the build command established in Phase 2 of [release-workflow.md](release-workflow.md). If unsure, ask the user.
 
 ## Gate 4: CI Status
 

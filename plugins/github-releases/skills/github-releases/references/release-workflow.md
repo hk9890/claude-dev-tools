@@ -6,9 +6,10 @@ Detailed per-phase instructions for executing a release. Use alongside the check
 
 Before proceeding verify all gates pass:
 
+- `command -v gh` — GitHub CLI must be installed
 - `gh auth status` — GitHub CLI must be authenticated
 - `git status --porcelain` — working tree must be clean (no uncommitted changes)
-- After `git fetch origin`, the local branch must be in sync with the remote default branch. Derive it — with a fallback for when `origin/HEAD` is not set locally — and diff against it:
+- After `git fetch origin`, the local branch must be in sync with the remote default branch. Derive it — with a fallback for when `origin/HEAD` is not set locally (fresh `git init`, shallow/CI checkouts, new worktrees) — and diff against it:
 
   ```bash
   DEFAULT_BRANCH=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|origin/||')
@@ -23,8 +24,7 @@ See [quality-gates.md](quality-gates.md) for full gate details including CI stat
 Check for `docs/RELEASING.md`. If it exists:
 
 - Read it in full before proceeding
-- Replace all generic commands in the checklist with the project-specific commands defined there
-- Never leave generic placeholder commands when real commands are available
+- Replace all generic commands in the checklist with the project-specific commands defined there — never leave a generic placeholder when a real command is available
 
 If no `docs/RELEASING.md` exists, use the generic commands from the checklist and note that a project guide is missing.
 
@@ -100,8 +100,11 @@ gh release view v<version>
 git ls-remote --tags origin v<version>
 ```
 
+## Phase 9 — Cleanup
+
+Run any post-release steps the project's `docs/RELEASING.md` specifies (announcements, version-file rollover). Skip if it defines none.
+
 ## Rules
 
 - All quality gates must pass before proceeding past Phase 3
-- Never leave generic placeholder commands — always use project-specific commands from `docs/RELEASING.md`
 - Do not skip phases or proceed past a failure without explicit user confirmation

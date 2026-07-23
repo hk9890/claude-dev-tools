@@ -26,7 +26,8 @@ const level = ['low', 'medium', 'high'].includes((A.level || '').toLowerCase())
   ? A.level.toLowerCase() : 'medium'
 const scratchDir = A.scratchDir || '/tmp/test-tests-scratch'
 
-// Dials per level (design §8). Verify pass and shuffle only at high.
+// Dials per level (design §8). Verify pass only at high; one rerun uses the
+// runner's shuffle flag at every level when the baseline discovered one.
 const DIALS = {
   low:    { components: 3,  K: 3, M: 0, D: 0, R: 2, hermeticity: false, verify: false },
   medium: { components: 8,  K: 5, M: 2, D: 1, R: 3, hermeticity: true,  verify: false },

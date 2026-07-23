@@ -144,7 +144,7 @@ taskmgr close <research-task-id> --reason "done: understanding file written to t
 
 Read the understanding file. Then enter the loop.
 
-Each iteration is exactly one action. Do not chain or batch actions — pick one, do it, judge it, record it, then stop and ask via `AskUserQuestion`. Silence is not consent.
+Each iteration is exactly one action — pick one, do it, judge it, record it, then check in per step 5's turn gate.
 
 Load `references/break-it.md` before the first iteration. Use it as instinct-prompting, not a checklist.
 
@@ -233,11 +233,7 @@ Load `references/break-it.md` before the first iteration. Use it as instinct-pro
 
    Then **stop and call `AskUserQuestion`** with: "Iteration <N> done. Continue, redirect, or stop?" and options "Continue — next action" / "Redirect — go deeper on …" / "Stop — wrap up".
 
-   Do not advance until the user's answer arrives. **Silence is not consent.**
-
-   **Anti-pattern:** ending with prose like "I'll proceed unless you redirect" or writing the three options as plain text. The only ways to advance are an explicit user answer via `AskUserQuestion` or an opt-out phrase.
-
-   **Opt-out:** "do next N without asking", "keep going, don't ask", or "explore freely until I stop you" — skip `AskUserQuestion` for non-destructive iterations only. Destructive actions still stop-and-confirm per step 2.
+   The loop is strictly **turn-based**: an iteration ends in that `AskUserQuestion` call, and only the user's answer — or a stated opt-out ("do next N without asking", "keep going, don't ask", "explore freely until I stop you"; scoped by the mid-batch rule in step 2) — starts the next. Silence is not consent.
 
 ---
 

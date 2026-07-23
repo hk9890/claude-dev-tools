@@ -22,4 +22,3 @@ Work from that directly; do not ask the user to restate it.
 2. Load and follow `references/feedback.md` (in the `html-visualize` skill) —
    render the content for inline commenting, run the Apply loop (re-serve on the
    same port after each Apply), and finish on Submit.
-3. The shared server lifecycle is `references/serve.md`.

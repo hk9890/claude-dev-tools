@@ -21,16 +21,8 @@ $ARGUMENTS
 ## 1. Preconditions
 
 First, **load the `tasks` skill** for the CLI surface and the taskmgr gotchas it relies on
-(closure is not gated, concurrent writes are safe). Then confirm the tracker is usable — probe binary and store separately (`taskmgr list` resolves the
-store by walking up; do **not** use `ls .tasks/`, which only sees cwd):
-
-```bash
-command -v taskmgr >/dev/null 2>&1   # binary installed?
-taskmgr list >/dev/null 2>&1          # store resolves?
-```
-
-If `command -v taskmgr` fails (no binary) or `taskmgr list` fails (no store resolves), stop and tell
-the user (see the `tasks` skill, "Is taskmgr available?").
+(closure is not gated, concurrent writes are safe). Then confirm the tracker is usable: run the
+availability check from that skill ("Is taskmgr available?") — if it fails, stop and tell the user.
 
 ## 2. Discover ready work
 

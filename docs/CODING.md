@@ -23,6 +23,10 @@ Use the right pattern for each dependency kind:
 
 These apply to every `SKILL.md` under `plugins/<plugin-name>/skills/<skill-name>/`.
 
+Before writing or editing any `SKILL.md`, read
+[`.claude/skills/writing-great-skills/SKILL.md`](../.claude/skills/writing-great-skills/SKILL.md) —
+the rubric for invocation choice, description writing, information hierarchy, and pruning.
+
 ### Naming
 
 Skill directory name and the `name:` field in frontmatter must match, and both should be **domain-prefixed**: `<plugin-domain>-<topic>`. The qualified reference (`<plugin>:<skill>`) then carries the domain in both segments.

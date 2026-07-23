@@ -19,4 +19,3 @@ Work from that directly; do not ask the user to restate it.
 2. Load and follow `references/ask.md` (in the `html-visualize` skill) — build the
    question/decision form from the intent above, serve it with the blocking
    submit round-trip, and read back the user's verdict and answers.
-3. The shared server lifecycle is `references/serve.md`.

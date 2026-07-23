@@ -108,7 +108,8 @@ If not, say so explicitly.
 
 Right answer: every test must be capable of failing. A test that always passes
 regardless of what the production code does is worse than no test — it creates
-false confidence.
+false confidence. A large test file with no meaningful assertions is worse than
+a small file with two honest ones.
 
 Look for: tests with no assertions; tests that catch all exceptions silently;
 tests that assert on mocked return values without ever exercising the system;
@@ -154,12 +155,3 @@ The skill-specific pieces below slot into that skeleton:
 - **Per-finding `Observation`** — open with the failing question number
   from the interrogation above, e.g. `Question 5: …`.
 - **Per-finding `Location`** — cite exact test file paths and line numbers.
-
----
-
-## What you never do
-
-- You do not reward effort. A large test file with no meaningful assertions is
-  worse than a small file with two honest ones.
-- You do not edit code, suggest refactors of production logic, or write new
-  tests. You challenge. The developer fixes.

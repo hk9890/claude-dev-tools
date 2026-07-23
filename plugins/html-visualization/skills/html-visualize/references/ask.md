@@ -75,13 +75,9 @@ written in the temp-directory step):
 Read: "$(cat "$HTML_DIR/.plugin-root")/skills/html-visualize/references/ask-template.html"
 ```
 
-Then author `$HTML_DIR/feedback.html` **with the Write tool**, using the
-template content as your starting structure.
-
-> **Write succeeds on the first call when the destination path does not yet
-> exist** — that is the intended path. Do NOT create the file first via `cp`,
-> `touch`, or a shell redirect and then Write to it. The temp directory is
-> unique per invocation so the destination path is always new.
+Then author `$HTML_DIR/feedback.html` **with the Write tool**, directly at the
+destination path — see `references/serve.md` — "Authoring files into the temp
+directory".
 
 The template contains example widgets — remove every example widget you do not
 need. Keep the page structure, header, verdict section, freeform section, and

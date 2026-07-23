@@ -76,6 +76,18 @@ file — live here.
 
 ---
 
+## Authoring files into the temp directory
+
+Author each HTML file **with the Write tool**, directly at its destination path
+inside `$HTML_DIR`.
+
+> **Write succeeds on the first call when the destination path does not yet
+> exist** — that is the intended path. Do NOT create the file first via `cp`,
+> `touch`, or a shell redirect and then Write to it. The temp directory is
+> unique per invocation so the destination path is always new.
+
+---
+
 ## Server cycles
 
 There are three distinct server cycles, one per mode.
@@ -242,7 +254,8 @@ In all three cycles, render the URL as a **markdown link**, not a bare URL strin
 ```
 
 This makes it clickable in the terminal. Include a brief instruction for what the
-user should do after opening it.
+user should do after opening it and what happens after they act (you continue,
+the page loops, or it is just to view) — never leave the user guessing.
 
 ---
 

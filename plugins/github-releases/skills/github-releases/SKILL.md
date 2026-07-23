@@ -19,21 +19,15 @@ This skill covers three release tasks — identify which one the user wants:
 
 The Prerequisites and Workflow below apply to use case 1.
 
-## Prerequisites (Phase 0)
+## Prerequisites (Phase 1)
 
 Before starting, verify:
 - `command -v gh` succeeds (GitHub CLI installed)
 - `gh auth status` succeeds (GitHub CLI authenticated)
 - `git status --porcelain` returns empty (clean working tree)
-- You are on the default branch — releases are cut from the default branch — and in sync with its remote. After `git fetch origin`, derive the default branch — with a fallback for when `origin/HEAD` is not set locally (fresh `git init`, shallow/CI checkouts, new worktrees) — and diff against it:
+- You are on the default branch — releases are cut from the default branch — and in sync with its remote
 
-  ```bash
-  DEFAULT_BRANCH=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|origin/||')
-  DEFAULT_BRANCH=${DEFAULT_BRANCH:-$(git remote show origin | sed -n 's/.*HEAD branch: //p')}
-  git diff HEAD "origin/$DEFAULT_BRANCH" --stat   # expect no differences
-  ```
-
-If `gh` is missing or unauthenticated, or any check fails, stop and guide the user through fixing it — see [troubleshooting.md](references/troubleshooting.md). Do not start the workflow with a failed prerequisite.
+Run the checks as [release-workflow.md — Phase 1](references/release-workflow.md) specifies; it owns the `DEFAULT_BRANCH` derivation. If `gh` is missing or unauthenticated, or any check fails, stop and guide the user through fixing it — see [troubleshooting.md](references/troubleshooting.md). Do not start the workflow with a failed prerequisite.
 
 ## Workflow
 

@@ -44,11 +44,6 @@ and act on without effort.
 - **Legible everywhere.** The page must read cleanly in light and dark mode and
   at any screen width. The user opens it wherever they open it.
 
-- **Tell the user what to do next.** Surface the URL as a clickable markdown link
-  with one line of instruction: what to click, and what happens after they do
-  (you continue, the page loops, or it is just to view). Never leave the user
-  guessing.
-
 ## Shared serve procedure
 
 All three modes share one server lifecycle — pre-flight, temp dir, the three

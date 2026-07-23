@@ -9,7 +9,7 @@ disable-model-invocation: true
 
 Produce a structured report of the keep-awake-linux plugin's **current state** and **recent activity**, by reading raw state files and the log directly. Does NOT depend on the `keep-awake` binary being on `$PATH`.
 
-Use the existing plugin data; do NOT spawn new inhibitors, kill existing ones, or modify state files unless the user explicitly asks.
+This inspection is a read-only post-mortem: observe state, never actuate it — no new inhibitors, no kills, no state-file edits, no `keep-awake start|stop|hook` calls — unless the user explicitly asks for cleanup, and confirm first when they do.
 
 ## Hard rule
 
@@ -169,7 +169,4 @@ If state dir is empty AND log is empty BUT inhibitors with `claude-keep-awake` a
 
 ## What not to do
 
-- Do NOT modify any file in the state directory. Reading only.
-- Do NOT call `keep-awake start|stop|hook` during inspection — that would alter state.
-- Do NOT spawn or kill any process unless the user explicitly asks for cleanup, in which case confirm first.
 - Do NOT extrapolate beyond what the log shows. If the log is silent, say it's silent — don't invent activity.
