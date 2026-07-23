@@ -1,7 +1,8 @@
 ---
 name: project-review-codebase
 description: "Read-only codebase review across three dimensions — consistency, structure, architecture — via a multi-agent workflow that dedupes findings across dimensions; reports fixes, never edits."
-when_to_use: "Use when the user wants a codebase review for consistency, layout, or architecture. Triggers on 'are we doing this two different ways?', 'our naming is a mess', 'we have two HTTP clients', 'is this layout sane?', 'are my files in the right place?', 'do I have god-files?', 'is this module too shallow?', 'is this abstraction earning its keep?'. Not for docs or test reviews — each has its own skill; pure formatting is a linter's job; to challenge one design decision interactively use challenge:kiss. Invoke with an optional argument scoping what to review; with no argument it reviews the whole codebase."
+user-invocable: true
+disable-model-invocation: true
 argument-hint: "[ultra] [what-to-review]"
 ---
 

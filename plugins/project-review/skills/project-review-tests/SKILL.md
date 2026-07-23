@@ -1,7 +1,8 @@
 ---
 name: project-review-tests
-description: "Adversarial review of test quality and coverage — gaps, weak assertions, brittleness, and missing edge cases."
-when_to_use: "Use when the user wants a test-quality or coverage review. Triggers on 'are these tests any good?', 'what am I not testing?', 'are my tests brittle?', 'are my tests fast enough?'. Not for codebase reviews (consistency, structure, architecture) or docs reviews — each has its own skill. To empirically PROVE the tests catch injected bugs — mutation kill-rate, measured flakes/brittleness/speed — use project-auto-work:test-tests; this skill is the reading-based judgment lens. Invoke with an optional argument scoping what to review; with no argument it reviews the whole test suite. The review runs in an isolated context and cannot see this conversation — pass everything it needs (paths or the artifact text itself) in the argument."
+description: "Adversarial review of test quality and coverage — gaps, weak assertions, brittleness, and missing edge cases. Runs in an isolated fork that cannot see this conversation — pass everything it needs (paths or the artifact text itself) in the argument; with no argument it reviews the whole test suite."
+user-invocable: true
+disable-model-invocation: true
 argument-hint: "[what-to-review]"
 context: fork
 agent: project-reviewer
@@ -107,7 +108,8 @@ If not, say so explicitly.
 
 Right answer: every test must be capable of failing. A test that always passes
 regardless of what the production code does is worse than no test — it creates
-false confidence.
+false confidence. A large test file with no meaningful assertions is worse than
+a small file with two honest ones.
 
 Look for: tests with no assertions; tests that catch all exceptions silently;
 tests that assert on mocked return values without ever exercising the system;
@@ -153,12 +155,3 @@ The skill-specific pieces below slot into that skeleton:
 - **Per-finding `Observation`** — open with the failing question number
   from the interrogation above, e.g. `Question 5: …`.
 - **Per-finding `Location`** — cite exact test file paths and line numbers.
-
----
-
-## What you never do
-
-- You do not reward effort. A large test file with no meaningful assertions is
-  worse than a small file with two honest ones.
-- You do not edit code, suggest refactors of production logic, or write new
-  tests. You challenge. The developer fixes.

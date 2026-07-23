@@ -27,7 +27,7 @@ The moves below are examples that prompt the instinct — not a checklist to mar
 - Import a large file; export all records.
 - Open many tabs or concurrent sessions (if applicable).
 
-Note: creating many records is destructive — always confirm with the user before proceeding.
+Note: creating many records counts as destructive under the skill's step 2 mutation-safety rule.
 
 ---
 

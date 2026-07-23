@@ -21,18 +21,9 @@ $ARGUMENTS
 First, **load the `tasks` skill** for the CLI surface and the taskmgr gotchas (closure is not gated,
 `--description-file -`, `create --json` returns id-only) — this skill relies on them.
 
-Then confirm the tracker is usable before creating anything — probe binary and store separately
-(`taskmgr list` resolves the store by walking up; do **not** use `ls .tasks/`, which only sees cwd
-and would miss a store at the repo root):
-
-```bash
-command -v taskmgr >/dev/null 2>&1   # binary installed?
-taskmgr list >/dev/null 2>&1          # store resolves?
-```
-
-If `command -v taskmgr` fails (no binary) or `taskmgr list` fails (no store resolves), stop and
-follow the failure guidance in the `tasks` skill ("Is taskmgr available?") — for a missing store,
-continue once `taskmgr init` has created one.
+Then confirm the tracker is usable before creating anything: run the availability check from that
+skill ("Is taskmgr available?") and follow its failure guidance — for a missing store, continue
+once `taskmgr init` has created one.
 
 ## 2. Gather the findings
 

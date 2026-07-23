@@ -69,16 +69,9 @@ written in Step 2a):
 Read: "$(cat "$HTML_DIR/.plugin-root")/skills/html-visualize/references/visualize-template.html"
 ```
 
-Then author `$HTML_DIR/visualization.html` **with the Write tool**, using the
-template content as your starting structure.
-
-> **Write succeeds on the first call when the destination path does not yet
-> exist** — that is the intended path. Do NOT create the file first via `cp`,
-> `touch`, or a shell redirect and then Write to it. If the file already exists
-> at the destination path (stale temp dir), the harness requires a prior Read.
-> Because the temp directory is always unique per invocation (`$(date +%s)-$$`),
-> this situation should never arise — if it does, it means the temp dir was
-> reused, which violates the uniqueness rule.
+Then author `$HTML_DIR/visualization.html` **with the Write tool**, directly at
+the destination path — see `references/serve.md` — "Authoring files into the temp
+directory".
 
 The template has a content area, an inline `<style>` block with light/dark colour
 tokens, and one structural placeholder section. Remove all placeholder comments
@@ -183,32 +176,14 @@ container (already in the template). For SVGs, set `width="100%"` plus a
 
 ## Step 3 — Start the server (Cycle B, non-blocking)
 
-See `references/serve.md` — Cycle B (non-blocking serve-and-continue).
-
-Start the server as a background process (`run_in_background: true`):
-
-```bash
-node "$(cat "$HTML_DIR/.plugin-root")/bin/server.js" "$HTML_DIR/visualization.html" --no-wait
-```
-
-Wait until you see the startup line:
-
-```
-[html-visualization] URL: http://127.0.0.1:<port>/
-```
-
-There is no "Feedback file" line in `--no-wait` mode — do not wait for one.
-
-Surface the URL to the user as a markdown link:
+See `references/serve.md` — Cycle B (non-blocking serve-and-continue). Surface
+the URL to the user as a markdown link with the message:
 
 > Your visualization is ready → **[Open visualization](http://127.0.0.1:PORT/)**
 >
 > Open that link in your browser to view it. You can optionally type a message in
 > the footer and click **Send** to share feedback or a follow-up request — or click
 > **Save** to download a copy of the page.
-
-Continue immediately after surfacing the URL — do not wait for a submit. The server
-self-terminates on timeout (default 1800 s) with exit 0.
 
 ---
 
@@ -244,22 +219,10 @@ after reading the feedback file.
 
 ---
 
-## `file://` vs server — decision
+## `file://` vs server
 
-Even though a fully self-contained visualization page (inline SVG, no CDN
-libraries) would open correctly as a `file://` URL, visualize mode always serves
-via the server. Reasons:
-
-1. **Consistency** — all three modes share one pre-flight and one server lifecycle
-   (`references/serve.md`).
-2. **Cleanup** — the server's timeout ensures the temp directory is eventually
-   reaped. A bare `file://` page has no cleanup hook.
-3. **CDN pages need a server anyway** — when the page includes a CDN `<script>`,
-   `file://` security restrictions in some browsers block cross-origin script loads.
-   Serving from `127.0.0.1` avoids this entirely.
-4. **Same URL surface** — the markdown link pattern (`[Open visualization](http://…)`)
-   is consistent with ask and feedback modes; `file://` paths with spaces and OS
-   temp-dir prefixes are harder to render as clickable links.
+Always serve via the server, even when the page is fully self-contained and
+would open correctly as a `file://` URL.
 
 **Send is inert in saved / offline copies.** When the user clicks **Save**, the page
 produces a self-contained HTML download with the CSRF token stripped and the Send

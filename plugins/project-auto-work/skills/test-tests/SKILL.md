@@ -1,7 +1,8 @@
 ---
 name: test-tests
 description: "Empirical test-suite strength audit — proves whether the tests detect injected bugs (mutation kill rate), stay quiet on non-bugs, are flake-free under reruns/shuffle/delays, and run fast. Reports findings and proposals; never keeps an edit."
-when_to_use: "Use when the user wants to measure how strong their test suite actually is by running it against injected faults. Triggers on 'test my tests', 'would my tests catch a bug?', 'audit the test suite strength', 'are my tests actually testing anything?', 'inject errors and see if the tests find them'. Not for reading-based test-quality judgment (mock discipline, style, what-matters-untested reasoning) — that is project-review-tests; this skill is the empirical lens: it proves weaknesses by mutating code and running the suite."
+user-invocable: true
+disable-model-invocation: true
 argument-hint: "[low|medium|high] [path]"
 ---
 
@@ -21,11 +22,13 @@ Nothing is ever committed, no test is written, nothing is installed.
    fall back to the root).
 
    If no level token is given, ask with `AskUserQuestion` (header "Level"):
-   - `low` — top 3 components by churn, 3 mutants each, ~6 agents. Quick signal.
-   - `medium` (recommended) — all components (cap 8), 5 mutants + no-ops + delay
-     probes each, ~12 agents. The standard audit.
-   - `high` — cap 12, 8 mutants, 5 reruns, plus an adversarial pass that refutes
-     equivalent mutants, ~25 agents. The trustworthy-numbers audit.
+   - `low` — the highest-churn components, a few mutants each. Quick signal.
+   - `medium` (recommended) — all components (capped), plus no-op and delay probes.
+     The standard audit.
+   - `high` — the deepest dials, plus an adversarial pass that refutes equivalent
+     mutants. The trustworthy-numbers audit.
+
+   The exact per-level dials live in the workflow's `DIALS` table.
 
    At every level, one rerun uses the runner's native order-shuffle flag (fixed
    seed) when one exists.
@@ -118,14 +121,13 @@ lives in the repo, never here.
 
 ## Verdicts
 
-`strong` must be earned: kill rate ≥ ~0.75 across audited components AND zero flakes
-AND zero brittle breaks AND a fast suite. `adequate` = no disqualifying weakness
-found, but strength was not proven (the default middle verdict). `untrustworthy` =
-red or flaky baseline. `weak` = low kill rate or proven vacuous tests.
-`not-auditable` = an abort report with remediation proposals. Below `high`, surviving mutants are labeled
-`candidate: true` — possible equivalent mutants, presented with their diff, never as
-proof. Delay-injection findings are always candidates: a test failing under an added
-delay may be brittle or may encode a legitimate latency contract — the user decides.
+The verdict (`strong` | `adequate` | `weak` | `untrustworthy` | `not-auditable` — the
+last is an abort report with remediation proposals) and its scoring thresholds are
+computed by the workflow; relay them as returned. Below `high`, surviving mutants are
+labeled `candidate: true` — possible equivalent mutants, presented with their diff,
+never as proof. Delay-injection findings are always candidates: a test failing under
+an added delay may be brittle or may encode a legitimate latency contract — the user
+decides.
 
 ## Not covered
 

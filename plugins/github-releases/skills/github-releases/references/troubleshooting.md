@@ -65,8 +65,7 @@ git push origin --delete v1.2.3  # Delete remote
 ### Not on default branch
 
 ```bash
-DEFAULT_BRANCH=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|origin/||')
-DEFAULT_BRANCH=${DEFAULT_BRANCH:-$(git remote show origin | sed -n 's/.*HEAD branch: //p')}
+# Derive DEFAULT_BRANCH first — see release-workflow.md, Phase 1
 git checkout "$DEFAULT_BRANCH"
 git pull origin "$DEFAULT_BRANCH"
 ```
@@ -74,8 +73,7 @@ git pull origin "$DEFAULT_BRANCH"
 ### Behind remote
 
 ```bash
-DEFAULT_BRANCH=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|origin/||')
-DEFAULT_BRANCH=${DEFAULT_BRANCH:-$(git remote show origin | sed -n 's/.*HEAD branch: //p')}
+# Derive DEFAULT_BRANCH first — see release-workflow.md, Phase 1
 git pull --rebase origin "$DEFAULT_BRANCH"
 ```
 

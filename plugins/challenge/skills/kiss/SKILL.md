@@ -1,7 +1,8 @@
 ---
 name: kiss
 description: "KISS — challenge accidental complexity in whatever is in front of you and propose the simpler form."
-when_to_use: "Use when the user wants something simplified or challenged for over-engineering — a requirement, a design, or a diff. To pressure-test whether a plan or decision is sound rather than its complexity, use grill. Operates on what is in the current conversation, not a scoped whole-repository audit."
+user-invocable: true
+disable-model-invocation: true
 argument-hint: "[what-to-challenge]"
 ---
 
@@ -27,21 +28,19 @@ Read the matching file, and only that one. A target spanning two rows reads both
 ## Stance
 
 **Essential or accidental.** Essential complexity comes from the problem; **accidental complexity**
-(Brooks) is self-inflicted. Separate them first. Smells: machinery serving machinery; code that
-**complects** — interleaves what should stand apart.
+is self-inflicted. Separate them first. Smells: machinery serving machinery; code that **complects**.
 
 **The addition carries the burden.** What pain does it solve *now*, and what breaks without it?
-**YAGNI**; abstract on the third repeat, not the first (**Rule of Three**). Smells: optionality with
-no caller; configuration standing in for a decision; a dependency bought for convenience.
+**YAGNI**; abstraction waits for the **Rule of Three**. Smells: optionality with no caller;
+configuration standing in for a decision; a dependency bought for convenience.
 
 **Model before machinery.** Complicated logic usually means the model underneath is wrong — show me
 your tables and I won't need your flowcharts. Smells: components named before the model is clear;
 code compensating for a weak model; proposals resting on unverified assumptions.
 
-**One engineer, whole system.** Intent should read without decoding, and a module's interface should
-be smaller than its implementation — a **shallow module** that renames and forwards has earned
-nothing. Write it as cleverly as you can and you are, by definition, not smart enough to debug it.
-Smells: non-local rules, hidden state, indirect control flow, tribal knowledge as a prerequisite.
+**One engineer, whole system.** Intent should read without decoding — no **shallow modules**, no
+cleverness that outruns debugging (**Kernighan's law**). Smells: non-local rules, hidden state,
+indirect control flow, tribal knowledge as a prerequisite.
 
 **Keep what works working.** *Don't break userspace.* A simplification that shifts cost onto users is
 not one. Smells: casual public-contract changes; migration left unstated.

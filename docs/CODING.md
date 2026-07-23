@@ -23,6 +23,10 @@ Use the right pattern for each dependency kind:
 
 These apply to every `SKILL.md` under `plugins/<plugin-name>/skills/<skill-name>/`.
 
+Before writing or editing any `SKILL.md`, read
+[`.claude/skills/writing-great-skills/SKILL.md`](../.claude/skills/writing-great-skills/SKILL.md) —
+the rubric for invocation choice, description writing, information hierarchy, and pruning.
+
 ### Naming
 
 Skill directory name and the `name:` field in frontmatter must match, and both should be **domain-prefixed**: `<plugin-domain>-<topic>`. The qualified reference (`<plugin>:<skill>`) then carries the domain in both segments.
@@ -54,7 +58,7 @@ disable-model-invocation: true
 ---
 ```
 
-Use for skills that perform a consequential, explicit action and should only run when the user types the slash command. Examples: `tasks-work`, `project-explore`, `html-visualize-demo`, the `project-execute` exec skills (`project-exec-testing`, `project-exec-releasing`, `project-exec-monitoring`), and `project-explain`.
+This is the default schema — nearly every skill in the marketplace uses it. Examples: `tasks-work`, `project-explore`, `html-visualize-demo`, the `project-execute` exec skills (`project-exec-testing`, `project-exec-releasing`, `project-exec-monitoring`), `project-explain`, the `project-review-*` lenses, `challenge:grill`, `challenge:kiss`, `github-releases`, `keep-awake-inspect`, and `test-tests`.
 
 **Schema B — model-discoverable:**
 
@@ -66,7 +70,9 @@ when_to_use: "Use when … Triggers on '…', '…'. Does not apply to …"
 ---
 ```
 
-Use for skills the model should suggest or auto-invoke from context. `when_to_use` carries the trigger guidance — write positive triggers, exclusions, and (where it helps) the argument shape. Examples: the `project-review-*` skills, `github-releases`, `keep-awake-inspect`.
+Use only for skills that must stay reachable through the `Skill` tool — in practice, a skill that sibling skills or agents load by name while it also stays user-invocable. Example: `tasks:tasks`, loaded by `tasks-work`, `tasks-create`, and the `implementer`/`verifier` agents. `when_to_use` carries the trigger guidance — write positive triggers, exclusions, and (where it helps) the argument shape.
+
+Do not reach for Schema B just because a skill *could* be auto-invoked. A 60-day audit of local transcripts found the model almost never picked these skills up from context (0 invocations in the trailing two weeks) while users reached them by slash command, so the auto-invokable ones were converted to Schema A.
 
 When the new skill's domain overlaps a sibling's (a likely case within a `*`-family), disambiguate in **both** directions: exclude the sibling from this skill's `when_to_use` *and* add the reverse pointer to the sibling's `when_to_use` in the same change. A one-sided carve-out still lets the shared queries land on the wrong skill.
 

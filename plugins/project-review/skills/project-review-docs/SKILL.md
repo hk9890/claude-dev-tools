@@ -1,7 +1,8 @@
 ---
 name: project-review-docs
 description: "Read-only audit of a project's docs for accuracy, staleness, gaps, misplaced content, and whether an agent can actually use them — runs a multi-agent workflow, reports fixes, never edits."
-when_to_use: "Use when the user wants a documentation review or audit. Triggers on 'are our docs stale?', 'do our docs match the code?', 'does AGENTS still match the repo?', 'audit the documentation'. Not for codebase reviews (consistency, structure, architecture) or test reviews — each has its own skill."
+user-invocable: true
+disable-model-invocation: true
 argument-hint: "[low|medium|high|ultra] [what-to-review]"
 ---
 

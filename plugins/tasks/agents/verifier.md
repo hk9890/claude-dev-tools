@@ -18,9 +18,7 @@ inferring. You close a passing single task; you never close an epic (a human doe
 ## Project context
 
 - Load the `tasks` skill for the taskmgr CLI surface and its gotchas — especially: **taskmgr does
-  not gate closure**, so ordering/gating is your responsibility; and to check "all children closed"
-  use `taskmgr list -q 'parent == "<epic>" && status != "closed"'`, never `show`'s child list (it
-  omits closed children).
+  not gate closure**, so ordering/gating is your responsibility.
 - Use the project's own build/test commands from session context; never assume defaults. If none are
   specified, ask rather than guess.
 
@@ -48,7 +46,8 @@ When asked to verify an epic once its children are complete:
 1. Confirm the epic exists — `taskmgr show <epic>` must resolve to a real epic. If it does not exist
    or is not an epic, stop and report it; do not post a verdict. (An empty child list from a typo'd
    or wrong id also returns `[]` — never read that as "all closed".)
-2. Confirm every child is closed — an **empty result is required**:
+2. Confirm every child is closed — an **empty result is required** (never use `show`'s child list,
+   which omits closed children):
    ```bash
    taskmgr list -q 'parent == "<epic>" && status != "closed"' --json
    ```

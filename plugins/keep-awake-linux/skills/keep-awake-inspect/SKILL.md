@@ -1,14 +1,15 @@
 ---
 name: keep-awake-inspect
 description: "Inspect and diagnose the keep-awake-linux plugin — state, log, inhibitors, recent activity."
-when_to_use: "Use when the user wants to inspect or diagnose the keep-awake-linux plugin — its state, log, inhibitors, or why it did or didn't fire. Triggers on 'what is keep-awake doing', 'is keep-awake working', 'orphaned keep-awake inhibitors'. Not for installing or removing it, or general 'why is my machine awake' questions."
+user-invocable: true
+disable-model-invocation: true
 ---
 
 ## What this skill does
 
 Produce a structured report of the keep-awake-linux plugin's **current state** and **recent activity**, by reading raw state files and the log directly. Does NOT depend on the `keep-awake` binary being on `$PATH`.
 
-Use the existing plugin data; do NOT spawn new inhibitors, kill existing ones, or modify state files unless the user explicitly asks.
+This inspection is a read-only post-mortem: observe state, never actuate it — no new inhibitors, no kills, no state-file edits, no `keep-awake start|stop|hook` calls — unless the user explicitly asks for cleanup, and confirm first when they do.
 
 ## Hard rule
 
@@ -168,7 +169,4 @@ If state dir is empty AND log is empty BUT inhibitors with `claude-keep-awake` a
 
 ## What not to do
 
-- Do NOT modify any file in the state directory. Reading only.
-- Do NOT call `keep-awake start|stop|hook` during inspection — that would alter state.
-- Do NOT spawn or kill any process unless the user explicitly asks for cleanup, in which case confirm first.
 - Do NOT extrapolate beyond what the log shows. If the log is silent, say it's silent — don't invent activity.
