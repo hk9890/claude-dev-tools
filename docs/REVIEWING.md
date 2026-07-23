@@ -10,13 +10,15 @@ skill's default, this file wins.
 - **Quality gates stay green.** A change must not break `bash tests/run-all.sh` or
   `mise run check-consistency` (see [TESTING.md](TESTING.md)). Flag any change that skips
   or weakens these.
-- **Skill triggering.** A skill's `description` and `when_to_use` frontmatter are
-  load-bearing for routing. Review wording changes for trigger accuracy and overlap
-  with sibling skills, not just prose quality. When a change adds or reshapes a skill
-  that overlaps a sibling, the carve-out must be bidirectional — the sibling's
-  `when_to_use` has to point back too, not just the new skill's. A one-directional
-  exclusion still mis-routes the shared queries, so flag a new skill whose sibling was
-  left untouched.
+- **Skill triggering.** Most skills are user-invoked (Schema A — see
+  [CODING.md](CODING.md)): their `description` is human-facing and carries no
+  routing. For the model-discoverable (Schema B) skills, `when_to_use` is
+  load-bearing — review wording changes for trigger accuracy and overlap with
+  sibling skills, not just prose quality. When a change adds or reshapes a
+  Schema B skill that overlaps a sibling, the carve-out must be bidirectional —
+  the sibling's `when_to_use` has to point back too, not just the new skill's.
+  A one-directional exclusion still mis-routes the shared queries. Also flag a
+  new skill that reaches for Schema B when Schema A (the default) would do.
 
 ## Project-specific rules
 

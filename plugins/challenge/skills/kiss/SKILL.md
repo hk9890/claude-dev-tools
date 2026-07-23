@@ -1,7 +1,8 @@
 ---
 name: kiss
 description: "KISS — challenge accidental complexity in whatever is in front of you and propose the simpler form."
-when_to_use: "Use when the user wants something simplified or challenged for over-engineering — a requirement, a design, or a diff. To pressure-test whether a plan or decision is sound rather than its complexity, use grill. Operates on what is in the current conversation, not a scoped whole-repository audit."
+user-invocable: true
+disable-model-invocation: true
 argument-hint: "[what-to-challenge]"
 ---
 

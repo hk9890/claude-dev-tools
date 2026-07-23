@@ -1,7 +1,8 @@
 ---
 name: keep-awake-inspect
 description: "Inspect and diagnose the keep-awake-linux plugin — state, log, inhibitors, recent activity."
-when_to_use: "Use when the user wants to inspect or diagnose the keep-awake-linux plugin — its state, log, inhibitors, or why it did or didn't fire. Triggers on 'what is keep-awake doing', 'is keep-awake working', 'orphaned keep-awake inhibitors'. Not for installing or removing it, or general 'why is my machine awake' questions."
+user-invocable: true
+disable-model-invocation: true
 ---
 
 ## What this skill does

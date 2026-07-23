@@ -1,7 +1,8 @@
 ---
 name: github-releases
 description: "Create or publish a GitHub release, set up a project's release guide, or set up release CI."
-when_to_use: "Use when the user wants to create or publish a GitHub release, bump a version, set up a release workflow, or set up CI to automate the release publish. Triggers on 'cut a release', 'ship version X', 'bump the version', 'set up our release workflow', 'automate releases in CI'. Not for non-GitHub releases or general (non-release) CI/CD config."
+user-invocable: true
+disable-model-invocation: true
 ---
 
 # GitHub Releases

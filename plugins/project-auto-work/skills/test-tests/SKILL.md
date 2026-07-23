@@ -1,7 +1,8 @@
 ---
 name: test-tests
 description: "Empirical test-suite strength audit — proves whether the tests detect injected bugs (mutation kill rate), stay quiet on non-bugs, are flake-free under reruns/shuffle/delays, and run fast. Reports findings and proposals; never keeps an edit."
-when_to_use: "Use when the user wants to measure how strong their test suite actually is by running it against injected faults. Triggers on 'test my tests', 'would my tests catch a bug?', 'audit the test suite strength', 'are my tests actually testing anything?', 'inject errors and see if the tests find them'. Not for reading-based test-quality judgment (mock discipline, style, what-matters-untested reasoning) — that is project-review-tests; this skill is the empirical lens: it proves weaknesses by mutating code and running the suite."
+user-invocable: true
+disable-model-invocation: true
 argument-hint: "[low|medium|high] [path]"
 ---
 
