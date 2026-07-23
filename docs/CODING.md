@@ -23,9 +23,9 @@ Use the right pattern for each dependency kind:
 
 These apply to every `SKILL.md` under `plugins/<plugin-name>/skills/<skill-name>/`.
 
-Before writing or editing any `SKILL.md`, read
-[`.claude/skills/writing-great-skills/SKILL.md`](../.claude/skills/writing-great-skills/SKILL.md) —
-the rubric for invocation choice, description writing, information hierarchy, and pruning.
+Before writing or editing any `SKILL.md`, read the `writing-skills` rubric at
+[`plugins/instruction-writing/skills/writing-skills/SKILL.md`](../plugins/instruction-writing/skills/writing-skills/SKILL.md) —
+invocation choice, description writing, information hierarchy, and pruning.
 
 ### Naming
 
