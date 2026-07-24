@@ -248,7 +248,75 @@ async function testVisualize() {
   }
 }
 
-// ── Test 2: feedback Apply-loop auto-reload ────────────────────────────────
+// ── Test 2: visualize Send trims before submitting ─────────────────────────
+//
+// The server's "non-empty freeform" check tests the RAW value and leaves
+// trimming to the UI, so an untrimmed blank would write a feedback file and
+// re-invoke Claude with an empty message instead of closing silently. These
+// two cases pin that contract from the browser side; submit is one-shot, so
+// each needs its own server.
+
+async function testVisualizeSubmitTrims() {
+  console.log('\n--- test: visualize Send trims ---');
+  let browser = null;
+
+  // Returns { wrote, freeform, status } after clicking Send with `typed`.
+  async function submit(typed) {
+    const tmpDir   = fs.mkdtempSync(path.join(os.tmpdir(), 'hv-test-trim-'));
+    const htmlFile = path.join(tmpDir, 'test-vis.html');
+    fs.copyFileSync(VIS_TMPL, htmlFile);
+    // --no-wait, because that is how visualize mode is served (serve.md) and the
+    // silent-close branch is --no-wait only: in blocking mode, used by ask and
+    // feedback, every submit writes a file by design.
+    const srv = await startServer(htmlFile, ['--no-wait', '--timeout-sec', '30']);
+    try {
+      const ctx  = await browser.newContext();
+      const page = await ctx.newPage();
+      await page.goto(srv.baseUrl + '/');
+      await page.waitForLoadState('domcontentloaded');
+      await page.locator('#vis-message').fill(typed);
+      await page.locator('#vis-send').click();
+      await page.waitForFunction(
+        () => /Sent|Closed|Error|Network/.test(document.getElementById('vis-status').textContent),
+        null, { timeout: 10000 }
+      );
+      const status = (await page.locator('#vis-status').textContent()).trim();
+      await ctx.close();
+      // Give the server its moment to write and exit before we look.
+      await new Promise(r => setTimeout(r, 400));
+      // --no-wait suppresses the "Feedback file:" startup line, so derive the path
+      // from the documented convention: <html-dir>/<basename-without-ext>.feedback.json
+      const fbFile = path.join(tmpDir, 'test-vis.feedback.json');
+      const wrote = fs.existsSync(fbFile);
+      const freeform = wrote ? JSON.parse(fs.readFileSync(fbFile, 'utf8')).freeform : null;
+      return { wrote, freeform, status };
+    } finally {
+      try { srv.proc.kill('SIGTERM'); } catch (_) {}
+    }
+  }
+
+  try {
+    browser = await chromium.launch({ headless: true });
+
+    const blank = await submit('   \n  ');
+    if (!blank.wrote) ok('visualize Send: whitespace-only writes no feedback file');
+    else              fail(`visualize Send: whitespace-only wrote a feedback file (freeform=${JSON.stringify(blank.freeform)})`);
+    if (/Closed/.test(blank.status)) ok('visualize Send: whitespace-only reports "Closed."');
+    else                              fail(`visualize Send: whitespace-only status was "${blank.status}", expected "Closed."`);
+
+    const padded = await submit('   hello there   ');
+    if (padded.wrote) ok('visualize Send: padded message writes a feedback file');
+    else              fail('visualize Send: padded message wrote no feedback file');
+    if (padded.freeform === 'hello there') ok('visualize Send: submitted freeform is trimmed');
+    else                                    fail(`visualize Send: freeform was ${JSON.stringify(padded.freeform)}, expected "hello there"`);
+  } catch (e) {
+    fail('visualize Send trims: ' + e.message);
+  } finally {
+    if (browser) { try { await browser.close(); } catch (_) {} }
+  }
+}
+
+// ── Test 3: feedback Apply-loop auto-reload ────────────────────────────────
 //
 // Serves feedback-template.html (with a concrete fb-generation value).
 // Loads it in Chromium. Submits an Apply action via the server's /submit
@@ -418,6 +486,7 @@ async function testFeedbackApplyLoop() {
 
 (async () => {
   await testVisualize();
+  await testVisualizeSubmitTrims();
   await testFeedbackApplyLoop();
 
   console.log('\nResults: ' + PASS + ' passed, ' + FAIL + ' failed');
