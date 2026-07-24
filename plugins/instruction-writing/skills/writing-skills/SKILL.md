@@ -13,6 +13,10 @@ A skill exists to wrangle determinism out of a stochastic system. **Predictabili
 
 **Bold terms** are defined in [`GLOSSARY.md`](GLOSSARY.md); look them up there for the full meaning.
 
+**What to write or review:** $ARGUMENTS — a skill path, a draft, or a request; with no argument, the
+skill under discussion. Apply every rule below to it. The work is done when each one has been held
+against that target and either cleared or named as a defect — not when the rubric has been read.
+
 ## Invocation
 
 Two choices, trading different costs:

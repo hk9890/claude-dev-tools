@@ -3,6 +3,7 @@ name: project-explore
 description: "Explore an unfamiliar project step by step, filing findings and open questions as taskmgr tasks under an exploration epic."
 user-invocable: true
 disable-model-invocation: true
+argument-hint: "[focus-or-constraints]"
 ---
 
 Perform an assisted exploratory session on this project. Work through four phases in order. Stop cleanly if a prerequisite is missing — do not proceed to the next phase on an assumption.
