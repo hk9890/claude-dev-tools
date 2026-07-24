@@ -3,8 +3,8 @@
 #
 # Wraps test-work.js (same directory), which loads work.js in a sandbox and asserts
 # the arg-normalization and action-bucketing logic. Picked up automatically by
-# tests/tasks/script-tests/run-all.sh via:
-#   find "$TESTS_DIR" -maxdepth 1 -name 'test-*.sh' | sort
+# tests/run-all.sh via:
+#   find "$TESTS_DIR" -mindepth 3 -maxdepth 3 -name 'test-*.sh' | sort
 #
 # Exit codes:
 #   0 — all assertions passed

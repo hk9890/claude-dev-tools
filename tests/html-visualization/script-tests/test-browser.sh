@@ -3,8 +3,8 @@
 # html-visualization plugin.
 #
 # Wraps test-browser.js (same directory). Picked up automatically by
-# tests/html-visualization/script-tests/run-all.sh via:
-#   find "$TESTS_DIR" -maxdepth 1 -name 'test-*.sh' | sort
+# tests/run-all.sh via:
+#   find "$TESTS_DIR" -mindepth 3 -maxdepth 3 -name 'test-*.sh' | sort
 #
 # Exit codes:
 #   0  — all browser assertions passed

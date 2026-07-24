@@ -12,7 +12,7 @@ A `.mise.toml` at the repo root provides a single discoverable entry point. Run 
 | `mise run test-html` | html-visualization browser/server tests only |
 | `mise run check-consistency` | Cross-reference and version-mirror validation (`scripts/check-internal-consistency.py`) |
 | `mise run analyze-sessions` | Session-transcript analyser (append options as extra args, e.g. `mise run analyze-sessions --help`) |
-| `mise run lint` | No linter configured — prints a notice and exits 0 |
+| `mise run lint` | ShellCheck (`--severity=warning`) over every tracked `*.sh` — reproduces the CI `shellcheck` job |
 
 ## Script tests — `tests/run-all.sh`
 
@@ -42,12 +42,26 @@ python3 tests/marketplace/script-tests/check-fixture.py \
 
 ### Optional prerequisite: Playwright (browser suite)
 
-The html-visualization browser suite (`tests/html-visualization/script-tests/test-browser.sh`) needs Playwright with Chromium, resolved from the npm `_npx` cache. On machines without it, the suite prints `SKIP` and exits with the skip code (77); the `run-all.sh` scripts report it as a skipped suite in their summary line (not a silent pass) and keep the overall run green. Set `REQUIRE_BROWSER=1` to turn an absent Playwright into a hard failure instead — use this in CI that must exercise the browser path. To enable the suite:
+The html-visualization browser suite (`tests/html-visualization/script-tests/test-browser.sh`) needs Playwright with Chromium, resolved from the npm `_npx` cache. On machines without it, the suite prints `SKIP` and exits with the skip code (77); `tests/run-all.sh` reports it as a skipped suite in its summary line (not a silent pass) and keeps the overall run green. Set `REQUIRE_BROWSER=1` to turn an absent Playwright into a hard failure instead — use this in CI that must exercise the browser path. To enable the suite:
 
 ```bash
 npx playwright --version        # populates the npm _npx cache
 npx playwright install chromium
 ```
+
+## CI — `.github/workflows/`
+
+`ci.yml` runs five jobs on every PR against `master` and on every push to `master`. All five must be green to merge; four have a local equivalent, so a clean local run should predict a clean CI run:
+
+| Job | What it checks | Locally |
+|---|---|---|
+| `test` | Full script-test suite | `mise run test` |
+| `consistency` | Cross-references, version mirrors, marketplace | `mise run check-consistency` |
+| `manifests` | JSON well-formedness of every plugin and marketplace manifest | `for f in .claude-plugin/marketplace.json plugins/*/.claude-plugin/plugin.json; do jq empty "$f"; done` |
+| `shellcheck` | ShellCheck at `--severity=warning` over every tracked `*.sh` | `mise run lint` |
+| `gitleaks` | Leaked-secret scan over full history | CI-only (needs the `gitleaks` binary) |
+
+`codeql.yml` adds a CodeQL analysis on the same triggers plus a weekly scheduled scan, and `dependabot.yml` keeps the pinned GitHub Actions current. Neither has a local equivalent.
 
 ## Structural validation — `plugin-dev:plugin-validator`
 

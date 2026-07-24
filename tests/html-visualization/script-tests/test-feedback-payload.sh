@@ -6,7 +6,7 @@
 # and asserts it produces an object matching the feedback-submit-schema.md
 # shape for representative comment states.
 #
-# Part of the html-visualization plugin test harness; auto-discovered by run-all.sh.
+# Part of the html-visualization plugin test harness; auto-discovered by tests/run-all.sh.
 
 set -uo pipefail
 
