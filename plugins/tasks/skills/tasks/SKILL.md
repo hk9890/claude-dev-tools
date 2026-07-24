@@ -113,8 +113,11 @@ taskmgr list -q 'status == "open" && priority <= 1'
 taskmgr list -q 'type == "bug" && label ~ "area:db"'
 taskmgr list -q 'ready && priority <= 2'
 taskmgr list -q 'text ~ "drill" && !blocked'
-taskmgr search "export schema"        # shorthand for text ~ "export schema"
+taskmgr search "export schema"        # every word must match (AND) across id/title/description
 ```
+
+`search` is **not** shorthand for `text ~ "<phrase>"`: it ANDs the words independently, so it
+matches issues the phrase filter misses. Use `text ~` when the words must be adjacent.
 
 Catalog commands — `taskmgr labels`, `taskmgr statuses`, `taskmgr types` — list the valid
 values in use when you need them.
