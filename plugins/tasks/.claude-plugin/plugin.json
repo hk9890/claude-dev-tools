@@ -9,5 +9,8 @@
   "homepage": "https://github.com/hk9890/claude-dev-tools",
   "repository": "https://github.com/hk9890/claude-dev-tools",
   "license": "MIT",
-  "keywords": ["tasks", "taskmgr", "task-tracking", "issues", "dependencies"]
+  "keywords": ["tasks", "taskmgr", "task-tracking", "issues", "dependencies"],
+  "dependencies": {
+    "project-review": "^1.22.0"
+  }
 }

@@ -54,7 +54,7 @@ Use `gh release create ... --generate-notes` only to produce a scratch list of m
 ## Release steps
 
 1. Run the three gates in the **Tests** section above — all must pass before releasing.
-2. Bump `"version"` in all `plugin.json` files found above.
+2. Bump `"version"` in all `plugin.json` files found above. A major bump also needs the semver constraints in any `dependencies` field widened (currently only `plugins/tasks` declares one) — a `^1.x` range does not admit `2.0.0`.
 3. Bump every `"version"` in `.claude-plugin/marketplace.json` to the same new version. Edit only the version lines — reformatting these files (e.g. piping them through `jq`) rewrites unrelated compact arrays and buries the bump in churn.
 4. Verify they match: `bash tests/run-all.sh` will catch any version mismatch via `scripts/check-internal-consistency.py`. As a quick manual check: `diff <(jq -r '.plugins[] | "\(.name) \(.version)"' .claude-plugin/marketplace.json | sort) <(find plugins -name plugin.json -path "*/.claude-plugin/*" -exec jq -r '"\(.name) \(.version)"' {} \; | sort)` — should print nothing.
 5. Commit the bump on a `chore/release-X.Y.Z` branch and merge it via PR: `git commit -m "Bump all plugins to vX.Y.Z"`. `master` is protected — see [CHANGE-WORKFLOW.md](CHANGE-WORKFLOW.md) — so the bump cannot be pushed to it directly.

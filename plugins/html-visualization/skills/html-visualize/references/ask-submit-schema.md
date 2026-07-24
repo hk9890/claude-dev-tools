@@ -37,7 +37,7 @@ Content-Type, a JSON-object body, and the one-shot lifecycle.
 | `comments` | array | yes | Per-question free-text notes, each anchored to a question widget. MAY be empty `[]`. |
 | `freeform` | string | yes | Unstructured free-text feedback. MUST be present; MAY be an empty string `""`. |
 
-`app.js` always emits all four fields in every request (`buildFeedbackPayload`
+`app.js` always emits all four fields in every request (`buildAskPayload`
 fills in safe defaults for any that are missing from its input state), so a
 read-back can rely on all four being present.
 

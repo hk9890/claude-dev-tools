@@ -13,12 +13,10 @@ workflow returns a structured report; relay it.
 ## Run the workflow
 
 1. Parse `$ARGUMENTS` as `[ultra] [what-to-review]`. Both are optional. A leading
-   `ultra` token enables the adversarial refutation pass; everything after it is
-   **what to review** — a free-form description ("naming across the service
-   layer") or a path. Default: the whole codebase. A leading `low`, `medium`, or
-   `high` is the docs skill's cost ladder, which this skill does not have — do
-   not silently absorb it into the scope; tell the user only `ultra` exists here
-   and treat the remainder as the scope.
+   `ultra` enables the adversarial refutation pass; the rest is **what to review** —
+   a free-form description ("naming across the service layer") or a path. Default:
+   the whole codebase. `ultra` is this skill's only depth setting: when the leading
+   token is `low`, `medium`, or `high`, say so and take the rest as the scope.
 
 2. Resolve the install (`$CLAUDE_PLUGIN_ROOT` is not exported to Bash; locate under
    `$HOME`, version-sorted, with `$PWD` covered for dev installs). The glob must stay a

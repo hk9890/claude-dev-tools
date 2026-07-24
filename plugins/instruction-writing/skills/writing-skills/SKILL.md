@@ -1,6 +1,6 @@
 ---
 name: writing-skills
-description: Reference for writing and editing skills well — the vocabulary and principles that make a skill predictable.
+description: "Reference for writing and editing skills well — the vocabulary and principles that make a skill predictable."
 user-invocable: true
 disable-model-invocation: true
 argument-hint: "[skill-path-or-request]"

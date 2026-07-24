@@ -163,12 +163,17 @@ async function runTask(id) {
   return { taskId: id, impl, review, test, record }
 }
 
+// Expose the pure helpers to any module loader (the Node unit tests in
+// tests/tasks/script-tests use this). Assigned before the orchestration below so it is
+// reached whichever path that takes.
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { normalizeArgs, summarizeActions }
+}
+
 // ── Orchestration ─────────────────────────────────────────────────────────────
 // Runs only under the Workflow runtime, which injects the `agent` hook (plus args/log/
-// parallel/phase). Under the Node test loader those globals are absent but it injects a
-// __WORK_TEST__ sentinel, so the orchestration is skipped and only the pure helpers above
-// are exercised. If neither holds — no `agent` and no sentinel — the runtime contract is
-// broken, and we throw rather than silently no-op (see the else-if).
+// parallel/phase). Without that hook the runtime contract is broken, so we throw rather
+// than silently no-op (see the else).
 if (typeof agent === 'function') {
   const { taskIds, epicId } = normalizeArgs(args)
 
@@ -212,16 +217,9 @@ if (typeof agent === 'function') {
     epic,
     perTask,
   }
-} else if (typeof __WORK_TEST__ === 'undefined') {
-  // No `agent` hook AND not under the Node test loader (which injects __WORK_TEST__): the
-  // Workflow runtime failed to inject its hooks. Fail LOUD — returning undefined here would
-  // be recorded by the harness as status:completed, i.e. a silent no-op.
+} else {
+  // No `agent` hook: the Workflow runtime failed to inject it. Fail LOUD — returning
+  // undefined here would be recorded by the harness as status:completed, i.e. a silent
+  // no-op.
   throw new Error('tasks-work: the Workflow runtime did not inject the `agent` hook')
-}
-
-// Test-only: expose the pure helpers to the Node loader in tests/tasks/script-tests.
-// Reached only under that loader — on the real runtime the orchestration above already
-// returned, and a broken runtime throws above before reaching this line.
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { normalizeArgs, summarizeActions }
 }
