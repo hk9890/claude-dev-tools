@@ -175,7 +175,10 @@ colour scheme flips. Use this block verbatim — it is the whole integration:
       },
     });
     // Restore the source and clear Mermaid's processed marker so a re-render works.
-    blocks.forEach(b => { b.innerHTML = b.dataset.src; b.removeAttribute("data-processed"); });
+    // textContent, NOT innerHTML — the source was captured as text, and re-parsing it as
+    // HTML mangles any diagram containing "<": stateDiagram's <<choice>>/<<fork>>, or an
+    // edge label like |"n < 10"|. First render would look fine; the theme flip breaks it.
+    blocks.forEach(b => { b.textContent = b.dataset.src; b.removeAttribute("data-processed"); });
     await mermaid.run({ nodes: blocks });
   }
 
@@ -194,7 +197,7 @@ flowchart LR
   A[OrderHandler] --> B[OrderValidator]
   B --> C[OrderRepo]
   C -.->|leaks| D[PricingClient]
-  classDef leak stroke:#dc2626,stroke-width:2px;
+  classDef leak stroke:var(--hv-bad),stroke-width:2px;
   class C,D leak
   </pre>
 </div>
@@ -207,11 +210,26 @@ path) rather than Mermaid's defaults.
 #### Before/after pairs
 
 A structural change reads best as two diagrams side by side, not one annotated diagram.
-Wrap them in `.vis-compare` (see the template) so they sit in two columns on a wide
-screen and stack on a narrow one. Label them **Before** and **After**, keep node names
-identical across the pair so the eye can track what moved, and keep each diagram under
-roughly a dozen nodes — past that the comparison stops being readable and you should
-show only the part that changes.
+Wrap the pair in `.vis-compare` (see the template) so they sit in two columns on a wide
+screen and stack on a narrow one, and give each half a `.vis-mermaid-label` reading
+**Before** / **After** above its `.vis-mermaid-wrap`:
+
+```html
+<div class="vis-compare">
+  <div class="vis-mermaid-wrap">
+    <span class="vis-mermaid-label">Before</span>
+    <pre class="mermaid">…</pre>
+  </div>
+  <div class="vis-mermaid-wrap">
+    <span class="vis-mermaid-label">After</span>
+    <pre class="mermaid">…</pre>
+  </div>
+</div>
+```
+
+Keep node names identical across the pair so the eye can track what moved, and keep each
+diagram under roughly a dozen nodes — past that the comparison stops being readable and
+you should show only the part that changes.
 
 ### Editorial diagrams (hand-built)
 
@@ -243,10 +261,19 @@ Add the `<script>` tag to `<head>` and initialise in an inline `<script>` at the
 of `<body>`. These two are UMD globals — no `import` needed. (Mermaid is the exception:
 it is an ESM `import`, per the block above.)
 
-> **Tradeoff**: anything from a CDN — Mermaid included — needs the network on first load.
-> A user who clicks **Save** and reopens the file offline sees blank diagrams where the
-> Mermaid blocks were. Inline SVG has no such failure mode, so prefer it when the diagram
-> can be encoded statically and the graph is small enough to place by hand.
+> **Tradeoff**: anything from a CDN needs the network on **first** load. What happens to a
+> saved copy differs by library, because **Save** clones the live DOM:
+>
+> - **Mermaid survives.** By the time the user clicks Save the diagrams are already
+>   rendered as inline `<svg>`, and the clone keeps both that markup and the
+>   `data-processed` attribute — so the saved file renders offline. What it loses is the
+>   theme-flip re-render: the module cannot re-import, so a saved page keeps whichever
+>   scheme was active when it was saved.
+> - **Chart.js and D3 do not.** They draw into a `<canvas>`, whose bitmap `cloneNode` does
+>   not preserve, so a saved copy reopened offline shows an empty box.
+>
+> Inline SVG has no failure mode at all, so still prefer it when the diagram can be encoded
+> statically and the graph is small enough to place by hand.
 
 ### HTML table
 
@@ -274,9 +301,12 @@ template's CSS custom properties (`--hv-bg`, `--hv-text`, `--hv-surface`,
 `--hv-accent`, `--hv-muted`) so the page follows the light/dark theme. For SVG
 fills and strokes, prefer `currentColor` or `var(--hv-accent)`. Mermaid is the one
 renderer that cannot see those tokens — it needs the `themeVariables` bridge and the
-re-render listener from the [Mermaid section](#mermaid-for-graph-shaped-content). A
-Mermaid diagram that looks right in light mode and turns into dark-on-dark mush in dark
-mode means that block was skipped.
+re-render listener from the [Mermaid section](#mermaid-for-graph-shaped-content). Two
+distinct symptoms tell you which half is missing: **blank space** where a diagram should be
+means the module block is absent entirely, so the FOUC guard
+(`pre.mermaid:not([data-processed])`) never released it; a diagram that **renders but
+clashes** — fine in one scheme, dark-on-dark in the other — means the module ran but
+`themeVariables` was omitted, so Mermaid fell back to its own palette.
 
 **Responsive visuals.** Keep `max-width: 900px; margin: 0 auto` on the content
 container (already in the template). For SVGs, set `width="100%"` plus a

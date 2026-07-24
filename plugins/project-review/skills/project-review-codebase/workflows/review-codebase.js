@@ -35,7 +35,10 @@ const FINDING_ITEMS = {
     why_it_matters: { type: 'string' },
     recommended_action: { type: 'string' },
   },
-  required: ['severity', 'location', 'observation', 'evidence', 'recommended_action'],
+  // why_it_matters is required here as well as in REPORT_SCHEMA: dimensionPrompt() asks
+  // for it explicitly, so leaving it optional let an agent legally omit the field and
+  // forced the synthesis stage to invent one it had no evidence for.
+  required: ['severity', 'location', 'observation', 'evidence', 'why_it_matters', 'recommended_action'],
 }
 
 // A deepening candidate is a PROPOSAL, not a defect — it names a refactor that would
@@ -119,10 +122,14 @@ const REPORT_SCHEMA = {
           severity: { type: 'string', enum: ['blocker', 'major', 'minor'] },
           location: { type: 'string' },
           observation: { type: 'string' },
+          // Carried through from the dimension finding. Without it the cited proof —
+          // the strongest part of a finding — never reaches the artifact the developer
+          // keeps, leaving a bare assertion they cannot check.
+          evidence: { type: 'string' },
           why_it_matters: { type: 'string' },
           recommended_action: { type: 'string' },
         },
-        required: ['dimension', 'severity', 'location', 'observation', 'why_it_matters', 'recommended_action'],
+        required: ['dimension', 'severity', 'location', 'observation', 'evidence', 'why_it_matters', 'recommended_action'],
       },
     },
     recommended_actions: { type: 'array', items: { type: 'string' } },
@@ -221,14 +228,15 @@ const STRUCTURE_PROCEDURE =
   `thing a list of findings cannot show. Use \`graph TD\` with directories as nodes. Include the directories that ` +
   `carry findings plus enough of their surroundings to orient a reader — NOT every file in the repo; past roughly ` +
   `40 nodes it stops being readable, so summarise clean subtrees as a single node ("src/utils/ (12 files, clean)"). ` +
-  `Mark problems with these exact classDefs so the renderer can colour them consistently:\n` +
-  `  classDef ok fill:none,stroke-dasharray:0;\n` +
+  `Mark problems with these exact classDefs:\n` +
   `  classDef misplaced stroke-width:2px;\n` +
   `  classDef dead stroke-dasharray:4 4;\n` +
   `  classDef god stroke-width:4px;\n` +
-  `Assign every flagged node to misplaced, dead, or god, and leave unflagged nodes unstyled. Node labels are plain ` +
-  `text in square brackets; escape any quotes. If the dimension is genuinely clean, still emit the tree — an ` +
-  `unannotated layout map is a useful artifact on its own.\n\n` +
+  `Assign every flagged node to exactly one of misplaced, dead or god, and leave unflagged nodes unstyled. Stroke ` +
+  `width alone is a weak signal — nobody reliably tells 2px from 4px — so ALSO name the problem in the node's own ` +
+  `label ("src/utils/ — god-file"). The label is what a reader actually reads; the stroke only reinforces it. Node ` +
+  `labels are plain text in square brackets; escape any quotes. If the dimension is genuinely clean, still emit the ` +
+  `tree — an unannotated layout map is a useful artifact on its own.\n\n` +
   `NOT THIS DIMENSION: module granularity and layering (architecture dimension); naming and casing conventions ` +
   `(consistency dimension).`
 
@@ -377,13 +385,15 @@ const ARTIFACT_FORMAT =
   `Copy both Mermaid sources through BYTE-FOR-BYTE as the architecture dimension produced them. Do not reformat, ` +
   `re-indent, relabel, or "improve" them — they were authored to render, and edits break them.\n\n` +
   `## Layout\n\n` +
-  `Omit when the structure dimension returned no tree_mermaid. Otherwise one line naming what the marks mean ` +
-  `(thick border = god-file, dashed = dead or orphaned, bold = misplaced), then tree_mermaid verbatim in a fenced ` +
-  `mermaid block — again byte-for-byte.\n\n` +
+  `Omit when the structure dimension returned no tree_mermaid. Otherwise one line explaining that a flagged ` +
+  `directory names its problem in its own label, with a heavier border on god-files and a dashed border on dead or ` +
+  `orphaned paths, then tree_mermaid verbatim in a fenced mermaid block — again byte-for-byte.\n\n` +
   `## Findings\n\n` +
   `Grouped under \`###\` by dimension in the order consistency, structure, architecture; skip a dimension with no ` +
   `findings. Within a group order blocker → major → minor. One bullet per finding:\n` +
-  `- **\`<location>\`** — <severity>. <observation> **Why it matters:** <why_it_matters> **Fix:** <recommended_action>\n\n` +
+  `- **\`<location>\`** — <severity>. <observation> **Evidence:** <evidence> **Why it matters:** <why_it_matters> ` +
+  `**Fix:** <recommended_action>\n\n` +
+  `The evidence is what makes a finding checkable rather than an assertion — never drop it from a bullet.\n\n` +
   `## Recommended actions\n\n` +
   `recommended_actions as a numbered list in priority order.\n\n` +
   `## Notes\n\n` +
