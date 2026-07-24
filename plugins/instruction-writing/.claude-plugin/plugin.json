@@ -1,7 +1,7 @@
 {
   "name": "instruction-writing",
   "description": "Guidance for writing the artifacts an agent harness reads — project docs, skills, agents, workflow prompts — so they stay token-efficient and predictable; includes writing-skills: the vocabulary and principles for authoring and editing Claude Code skills",
-  "version": "1.22.0",
+  "version": "1.23.0",
   "author": {
     "name": "Hans Kohlreiter",
     "email": "hans.kohlreiter@gmail.com"
