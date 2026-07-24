@@ -240,11 +240,13 @@ const STRUCTURE_PROCEDURE =
   `  classDef god stroke-width:4px;\n` +
   `Assign every flagged node to exactly one of misplaced, dead or god, and leave unflagged nodes unstyled. Stroke ` +
   `width alone is a weak signal — nobody reliably tells 2px from 4px — so ALSO name the problem in the node's own ` +
-  `label ("src/utils/ — god-file"). The label is what a reader actually reads; the stroke only reinforces it. Node ` +
+  `label ("src/utils/ — god-file"). The label is what a reader actually reads; the stroke only reinforces it. ` +
   `WRAP EVERY NODE LABEL IN DOUBLE QUOTES — A["src/core/ — god-file"], never A[src/core/ — god-file]. An unquoted ` +
   `"(" is a hard parse error that replaces the WHOLE diagram with an error graphic, and a parenthesised count is ` +
   `exactly the summary form asked for above. Quoting is unconditionally safe, so quote unconditionally rather than ` +
-  `judging per label; escape any double quote inside a label as &quot;. If the dimension is genuinely clean, still emit the ` +
+  `judging per label; escape any double quote inside a label as #quot;, which is Mermaid's own entity syntax and ` +
+  `survives both renderers — an &quot; is decoded back to a raw quote by the HTML parser before Mermaid ever sees ` +
+  `it, which is the same fatal parse error. If the dimension is genuinely clean, still emit the ` +
   `tree — an unannotated layout map is a useful artifact on its own.\n\n` +
   `NOT THIS DIMENSION: module granularity and layering (architecture dimension); naming and casing conventions ` +
   `(consistency dimension).`
@@ -296,7 +298,9 @@ const ARCHITECTURE_PROCEDURE =
   `      classDef deep stroke-width:4px;\n` +
   `Emit raw Mermaid source only — no \`\`\` fences, the renderer adds them. WRAP EVERY NODE LABEL IN DOUBLE QUOTES — ` +
   `A["OrderIntake (3 wrappers)"], never A[OrderIntake (3 wrappers)]: an unquoted "(" is a hard parse error that ` +
-  `replaces the whole diagram with an error graphic. Escape any double quote inside a label as &quot;.\n` +
+  `replaces the whole diagram with an error graphic. Escape any double quote inside a label as #quot; — Mermaid's ` +
+  `own entity syntax, which survives both renderers, where an &quot; is decoded back to a raw quote by the HTML ` +
+  `parser before Mermaid sees it and is the same fatal parse error.\n` +
   `A candidate whose before and after diagrams are identical is not a candidate; drop it.\n\n` +
   `NOT THIS DIMENSION: naming (consistency dimension); physical placement (structure dimension). Candidates are ` +
   `PROPOSALS the user chooses from, never edits you make — this review never modifies the repository. Walking one ` +
