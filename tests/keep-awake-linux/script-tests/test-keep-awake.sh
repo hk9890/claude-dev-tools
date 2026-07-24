@@ -35,13 +35,16 @@ skip_or_fail() {
 
 command -v systemd-inhibit >/dev/null 2>&1 || skip_or_fail "systemd-inhibit not available"
 
-# The binary existing is not the capability these tests need. A container can
-# ship systemd-inhibit with no logind running: the helper still spawns and still
-# writes a marker, but nothing ever registers, so every count below reads 0 and
-# the suite reports failures that describe the sandbox rather than the code.
-# Probe the real thing — spawn one inhibitor and require it to appear.
+# The binary existing is not the capability these tests need. A sandbox can ship
+# systemd-inhibit yet refuse to register the lock: the helper still spawns and
+# still writes a marker, but nothing appears in --list, so every count below
+# reads 0 and the suite reports failures that describe the sandbox rather than
+# the code. Probe the real thing — and probe it with the *same* --what the
+# helper uses: a container without suspend capability accepts a bare `idle` lock
+# while rejecting `idle:sleep`, so a laxer probe passes and the suite then fails
+# on locks that were never taken.
 probe_tag="kaprobe$$"
-setsid systemd-inhibit --what=idle --who="$probe_tag" --why="capability probe" \
+setsid systemd-inhibit --what=idle:sleep --who="$probe_tag" --why="capability probe" \
   --mode=block sleep 5 >/dev/null 2>&1 &
 probe_pid=$!
 probe_ok=1
