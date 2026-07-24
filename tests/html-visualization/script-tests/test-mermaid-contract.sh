@@ -95,11 +95,39 @@ else
 fi
 
 # ── 4. The container classes the guidance tells Claude to use must exist ──────
-for cls in 'vis-mermaid-wrap' 'vis-compare'; do
+for cls in 'vis-mermaid-wrap' 'vis-compare' 'vis-mermaid-label'; do
   if grep -Fq ".$cls" "$TPL"; then
     ok "template styles .$cls"
   else
     fail "template — .$cls is referenced by the Mermaid guidance but has no styles"
+  fi
+done
+
+# ── 5. No CSS function inside a classDef declaration ──────────────────────────
+# Mermaid parses classDef itself: `classDef leak stroke:var(--hv-bad)` is a hard parse
+# error on the "(" and takes the ENTIRE diagram down, not just the colour. Verified
+# against mermaid@11. Colour belongs in CSS targeting the emitted class instead. This
+# is easy to reintroduce, because it looks like exactly the theme-aware thing to do.
+# Both files deliberately SHOW the broken form while warning against it, always inside
+# inline backticks. Strip `...` spans first so the warning text does not trip its own
+# check; a real declaration is never written inside backticks.
+bad_classdef=0
+while IFS= read -r line; do
+  bad_classdef=$((bad_classdef + 1))
+  fail "classDef carries a CSS function — parse error, kills the diagram: ${line}"
+done < <(
+  for f in "$DOC" "$TPL"; do
+    sed 's/`[^`]*`//g' "$f" | grep -nE 'classDef[^;]*[a-z-]+\([^)]*\)' | sed "s|^|$(basename "$f"):|"
+  done
+)
+[[ "$bad_classdef" -eq 0 ]] && ok "no classDef declaration carries a CSS function"
+
+# The semantic colour layer the guidance points at must actually exist in the template.
+for cls in leak dead god misplaced deep; do
+  if grep -Eq "\.vis-mermaid-wrap \.$cls" "$TPL"; then
+    ok "template colours .$cls from a token"
+  else
+    fail "template — .$cls has no semantic colour rule; classDef cannot colour it itself"
   fi
 done
 

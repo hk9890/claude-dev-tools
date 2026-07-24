@@ -197,15 +197,29 @@ flowchart LR
   A[OrderHandler] --> B[OrderValidator]
   B --> C[OrderRepo]
   C -.->|leaks| D[PricingClient]
-  classDef leak stroke:var(--hv-bad),stroke-width:2px;
+  classDef leak stroke-width:2px,stroke-dasharray:4 4;
   class C,D leak
   </pre>
 </div>
 ```
 
-For semantic colour that must survive a theme flip, prefer `classDef` with the same
-hues the template uses for meaning (`--hv-bad` for leakage, `--hv-ok` for the healthy
-path) rather than Mermaid's defaults.
+**Never put a CSS function inside `classDef`.** Mermaid parses the declaration itself, so
+`classDef leak stroke:var(--hv-bad)` is a hard parse error on the `(` — the entire diagram
+fails to render, not just the colour. A literal hex parses, but bakes one scheme's colour
+into a page that flips themes.
+
+Split the two concerns instead: `classDef` carries **structure** (`stroke-width`,
+`stroke-dasharray`), and **CSS carries the colour**, targeting the class Mermaid stamps onto
+the node:
+
+```css
+.vis-mermaid-wrap .leak > rect,
+.vis-mermaid-wrap .leak > polygon,
+.vis-mermaid-wrap .leak > path { stroke: var(--hv-bad) !important; }
+```
+
+That follows the theme for free, being an ordinary token reference. `!important` is required
+— Mermaid writes its own stroke inline.
 
 #### Before/after pairs
 

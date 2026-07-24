@@ -301,6 +301,31 @@
        does not flash a wall of Mermaid syntax before the module script runs. */
     .vis-mermaid-wrap pre.mermaid:not([data-processed]) { visibility: hidden; }
 
+    /* Semantic colour for Mermaid nodes.
+       classDef CANNOT carry a CSS function — `classDef x stroke:var(--y)` is a hard
+       parse error on the "(" and kills the whole diagram. So classDef carries only
+       structure (stroke-width, stroke-dasharray) and the colour is applied here, by
+       targeting the class Mermaid stamps onto the node. This way it follows the theme.
+       !important is required: Mermaid writes its own stroke inline.
+       Keep these class names in step with references/visualize.md. */
+    .vis-mermaid-wrap .leak > rect,
+    .vis-mermaid-wrap .leak > polygon,
+    .vis-mermaid-wrap .leak > path,
+    .vis-mermaid-wrap .dead > rect,
+    .vis-mermaid-wrap .dead > polygon,
+    .vis-mermaid-wrap .dead > path   { stroke: var(--hv-bad) !important; }
+
+    .vis-mermaid-wrap .god > rect,
+    .vis-mermaid-wrap .god > polygon,
+    .vis-mermaid-wrap .god > path,
+    .vis-mermaid-wrap .misplaced > rect,
+    .vis-mermaid-wrap .misplaced > polygon,
+    .vis-mermaid-wrap .misplaced > path { stroke: var(--hv-warn) !important; }
+
+    .vis-mermaid-wrap .deep > rect,
+    .vis-mermaid-wrap .deep > polygon,
+    .vis-mermaid-wrap .deep > path   { stroke: var(--hv-ok) !important; }
+
     .vis-mermaid-label {
       display: block;
       margin-bottom: 0.5rem;
@@ -452,8 +477,11 @@
       Wrap in <div class="vis-mermaid-wrap"> with the graph in <pre class="mermaid">.
       Uncomment the Mermaid module block near the bottom of <body> — without it
       the diagram stays blank, because the FOUC guard never releases.
-      Colour semantically via classDef using tokens, e.g.
-        classDef leak stroke:var(--hv-bad),stroke-width:2px;
+      classDef carries STRUCTURE only — a CSS function in it is a parse error
+      that kills the diagram. Colour comes from the .leak/.dead/.god/.misplaced
+      /.deep rules in <style> above, e.g.
+        classDef leak stroke-width:2px,stroke-dasharray:4 4;
+        class C,D leak
 
     BEFORE/AFTER PAIR (for a structural change):
       <div class="vis-compare"> with two .vis-mermaid-wrap children, each led by
