@@ -38,7 +38,16 @@ fails, display the content as text in chat and tell the user Node is unavailable
 
 ## Step 1 — Decide what to render
 
-Before writing any HTML, plan the visualization:
+**If the intent is a path to a file that exists, read it — its contents are what you
+render.** A path is a hand-off, not a subject: `/html-visualize-demo /tmp/report.md`
+means "render this document", never "draw a picture of this filename". Markdown maps
+onto the page directly — headings become sections, tables become tables, and fenced
+` ```mermaid ` blocks become `<pre class="mermaid">` inside a `.vis-mermaid-wrap`, with
+the [Mermaid module block](#mermaid-for-graph-shaped-content) added so they render.
+Carry the content across faithfully; you are typesetting it, not summarising it, and
+diagram sources must be copied byte-for-byte or they will not parse.
+
+Then plan the visualization:
 
 - **Page title and subtitle**: a short title and one sentence describing what the
   user is viewing.
