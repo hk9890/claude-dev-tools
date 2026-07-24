@@ -38,9 +38,17 @@ docs inline. The workflow returns a structured report; relay it.
    [ -n "$PLUGIN_DIR" ] && [ -f "$SKILL_DIR/workflows/review-docs.js" ] || echo "skill not located — do not launch; fall back to a manual read"
    ```
 
+   Then mint a per-run scratch dir. The workflow writes execution traces there under
+   deterministic names, and the grading stage treats a trace as primary evidence — so two
+   concurrent reviews sharing one directory would grade each other's run:
+
+   ```bash
+   SCRATCH=$(mktemp -d /tmp/docreview-XXXXXX)
+   ```
+
 3. Invoke the **Workflow** tool:
    - `scriptPath`: `<SKILL_DIR>/workflows/review-docs.js`
-   - `args`: `{ "repoRoot": "<the step-1 path>", "scriptsDir": "<SKILL_DIR>/scripts", "cost": "<the step-1 cost>" }`
+   - `args`: `{ "repoRoot": "<the step-1 path>", "scriptsDir": "<SKILL_DIR>/scripts", "cost": "<the step-1 cost>", "scratchDir": "<SCRATCH>" }`
    - `cost` rungs, on top of the per-file read-review that always runs:
      `low` = no execution phase; `medium` = execution on ~3 AGENTS routes;
      `high` = execution on every route; `ultra` = `high` plus an adversarial pass that

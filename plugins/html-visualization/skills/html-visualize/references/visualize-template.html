@@ -523,7 +523,10 @@
   sendBtn.addEventListener('click', function () {
     if (!token) return;
 
-    var message = textarea.value;
+    // Trimmed because the server's "non-empty freeform" check tests the raw
+    // value: an untrimmed blank would pass it, write a feedback file, and
+    // re-invoke Claude with an empty message instead of closing silently.
+    var message = textarea.value.trim();
 
     sendBtn.disabled = true;
     statusEl.textContent = 'Sending…';

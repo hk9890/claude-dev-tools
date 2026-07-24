@@ -96,7 +96,11 @@ const implementPrompt = (id) =>
   `Implement taskmgr task ${id} as one unit of an execution run. Follow your implementer instructions: run the readiness gate first; if the ticket is not executable, comment the gaps and report status "unready" (do NOT claim or write code). If ready, claim it (\`taskmgr update ${id} --status in_progress\`), implement the simplest change that satisfies the acceptance criteria, run the project's relevant tests, and file a bug directly for any unrelated defect you find. Do NOT close the task. Report status "implemented" (ready to verify) or "blocked" (with the reason in summary), a short summary of what changed, the list of files you touched in changedFiles, and any bug ids filed.`
 
 const reviewPrompt = (id, impl) => {
-  const files = (impl && impl.changedFiles && impl.changedFiles.length) ? impl.changedFiles.join(' ') : ''
+  // Quoted per path: an unquoted join splits a path containing a space into two
+  // pathspecs, so the review leg would inspect files the task never touched.
+  const files = (impl && impl.changedFiles && impl.changedFiles.length)
+    ? impl.changedFiles.map((f) => `'${String(f).replace(/'/g, `'\\''`)}'`).join(' ')
+    : ''
   const diffCmd = files ? `git diff -- ${files}` : 'git diff'
   return `Review the implementation just made for taskmgr task ${id}. Run \`taskmgr show ${id}\` for intent and inspect ONLY this task's change with \`${diffCmd}\`${files ? ' (tasks run sequentially against a shared tree that may also hold earlier uncommitted edits — judge only the files this task changed)' : ''}. You are READ-ONLY: do not edit code and do not write the tracker. Return a verdict: "ok" (no blocking concern), "concerns" (real but non-blocking issues), or "reject" (a blocking correctness or design flaw that should stop closure), with a one-line summary and any findings. Implementation summary: ${JSON.stringify(impl && impl.summary)}.`
 }

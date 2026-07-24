@@ -24,6 +24,8 @@ if (!repoRoot || !scriptsDir) {
 }
 const level = ['low', 'medium', 'high'].includes((A.level || '').toLowerCase())
   ? A.level.toLowerCase() : 'medium'
+// SKILL.md mints this per run with mktemp; worktree and backup paths below are indexed,
+// not unique, so the bare default is safe for one run at a time only.
 const scratchDir = A.scratchDir || '/tmp/test-tests-scratch'
 
 // Dials per level (design §8). Verify pass only at high; one rerun uses the
@@ -624,6 +626,22 @@ if (parallelWorkers) {
 const workers = workerResults.filter(Boolean)
 const audited = workers.filter(w => w.audited)
 log(`Workers: ${audited.length}/${components.length} component(s) fully audited (mode=${mode}${parallelWorkers ? ', parallel' : ', serialized'})`)
+
+// Nothing was audited, so there is no evidence to score: kill_rate is killed
+// over total mutants across AUDITED components, which is 0/0 here. Synthesis
+// would still be asked for a verdict and the schema permits any of them, so a
+// confident one could be reported on no evidence at all. Abort instead — the
+// whole value of the audit is a verdict that was earned.
+if (audited.length === 0) {
+  return await abortReport(
+    'no component was audited — every worker failed or was skipped, so no mutant was ever run',
+    `Components selected: ${components.length} (${components.map(c => c.name).join(', ') || 'none'})\n` +
+    `Workers returning a record: ${workers.length}\n` +
+    `Workers reporting audited=true: 0\n` +
+    `Mode: ${mode}${parallelWorkers ? '' : ' (serialized)'}, level=${level}, can_slice=${baseline.can_slice}`,
+    'Check whether the suite can be sliced to a single component (can_slice above) and whether the worker agents could write to the scratch dir; re-run at a lower level or scope the audit to one component with a known-good filter.'
+  )
+}
 
 // ---------------------------------------------------------------------------
 // Phase 5 — Synthesis
