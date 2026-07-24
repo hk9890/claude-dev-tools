@@ -61,10 +61,10 @@ run — never report "docs look good" from mechanical checks alone.
 `manifest.py` parses `references/project-setup.md` (the canonical doc set and each
 file's audience / Inside / Not-inside ownership) and injects each file's contract
 inline into the read-review agents, which also load
-`references/project-doc-guidelines.md` (authoring rules A1–A10 and prohibitions)
-and apply it. `references/project-doc-review-guidelines.md` (the review process)
-is maintainer documentation and the manual-fallback rubric; the workflow does not
-load it.
+`references/project-doc-guidelines.md` (authoring rules A1–A11, the prohibitions,
+and the bar each suggested fix must clear) and apply it.
+`references/project-doc-review-guidelines.md` (the review process) is maintainer
+documentation and the manual-fallback rubric; the workflow does not load it.
 
 Verdict labels: `accurate` · `minor gaps` · `significant gaps` · `misleading`. A
 clean `accurate` requires no blocker/major finding and positive coverage — a green
