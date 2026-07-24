@@ -43,7 +43,7 @@ Nothing is ever committed, no test is written, nothing is installed.
    between commands, so a value you only assign is gone by the time step 4 needs it.
 
    ```bash
-   command -v python3 >/dev/null || echo "python3 missing — stop and tell the user"
+   command -v python3 >/dev/null || { echo "python3 missing — stop and tell the user"; return 2>/dev/null || exit 1; }
    SCRATCH=$(mktemp -d /tmp/test-tests-XXXXXX) && echo "SCRATCH=$SCRATCH"
    git -C "<path>" status --porcelain > "$SCRATCH/pre-status.txt"
    git -C "<path>" diff > "$SCRATCH/pre-diff.patch"

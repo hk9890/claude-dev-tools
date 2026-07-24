@@ -169,14 +169,20 @@ test_skip_no_validator_surface() {
   rm -rf "$repo"
 }
 
-test_warn_no_linked_task() {
+# A PR touching validator surface with no linked task is a hard failure: without a
+# task there is nowhere for the gate2 evidence to live, so the audit cannot verify
+# anything. It warned and exited 0 until v1.23.0, which is how releases shipped on
+# audits that had confirmed nothing.
+test_fail_no_linked_task() {
   local out repo base
   out=$(build_merge_repo "$VALIDATOR_FILE" "$PR_SUBJECT")
   repo="${out%% *}"; base="${out##* }"
   export REPO_ROOT="$repo" GH_PR_BODY=""        # empty PR body, no "Closes" in subject
-  assert_exit "WARN: no task id → exit 0 (not a hard fail)" 0 bash "$SCRIPT" "$base"
-  assert_output_contains "WARN: reports missing task id" \
-    "no linked task ID found" bash "$SCRIPT" "$base"
+  assert_exit "FAIL: no task id → exit 1 (blocks release)" 1 bash "$SCRIPT" "$base"
+  assert_output_contains "FAIL: reports missing task id" \
+    "no linked task ID" bash "$SCRIPT" "$base"
+  assert_output_contains "FAIL: no task id says how to clear it" \
+    "Link the PR to a taskmgr task" bash "$SCRIPT" "$base"
   unset REPO_ROOT GH_PR_BODY
   rm -rf "$repo"
 }
@@ -235,7 +241,7 @@ test_empty_range_exits_0
 test_empty_range_output_pass
 test_extract_task_id_forms
 test_skip_no_validator_surface
-test_warn_no_linked_task
+test_fail_no_linked_task
 test_pass_gate2_evidence_present
 test_fail_gate2_evidence_missing
 test_fail_taskmgr_lookup_warns

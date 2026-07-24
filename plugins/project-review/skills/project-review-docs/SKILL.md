@@ -31,7 +31,7 @@ docs inline. The workflow returns a structured report; relay it.
    only assign is gone by the time you need it in step 3.
 
    ```bash
-   command -v python3 >/dev/null || echo "python3 missing — stop and fall back to a manual read"
+   command -v python3 >/dev/null || { echo "python3 missing — stop and fall back to a manual read"; return 2>/dev/null || exit 1; }
    SCRATCH=$(mktemp -d /tmp/docreview-XXXXXX) && echo "SCRATCH=$SCRATCH"
    ```
 
