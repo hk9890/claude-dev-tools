@@ -12,6 +12,9 @@ Before proceeding verify all gates pass:
 - After `git fetch origin`, the local branch must be in sync with the remote default branch. Derive it — with a fallback for when `origin/HEAD` is not set locally (fresh `git init`, shallow/CI checkouts, new worktrees) — and diff against it:
 
   ```bash
+  git fetch origin                                # without this the compare below
+                                                  # reads a stale remote-tracking ref
+                                                  # and passes on an out-of-date branch
   DEFAULT_BRANCH=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|origin/||')
   DEFAULT_BRANCH=${DEFAULT_BRANCH:-$(git remote show origin | sed -n 's/.*HEAD branch: //p')}
   git diff HEAD "origin/$DEFAULT_BRANCH" --stat   # expect no differences

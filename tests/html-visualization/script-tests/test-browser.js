@@ -48,7 +48,7 @@ if (!playwrightDir) {
     process.exit(1);
   }
   // Playwright is an optional prerequisite (see docs/TESTING.md). Exit 77 — the
-  // skip convention the run-all.sh scripts recognise — so this suite is reported
+  // skip convention tests/run-all.sh recognises — so this suite is reported
   // as skipped, not folded into a green pass that ran no assertions.
   console.log('SKIP: ' + hint);
   process.exit(77);

@@ -30,6 +30,16 @@ All plugins are released together under a single repo-level tag — bump every v
 find plugins -name plugin.json -path "*/.claude-plugin/*"
 ```
 
+### A version bump is not a release
+
+Bumping the version fields and publishing the GitHub release are one unit of work, not two. Merging the bump without publishing the release leaves the repo in a state that degrades quietly rather than failing:
+
+- `master` advertises a version that no tag points at, breaking this doc's own invariant that `vX.Y.Z` tags the commit whose `plugin.json` files read `X.Y.Z`.
+- `scripts/check-gate2-evidence.sh` measures its audit window from the most recent tag. With the tag missing, the next release audits the wrong commit range and can report a clean pass over PRs it never examined.
+- A consumer reading `marketplace.json` sees a version that does not appear in the releases list, with no notes explaining what changed.
+
+None of these surface as an error at bump time. If the bump PR merges, publish the release in the same sitting — and if that is not possible, say so explicitly rather than leaving the state to be discovered later.
+
 ## Release notes
 
 Write the notes around **what changed for users**, not around the list of PRs that changed it. `--generate-notes` produces a flat bullet per merged PR — useful as raw material for finding what landed, never as the published notes. A reader scanning the release should learn what they can now do, and what will behave differently, without opening a single PR.
@@ -54,7 +64,7 @@ Use `gh release create ... --generate-notes` only to produce a scratch list of m
 ## Release steps
 
 1. Run the three gates in the **Tests** section above — all must pass before releasing.
-2. Bump `"version"` in all `plugin.json` files found above.
+2. Bump `"version"` in all `plugin.json` files found above. If a `dependencies` entry ever carries a version constraint, a major bump has to widen it too — `^1.x` does not admit `2.0.0`. No plugin does today: `plugins/tasks` is the only one declaring a dependency and it uses the bare-name form, which resolves without consulting tags. That form is deliberate — a constraint resolves against per-plugin `<name>--vX.Y.Z` tags, which the single-repo-tag policy above never creates, so a constrained dependency here can never be satisfied.
 3. Bump every `"version"` in `.claude-plugin/marketplace.json` to the same new version. Edit only the version lines — reformatting these files (e.g. piping them through `jq`) rewrites unrelated compact arrays and buries the bump in churn.
 4. Verify they match: `bash tests/run-all.sh` will catch any version mismatch via `scripts/check-internal-consistency.py`. As a quick manual check: `diff <(jq -r '.plugins[] | "\(.name) \(.version)"' .claude-plugin/marketplace.json | sort) <(find plugins -name plugin.json -path "*/.claude-plugin/*" -exec jq -r '"\(.name) \(.version)"' {} \; | sort)` — should print nothing.
 5. Commit the bump on a `chore/release-X.Y.Z` branch and merge it via PR: `git commit -m "Bump all plugins to vX.Y.Z"`. `master` is protected — see [CHANGE-WORKFLOW.md](CHANGE-WORKFLOW.md) — so the bump cannot be pushed to it directly.
@@ -65,6 +75,10 @@ The tag and the version fields must carry the same version — `vX.Y.Z` tags the
 
 ## Verification
 
+The release is not done until all three of these agree. The middle one is the check that catches a merged bump whose release was never published:
+
 ```bash
-gh release view vX.Y.Z
+gh release view vX.Y.Z                        # the release exists and its notes read as intended
+git describe --tags --abbrev=0 origin/master  # prints vX.Y.Z, not the previous tag
+jq -r '.metadata.version' .claude-plugin/marketplace.json   # prints X.Y.Z
 ```

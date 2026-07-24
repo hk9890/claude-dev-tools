@@ -1,7 +1,7 @@
 {
   "name": "claude-catppuccin",
   "description": "Visual style for Claude Code: Catppuccin color themes (Latte, Frappe, Macchiato, Mocha)",
-  "version": "1.22.0",
+  "version": "1.23.0",
   "author": {
     "name": "Hans Kohlreiter",
     "email": "hans.kohlreiter@gmail.com"

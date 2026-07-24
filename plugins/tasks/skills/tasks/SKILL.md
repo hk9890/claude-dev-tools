@@ -7,7 +7,9 @@ when_to_use: "Use when working with a taskmgr / .tasks tracker — creating, fin
 # Using taskmgr
 
 `taskmgr` is a lean, file-based task tracker: issues, dependencies, and ready-work as
-Markdown files under a `.tasks/` directory, versioned alongside the code. You operate it
+Markdown files in a store. The common shape is a `.tasks/` directory versioned alongside the code;
+a store can also be **central** (`taskmgr init --central`, or a named store), living outside the
+project — `taskmgr where` tells you which one you are on. You operate it
 **only** through the `taskmgr` CLI — the `.tasks/` directory is an internal store, never a place to
 read or edit by hand. Do **not** `cat`, `grep`, `ls`, or write the files under `.tasks/` directly:
 the CLI holds the write lock, resolves the store by walking up from any subdirectory, and emits
@@ -23,13 +25,17 @@ two failure modes stay distinct:
 
 ```bash
 command -v taskmgr >/dev/null 2>&1   # 1) is the binary installed?
-taskmgr list >/dev/null 2>&1          # 2) does a store resolve? (taskmgr walks up from cwd to find .tasks/)
+taskmgr where                         # 2) does a store resolve, and which one?
 ```
 
 - **`command -v taskmgr` fails** → no binary. Stop and tell the user to install it (`make install`
   from the task-manager repo). Do not fall back to TodoWrite or markdown files for tracking.
-- **Binary present but `taskmgr list` fails** → no store resolves from here. Offer to create one with
+- **`taskmgr where` reports `kind: none`** → no store resolves from here. Offer to create one with
   `taskmgr init --prefix <p>` (prefix defaults to a slug of the directory name).
+
+Read `where`'s output, not its exit status — it exits 0 whether or not a store resolves. It names the
+store kind (`local`, `central`, or `none`) and the resolved path, so each outcome describes itself;
+a bare `list` cannot tell "no store" from "empty store".
 
 Do **not** test for the store with `ls .tasks/`: the store is found by walking **up** from the
 current directory, so a bare `ls` in a subdirectory reports "no store" even when taskmgr resolves one
@@ -99,8 +105,9 @@ prefer `close --reason`. Setting a non-closed status on a closed issue reopens i
 status.
 
 To turn findings from the current conversation (a review, `/code-review`, `/simplify`, an
-exploration) into issues with a standard body template, run `/tasks-create` — it owns the task-body
-contract, so prefer it over hand-rolling `create` calls for review findings.
+exploration) into issues with a standard body template, point the user at `/tasks-create` — it owns
+the task-body contract, so it beats hand-rolling `create` calls for review findings. It is
+user-invocable only, so suggest it rather than trying to invoke it.
 
 ## 5. Finding work with filters
 
@@ -113,8 +120,11 @@ taskmgr list -q 'status == "open" && priority <= 1'
 taskmgr list -q 'type == "bug" && label ~ "area:db"'
 taskmgr list -q 'ready && priority <= 2'
 taskmgr list -q 'text ~ "drill" && !blocked'
-taskmgr search "export schema"        # shorthand for text ~ "export schema"
+taskmgr search "export schema"        # every word must match (AND) across id/title/description
 ```
+
+`search` is **not** shorthand for `text ~ "<phrase>"`: it ANDs the words independently, so it
+matches issues the phrase filter misses. Use `text ~` when the words must be adjacent.
 
 Catalog commands — `taskmgr labels`, `taskmgr statuses`, `taskmgr types` — list the valid
 values in use when you need them.

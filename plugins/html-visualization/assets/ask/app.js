@@ -2,7 +2,7 @@
  * app.js — browser-side interaction layer for the ask mode of the html-visualize workflow.
  *
  * Exports (UMD-compatible, testable in Node without a DOM):
- *   buildFeedbackPayload(state) → { verdict, answers, comments, freeform }
+ *   buildAskPayload(state) → { verdict, answers, comments, freeform }
  *
  * DOM wiring (only runs when document is available):
  *   - Collects answers from .widget[data-qid] elements.
@@ -37,7 +37,7 @@
 // Does NOT validate verdict enum — the radio markup constrains the values;
 // the server is schema-agnostic and writes the payload verbatim.
 
-function buildFeedbackPayload(state) {
+function buildAskPayload(state) {
   var verdict = state.verdict == null ? '' : String(state.verdict);
   var answers = state.answers && typeof state.answers === 'object' ? state.answers : {};
   var freeform = state.freeform == null ? '' : String(state.freeform);
@@ -63,7 +63,7 @@ function buildFeedbackPayload(state) {
 // ── UMD export — allows require() in Node for unit testing ─────────────────
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { buildFeedbackPayload: buildFeedbackPayload };
+  module.exports = { buildAskPayload: buildAskPayload };
 }
 
 // ── DOM wiring — only runs in a browser ────────────────────────────────────
@@ -109,7 +109,7 @@ if (typeof document !== 'undefined') {
           answers[qid] = vals;
 
         } else if (qtype === 'approaches') {
-          // Per-column verdict stored as answers[qid+"-"+colIndex]
+          // Per-column verdict stored as answers[qid+"-"+approach-id]
           // The approaches widget stores each column's verdict under a sub-key.
           // Columns must carry data-approach-id on the .approach-col element.
           var cols = widget.querySelectorAll('.approach-col[data-approach-id]');
@@ -167,7 +167,7 @@ if (typeof document !== 'undefined') {
     }
 
     function buildCurrentPayload() {
-      return buildFeedbackPayload(buildCurrentState());
+      return buildAskPayload(buildCurrentState());
     }
 
     // ── Per-question note wiring ────────────────────────────────────────────

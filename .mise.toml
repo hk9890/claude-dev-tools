@@ -12,8 +12,8 @@ run = "bash tests/run-all.sh"
 [tasks.test-html]
 description = "Run html-visualization browser/server tests only"
 dir = "{{config_root}}"
-# exit 77 = suites skipped (e.g. Playwright absent), treated as success not failure
-run = 'bash tests/html-visualization/script-tests/run-all.sh || [ "$?" -eq 77 ]'
+# Skipped suites (e.g. Playwright absent) are reported in the summary, not failures.
+run = "bash tests/run-all.sh html-visualization"
 
 [tasks.check-consistency]
 description = "Validate internal cross-references and version mirrors"
@@ -26,6 +26,6 @@ dir = "{{config_root}}"
 run = "python3 scripts/analyze-sessions.py"
 
 [tasks.lint]
-description = "No linter configured (placeholder)"
+description = "ShellCheck every tracked shell script (reproduces the CI shellcheck job)"
 dir = "{{config_root}}"
-run = 'echo "No linter configured for this repo."'
+run = "git ls-files '*.sh' | xargs -r shellcheck --severity=warning"

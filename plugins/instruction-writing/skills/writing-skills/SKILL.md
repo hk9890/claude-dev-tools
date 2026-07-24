@@ -1,6 +1,6 @@
 ---
 name: writing-skills
-description: Reference for writing and editing skills well — the vocabulary and principles that make a skill predictable.
+description: "Reference for writing and editing skills well — the vocabulary and principles that make a skill predictable."
 user-invocable: true
 disable-model-invocation: true
 argument-hint: "[skill-path-or-request]"
@@ -12,6 +12,10 @@ argument-hint: "[skill-path-or-request]"
 A skill exists to wrangle determinism out of a stochastic system. **Predictability** — the agent taking the same _process_ every run, not producing the same output — is the root virtue; every lever below serves it.
 
 **Bold terms** are defined in [`GLOSSARY.md`](GLOSSARY.md); look them up there for the full meaning.
+
+**What to write or review:** $ARGUMENTS — a skill path, a draft, or a request; with no argument, the
+skill under discussion. Apply every rule below to it. The work is done when each one has been held
+against that target and either cleared or named as a defect — not when the rubric has been read.
 
 ## Invocation
 

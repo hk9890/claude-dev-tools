@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
-# Note: scripts/check-internal-consistency.py imports this module by hardcoded path
-# and uses _heading_to_slug, _strip_inline_code, and iter_headings; keep the path and
-# those names in sync if this file is ever moved or renamed.
 """validate-routes.py — resolve @-imports and markdown links in CLAUDE.md / AGENTS.md.
+
+Importable API: load_file, extract_references, resolve_reference, iter_headings,
+heading_to_slug, strip_inline_code. Two callers load this module by file path rather
+than as a package — manifest.py in this directory, and scripts/check-internal-consistency.py
+at the repo root — so those six names and this file's path are a public interface: renaming
+either breaks `mise run check-consistency` from outside the plugin.
 
 Usage:
     validate-routes.py <repo-root>
@@ -53,7 +56,7 @@ import sys
 # Anchor slug generation (GitHub-style)
 # ---------------------------------------------------------------------------
 
-def _heading_to_slug(text):
+def heading_to_slug(text):
     """Convert heading text to a GitHub-style anchor slug."""
     slug = text.lower()
     slug = slug.replace(" ", "-")
@@ -89,7 +92,7 @@ def iter_headings(content):
             continue
 
         heading_text = m.group(2).strip()
-        base_slug = _heading_to_slug(heading_text)
+        base_slug = heading_to_slug(heading_text)
 
         if base_slug not in seen:
             seen[base_slug] = 0
@@ -134,7 +137,7 @@ def _is_skill_ref(path):
     return "/" not in prefix and "." not in prefix
 
 
-def _strip_inline_code(line):
+def strip_inline_code(line):
     """Return line with inline-code spans replaced by spaces (to avoid false matches)."""
     # Replace `...` spans with spaces of equal length
     return re.sub(r"`[^`]*`", lambda m: " " * len(m.group()), line)
@@ -178,7 +181,7 @@ def extract_references(filepath, content):
 
         # --- @-import directives ---
         # Strip inline code first to avoid matching `@foo.md`
-        clean_line = _strip_inline_code(raw_line)
+        clean_line = strip_inline_code(raw_line)
         m = re.match(r"^(\s*)@(\S+)", clean_line)
         if m and not raw_line.strip().startswith("`"):
             # The @ must be the first non-whitespace character
@@ -197,7 +200,7 @@ def extract_references(filepath, content):
             continue
 
         # --- Inline links ---
-        line_no_code = _strip_inline_code(raw_line)
+        line_no_code = strip_inline_code(raw_line)
         for m in _INLINE_LINK_RE.finditer(line_no_code):
             url = m.group(1).strip()
             if _is_external(url):

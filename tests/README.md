@@ -6,13 +6,16 @@ Marketplace-level tests for the plugins in this repo. Tests live here (outside `
 
 ```
 tests/
-├── run-all.sh                       <- top-level: runs every plugin's tests
+├── run-all.sh                       <- the runner: discovers and runs every suite
 ├── <plugin-name>/
 │   └── script-tests/
-│       ├── run-all.sh               <- per-plugin discovery + aggregation
 │       └── test-*.sh                <- individual test suites
 └── ...
 ```
+
+`run-all.sh` is the only runner: it discovers every `test-*.sh` at
+`tests/<plugin>/script-tests/` and classifies exit codes in one place, so there are no
+per-plugin runners to keep in sync.
 
 A plugin gets a `tests/<plugin-name>/script-tests/` subdir only when it ships committed scripts to test (e.g., bash helpers, python utilities); plugins without script-level tests have no directory here — do not create empty placeholders.
 
@@ -25,7 +28,7 @@ A plugin gets a `tests/<plugin-name>/script-tests/` subdir only when it ships co
 bash tests/run-all.sh
 
 # One plugin
-bash tests/project-review/script-tests/run-all.sh
+bash tests/run-all.sh project-review
 
 # One suite
 bash tests/project-review/script-tests/test-manifest.sh

@@ -176,7 +176,7 @@ def _phrase_matches_heading(phrase, heading_text, heading_slug, vr_mod):
     """
     for sub in _candidate_subphrases(phrase):
         # (a) GitHub slug equality
-        if vr_mod._heading_to_slug(sub) == heading_slug:
+        if vr_mod.heading_to_slug(sub) == heading_slug:
             return True
         # (b) Case-insensitive substring
         if sub.lower() in heading_text.lower():
@@ -210,7 +210,7 @@ def _scan_file_for_section_refs(filepath, vr_mod, repo_root):
             continue
 
         # Strip inline code spans before scanning
-        line = vr_mod._strip_inline_code(raw_line)
+        line = vr_mod.strip_inline_code(raw_line)
 
         # Collect all (phrase, filename) candidates from this line
         candidates = []

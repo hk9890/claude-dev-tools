@@ -19,6 +19,36 @@ Use the right pattern for each dependency kind:
 - **Plugin depends on another plugin** (e.g. a workflow plugin that reuses another plugin's skills): declare the dependency in `plugin.json` under `dependencies`. The harness handles install, scope, and chained enable/disable.
 - **Plugin depends on a CLI tool** (e.g. `project-explore` → `taskmgr`, `html-visualization` → `node`): the harness cannot install CLI binaries. Add a runtime check at skill load time (Phase 0) that tests whether the CLI is present and stops with guidance if it is missing. Do not add CLI tools to the `dependencies` field.
 
+## Locating a plugin's own files at runtime
+
+A skill that has to run one of its plugin's bundled files (a workflow script, a server, a
+Python helper) cannot use `$CLAUDE_PLUGIN_ROOT`: the harness substitutes that token only in
+plugin-config contexts such as hook scripts and `settings.json`. It is **not** exported into
+the environment of `Bash` tool calls and is not substituted in tool arguments, so it expands
+to an empty string and silently produces a broken path. Resolve the install with `find`
+instead, and pass the resolved absolute path onward:
+
+```bash
+PLUGIN_DIR=$(find "$HOME/.claude/plugins" "$PWD" -type d -path '*<plugin-name>*/<subdir>' 2>/dev/null |
+  sort -V | tac | while read -r d; do
+    [ -f "${d%/<subdir>}/<the-file-you-need>" ] && { printf '%s\n' "${d%/<subdir>}"; break; }
+  done)
+[ -n "$PLUGIN_DIR" ] || echo "plugin not located — do not launch"
+```
+
+Three properties matter, and a variant that drops any of them fails in the field:
+
+- **Both roots.** Cached installs live under `$HOME/.claude/plugins/`; a `--plugin-dir` dev run
+  has no cached copy and resolves out of `$PWD`.
+- **A `*<plugin-name>*` substring glob.** Cached installs interpose a version segment
+  (`…/<plugin>/<version>/skills`), and only a `*` spanning it reaches them.
+- **Newest-first, then verify the target file.** `sort -V | tac` puts the highest version first;
+  the `[ -f … ]` test then skips stale installs and unrelated paths the broad glob also matches
+  (a `tests/<plugin-name>/` directory, a long-dead plugin still in the cache). Take the first
+  candidate that actually carries the file.
+
+When resolution fails, stop and tell the user — never improvise a path.
+
 ## SKILL.md conventions
 
 These apply to every `SKILL.md` under `plugins/<plugin-name>/skills/<skill-name>/`.

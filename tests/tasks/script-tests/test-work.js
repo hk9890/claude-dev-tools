@@ -4,10 +4,11 @@
 // work.js is a Workflow-tool script: it begins with `export const meta` (ESM syntax)
 // and uses top-level `await`/`return`, so stock require()/import() cannot load it. We
 // strip the lone `export ` keyword and run the body inside an async-function wrapper —
-// the same shape the Workflow runtime uses. The orchestration self-guards on
-// `typeof agent === 'function'`, so:
-//   - loadWork()                 → no `agent` global → orchestration skipped, helpers exported
-//   - loadWork({ agent, ... })   → `agent` present  → orchestration runs, its return captured
+// the same shape the Workflow runtime uses. work.js assigns module.exports before its
+// orchestration block, so:
+//   - loadWork({ agent, ... })  → `agent` present → orchestration runs, its return captured,
+//                                 and the helpers are on .exports either way
+//   - loadWork()                → no `agent` global → work.js throws (the loud-fail guard)
 //
 // Coverage (the regressions the work.js comments document):
 //   - normalizeArgs parses a JSON-*string* args payload (the silent no-op bug)
@@ -16,7 +17,7 @@
 //   - summarizeActions buckets per-task records by their recorded action
 //   - the reviewer-absent throw is caught and falls back to the general-purpose agent,
 //     and the fallback is surfaced via summary.reviewer_fallback
-//   - a broken runtime (no agent hook, no test sentinel) fails loudly instead of no-op
+//   - a broken runtime (no agent hook) fails loudly instead of no-op
 
 const fs = require('fs');
 const path = require('path');
@@ -25,15 +26,12 @@ const vm = require('vm');
 const WORK_JS = path.resolve(__dirname, '../../../plugins/tasks/workflows/work.js');
 
 // Load work.js in a sandbox. `globals` supplies workflow-runtime hooks; pass none to
-// load only the exported pure helpers. By default a __WORK_TEST__ sentinel is injected so
-// work.js knows it is loaded for testing (and skips its orchestration without throwing);
-// pass { sentinel: false } to simulate a broken runtime (no hooks, no sentinel), which
-// work.js must reject loudly. Returns { exports, ret } where ret is the value the
-// orchestration returned (undefined when it was skipped).
-async function loadWork(globals = {}, { sentinel = true } = {}) {
+// simulate a broken runtime, which work.js must reject loudly. Returns { exports, ret }
+// where ret is the value the orchestration returned.
+async function loadWork(globals = {}) {
   const src = fs.readFileSync(WORK_JS, 'utf8').replace(/^export const meta/m, 'const meta');
   const moduleObj = { exports: {} };
-  const merged = sentinel ? { __WORK_TEST__: true, ...globals } : { ...globals };
+  const merged = { ...globals };
   const names = Object.keys(merged);
   const wrapper = `(async function(module, exports${names.length ? ', ' + names.join(', ') : ''}) {\n${src}\n})`;
   const fn = vm.runInThisContext(wrapper, { filename: WORK_JS });
@@ -62,8 +60,21 @@ function eq(label, expected, actual) {
 }
 
 async function main() {
+  // One load serves both the helper tests and the empty-taskIds bailout assertions below:
+  // `agent` is present so the runtime guard passes, but args carry no taskIds, so the
+  // orchestration bails out before spawning anything.
+  let agentCalled = false;
+  const throwIfCalled = (name) => () => { throw new Error(`${name} must not be called on the empty-taskIds path`); };
+  const { exports: helpers, ret } = await loadWork({
+    agent: () => { agentCalled = true; throw new Error('agent must not be called on the empty-taskIds path'); },
+    args: '{}',                 // a JSON string with no taskIds
+    log: () => {},
+    phase: throwIfCalled('phase'),
+    parallel: throwIfCalled('parallel'),
+  });
+
   // ── normalizeArgs ──────────────────────────────────────────────────────────
-  const { normalizeArgs, summarizeActions } = (await loadWork()).exports;
+  const { normalizeArgs, summarizeActions } = helpers;
 
   if (typeof normalizeArgs !== 'function' || typeof summarizeActions !== 'function') {
     bad('work.js exports normalizeArgs and summarizeActions',
@@ -116,18 +127,8 @@ async function main() {
     summarizeActions([]));
 
   // ── empty-taskIds bailout (orchestration) ─────────────────────────────────────
-  // Run the orchestration with an `agent` present (so the runtime guard fires) but
+  // From the load at the top of main(): `agent` present (so the runtime guard passes) but
   // empty taskIds. It must return the diagnostic error object and must NOT spawn agents.
-  let agentCalled = false;
-  const throwIfCalled = (name) => () => { throw new Error(`${name} must not be called on the empty-taskIds path`); };
-  const { ret } = await loadWork({
-    agent: () => { agentCalled = true; throw new Error('agent must not be called on the empty-taskIds path'); },
-    args: '{}',                 // a JSON string with no taskIds
-    log: () => {},
-    phase: throwIfCalled('phase'),
-    parallel: throwIfCalled('parallel'),
-  });
-
   if (ret && typeof ret.error === 'string' && /No taskIds provided/.test(ret.error)) {
     ok('bailout: empty taskIds returns the diagnostic error object');
   } else {
@@ -181,16 +182,16 @@ async function main() {
     true, fallback.ret && fallback.ret.summary && fallback.ret.summary.reviewer_fallback);
 
   // ── broken-runtime guard ─────────────────────────────────────────────────────
-  // No `agent` hook AND no test sentinel → work.js must throw, not silently return undefined
-  // (which the harness would record as a successful no-op). This pins the loud-fail behavior.
+  // No `agent` hook → work.js must throw, not silently return undefined (which the harness
+  // would record as a successful no-op). This pins the loud-fail behavior.
   let threw = false;
   try {
-    await loadWork({}, { sentinel: false });
+    await loadWork();
   } catch (err) {
     threw = /did not inject the .agent. hook/.test(String(err && err.message));
   }
-  if (threw) ok('broken-runtime: missing agent hook (no sentinel) fails loudly');
-  else bad('broken-runtime: missing agent hook (no sentinel) fails loudly', 'expected a throw');
+  if (threw) ok('broken-runtime: missing agent hook fails loudly');
+  else bad('broken-runtime: missing agent hook fails loudly', 'expected a throw');
 
   // ── summary ────────────────────────────────────────────────────────────────
   console.log(`\nResults: ${pass} passed, ${fail} failed`);

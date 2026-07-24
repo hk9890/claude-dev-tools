@@ -155,3 +155,11 @@ The skill-specific pieces below slot into that skeleton:
 - **Per-finding `Observation`** — open with the failing question number
   from the interrogation above, e.g. `Question 5: …`.
 - **Per-finding `Location`** — cite exact test file paths and line numbers.
+
+---
+
+## Not covered
+
+Production-code structure, naming, and over-engineering → `project-review-codebase`;
+documentation accuracy and staleness → `project-review-docs`; pure formatting → linters.
+This lens judges the tests themselves, not the code they exercise.

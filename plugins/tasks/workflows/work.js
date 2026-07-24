@@ -96,7 +96,11 @@ const implementPrompt = (id) =>
   `Implement taskmgr task ${id} as one unit of an execution run. Follow your implementer instructions: run the readiness gate first; if the ticket is not executable, comment the gaps and report status "unready" (do NOT claim or write code). If ready, claim it (\`taskmgr update ${id} --status in_progress\`), implement the simplest change that satisfies the acceptance criteria, run the project's relevant tests, and file a bug directly for any unrelated defect you find. Do NOT close the task. Report status "implemented" (ready to verify) or "blocked" (with the reason in summary), a short summary of what changed, the list of files you touched in changedFiles, and any bug ids filed.`
 
 const reviewPrompt = (id, impl) => {
-  const files = (impl && impl.changedFiles && impl.changedFiles.length) ? impl.changedFiles.join(' ') : ''
+  // Quoted per path: an unquoted join splits a path containing a space into two
+  // pathspecs, so the review leg would inspect files the task never touched.
+  const files = (impl && impl.changedFiles && impl.changedFiles.length)
+    ? impl.changedFiles.map((f) => `'${String(f).replace(/'/g, `'\\''`)}'`).join(' ')
+    : ''
   const diffCmd = files ? `git diff -- ${files}` : 'git diff'
   return `Review the implementation just made for taskmgr task ${id}. Run \`taskmgr show ${id}\` for intent and inspect ONLY this task's change with \`${diffCmd}\`${files ? ' (tasks run sequentially against a shared tree that may also hold earlier uncommitted edits — judge only the files this task changed)' : ''}. You are READ-ONLY: do not edit code and do not write the tracker. Return a verdict: "ok" (no blocking concern), "concerns" (real but non-blocking issues), or "reject" (a blocking correctness or design flaw that should stop closure), with a one-line summary and any findings. Implementation summary: ${JSON.stringify(impl && impl.summary)}.`
 }
@@ -119,8 +123,9 @@ const epicClosePrompt = (id) =>
   `4. Write the per-criterion verdict and evidence as a comment: \`taskmgr comment add ${id} "Acceptance review: <criterion> PASS — <evidence>; … Children all closed. Ready to close."\`\n` +
   `5. Do NOT close the epic. Report allChildrenClosed=true and action "verified-ready-to-close", or "criteria-failed" (comment the gaps and file bugs) if the success criteria are not met.`
 
-// The review leg prefers project-review's adversarial reviewer persona, but `tasks` does not declare
-// `project-review` as a dependency, so that agent type is not guaranteed to exist. When it is absent,
+// The review leg prefers project-review's adversarial reviewer persona. `tasks` now declares
+// `project-review` as a dependency, but a declared dependency can still be disabled or left
+// unresolved at load time, so that agent type is not guaranteed to exist. When it is absent,
 // agent() THROWS on the unknown agentType; without this fallback that throw becomes a null review and
 // record rule 1 ("either leg null → inconclusive") strands every passing task as unclosed. The review
 // procedure lives in reviewPrompt, not the persona, so a built-in agent runs it fine. The fallback is
@@ -163,12 +168,17 @@ async function runTask(id) {
   return { taskId: id, impl, review, test, record }
 }
 
+// Expose the pure helpers to any module loader (the Node unit tests in
+// tests/tasks/script-tests use this). Assigned before the orchestration below so it is
+// reached whichever path that takes.
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { normalizeArgs, summarizeActions }
+}
+
 // ── Orchestration ─────────────────────────────────────────────────────────────
 // Runs only under the Workflow runtime, which injects the `agent` hook (plus args/log/
-// parallel/phase). Under the Node test loader those globals are absent but it injects a
-// __WORK_TEST__ sentinel, so the orchestration is skipped and only the pure helpers above
-// are exercised. If neither holds — no `agent` and no sentinel — the runtime contract is
-// broken, and we throw rather than silently no-op (see the else-if).
+// parallel/phase). Without that hook the runtime contract is broken, so we throw rather
+// than silently no-op (see the else).
 if (typeof agent === 'function') {
   const { taskIds, epicId } = normalizeArgs(args)
 
@@ -212,16 +222,9 @@ if (typeof agent === 'function') {
     epic,
     perTask,
   }
-} else if (typeof __WORK_TEST__ === 'undefined') {
-  // No `agent` hook AND not under the Node test loader (which injects __WORK_TEST__): the
-  // Workflow runtime failed to inject its hooks. Fail LOUD — returning undefined here would
-  // be recorded by the harness as status:completed, i.e. a silent no-op.
+} else {
+  // No `agent` hook: the Workflow runtime failed to inject it. Fail LOUD — returning
+  // undefined here would be recorded by the harness as status:completed, i.e. a silent
+  // no-op.
   throw new Error('tasks-work: the Workflow runtime did not inject the `agent` hook')
-}
-
-// Test-only: expose the pure helpers to the Node loader in tests/tasks/script-tests.
-// Reached only under that loader — on the real runtime the orchestration above already
-// returned, and a broken runtime throws above before reaching this line.
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { normalizeArgs, summarizeActions }
 }

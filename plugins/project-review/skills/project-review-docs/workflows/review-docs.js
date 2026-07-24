@@ -28,6 +28,9 @@ const COST_ROUTES = { low: 0, medium: 3, high: -1, ultra: -1 }
 const maxExec = (A.maxExecutionRoutes !== undefined)
   ? A.maxExecutionRoutes
   : (COST_ROUTES[cost] === undefined ? 3 : COST_ROUTES[cost])
+// SKILL.md mints this per run with mktemp. Trace filenames below are deterministic and
+// the grading stage treats a trace as primary evidence, so two runs sharing a directory
+// grade each other's output — the bare default is safe for one run at a time only.
 const scratchDir = A.scratchDir || '/tmp/docreview-scratch'
 
 // ---------------------------------------------------------------------------

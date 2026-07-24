@@ -49,8 +49,9 @@ const DIMENSION_SCHEMA = {
   required: ['dimension', 'verdict', 'findings'],
 }
 
-// Same shape and refutation prompt as review-docs.js — kept in lockstep by hand;
-// workflow scripts are self-contained and cannot import shared modules.
+// Same shape as the verify schema in review-docs.js and test-tests.js — duplicated
+// by hand because workflow scripts are self-contained and cannot import shared
+// modules. The refutation prompt is per-workflow, not shared.
 const VERIFY_SCHEMA = {
   type: 'object',
   properties: {

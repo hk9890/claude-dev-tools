@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# test-payload.sh — unit tests for buildFeedbackPayload in the ask-mode app.js
+# test-ask-payload.sh — unit tests for buildAskPayload in the ask-mode app.js
 # (assets/ask/app.js).
 #
 # Loads the pure function via Node require() (no DOM, no CSRF_TOKEN global)
 # and asserts it produces an object matching the ask-submit-schema.md
 # shape for representative widget states.
 #
-# Part of the html-visualization plugin test harness; auto-discovered by run-all.sh.
+# Part of the html-visualization plugin test harness; auto-discovered by tests/run-all.sh.
 
 set -uo pipefail
 
@@ -59,7 +59,7 @@ fi
 
 run_node_test "payload has exactly verdict, answers, comments, freeform keys" "
 var app = require('$APP_JS');
-var payload = app.buildFeedbackPayload({
+var payload = app.buildAskPayload({
   verdict: 'approve',
   answers: {},
   comments: [],
@@ -77,7 +77,7 @@ if (JSON.stringify(keys) !== JSON.stringify(expected)) {
 
 run_node_test "verdict value passes through verbatim (approve)" "
 var app = require('$APP_JS');
-var payload = app.buildFeedbackPayload({
+var payload = app.buildAskPayload({
   verdict: 'approve',
   answers: {},
   comments: [],
@@ -91,7 +91,7 @@ if (payload.verdict !== 'approve') {
 
 run_node_test "verdict value passes through verbatim (approve-with-changes)" "
 var app = require('$APP_JS');
-var payload = app.buildFeedbackPayload({
+var payload = app.buildAskPayload({
   verdict: 'approve-with-changes',
   answers: { 'q1': 'some text' },
   comments: [],
@@ -105,7 +105,7 @@ if (payload.verdict !== 'approve-with-changes') {
 
 run_node_test "verdict value passes through verbatim (reject)" "
 var app = require('$APP_JS');
-var payload = app.buildFeedbackPayload({
+var payload = app.buildAskPayload({
   verdict: 'reject',
   answers: {},
   comments: [],
@@ -121,7 +121,7 @@ if (payload.verdict !== 'reject') {
 
 run_node_test "answers is an object when empty" "
 var app = require('$APP_JS');
-var payload = app.buildFeedbackPayload({
+var payload = app.buildAskPayload({
   verdict: 'approve',
   answers: {},
   comments: [],
@@ -139,7 +139,7 @@ if (Object.keys(payload.answers).length !== 0) {
 
 run_node_test "answers map carries through with question values" "
 var app = require('$APP_JS');
-var payload = app.buildFeedbackPayload({
+var payload = app.buildAskPayload({
   verdict: 'approve',
   answers: { 'q1': 'yes', 'q2': ['a', 'b'], 'q-approach-a': 'approve' },
   comments: [],
@@ -160,7 +160,7 @@ if (payload.answers['q-approach-a'] !== 'approve') {
 
 run_node_test "non-empty comments survive in payload" "
 var app = require('$APP_JS');
-var payload = app.buildFeedbackPayload({
+var payload = app.buildAskPayload({
   verdict: 'approve',
   answers: {},
   comments: [
@@ -185,7 +185,7 @@ if (c.anchor !== '#q1' || c.text !== 'This needs clarification.') {
 
 run_node_test "zero-length comment text is filtered out (schema requirement)" "
 var app = require('$APP_JS');
-var payload = app.buildFeedbackPayload({
+var payload = app.buildAskPayload({
   verdict: 'approve',
   answers: {},
   comments: [
@@ -195,7 +195,7 @@ var payload = app.buildFeedbackPayload({
   ],
   freeform: ''
 });
-// Only the non-empty text survives; whitespace-only is not trimmed by buildFeedbackPayload
+// Only the non-empty text survives; whitespace-only is not trimmed by buildAskPayload
 // (trimming is the UI's job), but empty-string IS filtered.
 var empties = payload.comments.filter(function(c) { return c.text === ''; });
 if (empties.length > 0) {
@@ -214,7 +214,7 @@ if (real.length !== 1 || real[0].text !== 'real comment') {
 
 run_node_test "freeform is a string when empty" "
 var app = require('$APP_JS');
-var payload = app.buildFeedbackPayload({
+var payload = app.buildAskPayload({
   verdict: 'approve',
   answers: {},
   comments: [],
@@ -230,7 +230,7 @@ if (payload.freeform !== '') {
 
 run_node_test "freeform string passes through verbatim" "
 var app = require('$APP_JS');
-var payload = app.buildFeedbackPayload({
+var payload = app.buildAskPayload({
   verdict: 'reject',
   answers: {},
   comments: [],
@@ -245,7 +245,7 @@ if (payload.freeform !== 'The timeline is too aggressive and ignores risk.') {
 
 run_node_test "comment entries have exactly anchor and text fields" "
 var app = require('$APP_JS');
-var payload = app.buildFeedbackPayload({
+var payload = app.buildAskPayload({
   verdict: 'approve',
   answers: {},
   comments: [{ anchor: '#section-1', text: 'Note here.' }],
@@ -262,7 +262,7 @@ if (JSON.stringify(ckeys) !== JSON.stringify(['anchor','text'])) {
 
 run_node_test "missing state fields produce safe defaults (no throw)" "
 var app = require('$APP_JS');
-var payload = app.buildFeedbackPayload({});
+var payload = app.buildAskPayload({});
 if (typeof payload.verdict !== 'string') { console.error('verdict not string'); process.exit(1); }
 if (typeof payload.answers !== 'object' || Array.isArray(payload.answers)) { console.error('answers not object'); process.exit(1); }
 if (!Array.isArray(payload.comments)) { console.error('comments not array'); process.exit(1); }
