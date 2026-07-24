@@ -70,10 +70,23 @@ import sys
 # Import the heading-slug utilities from validate-routes.py
 # ---------------------------------------------------------------------------
 
-def _load_validate_routes(repo_root):
-    """Import the validate_routes module from the project-review plugin script."""
+# This script lives in <repo-root>/scripts/, so the repo root is one level up. Defined
+# here rather than beside _parse_args because _load_validate_routes below depends on it.
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+
+
+def _load_validate_routes():
+    """Import the validate_routes module from the project-review plugin script.
+
+    Resolved from THIS script's own location, never from the tree being audited. The
+    module is a dependency of the checker, not an artifact of the subject: keying it to
+    --repo-root meant any tree without a vendored copy of project-review died here on a
+    load error before a single check ran, so `--repo-root <other-project>` — an
+    advertised, first-class flag — could never work. manifest.py already resolves the
+    same module from its own directory; this brings the two consumers into agreement.
+    """
     vr_path = os.path.join(
-        repo_root,
+        _REPO_ROOT,
         "plugins", "project-review", "skills", "project-review-docs", "scripts", "validate-routes.py",
     )
     spec = importlib.util.spec_from_file_location("validate_routes", vr_path)
@@ -427,10 +440,6 @@ def run_version_uniformity_check(marketplace):
 # Argument parsing
 # ---------------------------------------------------------------------------
 
-# This script lives in <repo-root>/scripts/, so the repo root is one level up.
-_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-
-
 def _parse_args(argv):
     parser = argparse.ArgumentParser(
         description="Validate internal cross-references and version mirrors.",
@@ -480,7 +489,7 @@ def main():
 
     # Load the heading-scan/slug utilities from validate-routes.py
     try:
-        vr_mod = _load_validate_routes(repo_root)
+        vr_mod = _load_validate_routes()
     except Exception as exc:
         print(f"Error: cannot load validate-routes.py: {exc}", file=sys.stderr)
         sys.exit(1)
