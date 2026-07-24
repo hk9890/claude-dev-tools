@@ -627,19 +627,32 @@ const workers = workerResults.filter(Boolean)
 const audited = workers.filter(w => w.audited)
 log(`Workers: ${audited.length}/${components.length} component(s) fully audited (mode=${mode}${parallelWorkers ? ', parallel' : ', serialized'})`)
 
-// Nothing was audited, so there is no evidence to score: kill_rate is killed
-// over total mutants across AUDITED components, which is 0/0 here. Synthesis
-// would still be asked for a verdict and the schema permits any of them, so a
-// confident one could be reported on no evidence at all. Abort instead — the
-// whole value of the audit is a verdict that was earned.
-if (audited.length === 0) {
+// Guard the score's denominator, not just the component count. kill_rate is killed
+// over total mutants across AUDITED components; that is 0/0 whenever no audited
+// component carries a mutant, which includes the case where a worker reports
+// audited=true with an empty mutants array. Synthesis would still be asked for a
+// verdict and the schema permits any of them, so a confident one could be reported
+// on no evidence. Abort instead — the whole value of the audit is an earned verdict.
+const auditedMutants = audited.reduce((n, w) => n + ((w.mutants && w.mutants.length) || 0), 0)
+if (auditedMutants === 0) {
+  // A worker can finish every mutant and still fail the integrity gate, returning
+  // audited=false with a populated mutants array — so "no mutant ran" would be false.
+  // Say what is actually true: nothing scoreable survived.
+  const reasons = workers
+    .filter(w => !w.audited)
+    .map(w => `  ${w.component}: ${w.not_audited_reason || 'no reason reported'}`)
+    .join('\n')
   return await abortReport(
-    'no component was audited — every worker failed or was skipped, so no mutant was ever run',
+    'no component completed the protocol, so no mutant result is scoreable',
     `Components selected: ${components.length} (${components.map(c => c.name).join(', ') || 'none'})\n` +
     `Workers returning a record: ${workers.length}\n` +
-    `Workers reporting audited=true: 0\n` +
-    `Mode: ${mode}${parallelWorkers ? '' : ' (serialized)'}, level=${level}, can_slice=${baseline.can_slice}`,
-    'Check whether the suite can be sliced to a single component (can_slice above) and whether the worker agents could write to the scratch dir; re-run at a lower level or scope the audit to one component with a known-good filter.'
+    `Workers reporting audited=true: ${audited.length}\n` +
+    `Mutants across audited components: 0\n` +
+    (reasons ? `Why each worker did not complete:\n${reasons}\n` : '') +
+    `Mode: ${mode}${parallelWorkers ? '' : ' (serialized)'}, level=${level}\n` +
+    `Baseline: cmd="${baseline.test_cmd}" wall=${baseline.wall_s}s coverage=${baseline.coverage.pct != null ? baseline.coverage.pct + '%' : 'none'} ` +
+    `can_slice=${baseline.can_slice} filter_syntax=${baseline.filter_syntax || 'none found'}`,
+    'Start from the per-worker reasons above. If they cite filtering, the suite could not be sliced to a single component — check can_slice and filter_syntax and scope the audit to one component with a known-good filter. If they cite the workspace, the worker could not write to the scratch dir or the integrity check failed. Re-running at a lower level reduces the per-component work.'
   )
 }
 
