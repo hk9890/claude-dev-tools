@@ -53,6 +53,15 @@ if ! command -v systemd-inhibit >/dev/null 2>&1; then
   exit 0
 fi
 
+# flock serialises concurrent do_start (see the comment there). Absent it we
+# still run — an unlocked refresh beats no inhibitor at all — but the race is
+# back, so the degraded path logs itself rather than passing silently.
+if command -v flock >/dev/null 2>&1; then
+  HAVE_FLOCK=1
+else
+  HAVE_FLOCK=0
+fi
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 ensure_dirs() {
@@ -84,29 +93,40 @@ verify_our_inhibitor() {
   grep -q 'claude-keep-awake' "/proc/$pid/cmdline" 2>/dev/null
 }
 
+# Sweep markers whose inhibitor is gone. Each session is examined under its own
+# lock: gc is global, so a per-session lock held by a concurrent start/stop gives
+# it no protection otherwise, and it would delete a marker whose inhibitor is
+# still in the fork→exec window — orphaning it exactly like an unlocked refresh.
+# Never call this while holding a session lock; both call sites are outside one.
 gc() {
   ensure_dirs
-  local marker pid
+  local marker sid
   shopt -s nullglob
   for marker in "$SESSIONS_DIR"/*.pid; do
-    pid=$(cat "$marker" 2>/dev/null || true)
-    if [ -z "$pid" ] || ! verify_our_inhibitor "$pid"; then
-      rm -f "$marker"
+    sid=$(basename "$marker" .pid)
+    if [ "$HAVE_FLOCK" = 1 ]; then
+      ( flock 9; gc_one "$marker" ) 9>"$SESSIONS_DIR/$sid.lock"
+    else
+      gc_one "$marker"
     fi
   done
   shopt -u nullglob
 }
 
+gc_one() {
+  local marker=$1 pid
+  pid=$(cat "$marker" 2>/dev/null || true)
+  if [ -z "$pid" ] || ! verify_our_inhibitor "$pid"; then
+    rm -f "$marker"
+  fi
+}
+
 # ── Verbs ─────────────────────────────────────────────────────────────────────
 
-do_start() {
+# The spawn/install/kill sequence. Always called under the per-session lock
+# when flock is available — see do_start.
+start_critical() {
   local SID=$1
-  if ! validate_sid "$SID"; then
-    log_event "hook=- sid=- verb=start outcome=no-op-invalid-sid"
-    exit 0
-  fi
-  ensure_dirs
-  gc
 
   # Capture old PID before overwriting the marker
   local OLD_PID=""
@@ -114,18 +134,24 @@ do_start() {
     OLD_PID=$(cat "$SESSIONS_DIR/$SID.pid" 2>/dev/null || true)
   fi
 
-  # Spawn new inhibitor in the background
+  # Spawn new inhibitor in the background. `9>&-` is load-bearing: the inhibitor
+  # would otherwise inherit do_start's lock fd and hold the lock for its entire
+  # TTL, so the next refresh would block for half an hour instead of microseconds.
   setsid systemd-inhibit \
     --what=idle:sleep \
     --who="claude-keep-awake" \
     --why="Claude session $SID" \
     --mode=block \
-    sleep "$TTL" >/dev/null 2>&1 &
+    sleep "$TTL" >/dev/null 2>&1 9>&- &
   local NEW_PID=$!
 
-  # Atomic install of new marker
-  echo "$NEW_PID" > "$SESSIONS_DIR/$SID.pid.tmp"
-  mv -f "$SESSIONS_DIR/$SID.pid.tmp" "$SESSIONS_DIR/$SID.pid"
+  # Atomic install of new marker. The temp name carries $$ because a shared
+  # temp path let one invocation's mv consume another's source file; under
+  # `set -e` the loser then died right here, before the cleanup and logging
+  # below — which is why leaked inhibitors left no trace in the log.
+  local TMP="$SESSIONS_DIR/$SID.pid.$$.tmp"
+  echo "$NEW_PID" > "$TMP"
+  mv -f "$TMP" "$SESSIONS_DIR/$SID.pid"
 
   # Verify-then-kill the old inhibitor (zero-gap: new one is already live)
   if [ -n "$OLD_PID" ] && [ "$OLD_PID" != "$NEW_PID" ] && verify_our_inhibitor "$OLD_PID"; then
@@ -136,13 +162,38 @@ do_start() {
   fi
 }
 
-do_stop() {
+do_start() {
   local SID=$1
   if ! validate_sid "$SID"; then
-    log_event "hook=- sid=- verb=stop outcome=no-op-invalid-sid"
+    log_event "hook=- sid=- verb=start outcome=no-op-invalid-sid"
     exit 0
   fi
   ensure_dirs
+  gc
+
+  # PreToolUse and PostToolUse both route here, and parallel tool calls fire
+  # them concurrently. start_critical is a read-modify-write over one marker:
+  # unlocked, every racing invocation spawns its own inhibitor, the last marker
+  # write wins, and the losers' inhibitors go untracked — no marker names them,
+  # so neither do_stop nor gc can ever reap them and they hold the machine awake
+  # for a full TTL past session exit.
+  #
+  # The lock file is separate from the marker because `mv` replaces the marker's
+  # inode, which would drop the lock. It is left in place on stop: unlinking a
+  # lock another process still holds would hand the next caller a fresh inode
+  # and no mutual exclusion. They are empty and live in the runtime dir.
+  if [ "$HAVE_FLOCK" = 1 ]; then
+    ( flock 9; start_critical "$SID" ) 9>"$SESSIONS_DIR/$SID.lock"
+  else
+    log_event "hook=- sid=${SID:0:8} verb=start outcome=degraded-flock-missing"
+    start_critical "$SID"
+  fi
+}
+
+# The read/kill/unlink sequence. Always called under the per-session lock when
+# flock is available — see do_stop.
+stop_critical() {
+  local SID=$1
 
   if [ -f "$SESSIONS_DIR/$SID.pid" ]; then
     local PID
@@ -158,6 +209,27 @@ do_stop() {
     rm -f "$SESSIONS_DIR/$SID.pid"
   else
     log_event "hook=- sid=${SID:0:8} verb=stop outcome=no-op-no-marker"
+  fi
+}
+
+do_stop() {
+  local SID=$1
+  if ! validate_sid "$SID"; then
+    log_event "hook=- sid=- verb=stop outcome=no-op-invalid-sid"
+    exit 0
+  fi
+  ensure_dirs
+
+  # Same lock as do_start, and for the same reason from the other side: SessionEnd
+  # routinely fires while a PostToolUse start is still in flight. Unlocked, that
+  # start installs a fresh marker between this read and the unlink below, and the
+  # `rm -f` then deletes a marker naming a live inhibitor — orphaning it for a
+  # full TTL. Measured at 8 leaks in 20 two-process trials before this lock.
+  if [ "$HAVE_FLOCK" = 1 ]; then
+    ( flock 9; stop_critical "$SID" ) 9>"$SESSIONS_DIR/$SID.lock"
+  else
+    log_event "hook=- sid=${SID:0:8} verb=stop outcome=degraded-flock-missing"
+    stop_critical "$SID"
   fi
 
   gc
