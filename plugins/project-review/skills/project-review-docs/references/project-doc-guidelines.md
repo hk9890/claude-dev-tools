@@ -10,7 +10,7 @@ Use with:
 ## Authoring objectives
 
 1. Keep docs actionable for this repository.
-2. Keep docs compact enough for selective loading.
+2. Keep docs compact enough for selective loading (A11).
 3. Preserve strict topic boundaries.
 4. Avoid duplicating reusable baseline workflows already provided by installed skills.
 
@@ -44,9 +44,10 @@ When a skill covers a generic workflow, local docs should only add repository-sp
 
 ### A5 — Scanability
 
-- short sections
-- short bullets
+Structure a reader can skim (length itself is A11):
+
 - explicit headings
+- one idea per bullet
 - links over duplicated background
 
 ### A6 — Canonical change-landing placement
@@ -81,6 +82,18 @@ distinct from A3 (the *topic* axis): two files can share a topic yet differ by a
 (`CODING.md` for the agent, `CONTRIBUTING.md` for a human). Each file's audience and
 *Inside* / *Not inside* boundary is fixed in [project-setup.md](project-setup.md)
 (**File ownership boundaries**); enforced on the review side by R10.
+
+### A11 — Economy
+
+Write for an agent reading under load: each section as short as its content allows, in the
+register of a command reference rather than narrative prose. A file spending more words than
+its content earns is a finding on its own, independent of accuracy — as is a hollow section
+kept for symmetry, or review-commentary and TODOs left in the body.
+
+An economy finding cites the specific spans it would cut, so the recommendation is
+falsifiable rather than a verdict on the file's feel. Severity tracks what the bloat costs a
+reader: a file whose length actively obscures the procedure it documents is `major`, not a
+housekeeping note.
 
 ## Hard prohibitions
 
@@ -118,7 +131,7 @@ Side-by-side examples for the most common violations. Use these as templates whe
 > Use the `commit-commands:commit` skill for the standard flow.
 > **Local delta:** include `Refs: <task-id>` line when a taskmgr task exists for the change.
 
-### Wall of code → file pointer + invariant (A5)
+### Wall of code → file pointer + invariant (A5/A11)
 
 **Bad** — 50-line script pasted inline.
 
@@ -143,3 +156,6 @@ A suggested fix should clear this bar before you recommend it (the auditor propo
 1. Paths and commands referenced by the suggested fix are real.
 2. Linked files/anchors in the suggested fix resolve.
 3. Skill-backed sections in the suggested fix describe local deltas rather than duplicating full generic flow.
+4. The fix is an **edit, not an append** — it names what the new text replaces, or states why
+   nothing is superseded. Rounds of pure addition are each locally reasonable and leave the
+   doc set permanently longer.

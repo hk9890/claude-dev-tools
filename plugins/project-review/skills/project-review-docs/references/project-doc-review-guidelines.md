@@ -6,11 +6,11 @@ contract, the stages, and the vocabulary the report uses.
 Use with:
 
 - [project-setup.md](project-setup.md) — canonical doc set + file ownership (Inside / Not inside)
-- [project-doc-guidelines.md](project-doc-guidelines.md) — authoring rules A1–A10 + hard prohibitions
+- [project-doc-guidelines.md](project-doc-guidelines.md) — authoring rules A1–A11 + hard prohibitions
 
 ## Rule codes
 
-- **A1–A10** — the authoring rules (defined in `project-doc-guidelines.md`).
+- **A1–A11** — the authoring rules (defined in `project-doc-guidelines.md`).
 - **R10** — audience/purpose fit: content outside a file's *Inside* boundary is a finding even when accurate (the review-side of A10).
 - **R11** — canonical-topic placement: a non-canonical doc whose content *is* a canonical topic is renamed or linked to its canonical home (mechanic in `project-setup.md`).
 
@@ -23,17 +23,17 @@ Use with:
 ## The four stages (what the workflow does)
 
 1. **Manifest** — `scripts/manifest.py` emits the deterministic facts (files, present/missing canonical docs, line/word/byte counts, link + anchor resolution, reachability from `AGENTS.md`, the `CLAUDE.md` invariant, hollow docs, routes). Facts only; scripts never judge belonging or accuracy.
-2. **Read-review** — one agent per doc, each carrying only its own ownership contract. For every unit of content it asks *true?* (verify against the repo) and *belongs here?* (accurate-but-misplaced content is a finding — A10/R10), and judges form (compact, agent-facing, not bloated). Non-standard docs are judged for placement (R11).
+2. **Read-review** — one agent per doc, each carrying only its own ownership contract. For every unit of content it asks *true?* (verify against the repo) and *belongs here?* (accurate-but-misplaced content is a finding — A10/R10), and judges the file as a whole against A11 (economy). Non-standard docs are judged for placement (R11).
 3. **Execution test** — the docs are used, not just read. Per `AGENTS.md` route: a driver generates a task from the target doc and holds the answer key; a cold, uncoached action agent attempts it from `AGENTS.md` in the live repo; the driver grades the session against its key.
 4. **Synthesis** — merge, dedupe, and reconcile across files (sibling contradictions; a missing canonical doc whose content lives under a different name), then verdict + report.
 
 ## Severity
 
 - `blocker` — a documented fact/procedure that is wrong or a doc that is largely the wrong genre for its owner; misleads confidently.
-- `major` — a real scope/actionability/belonging gap (a localized out-of-boundary spill, a stale command, a routing gap).
-- `minor` — clarity/scanability/compactness.
+- `major` — a real scope/actionability/belonging gap (a localized out-of-boundary spill, a stale command, a routing gap), or bloat heavy enough to obscure the procedure a file documents (A11).
+- `minor` — clarity, scanability, and economy defects a reader absorbs without being misled.
 
-Raise one level when the defect directly breaks a real workflow (a stale command in `RELEASING.md` is a blocker, not a minor).
+Raise one level when the defect directly breaks a real workflow (a stale command in `RELEASING.md` is a blocker, not a minor). Economy is judged by what the bloat costs a reader, not by line count alone — `minor` is its floor, not its ceiling.
 
 ## Execution verdicts
 

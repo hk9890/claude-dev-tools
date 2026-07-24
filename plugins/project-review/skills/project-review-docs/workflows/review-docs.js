@@ -18,8 +18,14 @@ if (typeof A === 'string') { try { A = JSON.parse(A) } catch (e) { A = {} } }
 A = A || {}
 const repoRoot = A.repoRoot
 const scriptsDir = A.scriptsDir
+// Every stage needs it: the manifest shells out to it, and the read-review agents read the
+// authoring rules resolved from it. Without it the run dies at the manifest with a confusing
+// "undefined/manifest.py"; fail here instead, while the cause is still legible.
+if (!scriptsDir) {
+  return { error: 'scriptsDir is required — it locates manifest.py and the authoring rules', repoRoot }
+}
 // The authoring rules the read-review agents apply live next to the scripts.
-const guidelinesFile = scriptsDir ? scriptsDir.replace(/scripts\/?$/, 'references') + '/project-doc-guidelines.md' : ''
+const guidelinesFile = scriptsDir.replace(/scripts\/?$/, 'references') + '/project-doc-guidelines.md'
 // cost bundles the real thoroughness levers: low = read-review only (no execution),
 // medium = execution on a few routes, high = every route, ultra = high + a verify
 // pass.
@@ -204,9 +210,7 @@ function readReviewPrompt(f) {
     `Metrics (from the deterministic manifest — do NOT recompute): ${m.lines} lines, ${m.words} words, ${m.non_heading_lines} content lines.\n` +
     `Links were already resolved by the manifest. Unresolved links in this file:\n${dead}\n\n` +
     `Read the FULL file now, then judge it. You see only THIS file and its contract — there is no doc set to satisfice against.\n` +
-    (guidelinesFile
-      ? `\nApply the authoring rules — read ${guidelinesFile} once (rules A1–A10 and the hard prohibitions). They define the accuracy, belonging, and form bar; apply them alongside this file's contract.\n`
-      : '')
+    `\nApply the authoring rules — read ${guidelinesFile} once, all of it: rules A1–A11, the hard prohibitions, and the closing "What a good fix looks like" bar. The rules define the accuracy, belonging, and form bar for the file; the closing bar is what every fix you recommend must itself clear. Apply them alongside this file's contract.\n`
 
   if (f.contract) {
     const c = f.contract
@@ -218,7 +222,7 @@ function readReviewPrompt(f) {
       `For EVERY unit of content — each claim, command, path, table, and section — ask two questions before moving on:\n` +
       `1. TRUE? Verify it against the repo with read-only grep/read (the referenced file/script/flag/command actually exists and matches). A false claim is an accuracy finding.\n` +
       `2. BELONGS HERE? Is it inside this file's Inside boundary? Content that matches Not-inside is a BELONGING finding EVEN IF perfectly accurate (rule A10). Its fix routes the content to the owning file — never "keep it as a subsection here". A file that is largely the wrong genre is a blocker; a localized spill is major.\n\n` +
-      `Also judge FORM: is it compact and to-the-point, written for an agent (not narrative human prose, not review-comments/TODO/meta-commentary), and not longer than it needs to be for what it says (${m.lines} lines)? Bloat, hollow sections, or non-agent-facing cruft are form findings.\n\n` +
+      `Then judge the file as a whole against rule A11 (economy) — it spends ${m.lines} lines on what it says. A11 defines that bar; apply it from the rules file rather than from memory, and raise what fails it as a form finding naming the spans you would cut.\n\n` +
       `Do not run commands. Read-only. Return findings with concrete evidence (quote the offending lines / cite the repo fact). Empty findings array if the file is genuinely clean — do not invent problems.`
   }
   // Non-standard file: judge placement (does its content belong to a canonical topic?).
@@ -387,6 +391,7 @@ const report = await agent(
   `EXECUTION-TEST VERDICTS (behavioral: could an agent use the docs?):\n${JSON.stringify(execGraded, null, 2)}\n\n` +
   `Do all of the following:\n` +
   `1. Merge and DEDUPE findings (the same defect surfaced by read-review and execution is ONE finding — cite the strongest evidence).\n` +
+  `   When merging, PRESERVE what each recommended_action says it replaces, cuts, or supersedes — the lines it names are the fix, not decoration. A recommended_action that only adds text must say why nothing existing is superseded. Never compress a specific replacement into a general instruction to improve the section.\n` +
   `2. Cross-file reconciliation the per-file agents could not see: sibling contradictions on shared facts; and match any missing canonical doc to a non-standard doc whose content actually IS that topic (rename/link).\n` +
   `3. Fold execution findings in: a 'found-but-insufficient' or 'couldnt-route' verdict is a real doc finding; discard 'inconclusive' (non-doc attribution).\n` +
   `4. Assign an overall verdict: accurate / minor gaps / significant gaps / misleading. A clean 'accurate' requires no blocker/major AND positive coverage — not merely absence of findings.\n\n` +
