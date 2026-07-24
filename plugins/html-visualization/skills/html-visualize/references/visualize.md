@@ -101,12 +101,19 @@ Pick the simplest form that communicates the data clearly.
 
 | Content | Recommended form |
 |---|---|
-| Hierarchy or graph with few nodes (< ~30) | Inline SVG |
+| Dependency graph, call flow, sequence, state machine | [Mermaid](#mermaid-for-graph-shaped-content) |
+| Before/after structural comparison | [Mermaid pair](#beforeafter-pairs), side by side |
+| Hierarchy or graph with few nodes (< ~30) | Inline SVG, or Mermaid if the edges matter more than the layout |
 | Quantitative comparison (bar, line, scatter) | Inline SVG or a CDN chart library |
 | Tabular data | HTML `<table>` with `<thead>`/`<tbody>` |
-| Architecture or flow diagram | Inline SVG |
+| Architecture diagram with a deliberate visual point | Inline SVG (see [editorial diagrams](#editorial-diagrams-hand-built)) |
 | Text-heavy summary | Semantic HTML (`<dl>`, `<ul>`, `<section>`) |
 | Interactive / animated (timeline, treemap, force graph) | CDN chart library |
+
+**Rule of thumb**: if the content is *edges between named things*, reach for Mermaid —
+laying that out by hand in SVG is wasted effort. If the content is a *visual argument*
+(this box is thick, that one is hollow, six layers collapse into one), hand-build it;
+Mermaid will fight you and the result will look like every other flowchart.
 
 ### Inline SVG (preferred when feasible)
 
@@ -122,25 +129,115 @@ For colour, use the CSS custom properties already defined in the `<style>` block
 `var(--hv-accent)`, `var(--hv-muted)`, etc. This ensures the SVG respects the
 dark/light theme.
 
-### CDN chart library (acceptable for complex or interactive charts)
+### Mermaid (for graph-shaped content)
 
-When inline SVG would be prohibitively verbose or the visualization needs
-interactivity (zoom, tooltip, animation), load a chart library from a CDN. The
-most useful choices:
+Mermaid is the right tool whenever the content is **edges between named things** —
+dependency graphs, call flow, sequences, state machines. Write the diagram as text
+and let it lay itself out; do not hand-place nodes in SVG for this.
+
+Mermaid does **not** read the page's CSS custom properties. Left alone it renders its
+own palette, which will clash with the template in one scheme and be unreadable in the
+other. So it must be wired to the `--hv-*` tokens explicitly, and re-rendered when the
+colour scheme flips. Use this block verbatim — it is the whole integration:
+
+```html
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+
+  const hv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+  const blocks = [...document.querySelectorAll("pre.mermaid")];
+  blocks.forEach(b => { b.dataset.src = b.textContent; });
+
+  async function render() {
+    mermaid.initialize({
+      startOnLoad: false,
+      securityLevel: "strict",
+      theme: "base",
+      themeVariables: {
+        background:       hv("--hv-surface"),
+        primaryColor:     hv("--hv-surface-2"),
+        primaryTextColor: hv("--hv-text"),
+        primaryBorderColor: hv("--hv-border"),
+        lineColor:        hv("--hv-muted"),
+        secondaryColor:   hv("--hv-accent-tint"),
+        tertiaryColor:    hv("--hv-surface"),
+        fontFamily:       hv("--hv-font-body"),
+      },
+    });
+    // Restore the source and clear Mermaid's processed marker so a re-render works.
+    blocks.forEach(b => { b.innerHTML = b.dataset.src; b.removeAttribute("data-processed"); });
+    await mermaid.run({ nodes: blocks });
+  }
+
+  render();
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render);
+</script>
+```
+
+Each diagram is a `<pre class="mermaid">` inside a `.vis-mermaid-wrap`. Keep the
+diagram source indented consistently — Mermaid is whitespace-sensitive:
+
+```html
+<div class="vis-mermaid-wrap">
+  <pre class="mermaid">
+flowchart LR
+  A[OrderHandler] --> B[OrderValidator]
+  B --> C[OrderRepo]
+  C -.->|leaks| D[PricingClient]
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class C,D leak
+  </pre>
+</div>
+```
+
+For semantic colour that must survive a theme flip, prefer `classDef` with the same
+hues the template uses for meaning (`--hv-bad` for leakage, `--hv-ok` for the healthy
+path) rather than Mermaid's defaults.
+
+#### Before/after pairs
+
+A structural change reads best as two diagrams side by side, not one annotated diagram.
+Wrap them in `.vis-compare` (see the template) so they sit in two columns on a wide
+screen and stack on a narrow one. Label them **Before** and **After**, keep node names
+identical across the pair so the eye can track what moved, and keep each diagram under
+roughly a dozen nodes — past that the comparison stops being readable and you should
+show only the part that changes.
+
+### Editorial diagrams (hand-built)
+
+Some points are visual arguments rather than graphs, and Mermaid renders them limply.
+Hand-build these in SVG or divs:
+
+- **Mass diagram** — two stacked rectangles per module, one for interface surface and one
+  for implementation. A tall interface on a thin implementation reads as *shallow* at a
+  glance; a thin interface on a deep body reads as *deep*.
+- **Cross-section** — horizontal bands stacked to show the layers a call passes through.
+  Six thin bands collapsing into one thick band is the entire argument.
+- **Call-graph collapse** — nested boxes before, one box with faded internals after.
+
+Mixing these with Mermaid is deliberate. A page where every diagram is a Mermaid
+flowchart looks generic and flattens the distinction between "these things are
+connected" and "this thing is the wrong shape".
+
+### Other CDN chart libraries
+
+When inline SVG would be prohibitively verbose or the visualization needs interactivity
+(zoom, tooltip, animation):
 
 | Library | CDN snippet | Best for |
 |---|---|---|
 | Chart.js | `<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>` | Bar, line, pie, doughnut |
 | D3.js | `<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>` | Force graph, treemap, custom |
-| Mermaid | `<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>` | Flowcharts, sequence diagrams |
 
-Add the `<script>` tag to `<head>`. Write the chart initialisation in an inline
-`<script>` at the bottom of `<body>`. Keep the initialisation self-contained —
-no module bundler, no `import` statements.
+Add the `<script>` tag to `<head>` and initialise in an inline `<script>` at the bottom
+of `<body>`. These two are UMD globals — no `import` needed. (Mermaid is the exception:
+it is an ESM `import`, per the block above.)
 
-> **Tradeoff**: a CDN `<script>` requires a network connection when the page first
-> loads. A user who saves the file and opens it offline will see a blank chart.
-> Prefer inline SVG when the chart can be encoded statically.
+> **Tradeoff**: anything from a CDN — Mermaid included — needs the network on first load.
+> A user who clicks **Save** and reopens the file offline sees blank diagrams where the
+> Mermaid blocks were. Inline SVG has no such failure mode, so prefer it when the diagram
+> can be encoded statically and the graph is small enough to place by hand.
 
 ### HTML table
 
@@ -166,7 +263,11 @@ as a `file://` URL.
 **Theme-aware colours.** When you add chart colours or diagram fills, use the
 template's CSS custom properties (`--hv-bg`, `--hv-text`, `--hv-surface`,
 `--hv-accent`, `--hv-muted`) so the page follows the light/dark theme. For SVG
-fills and strokes, prefer `currentColor` or `var(--hv-accent)`.
+fills and strokes, prefer `currentColor` or `var(--hv-accent)`. Mermaid is the one
+renderer that cannot see those tokens — it needs the `themeVariables` bridge and the
+re-render listener from the [Mermaid section](#mermaid-for-graph-shaped-content). A
+Mermaid diagram that looks right in light mode and turns into dark-on-dark mush in dark
+mode means that block was skipped.
 
 **Responsive visuals.** Keep `max-width: 900px; margin: 0 auto` on the content
 container (already in the template). For SVGs, set `width="100%"` plus a
