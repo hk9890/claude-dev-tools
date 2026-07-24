@@ -26,7 +26,15 @@ const level = ['low', 'medium', 'high'].includes((A.level || '').toLowerCase())
   ? A.level.toLowerCase() : 'medium'
 // SKILL.md mints this per run with mktemp; worktree and backup paths below are indexed,
 // not unique, so the bare default is safe for one run at a time only.
-const scratchDir = A.scratchDir || '/tmp/test-tests-scratch'
+// Require absolute. This value is interpolated into `git worktree add` and
+// `git worktree remove --force`, and workers `mkdir -p` it — a relative value (an
+// unsubstituted "<SCRATCH>" placeholder is truthy and slips past a falsy check) would
+// put all of that inside the repository under audit.
+const scratchDirArg = String(A.scratchDir || '/tmp/test-tests-scratch')
+if (!scratchDirArg.startsWith('/')) {
+  return { error: `scratchDir must be an absolute path (got ${JSON.stringify(scratchDirArg)}) — worktrees and backups are created there, outside the repo`, repoRoot }
+}
+const scratchDir = scratchDirArg
 
 // Dials per level (design §8). Verify pass only at high; one rerun uses the
 // runner's shuffle flag at every level when the baseline discovered one.

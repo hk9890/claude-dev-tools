@@ -44,7 +44,7 @@ Nothing is ever committed, no test is written, nothing is installed.
 
    ```bash
    command -v python3 >/dev/null || { echo "python3 missing — stop and tell the user"; return 2>/dev/null || exit 1; }
-   SCRATCH=$(mktemp -d /tmp/test-tests-XXXXXX) && echo "SCRATCH=$SCRATCH"
+   SCRATCH=$(mktemp -d /tmp/test-tests-XXXXXX) && echo "$SCRATCH" || echo "mktemp failed — stop; do not launch without a scratch dir"
    git -C "<path>" status --porcelain > "$SCRATCH/pre-status.txt"
    git -C "<path>" diff > "$SCRATCH/pre-diff.patch"
    ( cd "<path>" && git ls-files --others --exclude-standard -z | xargs -0 -r md5sum ) > "$SCRATCH/pre-untracked.md5"
@@ -55,7 +55,7 @@ Nothing is ever committed, no test is written, nothing is installed.
 
 4. Invoke the **Workflow** tool:
    - `scriptPath`: `<SKILL_DIR>/workflows/test-tests.js`
-   - `args`: `{ "repoRoot": "<path>", "scriptsDir": "<SKILL_DIR>/scripts", "level": "<level>", "scratchDir": "<the echoed SCRATCH>" }`
+   - `args`: `{ "repoRoot": "<path>", "scriptsDir": "<SKILL_DIR>/scripts", "level": "<level>", "scratchDir": "<the absolute path printed above>" }`
 
    The workflow measures four axes — sensitivity (mutants must be killed),
    specificity (no-op edits must not break tests), reliability (reruns, shuffle,

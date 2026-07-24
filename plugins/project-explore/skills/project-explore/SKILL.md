@@ -127,8 +127,10 @@ If no exploration epic falls within the last 14 days, note "No recent exploratio
 Write the result to a throwaway temp file using the seven-section schema from `references/understanding-template.md`:
 
 ```bash
-# mktemp -d, not `mktemp --suffix`: --suffix is a GNU extension and absent on BSD/macOS.
-UNDERSTANDING_FILE="$(mktemp -d)/understanding.md"
+# Explicit template, not `mktemp --suffix`: --suffix is a GNU extension absent on BSD/macOS.
+# Echo it — shell state does not survive to the phase that reads the file back.
+UNDERSTANDING_FILE="$(mktemp -d /tmp/project-explore-XXXXXX)/understanding.md" \
+  && echo "UNDERSTANDING_FILE=$UNDERSTANDING_FILE"
 # write the filled template to $UNDERSTANDING_FILE
 ```
 

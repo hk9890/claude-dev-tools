@@ -35,7 +35,7 @@ const maxExec = (A.maxExecutionRoutes !== undefined)
 // read-only contract, on the stated grounds that it sits outside the repo. A relative
 // value — an unsubstituted "<SCRATCH>" placeholder is truthy and would slip past a bare
 // falsy check — would instead create a directory inside the tree being reviewed.
-const scratchDirArg = A.scratchDir || '/tmp/docreview-scratch'
+const scratchDirArg = String(A.scratchDir || '/tmp/docreview-scratch')
 if (!scratchDirArg.startsWith('/')) {
   return { error: `scratchDir must be an absolute path (got ${JSON.stringify(scratchDirArg)}) — the execution agent creates it outside the repo`, repoRoot }
 }

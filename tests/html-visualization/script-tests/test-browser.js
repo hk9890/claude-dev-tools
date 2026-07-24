@@ -11,7 +11,9 @@
  * Tests:
  *   1. Visualize --no-wait: page renders, always-on footer present,
  *      --hv-* CSS tokens resolve in both light and dark colour schemes.
- *   2. Feedback Apply loop: after an Apply submit the open browser tab
+ *   2. Visualize Send trims: a whitespace-only message writes no feedback file
+ *      and reports "Closed."; a padded message arrives trimmed.
+ *   3. Feedback Apply loop: after an Apply submit the open browser tab
  *      auto-reloads when a fresh fb-generation is served on the same port.
  */
 
@@ -291,7 +293,9 @@ async function testVisualizeSubmitTrims() {
       const freeform = wrote ? JSON.parse(fs.readFileSync(fbFile, 'utf8')).freeform : null;
       return { wrote, freeform, status };
     } finally {
-      try { srv.proc.kill('SIGTERM'); } catch (_) {}
+      // killServer, not a bare kill: it also unlinks the log file startServer opened.
+      try { killServer(srv); } catch (_) {}
+      try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {}
     }
   }
 

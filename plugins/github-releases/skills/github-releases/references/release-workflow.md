@@ -15,6 +15,10 @@ Before proceeding verify all gates pass:
   git fetch origin                                # without this the compare below
                                                   # reads a stale remote-tracking ref
                                                   # and passes on an out-of-date branch
+  git remote set-head origin -a >/dev/null 2>&1   # fetch does NOT refresh origin/HEAD, and a
+                                                  # stale value is non-empty so the fallback
+                                                  # below never fires — a renamed default
+                                                  # branch would be compared against silently
   DEFAULT_BRANCH=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|origin/||')
   DEFAULT_BRANCH=${DEFAULT_BRANCH:-$(git remote show origin | sed -n 's/.*HEAD branch: //p')}
   git diff HEAD "origin/$DEFAULT_BRANCH" --stat   # expect no differences
@@ -58,7 +62,7 @@ See [version-management.md](version-management.md) for semver rules and which fi
 The tag must point at a commit that contains the version bump. Commit the Phase 5 changes and push them to the default branch before tagging:
 
 ```bash
-# Re-derive in case this runs in a fresh shell (same fallback as Phase 1)
+# Re-derive in case this runs in a fresh shell (same sequence as Phase 1)
 git remote set-head origin -a >/dev/null 2>&1   # refresh origin/HEAD; plain fetch does NOT,
                                                 # so a renamed default branch stays stale here
 DEFAULT_BRANCH=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|origin/||')
@@ -77,7 +81,12 @@ If the project's `docs/RELEASING.md` prescribes its own commit/push procedure (e
 
 ```bash
 git fetch origin
-git diff "origin/$DEFAULT_BRANCH" -- <the version files>   # expect no differences
+# Assert the REMOTE's copy carries the release version. Diffing the working tree against
+# the remote answers a different question: it passes when the PR was never merged and the
+# agent is back on a stale local default, and fails when the merge succeeded but the local
+# branch has not caught up.
+git show "origin/$DEFAULT_BRANCH:<a version file>" | grep -q "<the release version>" \
+  || echo "FAIL: origin/$DEFAULT_BRANCH does not carry the release version — do not tag"
 ```
 
 ## Phase 7 — Create GitHub release

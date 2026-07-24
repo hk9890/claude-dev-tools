@@ -19,7 +19,11 @@ Then confirm you are **on** the default branch, not merely holding identical con
 sync check below compares trees, so it passes from any branch whose content matches:
 
 ```bash
-# DEFAULT_BRANCH is derived in release-workflow.md — Phase 1; reuse that derivation.
+# Derive in-block: each Bash call is a fresh shell, so a DEFAULT_BRANCH set by
+# release-workflow.md Phase 1 is not in scope here. Same sequence as that derivation.
+git remote set-head origin -a >/dev/null 2>&1
+DEFAULT_BRANCH=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|origin/||')
+DEFAULT_BRANCH=${DEFAULT_BRANCH:-$(git remote show origin | sed -n 's/.*HEAD branch: //p')}
 [ "$(git rev-parse --abbrev-ref HEAD)" = "$DEFAULT_BRANCH" ] || echo "FAIL: not on $DEFAULT_BRANCH"
 ```
 

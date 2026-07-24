@@ -32,12 +32,12 @@ docs inline. The workflow returns a structured report; relay it.
 
    ```bash
    command -v python3 >/dev/null || { echo "python3 missing — stop and fall back to a manual read"; return 2>/dev/null || exit 1; }
-   SCRATCH=$(mktemp -d /tmp/docreview-XXXXXX) && echo "SCRATCH=$SCRATCH"
+   SCRATCH=$(mktemp -d /tmp/docreview-XXXXXX) && echo "$SCRATCH" || echo "mktemp failed — stop; do not launch without a scratch dir"
    ```
 
 3. Invoke the **Workflow** tool:
    - `scriptPath`: `<SKILL_DIR>/workflows/review-docs.js`
-   - `args`: `{ "repoRoot": "<the step-1 path>", "scriptsDir": "<SKILL_DIR>/scripts", "cost": "<the step-1 cost>", "scratchDir": "<the echoed SCRATCH>" }`
+   - `args`: `{ "repoRoot": "<the step-1 path>", "scriptsDir": "<SKILL_DIR>/scripts", "cost": "<the step-1 cost>", "scratchDir": "<the absolute path printed above>" }`
    - `cost` rungs, on top of the per-file read-review that always runs:
      `low` = no execution phase; `medium` = execution on ~3 AGENTS routes;
      `high` = execution on every route; `ultra` = `high` plus an adversarial pass that
