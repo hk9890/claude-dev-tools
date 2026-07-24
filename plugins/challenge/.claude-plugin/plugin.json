@@ -1,7 +1,7 @@
 {
   "name": "challenge",
   "description": "On-demand adversarial passes over whatever is in front of you — grill stress-tests a plan or decision with pointed questions, kiss challenges accidental complexity and simplifies, and are-you-sure re-checks finished work against what was actually asked; project-agnostic, applies to anything",
-  "version": "1.23.0",
+  "version": "1.24.0",
   "author": {
     "name": "Hans Kohlreiter",
     "email": "hans.kohlreiter@gmail.com"
