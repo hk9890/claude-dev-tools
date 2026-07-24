@@ -18,12 +18,18 @@
 LAST_TAG=$(gh release view --json tagName --jq '.tagName' 2>/dev/null)
 LAST_TAG=${LAST_TAG:-$(git describe --tags --abbrev=0 2>/dev/null)}
 
-# List commits since last release
-git log "$LAST_TAG"..HEAD --oneline
+# List commits since last release. Guard on the empty case first: `git log ..HEAD`
+# with an empty LAST_TAG exits 0 printing nothing, which reads as "no commits since
+# the last release" when it actually means "no last release was found".
+if [ -z "$LAST_TAG" ]; then
+  echo "no release or tag found — this is a first release; analyze full history"
+else
+  git log "$LAST_TAG"..HEAD --oneline
 
-# Detailed diff
-gh api "repos/:owner/:repo/compare/$LAST_TAG...HEAD" \
-  --jq '.commits[].commit.message'
+  # Detailed diff
+  gh api "repos/{owner}/{repo}/compare/$LAST_TAG...HEAD" \
+    --jq '.commits[].commit.message'
+fi
 ```
 
 If `LAST_TAG` is still empty (first release: no GitHub release and no tags), analyze the full history instead: `git log --oneline` and start from the project's current declared version.

@@ -4,11 +4,19 @@
 
 Check all files that reference the version number:
 
+Take the authoritative file list from the project's own `docs/RELEASING.md` (see
+[version-management.md](version-management.md)) rather than assuming a manifest name. A
+hardcoded set silently matches nothing in projects that keep versions elsewhere — a plugin
+marketplace with a dozen `plugin.json` files, for instance — and the check then passes on zero
+evidence.
+
 ```bash
-# Find version references
-grep -r "version" package.json setup.py pyproject.toml Cargo.toml 2>/dev/null
-grep -rn "v[0-9]\+\.[0-9]\+\.[0-9]\+" README.md docs/ 2>/dev/null
+# Whatever files that project declares as carrying the version, plus a portable sweep
+# of prose. -E for portability: \+ is a GNU extension in a basic regex.
+grep -rnE "v?[0-9]+\.[0-9]+\.[0-9]+" <the version files RELEASING.md names> README.md docs/ 2>/dev/null
 ```
+
+If that yields nothing, treat it as "not checked", not as "all agree".
 
 This check runs twice with different pass criteria:
 

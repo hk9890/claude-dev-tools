@@ -59,6 +59,8 @@ The tag must point at a commit that contains the version bump. Commit the Phase 
 
 ```bash
 # Re-derive in case this runs in a fresh shell (same fallback as Phase 1)
+git remote set-head origin -a >/dev/null 2>&1   # refresh origin/HEAD; plain fetch does NOT,
+                                                # so a renamed default branch stays stale here
 DEFAULT_BRANCH=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|origin/||')
 DEFAULT_BRANCH=${DEFAULT_BRANCH:-$(git remote show origin | sed -n 's/.*HEAD branch: //p')}
 
@@ -71,7 +73,12 @@ git status --porcelain            # expect empty
 git diff HEAD "origin/$DEFAULT_BRANCH" --stat   # expect no differences
 ```
 
-If the project's `docs/RELEASING.md` prescribes its own commit/push procedure (e.g. a version-bump PR), follow that instead — but never proceed to Phase 7 with the bump uncommitted or unpushed.
+If the project's `docs/RELEASING.md` prescribes its own commit/push procedure (e.g. a version-bump PR), follow that instead — but never proceed to Phase 7 with the bump uncommitted or unpushed. That path needs its own check: the bump lands via a server-side merge, so no local push updates the remote-tracking ref and the re-verify above would report a spurious difference. Fetch first, then confirm the merged bump is actually on the remote default branch:
+
+```bash
+git fetch origin
+git diff "origin/$DEFAULT_BRANCH" -- <the version files>   # expect no differences
+```
 
 ## Phase 7 — Create GitHub release
 
