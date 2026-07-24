@@ -114,6 +114,54 @@ build_merge_repo() {
   printf '%s %s\n' "$repo" "$base"
 }
 
+# Build a repo shaped like a real long-running PR: the feature branch merges the default
+# branch IN (resolving conflicts) and is only then merged BACK via a PR. That yields TWO
+# merge commits, but only one of them is a PR. Mirrors the history that exposed the bug.
+#   $1 = repo-relative path created on the feature branch (decides validator surface)
+#   $2 = PR merge commit subject
+# Echoes "<repo-dir> <base-sha>".
+build_two_merge_repo() {
+  local touch_path="$1" subject="$2"
+  local repo; repo=$(mktemp -d)
+  git -C "$repo" init -q
+  git -C "$repo" config user.email t@example.com
+  git -C "$repo" config user.name 'Test'
+  git -C "$repo" config commit.gpgsign false
+  printf 'init\n' > "$repo/README.md"
+  git -C "$repo" add -A
+  git -C "$repo" commit -qm 'initial'
+  local base def
+  base=$(git -C "$repo" rev-parse HEAD)
+  def=$(git -C "$repo" branch --show-current)
+
+  # feature branch does its work
+  git -C "$repo" checkout -q -b feature
+  mkdir -p "$repo/$(dirname "$touch_path")"
+  printf 'x\n' > "$repo/$touch_path"
+  git -C "$repo" add -A
+  git -C "$repo" commit -qm 'feature change'
+
+  # Meanwhile the default branch moves, touching VALIDATOR SURFACE — this detail is what
+  # makes the fixture reproduce the bug. The audit inspects a merge only when that merge's
+  # own diff touches a validator path, so if the default branch moved on, say, README.md
+  # the intra-branch merge would be skipped and the bug would stay hidden. The real case
+  # was a release bumping every plugins/*/.claude-plugin/plugin.json.
+  git -C "$repo" checkout -q "$def"
+  mkdir -p "$repo/plugins/otherplugin/.claude-plugin"
+  printf '{"version":"1.24.0"}\n' > "$repo/plugins/otherplugin/.claude-plugin/plugin.json"
+  git -C "$repo" add -A
+  git -C "$repo" commit -qm 'version bump on default branch'
+
+  # the branch merges the default branch IN — this is the commit that must NOT count
+  git -C "$repo" checkout -q feature
+  git -C "$repo" merge -q --no-ff "$def" -m "Merge remote-tracking branch 'origin/$def' into feature"
+
+  # finally the PR merge
+  git -C "$repo" checkout -q "$def"
+  git -C "$repo" merge -q --no-ff feature -m "$subject"
+  printf '%s %s\n' "$repo" "$base"
+}
+
 VALIDATOR_FILE='plugins/myplugin/skills/myskill/SKILL.md'   # matches plugins/*/skills/**
 NON_VALIDATOR_FILE='docs/GUIDE.md'                          # matches no validator pattern
 PR_SUBJECT='Merge pull request #42 from u/feature'
@@ -234,6 +282,28 @@ test_fail_taskmgr_lookup_warns() {
   rm -rf "$repo"
 }
 
+# A branch that merged the default branch in mid-flight must not be counted as a second
+# PR. Before --first-parent this failed: the audit found two merge commits, could not
+# find a task for the intra-branch one, and blocked the release over a non-event.
+test_intra_branch_merge_not_counted_as_pr() {
+  local out repo base
+  out=$(build_two_merge_repo "$VALIDATOR_FILE" "$PR_SUBJECT")
+  repo="${out%% *}"; base="${out##* }"
+  export REPO_ROOT="$repo" \
+    GH_PR_BODY='Implements the thing. Closes claude-dev-tools-abc123' \
+    TASKMGR_OUTPUT='task abc123: comment gate2:passed — validator clean'
+  assert_exit "two-merge history: exits 0 (intra-branch merge not treated as a PR)" \
+    0 bash "$SCRIPT" "$base"
+  assert_output_contains "two-merge history: reports gate2 evidence found" \
+    "gate2 evidence found" bash "$SCRIPT" "$base"
+  # The audit must see exactly ONE PR. The summary line counts verdicts, so a
+  # second (task-less) PR would show up as a fail and change this line.
+  assert_output_contains "two-merge history: exactly one PR audited" \
+    "1 pass, 0 fail" bash "$SCRIPT" "$base"
+  unset REPO_ROOT GH_PR_BODY TASKMGR_OUTPUT
+  rm -rf "$repo"
+}
+
 # ── run ───────────────────────────────────────────────────────────────────────
 
 test_script_exists
@@ -245,6 +315,7 @@ test_fail_no_linked_task
 test_pass_gate2_evidence_present
 test_fail_gate2_evidence_missing
 test_fail_taskmgr_lookup_warns
+test_intra_branch_merge_not_counted_as_pr
 
 rm -rf "$STUB_DIR"
 

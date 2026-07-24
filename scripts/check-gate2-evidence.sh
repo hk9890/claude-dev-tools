@@ -142,7 +142,14 @@ main() {
   # Collect merge commits in the range
   local -a merge_commits
   mapfile -t merge_commits < <(
-    git -C "$REPO_ROOT" log --merges --format="%H %s" "${base_ref}..HEAD" 2>/dev/null
+    # --first-parent is load-bearing: it walks the default branch's own timeline, so a
+    # merge commit is seen only where a branch REJOINED it — i.e. an actual PR merge.
+    # Without it, `git log --merges` also returns merges made INSIDE a branch, and the
+    # routine one is "merge master into my long-running PR to resolve conflicts". That
+    # commit has no "Merge pull request #N" subject and no "Closes <task>" line, so the
+    # audit counted it as a PR with no linked task and blocked the release over a
+    # non-event. Observed after PR #60: --merges found it plus the real PR merge.
+    git -C "$REPO_ROOT" log --merges --first-parent --format="%H %s" "${base_ref}..HEAD" 2>/dev/null
   )
 
   if [[ "${#merge_commits[@]}" -eq 0 ]]; then
