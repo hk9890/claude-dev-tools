@@ -66,6 +66,12 @@ systemd-inhibit --list 2>&1 | head -200
 
 In the captured listing, identify the plugin's entries by matching lines containing `claude-keep-awake` (the WHO field — the helper registers with `--who="claude-keep-awake"`) or `Claude session <sid>` (the WHY field). The COMM column shows `systemd-inhibit`, not the plugin name.
 
+The listing also holds a `<session_id>.lock` file per session the helper has ever handled.
+Those are the per-session mutex the helper takes around its marker updates; they are empty,
+are never reclaimed by design (unlinking a lock another process holds would silently drop
+mutual exclusion), and carry no state. Ignore them — they are not markers and their presence
+is never an anomaly.
+
 For each `<session_id>.pid` marker:
 
 - Read its PID.
@@ -123,7 +129,9 @@ Flag any of these:
 | Repeated `no-op-missing-sid` | Hook stdin not delivering `session_id` — possible Claude Code version mismatch |
 | `no-op-invalid-sid` | Something injected a malformed `session_id`; report the value (truncated in log) |
 | Many refreshes per minute (>20) for one session | Normal during agentic tool-use loops; not necessarily a problem, but worth noting |
-| Active session in current state but ZERO events in log | Logging disabled (`KEEP_AWAKE_LOG=0`), log file was deleted/rotated, or the hooks fired before logging was added (v0.1.0 → v0.1.1) |
+| Active session in current state but ZERO events in log | Logging disabled (`KEEP_AWAKE_LOG=0`), or the log file was deleted or rotated |
+| `degraded-flock-missing` events | `flock` not on PATH where hooks run; the helper still works but its marker updates are unserialised, so concurrent hooks can leak an inhibitor |
+| More `.lock` files than `.pid` markers | Normal. Locks accrue one per session ever seen and are never reclaimed; only markers track live inhibitors |
 | `skipped-pid-not-ours` events | Marker file pointed at a PID we don't own (kernel PID reuse or external interference); helper correctly refused to SIGTERM |
 
 ### Step 6 — Output

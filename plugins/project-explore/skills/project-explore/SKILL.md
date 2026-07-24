@@ -127,7 +127,8 @@ If no exploration epic falls within the last 14 days, note "No recent exploratio
 Write the result to a throwaway temp file using the seven-section schema from `references/understanding-template.md`:
 
 ```bash
-UNDERSTANDING_FILE=$(mktemp --suffix=".md")
+# mktemp -d, not `mktemp --suffix`: --suffix is a GNU extension and absent on BSD/macOS.
+UNDERSTANDING_FILE="$(mktemp -d)/understanding.md"
 # write the filled template to $UNDERSTANDING_FILE
 ```
 

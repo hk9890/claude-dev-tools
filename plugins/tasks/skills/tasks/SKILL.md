@@ -39,7 +39,7 @@ a bare `list` cannot tell "no store" from "empty store".
 
 Do **not** test for the store with `ls .tasks/`: the store is found by walking **up** from the
 current directory, so a bare `ls` in a subdirectory reports "no store" even when taskmgr resolves one
-at the repo root — and would then create a second, nested store. Let `taskmgr list` do the
+at the repo root — and would then create a second, nested store. Let `taskmgr where` do the
 resolution, and commands then work from any subdirectory of the project.
 
 ## 2. Source of truth for commands
