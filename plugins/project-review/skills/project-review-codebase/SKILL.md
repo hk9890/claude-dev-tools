@@ -51,10 +51,12 @@ the artifact to a temp file.
    really check X?" follow-up, **re-run the skill**; never answer from the report
    alone.
 
-5. Write the artifact. `report.report_markdown` is the whole review as a standalone
-   Markdown document with Mermaid diagrams. Write it **verbatim** — never
-   summarised, reformatted, or truncated — to a fresh temp file, then print the
-   path:
+5. Write the artifact. If the workflow returned `{ error: … }` instead of a report —
+   every dimension failed — there is no `report_markdown`; say the review did not
+   complete and **stop here**, do not write a file. Otherwise
+   `report.report_markdown` is the whole review as a standalone Markdown document
+   with Mermaid diagrams. Write it **verbatim** — never summarised, reformatted, or
+   truncated — to a fresh temp file, then print the path:
 
    ```bash
    printf '%s\n' "${TMPDIR:-/tmp}/codebase-review-$(date +%Y%m%d-%H%M%S).md"

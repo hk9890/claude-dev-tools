@@ -151,12 +151,25 @@ colour scheme flips. Use this block verbatim — it is the whole integration:
 
 ```html
 <script type="module">
-  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
-
   const hv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 
   const blocks = [...document.querySelectorAll("pre.mermaid")];
   blocks.forEach(b => { b.dataset.src = b.textContent; });
+
+  // The FOUC guard hides the source until Mermaid marks it processed. If Mermaid never
+  // arrives, that guard would leave an empty bordered box with no explanation — so
+  // reveal the source instead. A wall of syntax beats a silent blank.
+  const reveal = () => blocks.forEach(b => { b.style.visibility = "visible"; });
+
+  // Dynamic import, not a static one: a static `import` that fails aborts the whole
+  // module, so no catch inside it would ever run and the guard could never release.
+  let mermaid;
+  try {
+    mermaid = (await import("https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs")).default;
+  } catch (e) {
+    reveal();
+    throw e;
+  }
 
   async function render() {
     mermaid.initialize({
@@ -182,7 +195,7 @@ colour scheme flips. Use this block verbatim — it is the whole integration:
     await mermaid.run({ nodes: blocks });
   }
 
-  render();
+  render().catch(reveal);
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render);
 </script>
 ```
@@ -315,12 +328,20 @@ template's CSS custom properties (`--hv-bg`, `--hv-text`, `--hv-surface`,
 `--hv-accent`, `--hv-muted`) so the page follows the light/dark theme. For SVG
 fills and strokes, prefer `currentColor` or `var(--hv-accent)`. Mermaid is the one
 renderer that cannot see those tokens — it needs the `themeVariables` bridge and the
-re-render listener from the [Mermaid section](#mermaid-for-graph-shaped-content). Two
-distinct symptoms tell you which half is missing: **blank space** where a diagram should be
-means the module block is absent entirely, so the FOUC guard
-(`pre.mermaid:not([data-processed])`) never released it; a diagram that **renders but
-clashes** — fine in one scheme, dark-on-dark in the other — means the module ran but
-`themeVariables` was omitted, so Mermaid fell back to its own palette.
+re-render listener from the [Mermaid section](#mermaid-for-graph-shaped-content). Three
+symptoms, three causes:
+
+- **Raw Mermaid syntax on the page** — Mermaid never arrived: the CDN is unreachable or
+  CSP-blocked. The `reveal()` fallback released the FOUC guard on purpose, so the source
+  shows rather than an empty box.
+- **Blank space inside a bordered box** — the module block is missing entirely, so nothing
+  ever released `pre.mermaid:not([data-processed])`. If you copied the block, check it is a
+  `<script type="module">` and not a plain `<script>`.
+- **Renders but clashes** — fine in one scheme, dark-on-dark in the other. The module ran
+  but `themeVariables` was omitted, so Mermaid used its own palette.
+
+A malformed diagram is a separate case and is **contained**: `mermaid.run` renders an error
+graphic in that one block and the other diagrams on the page still render.
 
 **Responsive visuals.** Keep `max-width: 900px; margin: 0 auto` on the content
 container (already in the template). For SVGs, set `width="100%"` plus a

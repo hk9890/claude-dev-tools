@@ -210,6 +210,12 @@ const CONSISTENCY_PROCEDURE =
   `NOT THIS DIMENSION: pure formatting (whitespace, brackets — linter territory); whether the shared pattern is the ` +
   `right design (architecture dimension); where files live (structure dimension).`
 
+// CROSS-PLUGIN CONTRACT: the Mermaid class names below and in ARCHITECTURE_PROCEDURE
+// (misplaced, dead, god, leak, deep) are coloured by html-visualization's
+// visualize-template.html, which carries a matching `.vis-mermaid-wrap .<name>` rule for
+// each. Renaming one here silently drops its colour when the artifact is rendered as HTML.
+// Nothing enforces this across plugin boundaries — the artifact just degrades to
+// structure-only marks, which is why the label must also name the problem in words.
 const STRUCTURE_PROCEDURE =
   `Dimension: STRUCTURE — is the physical layout sane?\n\n` +
   `Work through these checks in sequence:\n` +
@@ -227,7 +233,7 @@ const STRUCTURE_PROCEDURE =
   `ALSO PRODUCE tree_mermaid: an annotated Mermaid diagram of the layout, because the shape of a tree is the one ` +
   `thing a list of findings cannot show. Use \`graph TD\` with directories as nodes. Include the directories that ` +
   `carry findings plus enough of their surroundings to orient a reader — NOT every file in the repo; past roughly ` +
-  `40 nodes it stops being readable, so summarise clean subtrees as a single node ("src/utils/ (12 files, clean)"). ` +
+  `40 nodes it stops being readable, so summarise clean subtrees as a single node — U["src/utils/ (12 files, clean)"]. ` +
   `Mark problems with these exact classDefs:\n` +
   `  classDef misplaced stroke-width:2px;\n` +
   `  classDef dead stroke-dasharray:4 4;\n` +
@@ -235,7 +241,10 @@ const STRUCTURE_PROCEDURE =
   `Assign every flagged node to exactly one of misplaced, dead or god, and leave unflagged nodes unstyled. Stroke ` +
   `width alone is a weak signal — nobody reliably tells 2px from 4px — so ALSO name the problem in the node's own ` +
   `label ("src/utils/ — god-file"). The label is what a reader actually reads; the stroke only reinforces it. Node ` +
-  `labels are plain text in square brackets; escape any quotes. If the dimension is genuinely clean, still emit the ` +
+  `WRAP EVERY NODE LABEL IN DOUBLE QUOTES — A["src/core/ — god-file"], never A[src/core/ — god-file]. An unquoted ` +
+  `"(" is a hard parse error that replaces the WHOLE diagram with an error graphic, and a parenthesised count is ` +
+  `exactly the summary form asked for above. Quoting is unconditionally safe, so quote unconditionally rather than ` +
+  `judging per label; escape any double quote inside a label as &quot;. If the dimension is genuinely clean, still emit the ` +
   `tree — an unannotated layout map is a useful artifact on its own.\n\n` +
   `NOT THIS DIMENSION: module granularity and layering (architecture dimension); naming and casing conventions ` +
   `(consistency dimension).`
@@ -285,7 +294,9 @@ const ARCHITECTURE_PROCEDURE =
   `      classDef leak stroke-width:2px,stroke-dasharray:4 4;\n` +
   `and the consolidated deep module in the AFTER diagram with:\n` +
   `      classDef deep stroke-width:4px;\n` +
-  `Emit raw Mermaid source only — no \`\`\` fences, the renderer adds them. Escape quotes inside node labels.\n` +
+  `Emit raw Mermaid source only — no \`\`\` fences, the renderer adds them. WRAP EVERY NODE LABEL IN DOUBLE QUOTES — ` +
+  `A["OrderIntake (3 wrappers)"], never A[OrderIntake (3 wrappers)]: an unquoted "(" is a hard parse error that ` +
+  `replaces the whole diagram with an error graphic. Escape any double quote inside a label as &quot;.\n` +
   `A candidate whose before and after diagrams are identical is not a candidate; drop it.\n\n` +
   `NOT THIS DIMENSION: naming (consistency dimension); physical placement (structure dimension). Candidates are ` +
   `PROPOSALS the user chooses from, never edits you make — this review never modifies the repository. Walking one ` +
@@ -385,9 +396,11 @@ const ARTIFACT_FORMAT =
   `Copy both Mermaid sources through BYTE-FOR-BYTE as the architecture dimension produced them. Do not reformat, ` +
   `re-indent, relabel, or "improve" them — they were authored to render, and edits break them.\n\n` +
   `## Layout\n\n` +
-  `Omit when the structure dimension returned no tree_mermaid. Otherwise one line explaining that a flagged ` +
-  `directory names its problem in its own label, with a heavier border on god-files and a dashed border on dead or ` +
-  `orphaned paths, then tree_mermaid verbatim in a fenced mermaid block — again byte-for-byte.\n\n` +
+  `Omit when the structure dimension returned no tree_mermaid. Otherwise one legend line naming ALL THREE marks — ` +
+  `god-files carry the heaviest border, misplaced paths a medium one, dead or orphaned paths a dashed one — and ` +
+  `saying that a flagged directory also names its problem in its own label, which is what a reader actually goes by ` +
+  `since the raw Markdown has no stylesheet to distinguish the two border weights. Then tree_mermaid verbatim in a ` +
+  `fenced mermaid block — again byte-for-byte.\n\n` +
   `## Findings\n\n` +
   `Grouped under \`###\` by dimension in the order consistency, structure, architecture; skip a dimension with no ` +
   `findings. Within a group order blocker → major → minor. One bullet per finding:\n` +

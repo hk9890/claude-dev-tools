@@ -74,6 +74,20 @@ for f in "$DOC" "$TPL"; do
   else
     fail "$n — themeVariables only apply under theme \"base\""
   fi
+  # The FOUC guard hides pre.mermaid until it is marked processed. If Mermaid never
+  # loads, something must release it or the page shows an empty bordered box forever.
+  # The import must be DYNAMIC: a failing static import aborts the module, so a catch
+  # inside it can never run.
+  if grep -Fq 'await import(' "$f" && grep -Fq 'reveal' "$f"; then
+    ok "$n releases the FOUC guard when Mermaid fails to load"
+  else
+    fail "$n — no dynamic-import fallback; a blocked CDN leaves an empty box with no source"
+  fi
+  if grep -qE '^\s*import mermaid from' "$f"; then
+    fail "$n — static \`import mermaid from\` aborts the whole module on failure; use await import()"
+  else
+    ok "$n avoids a static Mermaid import"
+  fi
 done
 
 # ── 3. Every --hv-* token the bridge names must exist in the template ─────────
