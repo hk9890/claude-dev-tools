@@ -7,6 +7,11 @@
 #   2. Exactly four theme files are present (no strays).
 #   3. The committed themes byte-match a fresh run of generate-themes.mjs — so
 #      the generator and its output can never silently drift apart.
+#   4. Override *key names* match the pinned token set. Checking only that values
+#      are hex let a token Claude Code does not read (messageActionsBackground)
+#      ship in all four flavours as inert config. Adding a role to the generator
+#      must mean adding it here, having confirmed the name is one Claude Code
+#      actually consumes — grep the CLI binary for it.
 
 set -uo pipefail
 
@@ -22,6 +27,24 @@ fail=0
 note_fail() { printf 'FAIL: %s\n' "$1"; fail=1; }
 
 expected_flavors=(latte frappe macchiato mocha)
+
+# The exact set of theme tokens the plugin sets, sorted. Every name here was
+# confirmed present in the Claude Code binary's theme vocabulary; the set is
+# deliberately a whitelist, so an invented token fails rather than passing as
+# a merely-unused key.
+expected_tokens="$(printf '%s\n' \
+  autoAccept bashBorder bashMessageBackgroundColor blue_FOR_SUBAGENTS_ONLY briefLabelClaude \
+  briefLabelYou claude claudeShimmer cyan_FOR_SUBAGENTS_ONLY diffAdded diffAddedDimmed \
+  diffAddedWord diffRemoved diffRemovedDimmed diffRemovedWord error fastMode fastModeShimmer \
+  green_FOR_SUBAGENTS_ONLY ide inactive inactiveShimmer inverseText memoryBackgroundColor \
+  merged orange_FOR_SUBAGENTS_ONLY permission permissionShimmer pink_FOR_SUBAGENTS_ONLY \
+  planMode promptBorder promptBorderShimmer purple_FOR_SUBAGENTS_ONLY rainbow_blue \
+  rainbow_blue_shimmer rainbow_green rainbow_green_shimmer rainbow_indigo \
+  rainbow_indigo_shimmer rainbow_orange rainbow_orange_shimmer rainbow_red \
+  rainbow_red_shimmer rainbow_violet rainbow_violet_shimmer rainbow_yellow \
+  rainbow_yellow_shimmer rate_limit_empty rate_limit_fill red_FOR_SUBAGENTS_ONLY remember \
+  selectionBg subtle success suggestion text userMessageBackground userMessageBackgroundHover \
+  warning warningShimmer yellow_FOR_SUBAGENTS_ONLY | sort)"
 
 # 1. Structural validation per flavour.
 for flavor in "${expected_flavors[@]}"; do
@@ -42,6 +65,13 @@ for flavor in "${expected_flavors[@]}"; do
                 | select((.value | type) != "string" or (.value | test("^#[0-9a-f]{6}$") | not))
                 | "\(.key)=\(.value)"' "$f")"
   [[ -z "$bad" ]] || note_fail "$flavor: non-hex override value(s): $bad"
+
+  # Key names, not just values — an unrecognised token is silently inert.
+  actual_tokens="$(jq -r '.overrides | keys_unsorted[]' "$f" | sort)"
+  unknown="$(comm -23 <(printf '%s\n' "$actual_tokens") <(printf '%s\n' "$expected_tokens") | tr '\n' ' ')"
+  absent="$(comm -13 <(printf '%s\n' "$actual_tokens") <(printf '%s\n' "$expected_tokens") | tr '\n' ' ')"
+  [[ -z "${unknown// /}" ]] || note_fail "$flavor: override key(s) not in the pinned token set: $unknown"
+  [[ -z "${absent// /}" ]] || note_fail "$flavor: pinned token(s) missing from overrides: $absent"
 done
 
 # 2. Exactly the four expected files, nothing extra.

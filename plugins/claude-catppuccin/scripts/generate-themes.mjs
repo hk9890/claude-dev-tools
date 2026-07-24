@@ -66,6 +66,9 @@ const flavors = {
 
 // Every Claude Code UI role -> canonical palette entry. The six diff-background
 // tokens are the sole exception and are computed separately (see diffColors).
+// Key names must be tokens Claude Code actually reads — an invented name is
+// inert config that no test would otherwise catch, so the script-tests pin the
+// accepted set. Adding a role here means adding it there too.
 const roleMap = {
   claude: "mauve",
   claudeShimmer: "pink",
@@ -93,7 +96,6 @@ const roleMap = {
   fastModeShimmer: "peach",
   userMessageBackground: "surface0",
   userMessageBackgroundHover: "surface1",
-  messageActionsBackground: "surface2",
   bashMessageBackgroundColor: "mantle",
   memoryBackgroundColor: "crust",
   selectionBg: "surface2",
@@ -134,7 +136,7 @@ const overrideOrder = [
   "planMode", "autoAccept", "bashBorder", "ide", "fastMode", "fastModeShimmer",
   "diffAdded", "diffRemoved", "diffAddedDimmed", "diffRemovedDimmed", "diffAddedWord",
   "diffRemovedWord", "userMessageBackground", "userMessageBackgroundHover",
-  "messageActionsBackground", "bashMessageBackgroundColor", "memoryBackgroundColor",
+  "bashMessageBackgroundColor", "memoryBackgroundColor",
   "selectionBg", "rate_limit_fill", "rate_limit_empty", "briefLabelYou", "briefLabelClaude",
   "red_FOR_SUBAGENTS_ONLY", "blue_FOR_SUBAGENTS_ONLY", "green_FOR_SUBAGENTS_ONLY",
   "yellow_FOR_SUBAGENTS_ONLY", "purple_FOR_SUBAGENTS_ONLY", "orange_FOR_SUBAGENTS_ONLY",
