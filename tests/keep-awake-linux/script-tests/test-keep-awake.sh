@@ -89,7 +89,11 @@ kill_session()   {
 cleanup() { for sid in "${SIDS[@]:-}"; do [[ -n "$sid" ]] && kill_session "$sid"; done; }
 trap cleanup EXIT
 
-new_sid() { local sid="$RUN_TAG-$1"; SIDS+=("$sid"); printf '%s\n' "$sid"; }
+# Sets NEW_SID rather than printing it: every call site would otherwise wrap this
+# in a command substitution, whose subshell would discard the SIDS append and
+# leave the EXIT trap with nothing to reap — which is how a failing run leaks the
+# very inhibitors this plugin exists to release.
+new_sid() { NEW_SID="$RUN_TAG-$1"; SIDS+=("$NEW_SID"); }
 run()     { XDG_RUNTIME_DIR="$1" KEEP_AWAKE_TTL="$TTL" "$SCRIPT" "${@:2}"; }
 marker()  { cat "$1/claude-keep-awake/sessions/$2.pid" 2>/dev/null || true; }
 
@@ -103,7 +107,7 @@ assert_eq() {
 
 lifecycle() {
   local rt sid
-  rt="$(mktemp -d)"; sid="$(new_sid life)"
+  rt="$(mktemp -d)"; new_sid life; sid="$NEW_SID"
 
   run "$rt" start "$sid" >/dev/null 2>&1
   settle_for "$sid" 1
@@ -135,7 +139,7 @@ lifecycle() {
 # ── Hook dispatch ────────────────────────────────────────────────────────────
 
 hook_dispatch() {
-  local rt sid; rt="$(mktemp -d)"; sid="$(new_sid hook)"
+  local rt sid; rt="$(mktemp -d)"; new_sid hook; sid="$NEW_SID"
   command -v jq >/dev/null 2>&1 || { ok "hook: skipped, jq absent"; rm -rf "$rt"; return; }
 
   echo "{\"session_id\":\"$sid\"}" | run "$rt" hook SessionStart >/dev/null 2>&1
@@ -160,7 +164,7 @@ hook_dispatch() {
 # ── Concurrency: N racing starts must yield exactly one inhibitor ────────────
 
 concurrent_starts() {
-  local n="$1" rt sid; rt="$(mktemp -d)"; sid="$(new_sid "start$n")"
+  local n="$1" rt sid; rt="$(mktemp -d)"; new_sid "start$n"; sid="$NEW_SID"
 
   local i
   for ((i = 0; i < n; i++)); do run "$rt" start "$sid" >/dev/null 2>&1 & done
@@ -186,7 +190,7 @@ concurrent_starts() {
 stop_races_start() {
   local trials="$1" leaked=0 i rt sid
   for ((i = 0; i < trials; i++)); do
-    rt="$(mktemp -d)"; sid="$(new_sid "race$i")"
+    rt="$(mktemp -d)"; new_sid "race$i"; sid="$NEW_SID"
     run "$rt" start "$sid" >/dev/null 2>&1
     run "$rt" stop  "$sid" >/dev/null 2>&1 &
     run "$rt" start "$sid" >/dev/null 2>&1 &
@@ -210,7 +214,7 @@ gc_during_starts() {
   local n="$1" rt i untracked=0
   rt="$(mktemp -d)"
   local -a sids=()
-  for ((i = 0; i < n; i++)); do sids+=("$(new_sid "gc$i")"); done
+  for ((i = 0; i < n; i++)); do new_sid "gc$i"; sids+=("$NEW_SID"); done
   for sid in "${sids[@]}"; do run "$rt" start "$sid" >/dev/null 2>&1 & done
   wait 2>/dev/null
   sleep 0.5

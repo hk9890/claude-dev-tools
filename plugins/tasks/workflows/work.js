@@ -123,8 +123,9 @@ const epicClosePrompt = (id) =>
   `4. Write the per-criterion verdict and evidence as a comment: \`taskmgr comment add ${id} "Acceptance review: <criterion> PASS — <evidence>; … Children all closed. Ready to close."\`\n` +
   `5. Do NOT close the epic. Report allChildrenClosed=true and action "verified-ready-to-close", or "criteria-failed" (comment the gaps and file bugs) if the success criteria are not met.`
 
-// The review leg prefers project-review's adversarial reviewer persona, but `tasks` does not declare
-// `project-review` as a dependency, so that agent type is not guaranteed to exist. When it is absent,
+// The review leg prefers project-review's adversarial reviewer persona. `tasks` now declares
+// `project-review` as a dependency, but a declared dependency can still be disabled or left
+// unresolved at load time, so that agent type is not guaranteed to exist. When it is absent,
 // agent() THROWS on the unknown agentType; without this fallback that throw becomes a null review and
 // record rule 1 ("either leg null → inconclusive") strands every passing task as unclosed. The review
 // procedure lives in reviewPrompt, not the persona, so a built-in agent runs it fine. The fallback is
