@@ -1,11 +1,11 @@
 export const meta = {
   name: 'project-review-codebase',
-  description: 'Read-only codebase review: consistency + structure + architecture dimension agents → cross-dimension synthesis',
-  whenToUse: 'Launched by the /project-review-codebase skill. Reviews a codebase for internal consistency, physical layout, and module architecture; dedupes findings across dimensions.',
+  description: 'Read-only codebase review: consistency + structure + architecture dimension agents → cross-dimension synthesis → Markdown artifact',
+  whenToUse: 'Launched by the /project-review-codebase skill. Reviews a codebase for internal consistency, physical layout, and module architecture; dedupes findings across dimensions and returns a standalone Markdown report with Mermaid diagrams.',
   phases: [
     { title: 'Review', detail: 'one adversarial agent per dimension' },
     { title: 'Verify', detail: 'adversarially refute each finding (ultra only)' },
-    { title: 'Synthesis', detail: 'dedupe + cross-dimension reconciliation + report' },
+    { title: 'Synthesis', detail: 'dedupe + reconcile + deepening candidates + Markdown artifact' },
   ],
 }
 
@@ -25,29 +25,67 @@ const ultra = !!A.ultra
 
 const VERDICTS = ['clean', 'minor issues', 'significant issues', 'broken']
 
-const DIMENSION_SCHEMA = {
+const FINDING_ITEMS = {
   type: 'object',
   properties: {
-    dimension: { type: 'string' },
-    verdict: { type: 'string', enum: VERDICTS },
-    findings: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          severity: { type: 'string', enum: ['blocker', 'major', 'minor'] },
-          location: { type: 'string' },
-          observation: { type: 'string' },
-          evidence: { type: 'string' },
-          why_it_matters: { type: 'string' },
-          recommended_action: { type: 'string' },
-        },
-        required: ['severity', 'location', 'observation', 'evidence', 'recommended_action'],
-      },
-    },
+    severity: { type: 'string', enum: ['blocker', 'major', 'minor'] },
+    location: { type: 'string' },
+    observation: { type: 'string' },
+    evidence: { type: 'string' },
+    why_it_matters: { type: 'string' },
+    recommended_action: { type: 'string' },
   },
-  required: ['dimension', 'verdict', 'findings'],
+  // why_it_matters is required here as well as in REPORT_SCHEMA: dimensionPrompt() asks
+  // for it explicitly, so leaving it optional let an agent legally omit the field and
+  // forced the synthesis stage to invent one it had no evidence for.
+  required: ['severity', 'location', 'observation', 'evidence', 'why_it_matters', 'recommended_action'],
 }
+
+// A deepening candidate is a PROPOSAL, not a defect — it names a refactor that would
+// turn a shallow module into a deep one. Only the architecture dimension emits these.
+// The before/after Mermaid pair is the whole reason the markdown artifact is worth
+// rendering: a list of prose findings does not need a picture, a structural change does.
+// Field set follows the deep-module vocabulary in references/design-vocabulary.md.
+const CANDIDATE_ITEMS = {
+  type: 'object',
+  properties: {
+    title: { type: 'string' },
+    strength: { type: 'string', enum: ['Strong', 'Worth exploring', 'Speculative'] },
+    dependency_category: {
+      type: 'string',
+      enum: ['in-process', 'local-substitutable', 'ports & adapters', 'mock'],
+    },
+    files: { type: 'array', items: { type: 'string' } },
+    problem: { type: 'string' },
+    solution: { type: 'string' },
+    wins: { type: 'array', items: { type: 'string' } },
+    mermaid_before: { type: 'string' },
+    mermaid_after: { type: 'string' },
+  },
+  required: [
+    'title', 'strength', 'dependency_category', 'files',
+    'problem', 'solution', 'wins', 'mermaid_before', 'mermaid_after',
+  ],
+}
+
+// Every dimension returns verdict + findings; structure and architecture each add one
+// visual payload on top. Kept as one builder so the shared core cannot drift apart.
+function dimensionSchema(extra) {
+  return {
+    type: 'object',
+    properties: {
+      dimension: { type: 'string' },
+      verdict: { type: 'string', enum: VERDICTS },
+      findings: { type: 'array', items: FINDING_ITEMS },
+      ...(extra || {}),
+    },
+    required: ['dimension', 'verdict', 'findings'],
+  }
+}
+
+const DIMENSION_SCHEMA = dimensionSchema()
+const STRUCTURE_SCHEMA = dimensionSchema({ tree_mermaid: { type: 'string' } })
+const ARCHITECTURE_SCHEMA = dimensionSchema({ candidates: { type: 'array', items: CANDIDATE_ITEMS } })
 
 // Same shape as the verify schema in review-docs.js and test-tests.js — duplicated
 // by hand because workflow scripts are self-contained and cannot import shared
@@ -84,16 +122,30 @@ const REPORT_SCHEMA = {
           severity: { type: 'string', enum: ['blocker', 'major', 'minor'] },
           location: { type: 'string' },
           observation: { type: 'string' },
+          // Carried through from the dimension finding. Without it the cited proof —
+          // the strongest part of a finding — never reaches the artifact the developer
+          // keeps, leaving a bare assertion they cannot check.
+          evidence: { type: 'string' },
           why_it_matters: { type: 'string' },
           recommended_action: { type: 'string' },
         },
-        required: ['dimension', 'severity', 'location', 'observation', 'why_it_matters', 'recommended_action'],
+        required: ['dimension', 'severity', 'location', 'observation', 'evidence', 'why_it_matters', 'recommended_action'],
       },
     },
     recommended_actions: { type: 'array', items: { type: 'string' } },
     cross_dimension_notes: { type: 'string' },
+    // Surviving deepening candidates, in the order the developer should consider them.
+    // Their 1-based position IS the number the user selects by ("implement 2 and 4"),
+    // so this ordering must match the numbering in report_markdown exactly.
+    architecture_candidates: { type: 'array', items: CANDIDATE_ITEMS },
+    // The standalone artifact: the whole review as a Markdown document with Mermaid
+    // diagrams. Written to a temp file by the skill; also the input for an HTML render.
+    report_markdown: { type: 'string' },
   },
-  required: ['verdict', 'dimension_verdicts', 'headline', 'findings', 'recommended_actions'],
+  required: [
+    'verdict', 'dimension_verdicts', 'headline', 'findings',
+    'recommended_actions', 'report_markdown',
+  ],
 }
 
 // ---------------------------------------------------------------------------
@@ -158,6 +210,12 @@ const CONSISTENCY_PROCEDURE =
   `NOT THIS DIMENSION: pure formatting (whitespace, brackets — linter territory); whether the shared pattern is the ` +
   `right design (architecture dimension); where files live (structure dimension).`
 
+// CROSS-PLUGIN CONTRACT: the Mermaid class names below and in ARCHITECTURE_PROCEDURE
+// (misplaced, dead, god, leak, deep) are coloured by html-visualization's
+// visualize-template.html, which carries a matching `.vis-mermaid-wrap .<name>` rule for
+// each. Renaming one here silently drops its colour when the artifact is rendered as HTML.
+// Nothing enforces this across plugin boundaries — the artifact just degrades to
+// structure-only marks, which is why the label must also name the problem in words.
 const STRUCTURE_PROCEDURE =
   `Dimension: STRUCTURE — is the physical layout sane?\n\n` +
   `Work through these checks in sequence:\n` +
@@ -172,6 +230,22 @@ const STRUCTURE_PROCEDURE =
   `exist; configuration for build steps that were deleted; documentation for removed features; backup or experimental ` +
   `leftovers (foo.bak, foo_old.py).\n\n` +
   `Recommended action per finding: exactly one of move, delete, rename, or document.\n\n` +
+  `ALSO PRODUCE tree_mermaid: an annotated Mermaid diagram of the layout, because the shape of a tree is the one ` +
+  `thing a list of findings cannot show. Use \`graph TD\` with directories as nodes. Include the directories that ` +
+  `carry findings plus enough of their surroundings to orient a reader — NOT every file in the repo; past roughly ` +
+  `40 nodes it stops being readable, so summarise clean subtrees as a single node — U["src/utils/ (12 files, clean)"]. ` +
+  `Mark problems with these exact classDefs:\n` +
+  `  classDef misplaced stroke-width:2px;\n` +
+  `  classDef dead stroke-dasharray:4 4;\n` +
+  `  classDef god stroke-width:4px;\n` +
+  `Assign every flagged node to exactly one of misplaced, dead or god, and leave unflagged nodes unstyled. Stroke ` +
+  `width alone is a weak signal — nobody reliably tells 2px from 4px — so ALSO name the problem in the node's own ` +
+  `label ("src/utils/ — god-file"). The label is what a reader actually reads; the stroke only reinforces it. Node ` +
+  `WRAP EVERY NODE LABEL IN DOUBLE QUOTES — A["src/core/ — god-file"], never A[src/core/ — god-file]. An unquoted ` +
+  `"(" is a hard parse error that replaces the WHOLE diagram with an error graphic, and a parenthesised count is ` +
+  `exactly the summary form asked for above. Quoting is unconditionally safe, so quote unconditionally rather than ` +
+  `judging per label; escape any double quote inside a label as &quot;. If the dimension is genuinely clean, still emit the ` +
+  `tree — an unannotated layout map is a useful artifact on its own.\n\n` +
   `NOT THIS DIMENSION: module granularity and layering (architecture dimension); naming and casing conventions ` +
   `(consistency dimension).`
 
@@ -196,13 +270,42 @@ const ARCHITECTURE_PROCEDURE =
   `5. MODULE GRANULARITY — god-files owning far more responsibility than their directory implies ("utils" ` +
   `accumulators, entry points that do everything), or one logical unit fragmented across many tiny files that are ` +
   `always imported together and have no assembly point. Recommended action: split or merge.\n\n` +
-  `NOT THIS DIMENSION: naming (consistency dimension); physical placement (structure dimension). This is an audit — ` +
-  `the user challenges an individual design decision interactively with challenge:kiss, not here.`
+  `ALSO PRODUCE candidates: DEEPENING PROPOSALS, which are a different deliverable from findings. A finding says ` +
+  `what is wrong; a candidate says what to build instead. Derive them from the findings above — the strongest ` +
+  `findings usually collapse into a smaller number of candidates, and one candidate often subsumes several ` +
+  `findings. Do not pad: emit only proposals you would actually defend, and an empty array if the architecture is ` +
+  `genuinely sound. Aim for at most 5; ordering is by what you would tackle first.\n` +
+  `Each candidate carries:\n` +
+  `  - title: names the deepening, imperative and concrete ("Collapse the Order intake pipeline").\n` +
+  `  - strength: Strong (evidence is decisive) / Worth exploring (real friction, contested design) / Speculative ` +
+  `(a hunch worth a conversation). Be honest — a page of "Strong" is not credible.\n` +
+  `  - dependency_category: what the deepened module depends on, which decides how it gets tested. ` +
+  `in-process (pure computation, no I/O — merge and test directly, no adapter); local-substitutable (a real local ` +
+  `stand-in exists, e.g. an in-memory database — seam stays internal); ports & adapters (your own service across a ` +
+  `network — define a port, HTTP adapter in production, in-memory adapter in tests); mock (a third party you do not ` +
+  `control — inject the port, mock adapter in tests).\n` +
+  `  - files: the modules involved, exact paths.\n` +
+  `  - problem / solution: ONE sentence each. Problem is the friction today; solution is what changes.\n` +
+  `  - wins: up to 4 bullets, at most 6 words each, stated in leverage and locality terms ("one interface, N call ` +
+  `sites", "bugs concentrate in one module"). Never "easier to maintain" or "cleaner code" — those claim nothing.\n` +
+  `  - mermaid_before / mermaid_after: a matched pair of \`flowchart LR\` diagrams showing the module structure ` +
+  `now and as proposed. Keep BOTH under a dozen nodes and reuse identical node names across the pair so a reader ` +
+  `can see what moved. Mark leaking or misplaced edges in the BEFORE diagram with:\n` +
+  `      classDef leak stroke-width:2px,stroke-dasharray:4 4;\n` +
+  `and the consolidated deep module in the AFTER diagram with:\n` +
+  `      classDef deep stroke-width:4px;\n` +
+  `Emit raw Mermaid source only — no \`\`\` fences, the renderer adds them. WRAP EVERY NODE LABEL IN DOUBLE QUOTES — ` +
+  `A["OrderIntake (3 wrappers)"], never A[OrderIntake (3 wrappers)]: an unquoted "(" is a hard parse error that ` +
+  `replaces the whole diagram with an error graphic. Escape any double quote inside a label as &quot;.\n` +
+  `A candidate whose before and after diagrams are identical is not a candidate; drop it.\n\n` +
+  `NOT THIS DIMENSION: naming (consistency dimension); physical placement (structure dimension). Candidates are ` +
+  `PROPOSALS the user chooses from, never edits you make — this review never modifies the repository. Walking one ` +
+  `decision through its tree interactively is challenge:kiss, not here.`
 
 const DIMENSIONS = [
-  { key: 'consistency', procedure: CONSISTENCY_PROCEDURE },
-  { key: 'structure', procedure: STRUCTURE_PROCEDURE },
-  { key: 'architecture', procedure: ARCHITECTURE_PROCEDURE },
+  { key: 'consistency', procedure: CONSISTENCY_PROCEDURE, schema: DIMENSION_SCHEMA },
+  { key: 'structure', procedure: STRUCTURE_PROCEDURE, schema: STRUCTURE_SCHEMA },
+  { key: 'architecture', procedure: ARCHITECTURE_PROCEDURE, schema: ARCHITECTURE_SCHEMA },
 ]
 
 function dimensionPrompt(d) {
@@ -214,7 +317,14 @@ function dimensionPrompt(d) {
     `genuine attempt to find problems, not just absence of findings) plus the findings. Each finding: severity ` +
     `(blocker/major/minor), location (exact paths, line numbers where possible), observation (what is wrong, ` +
     `concretely), evidence (the file facts that prove it — quotes, counts, import lists), why_it_matters (the cost, ` +
-    `risk, or trap this creates — not a restatement), recommended_action (one concrete change). Set dimension to "${d.key}".`
+    `risk, or trap this creates — not a restatement), recommended_action (one concrete change). Set dimension to "${d.key}".` +
+    (d.key === 'structure'
+      ? ` Also return tree_mermaid, per the ALSO PRODUCE block above.`
+      : '') +
+    (d.key === 'architecture'
+      ? ` Also return candidates, per the ALSO PRODUCE block above — findings and candidates are separate ` +
+        `deliverables and you owe both.`
+      : '')
   )
 }
 
@@ -227,7 +337,7 @@ phase('Review')
 
 const results = await pipeline(
   DIMENSIONS,
-  d => agent(dimensionPrompt(d), { label: `review:${d.key}`, phase: 'Review', model: 'opus', schema: DIMENSION_SCHEMA }),
+  d => agent(dimensionPrompt(d), { label: `review:${d.key}`, phase: 'Review', model: 'opus', schema: d.schema }),
   (review, d) => {
     if (!review) return null
     if (!ultra || !review.findings.length) return review
@@ -257,6 +367,52 @@ const missing = DIMENSIONS.filter(d => !reviews.some(r => r.dimension === d.key)
 if (missing.length) log(`WARNING: dimension(s) did not complete: ${missing.join(', ')} — report covers the rest`)
 
 // ---------------------------------------------------------------------------
+// The markdown artifact — the standalone deliverable the skill writes to a temp
+// file, and the input for an optional HTML render. Specified inline rather than
+// in a reference file for the same reason the dimension procedures are: when the
+// Workflow tool is unavailable, the skill falls back to reading this file and
+// following it by hand, so everything it needs must live here.
+// ---------------------------------------------------------------------------
+
+const ARTIFACT_FORMAT =
+  `The document MUST STAND ALONE: someone opening the file with no access to this conversation has to understand ` +
+  `it. Never write "as discussed" or refer to the chat. Sections in this exact order, omitting any that would be ` +
+  `empty:\n\n` +
+  `# Codebase review — <the repo's directory name>\n\n` +
+  `One italic line giving the scope reviewed and whether the adversarial refutation pass ran.\n\n` +
+  `## Verdict\n\n` +
+  `A table with columns Dimension | Verdict, one row each for consistency, structure and architecture, then a final ` +
+  `**Overall** row. Follow it with the headline as a short paragraph.\n\n` +
+  `## Deepening candidates\n\n` +
+  `Omit this section entirely when there are no candidates. Otherwise one \`###\` block per candidate, NUMBERED FROM ` +
+  `1 in array order — the number is how the user selects it, so it must match architecture_candidates exactly:\n\n` +
+  `### 1. <title> — <strength> · <dependency_category>\n\n` +
+  `**Files:** the paths, comma-separated, each in backticks\n` +
+  `**Problem:** one sentence\n` +
+  `**Solution:** one sentence\n\n` +
+  `**Wins:** the wins as a bullet list\n\n` +
+  `Then the pair, each a fenced mermaid block under a bold label:\n\n` +
+  `**Before**\n\n\`\`\`mermaid\n<mermaid_before>\n\`\`\`\n\n**After**\n\n\`\`\`mermaid\n<mermaid_after>\n\`\`\`\n\n` +
+  `Copy both Mermaid sources through BYTE-FOR-BYTE as the architecture dimension produced them. Do not reformat, ` +
+  `re-indent, relabel, or "improve" them — they were authored to render, and edits break them.\n\n` +
+  `## Layout\n\n` +
+  `Omit when the structure dimension returned no tree_mermaid. Otherwise one legend line naming ALL THREE marks — ` +
+  `god-files carry the heaviest border, misplaced paths a medium one, dead or orphaned paths a dashed one — and ` +
+  `saying that a flagged directory also names its problem in its own label, which is what a reader actually goes by ` +
+  `since the raw Markdown has no stylesheet to distinguish the two border weights. Then tree_mermaid verbatim in a ` +
+  `fenced mermaid block — again byte-for-byte.\n\n` +
+  `## Findings\n\n` +
+  `Grouped under \`###\` by dimension in the order consistency, structure, architecture; skip a dimension with no ` +
+  `findings. Within a group order blocker → major → minor. One bullet per finding:\n` +
+  `- **\`<location>\`** — <severity>. <observation> **Evidence:** <evidence> **Why it matters:** <why_it_matters> ` +
+  `**Fix:** <recommended_action>\n\n` +
+  `The evidence is what makes a finding checkable rather than an assertion — never drop it from a bullet.\n\n` +
+  `## Recommended actions\n\n` +
+  `recommended_actions as a numbered list in priority order.\n\n` +
+  `## Notes\n\n` +
+  `cross_dimension_notes as prose; omit the section when it is empty.`
+
+// ---------------------------------------------------------------------------
 // Synthesis
 // ---------------------------------------------------------------------------
 
@@ -283,7 +439,19 @@ const report = await agent(
   `${missing.length ? `; a dimension that did not complete (${missing.join(', ')}) gets no verdict better than "minor issues" and a note that it did not run` : ''} — ` +
   `and ONE overall verdict, never cleaner than the worst dimension.\n` +
   `5. Produce recommended_actions: a prioritised list ordered by what the developer should tackle first, each entry ` +
-  `referencing its finding(s). Mandatory even when there is only one action — the ordering is itself the deliverable.\n\n` +
+  `referencing its finding(s). Mandatory even when there is only one action — the ordering is itself the deliverable.\n` +
+  `6. Carry the architecture dimension's candidates into architecture_candidates, ordered by what you would tackle ` +
+  `first. A candidate is a proposal built ON TOP OF findings, and it was generated BEFORE any of them were ` +
+  `challenged — so re-check each one against the findings that actually survived. Drop a candidate whose supporting ` +
+  `evidence you dropped or downgraded in step 1${ultra ? `, or whose supporting finding appears in a dimension's ` +
+  `"refuted" list` : ''} — a proposal resting on a finding that did not survive is not a proposal — and note the ` +
+  `drop in cross_dimension_notes. Do not invent new candidates here; you did not walk the code, the dimension agent ` +
+  `did. Copy each candidate's mermaid_before and mermaid_after through unchanged. Empty array if the architecture ` +
+  `dimension produced none.\n` +
+  `7. Write report_markdown: the entire review as ONE standalone Markdown document, following this format exactly:\n\n` +
+  `${ARTIFACT_FORMAT}\n\n` +
+  `Every finding, action and candidate you report in the structured fields must also appear in report_markdown — ` +
+  `the file is the artifact the developer keeps, so it cannot be a summary of the report, it must BE the report.\n\n` +
   `Each finding's why_it_matters states the concrete cost, risk, or trap — not a restatement of the observation. ` +
   `cross_dimension_notes is a PLAIN-TEXT prose field. ` +
   `Headline must not claim "clean/all good" unless there are zero blocker and major findings.`,

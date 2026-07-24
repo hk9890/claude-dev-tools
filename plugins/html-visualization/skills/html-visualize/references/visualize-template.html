@@ -6,13 +6,14 @@
   <title>[Claude: replace with visualization title]</title>
 
   <!-- ── Optional: CDN chart library (remove if not needed) ────────────────
-    If you need Chart.js, D3, or Mermaid, add the <script src="https://...">
-    tag here. Remove this comment block if no CDN library is used.
-
-    Examples:
+    Chart.js and D3 are UMD globals — add the <script src="https://..."> tag
+    here and initialise at the bottom of <body>:
       Chart.js  → <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
       D3.js     → <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
-      Mermaid   → <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+
+    Mermaid is DIFFERENT — it is an ESM import and needs the theme bridge, so it
+    goes in the module block near the bottom of <body>, not here. See
+    references/visualize.md → "Mermaid (for graph-shaped content)".
 
     Prefer inline SVG when the visualization can be encoded statically — no
     network dependency, works offline, renders instantly.
@@ -274,6 +275,82 @@
       height: auto;
     }
 
+    /* ── Mermaid container ──────────────────────────────────────────────── */
+    /* Mermaid injects its own <svg>; this only supplies the surface and keeps
+       wide graphs scrollable instead of overflowing the page. Mermaid colours
+       come from the themeVariables bridge, not from here — see
+       references/visualize.md → "Mermaid (for graph-shaped content)". */
+    .vis-mermaid-wrap {
+      background: var(--hv-surface);
+      border: 1px solid var(--hv-border);
+      border-radius: var(--hv-radius);
+      box-shadow: var(--hv-shadow);
+      padding: 1.35rem 1.6rem;
+      margin-bottom: 1.5rem;
+      overflow-x: auto;
+    }
+
+    .vis-mermaid-wrap pre.mermaid {
+      margin: 0;
+      background: none;
+      border: none;
+      text-align: center;
+    }
+
+    /* Pre-render, the raw graph source is visible as text. Hide it so the page
+       does not flash a wall of Mermaid syntax before the module script runs. */
+    .vis-mermaid-wrap pre.mermaid:not([data-processed]) { visibility: hidden; }
+
+    /* Semantic colour for Mermaid nodes.
+       classDef CANNOT carry a CSS function — `classDef x stroke:var(--y)` is a hard
+       parse error on the "(" and kills the whole diagram. So classDef carries only
+       structure (stroke-width, stroke-dasharray) and the colour is applied here, by
+       targeting the class Mermaid stamps onto the node. This way it follows the theme.
+       !important is required: Mermaid writes its own stroke inline.
+       Keep these class names in step with references/visualize.md — and note that
+       project-review's review-codebase.js emits these exact names (misplaced, dead, god,
+       leak, deep) in the Markdown artifact it produces. Renaming one here silently drops
+       that artifact's colour when it is rendered. Nothing enforces this across the plugin
+       boundary; the degradation is quiet. */
+    .vis-mermaid-wrap .leak > rect,
+    .vis-mermaid-wrap .leak > polygon,
+    .vis-mermaid-wrap .leak > path,
+    .vis-mermaid-wrap .dead > rect,
+    .vis-mermaid-wrap .dead > polygon,
+    .vis-mermaid-wrap .dead > path   { stroke: var(--hv-bad) !important; }
+
+    .vis-mermaid-wrap .god > rect,
+    .vis-mermaid-wrap .god > polygon,
+    .vis-mermaid-wrap .god > path,
+    .vis-mermaid-wrap .misplaced > rect,
+    .vis-mermaid-wrap .misplaced > polygon,
+    .vis-mermaid-wrap .misplaced > path { stroke: var(--hv-warn) !important; }
+
+    .vis-mermaid-wrap .deep > rect,
+    .vis-mermaid-wrap .deep > polygon,
+    .vis-mermaid-wrap .deep > path   { stroke: var(--hv-ok) !important; }
+
+    .vis-mermaid-label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--hv-muted);
+    }
+
+    /* ── Before/after comparison ────────────────────────────────────────── */
+    /* Two diagrams side by side on wide screens, stacked on narrow ones. */
+    .vis-compare {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .vis-compare > * { margin-bottom: 0; }
+
     /* ── Footer note ────────────────────────────────────────────────────── */
     .vis-note {
       margin-top: 2rem;
@@ -400,10 +477,27 @@
       Use viewBox="0 0 W H" width="100%" so it scales.
       Use var(--hv-accent), var(--hv-muted) etc. for fills/strokes.
 
+    MERMAID (for graph-shaped content: dependencies, call flow, sequences):
+      Wrap in <div class="vis-mermaid-wrap"> with the graph in <pre class="mermaid">.
+      Uncomment the Mermaid module block near the bottom of <body> — without it
+      the diagram stays blank, because the FOUC guard never releases.
+      classDef carries STRUCTURE only — a CSS function in it is a parse error
+      that kills the diagram. Colour comes from the .leak/.dead/.god/.misplaced
+      /.deep rules in <style> above, e.g.
+        classDef leak stroke-width:2px,stroke-dasharray:4 4;
+        class C,D leak
+
+    BEFORE/AFTER PAIR (for a structural change):
+      <div class="vis-compare"> with two .vis-mermaid-wrap children, each led by
+      a <span class="vis-mermaid-label">Before</span> / After.
+      Reuse identical node names across the pair so the eye tracks what moved.
+
     CDN CHART LIBRARY (for interactive or complex charts):
       Add the <script src="https://cdn.jsdelivr.net/npm/..."> in <head>.
       Render into a <canvas> or <div> here.
       Initialise in the inline <script> block at the bottom of <body>.
+      Note: canvas content is NOT preserved by Save — a saved copy reopened
+      offline shows an empty box. (Mermaid does survive Save.)
 
     HTML TABLE (for tabular data):
       Use <table> + <caption> + <thead>/<tbody>.
@@ -486,8 +580,8 @@
 </div><!-- /.page-chrome -->
 
 <!-- ── Optional: CDN chart initialisation ────────────────────────────────────
-  If you are using a CDN chart library (Chart.js, D3, Mermaid, etc.), add the
-  chart initialisation code in a <script> block here.
+  If you are using a CDN chart library (Chart.js, D3), add the chart
+  initialisation code in a <script> block here.
 
   Example skeleton for Chart.js:
     <script>
@@ -500,6 +594,60 @@
     </script>
 
   Remove this comment block if no CDN library is used.
+-->
+
+<!-- ── Optional: Mermaid (remove entirely if the page has no Mermaid) ────────
+  Uncomment when the page contains <pre class="mermaid"> blocks. This is a
+  module import, NOT a <head> script tag, and the themeVariables bridge is
+  mandatory — Mermaid cannot read the --hv-* tokens on its own, so without it
+  diagrams clash in light mode and go unreadable in dark mode. The listener
+  re-renders on a colour-scheme flip. Full guidance:
+  references/visualize.md → "Mermaid (for graph-shaped content)".
+
+  <script type="module">
+    const hv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+    const blocks = [...document.querySelectorAll("pre.mermaid")];
+    blocks.forEach(b => { b.dataset.src = b.textContent; });
+
+    // Reveal the raw source if Mermaid never arrives (offline, CSP-blocked CDN);
+    // otherwise the FOUC guard leaves an empty bordered box with no explanation.
+    const reveal = () => blocks.forEach(b => { b.style.visibility = "visible"; });
+
+    // Dynamic import: a failing static import aborts the module, so no catch would run.
+    let mermaid;
+    try {
+      mermaid = (await import("https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs")).default;
+    } catch (e) {
+      reveal();
+      throw e;
+    }
+
+    async function render() {
+      mermaid.initialize({
+        startOnLoad: false,
+        securityLevel: "strict",
+        theme: "base",
+        themeVariables: {
+          background:         hv("--hv-surface"),
+          primaryColor:       hv("--hv-surface-2"),
+          primaryTextColor:   hv("--hv-text"),
+          primaryBorderColor: hv("--hv-border"),
+          lineColor:          hv("--hv-muted"),
+          secondaryColor:     hv("--hv-accent-tint"),
+          tertiaryColor:      hv("--hv-surface"),
+          fontFamily:         hv("--hv-font-body"),
+        },
+      });
+      // textContent, NOT innerHTML — re-parsing the captured text as HTML mangles any
+      // diagram containing "<" (stateDiagram <<choice>>, an edge label like |"n < 10"|).
+      blocks.forEach(b => { b.textContent = b.dataset.src; b.removeAttribute("data-processed"); });
+      await mermaid.run({ nodes: blocks });
+    }
+
+    render().catch(reveal);
+    matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render);
+  </script>
 -->
 
 <script>

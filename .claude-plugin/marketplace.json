@@ -25,7 +25,7 @@
     {
       "name": "project-review",
       "source": "./plugins/project-review",
-      "description": "Read-only adversarial project reviews — codebase (consistency, structure, architecture), tests, and docs — each a standalone lens that challenges the artifact against the project's own standards and returns a prioritized action list",
+      "description": "Read-only adversarial project reviews — codebase (consistency, structure, architecture), tests, and docs — each a standalone lens that challenges the artifact against the project's own standards and returns a prioritized action list; the codebase lens also writes a standalone Markdown report with Mermaid diagrams and numbered deepening proposals",
       "version": "1.24.0",
       "author": {
         "name": "Hans Kohlreiter",
