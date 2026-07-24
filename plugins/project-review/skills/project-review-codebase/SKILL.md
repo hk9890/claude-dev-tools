@@ -19,8 +19,7 @@ workflow returns a structured report; relay it.
    token is `low`, `medium`, or `high`, say so and take the rest as the scope.
 
 2. `SKILL_DIR` is the **base directory for this skill**, given at the top of this file when
-   the skill loads — it is already absolute and already correct for both a dev checkout and
-   an installed copy. Use it as-is; do not search the filesystem for it.
+   the skill loads. It is absolute and install-correct — build every path below from it.
 
 3. Invoke the **Workflow** tool:
    - `scriptPath`: `<SKILL_DIR>/workflows/review-codebase.js`

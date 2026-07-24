@@ -36,15 +36,14 @@ Nothing is ever committed, no test is written, nothing is installed.
    Wall time is dominated by the suite's own speed in every tier.
 
 2. `SKILL_DIR` is the **base directory for this skill**, given at the top of this file when
-   the skill loads — it is already absolute and already correct for both a dev checkout and
-   an installed copy. Use it as-is; do not search the filesystem for it.
+   the skill loads. It is absolute and install-correct — build every path below from it.
 
 3. Check the prerequisite, snapshot the target tree so integrity is verifiable afterwards,
    and create a per-run scratch dir. Echo the scratch path: shell state does not survive
    between commands, so a value you only assign is gone by the time step 4 needs it.
 
    ```bash
-   command -v python3 >/dev/null || echo "python3 missing — do not launch"
+   command -v python3 >/dev/null || echo "python3 missing — stop and tell the user"
    SCRATCH=$(mktemp -d /tmp/test-tests-XXXXXX) && echo "SCRATCH=$SCRATCH"
    git -C "<path>" status --porcelain > "$SCRATCH/pre-status.txt"
    git -C "<path>" diff > "$SCRATCH/pre-diff.patch"
@@ -61,13 +60,16 @@ Nothing is ever committed, no test is written, nothing is installed.
    The workflow measures four axes — sensitivity (mutants must be killed),
    specificity (no-op edits must not break tests), reliability (reruns, shuffle,
    delay injection), speed — and aborts *with a remediation report* rather than
-   guessing. It aborts when the suite is too slow to finish inside the cap, when the
-   suite is red, when the repository exposes no conforming coverage-summary command
-   (see [Coverage comes from the repository](#coverage-comes-from-the-repository)),
-   when no component could be grouped for audit, and when every worker failed so that
-   no component was audited at all — that last one because a score computed over zero
-   audited components would be a verdict resting on no evidence. The report then tells
-   the user exactly how to make the repo auditable.
+   guessing. It aborts when:
+
+   - the suite is too slow to finish inside the cap
+   - the suite is red
+   - the repository exposes no conforming coverage-summary command
+     (see [Coverage comes from the repository](#coverage-comes-from-the-repository))
+   - no component could be grouped for audit
+   - no audited component produced a mutant, leaving nothing scoreable
+
+   The report then tells the user exactly how to make the repo auditable.
 
 5. **Verify tree integrity** — after the workflow returns *or* fails:
 

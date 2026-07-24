@@ -22,8 +22,7 @@ docs inline. The workflow returns a structured report; relay it.
    fall back to the root.
 
 2. `SKILL_DIR` is the **base directory for this skill**, given at the top of this file when
-   the skill loads — it is already absolute and already correct for both a dev checkout and
-   an installed copy. Use it as-is; do not search the filesystem for it.
+   the skill loads. It is absolute and install-correct — build every path below from it.
 
    Then check the prerequisite and mint a per-run scratch dir. The workflow writes execution
    traces to that dir under deterministic names, and the grading stage treats a trace as
@@ -32,7 +31,7 @@ docs inline. The workflow returns a structured report; relay it.
    only assign is gone by the time you need it in step 3.
 
    ```bash
-   command -v python3 >/dev/null || echo "python3 missing — do not launch; fall back to a manual read"
+   command -v python3 >/dev/null || echo "python3 missing — stop and fall back to a manual read"
    SCRATCH=$(mktemp -d /tmp/docreview-XXXXXX) && echo "SCRATCH=$SCRATCH"
    ```
 

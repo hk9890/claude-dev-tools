@@ -57,11 +57,10 @@ Nothing runs until the user confirms.
 
 ## 4. Launch the workflow
 
-The workflow ships beside this skill. Build its path from the **base directory for this skill**,
-given at the top of this file when the skill loads — already absolute, and already correct for
-both a dev checkout and an installed copy. `work.js` sits at the plugin root rather than under
-the skill, so it is `<base>/../../workflows/work.js`. Do not search the filesystem for it, and
-do not improvise a path.
+The **base directory for this skill** is given at the top of this file when the skill loads:
+absolute and install-correct. `work.js` sits at the plugin root rather than under the skill, so
+its path is `<base>/../../workflows/work.js`. If that file is missing, stop and tell the user the
+`tasks` plugin install is incomplete.
 
 Call the **Workflow** tool with that path and the confirmed scope as `args`:
 
