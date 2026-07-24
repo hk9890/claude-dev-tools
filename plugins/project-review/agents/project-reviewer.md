@@ -1,6 +1,6 @@
 ---
 name: project-reviewer
-description: "Adversarial reviewer persona for the project-review plugin's fork-based review skills — read-only, skeptical, evidence-driven. Carries the review attitude and a fixed output skeleton; the caller supplies the review procedure and verdict label set."
+description: "Adversarial reviewer persona used by project-review-tests and by the tasks plugin's review leg — read-only, skeptical, evidence-driven. Carries the review attitude and a fixed output skeleton; the caller supplies the review procedure and verdict label set."
 model: opus
 color: red
 ---

@@ -24,7 +24,11 @@ All test suites MUST pass. Do not skip any.
 
 Build the project with the build command established in Phase 2 of [release-workflow.md](release-workflow.md). If unsure, ask the user.
 
-## Gate 4: CI Status
+## Gate 4: Lint Passes
+
+Run the project's linter with the command established in Phase 2 of [release-workflow.md](release-workflow.md). If the project configures no linter, record that and move on — but check before concluding it has none, since a linter often gates CI without being named in the release docs.
+
+## Gate 5: CI Status
 
 ```bash
 # Check CI status of latest commit

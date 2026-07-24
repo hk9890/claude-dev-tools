@@ -79,4 +79,4 @@ Note: creating many records counts as destructive under the skill's step 2 mutat
 
 ## Why any of this matters
 
-A finding is worth filing when the result surprises a reasonable user, contradicts the docs, or would cause data loss, confusion, or wasted time. Use FEW HICCUPPS / Test Tours vocabulary as a shared language for explaining *why* something counts: Familiarity, Explainability, World (user's mental model), History, Image, Comparable products, Claims, User experience, Product purpose, Potential, Practicability, Sensory input, and Statutes.
+A finding is worth filing when the result surprises a reasonable user, contradicts the docs, or would cause data loss, confusion, or wasted time. Use FEW HICCUPPS / Test Tours vocabulary as a shared language for explaining *why* something counts. The eleven consistency oracles (Bach & Bolton, Rapid Software Testing) are: Familiar, Explainable, World, History, Image, Comparable products, Claims, Users' desires, Product, Purpose, and Statutes.
