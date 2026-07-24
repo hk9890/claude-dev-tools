@@ -49,6 +49,10 @@ npx playwright --version        # populates the npm _npx cache
 npx playwright install chromium
 ```
 
+### Optional prerequisite: a running logind (keep-awake suite)
+
+The keep-awake-linux suite (`tests/keep-awake-linux/script-tests/test-keep-awake.sh`) asserts against real inhibitors registered with logind, so it needs a session manager that actually registers them. It probes that capability rather than the binary: a container can ship `systemd-inhibit` with no logind running, in which case the helper still spawns and still writes a marker but nothing ever registers — every count reads 0 and the failures would describe the sandbox, not the code. Where the probe fails the suite prints `SKIP` and exits 77, and `tests/run-all.sh` reports it as skipped while keeping the run green. This is why the suite skips on GitHub Actions. Set `REQUIRE_LOGIND=1` to turn the skip into a hard failure, for a runner that is supposed to have it.
+
 ## CI — `.github/workflows/`
 
 `ci.yml` runs five jobs on every PR against `master` and on every push to `master`. All five must be green to merge; four have a local equivalent, so a clean local run should predict a clean CI run:

@@ -13,18 +13,44 @@
 # question is what the system will actually honour, and a pgrep count also
 # matches the harness's own shell.
 #
-# Exits 77 (skip) when systemd-inhibit is unavailable — the plugin no-ops there.
+# Exits 77 (skip) where logind cannot register an inhibitor — the plugin no-ops
+# there. Set REQUIRE_LOGIND=1 to turn that skip into a hard failure instead, for
+# CI that must exercise this path.
 
 set -uo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 SCRIPT="$REPO_ROOT/plugins/keep-awake-linux/bin/keep-awake"
 
-command -v systemd-inhibit >/dev/null 2>&1 || {
-  echo "SKIP: systemd-inhibit not available"
+[[ -x "$SCRIPT" ]] || { echo "FAIL: $SCRIPT is not executable"; exit 1; }
+
+skip_or_fail() {
+  if [[ "${REQUIRE_LOGIND:-0}" == "1" ]]; then
+    echo "FAIL: $1 (REQUIRE_LOGIND=1)"
+    exit 1
+  fi
+  echo "SKIP: $1"
   exit 77
 }
-[[ -x "$SCRIPT" ]] || { echo "FAIL: $SCRIPT is not executable"; exit 1; }
+
+command -v systemd-inhibit >/dev/null 2>&1 || skip_or_fail "systemd-inhibit not available"
+
+# The binary existing is not the capability these tests need. A container can
+# ship systemd-inhibit with no logind running: the helper still spawns and still
+# writes a marker, but nothing ever registers, so every count below reads 0 and
+# the suite reports failures that describe the sandbox rather than the code.
+# Probe the real thing — spawn one inhibitor and require it to appear.
+probe_tag="kaprobe$$"
+setsid systemd-inhibit --what=idle --who="$probe_tag" --why="capability probe" \
+  --mode=block sleep 5 >/dev/null 2>&1 &
+probe_pid=$!
+probe_ok=1
+for ((probe_i = 0; probe_i < 30; probe_i++)); do
+  if systemd-inhibit --list 2>/dev/null | grep -q "$probe_tag"; then probe_ok=0; break; fi
+  sleep 0.05
+done
+kill "$probe_pid" 2>/dev/null || true
+[[ "$probe_ok" -eq 0 ]] || skip_or_fail "logind does not register inhibitors here"
 
 PASS=0
 FAIL=0
