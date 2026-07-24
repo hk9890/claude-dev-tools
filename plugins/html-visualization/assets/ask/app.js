@@ -109,7 +109,7 @@ if (typeof document !== 'undefined') {
           answers[qid] = vals;
 
         } else if (qtype === 'approaches') {
-          // Per-column verdict stored as answers[qid+"-"+approach-id]
+          // Per-column verdict stored as answers["<data-qid>-<data-approach-id>"]
           // The approaches widget stores each column's verdict under a sub-key.
           // Columns must carry data-approach-id on the .approach-col element.
           var cols = widget.querySelectorAll('.approach-col[data-approach-id]');

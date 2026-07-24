@@ -11,7 +11,7 @@ export const meta = {
   ],
 }
 
-// args: { repoRoot, scriptsDir, cost?, maxExecutionRoutes? }
+// args: { repoRoot, scriptsDir, cost?, maxExecutionRoutes?, scratchDir? }
 // Robust to args arriving as either a parsed object or a JSON-encoded string.
 let A = args
 if (typeof A === 'string') { try { A = JSON.parse(A) } catch (e) { A = {} } }
@@ -31,7 +31,15 @@ const maxExec = (A.maxExecutionRoutes !== undefined)
 // SKILL.md mints this per run with mktemp. Trace filenames below are deterministic and
 // the grading stage treats a trace as primary evidence, so two runs sharing a directory
 // grade each other's output — the bare default is safe for one run at a time only.
-const scratchDir = A.scratchDir || '/tmp/docreview-scratch'
+// Require absolute: the execution agent is told to `mkdir -p` this path under a hard
+// read-only contract, on the stated grounds that it sits outside the repo. A relative
+// value — an unsubstituted "<SCRATCH>" placeholder is truthy and would slip past a bare
+// falsy check — would instead create a directory inside the tree being reviewed.
+const scratchDirArg = String(A.scratchDir || '/tmp/docreview-scratch')
+if (!scratchDirArg.startsWith('/')) {
+  return { error: `scratchDir must be an absolute path (got ${JSON.stringify(scratchDirArg)}) — the execution agent creates it outside the repo`, repoRoot }
+}
+const scratchDir = scratchDirArg
 
 // ---------------------------------------------------------------------------
 // Schemas
@@ -305,7 +313,10 @@ const execResults = await pipeline(
       return { route: route.target, verdict: 'inconclusive', attribution: 'none',
                finding: 'Task is tier-C (destructive) — not executed; verify by reading.', severity: 'none' }
     }
-    const tf = traceFile(route, i)
+    // Read the path stage 2 actually wrote to rather than recomputing it: if the two
+    // ever disagreed, the grader would cat a missing file and silently downgrade to
+    // "weak evidence" instead of failing.
+    const tf = run.traceFile || traceFile(route, i)
     return agent(
       `You generated this task from ${route.target} and hold the answer key.\n` +
       `TASK: ${run.task.task}\nEXPECTED (answer key): ${run.task.expected}\n\n` +

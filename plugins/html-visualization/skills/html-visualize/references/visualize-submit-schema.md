@@ -32,7 +32,8 @@ the one-shot lifecycle.
 | `freeform` | string | yes | The user's free-text message. MUST be present; MAY be an empty string `""`. |
 
 The footer script always emits `freeform`. An empty string (`""`) means the user
-clicked Send without typing anything — the server treats this as a silent close (no
+clicked Send with an empty or whitespace-only box (the UI trims before submitting) — the
+server treats this as a silent close (no
 feedback file written, exits 0). A non-empty string causes the server to write the
 feedback file and exit 0, re-invoking Claude.
 

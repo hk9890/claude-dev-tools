@@ -22,32 +22,36 @@ Use the right pattern for each dependency kind:
 ## Locating a plugin's own files at runtime
 
 A skill that has to run one of its plugin's bundled files (a workflow script, a server, a
-Python helper) cannot use `$CLAUDE_PLUGIN_ROOT`: the harness substitutes that token only in
-plugin-config contexts such as hook scripts and `settings.json`. It is **not** exported into
-the environment of `Bash` tool calls and is not substituted in tool arguments, so it expands
-to an empty string and silently produces a broken path. Resolve the install with `find`
-instead, and pass the resolved absolute path onward:
+Python helper) needs that file's absolute path. **The harness already supplies it:** every
+skill is loaded with a `Base directory for this skill: <absolute path>` line, and that path
+is correct in every install shape — a dev checkout, a `--plugin-dir` run, and a cached
+install under `$HOME/.claude/plugins/<marketplace>/<plugin>/<version>/`. Build the path you
+need from it:
 
-```bash
-PLUGIN_DIR=$(find "$HOME/.claude/plugins" "$PWD" -type d -path '*<plugin-name>*/<subdir>' 2>/dev/null |
-  sort -V | tac | while read -r d; do
-    [ -f "${d%/<subdir>}/<the-file-you-need>" ] && { printf '%s\n' "${d%/<subdir>}"; break; }
-  done)
-[ -n "$PLUGIN_DIR" ] || echo "plugin not located — do not launch"
+```
+<base directory for this skill>/workflows/<the-file-you-need>
 ```
 
-Three properties matter, and a variant that drops any of them fails in the field:
+Two layouts exist, so check where the file actually sits before building the path
+(see [OVERVIEW.md](OVERVIEW.md)): a workflow owned by one skill lives under that skill, as
+above, while one shared beyond a single skill sits at the plugin root and is reached with
+`<base directory for this skill>/../../workflows/<the-file-you-need>` — `tasks` is the current
+example. Say which layout applies in the skill, so the `../..` reads as deliberate.
 
-- **Both roots.** Cached installs live under `$HOME/.claude/plugins/`; a `--plugin-dir` dev run
-  has no cached copy and resolves out of `$PWD`.
-- **A `*<plugin-name>*` substring glob.** Cached installs interpose a version segment
-  (`…/<plugin>/<version>/skills`), and only a `*` spanning it reaches them.
-- **Newest-first, then verify the target file.** `sort -V | tac` puts the highest version first;
-  the `[ -f … ]` test then skips stale installs and unrelated paths the broad glob also matches
-  (a `tests/<plugin-name>/` directory, a long-dead plugin still in the cache). Take the first
-  candidate that actually carries the file.
+Do not search the filesystem for the plugin. A `find`-based resolution is not just redundant,
+it is worse than the value the harness hands you: it can select a stale cached version or a
+long-dead copy of the plugin, and — because shell state does not persist between `Bash` tool
+calls — a path it assigns to a variable is gone before the next command runs.
 
-When resolution fails, stop and tell the user — never improvise a path.
+Two related points:
+
+- **`$CLAUDE_PLUGIN_ROOT` is a plugin-config token.** It is substituted in hook commands and
+  `settings.json`, not exported into the environment of `Bash` tool calls. Use the base
+  directory instead.
+- **Echo any path you compute in Bash.** Shell state does not survive between tool calls, so a
+  value that is only assigned (`SCRATCH=$(mktemp -d)`) cannot be read back later. Print it.
+
+When a needed file is genuinely missing, stop and tell the user — never improvise a path.
 
 ## SKILL.md conventions
 
@@ -109,3 +113,20 @@ When the new skill's domain overlaps a sibling's (a likely case within a `*`-fam
 **Reference libraries** are skill folders loaded *by* sibling skills, not invoked directly. They use `user-invocable: false` and omit `when_to_use`. Examples: `html-visualize`.
 
 Do not mix schemas — a skill with both `disable-model-invocation: true` and `when_to_use:` is contradictory.
+
+### `argument-hint` and `$ARGUMENTS`
+
+A skill that takes an argument declares `argument-hint` in its frontmatter and consumes
+`$ARGUMENTS` in its body. The two travel together: a hint with no `$ARGUMENTS` advertises an
+argument the skill then ignores, and `$ARGUMENTS` with no hint hides that the skill takes one.
+
+```yaml
+argument-hint: "[what-to-review]"
+```
+
+Keep the hint a short bracketed placeholder — it appears in the slash-command picker, where a
+long value is truncated. Enumerating the accepted values there also duplicates a list the body
+already owns, and goes stale independently of it; name the shape, not the options.
+
+State what happens when the argument is empty, since a user-invoked skill is frequently
+invoked bare. Either default it ("with no argument, review the whole test suite") or ask.

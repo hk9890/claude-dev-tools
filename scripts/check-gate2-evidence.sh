@@ -189,9 +189,14 @@ main() {
       task_id=$(extract_task_id "$commit_msg")
     fi
 
+    # A PR touching validator surface with no linked task is a FAIL, not a warning.
+    # It previously warned and still exited 0, so an audit could report PASS having
+    # verified nothing — which is exactly what happened for every PR up to v1.23.0.
+    # The audit window starts at the previous tag, so this grandfathers itself: only
+    # PRs merged after that tag are ever examined.
     if [[ -z "$task_id" ]]; then
-      printf 'WARN  %s: no linked task ID found — verify gate2 manually\n' "$label"
-      warn_count=$((warn_count + 1))
+      printf 'FAIL  %s: no linked task ID — cannot verify gate2 evidence\n' "$label"
+      fail_count=$((fail_count + 1))
       continue
     fi
 
@@ -218,12 +223,13 @@ main() {
 
   printf '\n'
   printf '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'
-  printf 'Summary: %d pass, %d fail, %d skip (no validator surface), %d warn (no task)\n' \
+  printf 'Summary: %d pass, %d fail, %d skip (no validator surface), %d warn (lookup failed)\n' \
     "$pass_count" "$fail_count" "$skip_count" "$warn_count"
 
   if [[ "$fail_count" -gt 0 ]]; then
     printf '\nAudit result: FAIL — %d PR(s) missing gate2 evidence. Block the release.\n' \
       "$fail_count"
+    printf 'Link the PR to a taskmgr task and post a gate2:passed or gate2:n/a comment on it.\n'
     exit 1
   fi
 

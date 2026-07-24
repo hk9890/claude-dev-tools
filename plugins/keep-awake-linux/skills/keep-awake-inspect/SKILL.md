@@ -66,6 +66,16 @@ systemd-inhibit --list 2>&1 | head -200
 
 In the captured listing, identify the plugin's entries by matching lines containing `claude-keep-awake` (the WHO field — the helper registers with `--who="claude-keep-awake"`) or `Claude session <sid>` (the WHY field). The COMM column shows `systemd-inhibit`, not the plugin name.
 
+The `sessions/` directory listing holds more than markers. Where `flock` is available, it also
+holds a `<session_id>.lock` per session the helper has handled: the per-session mutex taken
+around marker updates. Those are empty, are never reclaimed by design (unlinking a lock another
+process still holds would silently drop mutual exclusion), and carry no state — ignore them.
+Where `flock` is absent the helper runs unserialised and creates none, so zero locks beside live
+markers is the file-level tell for that mode; pair it with the `degraded-flock-missing` log line.
+
+A `<session_id>.pid.<pid>.tmp` may also appear: the helper writes the marker there and renames it
+atomically, so one survives only if a process was killed inside that window. It is not a marker.
+
 For each `<session_id>.pid` marker:
 
 - Read its PID.
@@ -97,6 +107,8 @@ When invoked via the `hook` verb, two correlated lines appear together: one with
 
 Each hook fire produces TWO log lines: a `hook=<Event> verb=-` dispatch line and a paired `hook=- verb=<start|stop>` action line. **Count events by the `verb=start|stop` lines only** (the action lines); the `hook=...` dispatch lines are correlation aids, not separate events. Counting both will double-report.
 
+One `verb=start|stop` line is *not* an action: `outcome=degraded-flock-missing` is a mode notice emitted alongside the real action line, so a fire in that mode logs three lines. Exclude `outcome=degraded-flock-missing` from the count, or count only `outcome=spawned|refreshed|killed|skipped-pid-not-ours|no-op-*`. Counting it inflates every total by one per fire — in precisely the mode where the numbers matter most.
+
 Group action lines by `sid=`, excluding `sid=-` lines (`no-op-invalid-sid` logs `sid=-`; route those to the Anomalies section instead of reporting a bogus "session -" group), and within each group give a one-line summary like:
 
 ```
@@ -123,7 +135,10 @@ Flag any of these:
 | Repeated `no-op-missing-sid` | Hook stdin not delivering `session_id` — possible Claude Code version mismatch |
 | `no-op-invalid-sid` | Something injected a malformed `session_id`; report the value (truncated in log) |
 | Many refreshes per minute (>20) for one session | Normal during agentic tool-use loops; not necessarily a problem, but worth noting |
-| Active session in current state but ZERO events in log | Logging disabled (`KEEP_AWAKE_LOG=0`), log file was deleted/rotated, or the hooks fired before logging was added (v0.1.0 → v0.1.1) |
+| Active session in current state but ZERO events in log | Logging disabled (`KEEP_AWAKE_LOG=0`), or the log file was deleted or rotated |
+| `degraded-flock-missing` events | `flock` not on PATH where hooks run; the helper still works but its marker updates are unserialised, so concurrent hooks can leak an inhibitor |
+| More `.lock` files than `.pid` markers | Normal. Locks accrue one per session ever seen and are never reclaimed; only markers track live inhibitors |
+| Live `.pid` markers but NO `.lock` files | `flock` is unavailable, so marker updates are unserialised — cross-check for `degraded-flock-missing` in the log; concurrent hooks can leak an inhibitor here |
 | `skipped-pid-not-ours` events | Marker file pointed at a PID we don't own (kernel PID reuse or external interference); helper correctly refused to SIGTERM |
 
 ### Step 6 — Output

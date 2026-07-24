@@ -5,11 +5,26 @@ Pre-release validation checklist.
 ## Gate 1: Clean Working Tree
 
 ```bash
-# Uncommitted changes
-git diff-index --quiet HEAD -- || echo "FAIL: uncommitted changes"
+# Tracked changes. Use status --porcelain, not `git diff-index --quiet`: a merely stale
+# index (a file touched but not modified) makes diff-index report a difference that
+# is not one, failing the gate on a clean tree.
+[ -z "$(git status --porcelain --untracked-files=no)" ] || echo "FAIL: uncommitted changes"
 
-# Untracked files
-git ls-files --others --exclude-standard | head -5
+# Untracked files — informational, not a failure: build output and local scratch are
+# normal. Read the list and decide whether anything in it belongs in the release.
+git ls-files --others --exclude-standard
+```
+
+Then confirm you are **on** the default branch, not merely holding identical content — the
+sync check below compares trees, so it passes from any branch whose content matches:
+
+```bash
+# Derive in-block: each Bash call is a fresh shell, so a DEFAULT_BRANCH set by
+# release-workflow.md Phase 1 is not in scope here. Same sequence as that derivation.
+git remote set-head origin -a >/dev/null 2>&1
+DEFAULT_BRANCH=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|origin/||')
+DEFAULT_BRANCH=${DEFAULT_BRANCH:-$(git remote show origin | sed -n 's/.*HEAD branch: //p')}
+[ "$(git rev-parse --abbrev-ref HEAD)" = "$DEFAULT_BRANCH" ] || echo "FAIL: not on $DEFAULT_BRANCH"
 ```
 
 Then verify sync with the remote default branch — derive `DEFAULT_BRANCH` and diff as in [release-workflow.md — Phase 1](release-workflow.md).

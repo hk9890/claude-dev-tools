@@ -3,6 +3,7 @@ name: tasks-create
 description: "Turn findings from the current conversation into well-formed taskmgr issues — classified by type with a standard body."
 user-invocable: true
 disable-model-invocation: true
+argument-hint: "[scope-or-findings]"
 ---
 
 # Creating tasks from findings

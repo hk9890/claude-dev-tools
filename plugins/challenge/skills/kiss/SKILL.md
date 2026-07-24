@@ -17,7 +17,7 @@ once it is agreed.
 
 ## Route
 
-Read the matching file, and only that one. A target spanning two rows reads both.
+Read only the matching file — or both, when the target genuinely spans two rows.
 
 | Target | Read |
 |---|---|
