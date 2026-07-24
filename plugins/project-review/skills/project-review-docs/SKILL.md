@@ -21,34 +21,24 @@ docs inline. The workflow returns a structured report; relay it.
    If the argument is a description rather than a path, resolve it to a directory or
    fall back to the root.
 
-2. Resolve the install (`$CLAUDE_PLUGIN_ROOT` is not exported to Bash; locate under
-   `$HOME`, version-sorted, with `$PWD` covered for dev installs). The glob must stay a
-   `*project-review*` **substring** — cached installs live at
-   `…/project-review/<version>/skills`, and only a `*` spanning the version segment reaches
-   them. That breadth also matches a long-dead `project-review` plugin still in the cache,
-   so walk candidates newest-first and take the first that actually carries this workflow:
+2. `SKILL_DIR` is the **base directory for this skill**, given at the top of this file when
+   the skill loads — it is already absolute and already correct for both a dev checkout and
+   an installed copy. Use it as-is; do not search the filesystem for it.
+
+   Then check the prerequisite and mint a per-run scratch dir. The workflow writes execution
+   traces to that dir under deterministic names, and the grading stage treats a trace as
+   primary evidence — so two concurrent reviews sharing one directory would grade each
+   other's run. Echo the path: shell state does not survive between commands, so a value you
+   only assign is gone by the time you need it in step 3.
 
    ```bash
-   command -v python3 >/dev/null || echo "python3 missing"
-   PLUGIN_DIR=$(find "$HOME/.claude/plugins" "$PWD" -type d -path '*project-review*/skills' 2>/dev/null |
-     sort -V | tac | while read -r d; do
-       [ -f "${d%/skills}/skills/project-review-docs/workflows/review-docs.js" ] && { printf '%s\n' "${d%/skills}"; break; }
-     done)
-   SKILL_DIR="$PLUGIN_DIR/skills/project-review-docs"
-   [ -n "$PLUGIN_DIR" ] && [ -f "$SKILL_DIR/workflows/review-docs.js" ] || echo "skill not located — do not launch; fall back to a manual read"
-   ```
-
-   Then mint a per-run scratch dir. The workflow writes execution traces there under
-   deterministic names, and the grading stage treats a trace as primary evidence — so two
-   concurrent reviews sharing one directory would grade each other's run:
-
-   ```bash
-   SCRATCH=$(mktemp -d /tmp/docreview-XXXXXX)
+   command -v python3 >/dev/null || echo "python3 missing — do not launch; fall back to a manual read"
+   SCRATCH=$(mktemp -d /tmp/docreview-XXXXXX) && echo "SCRATCH=$SCRATCH"
    ```
 
 3. Invoke the **Workflow** tool:
    - `scriptPath`: `<SKILL_DIR>/workflows/review-docs.js`
-   - `args`: `{ "repoRoot": "<the step-1 path>", "scriptsDir": "<SKILL_DIR>/scripts", "cost": "<the step-1 cost>", "scratchDir": "<SCRATCH>" }`
+   - `args`: `{ "repoRoot": "<the step-1 path>", "scriptsDir": "<SKILL_DIR>/scripts", "cost": "<the step-1 cost>", "scratchDir": "<the echoed SCRATCH>" }`
    - `cost` rungs, on top of the per-file read-review that always runs:
      `low` = no execution phase; `medium` = execution on ~3 AGENTS routes;
      `high` = execution on every route; `ultra` = `high` plus an adversarial pass that

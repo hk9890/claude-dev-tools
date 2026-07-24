@@ -35,24 +35,17 @@ Nothing is ever committed, no test is written, nothing is installed.
 
    Wall time is dominated by the suite's own speed in every tier.
 
-2. Resolve the install (`$CLAUDE_PLUGIN_ROOT` is not exported to Bash; locate under
-   `$HOME`, version-sorted, with `$PWD` covered for dev installs):
+2. `SKILL_DIR` is the **base directory for this skill**, given at the top of this file when
+   the skill loads — it is already absolute and already correct for both a dev checkout and
+   an installed copy. Use it as-is; do not search the filesystem for it.
+
+3. Check the prerequisite, snapshot the target tree so integrity is verifiable afterwards,
+   and create a per-run scratch dir. Echo the scratch path: shell state does not survive
+   between commands, so a value you only assign is gone by the time step 4 needs it.
 
    ```bash
-   command -v python3 >/dev/null || echo "python3 missing"
-   PLUGIN_DIR=$(find "$HOME/.claude/plugins" "$PWD" -type d -path '*project-auto-work*/skills' 2>/dev/null |
-     sort -V | tac | while read -r d; do
-       [ -f "${d%/skills}/skills/test-tests/workflows/test-tests.js" ] && { printf '%s\n' "${d%/skills}"; break; }
-     done)
-   SKILL_DIR="$PLUGIN_DIR/skills/test-tests"
-   [ -n "$PLUGIN_DIR" ] || echo "skill not located — do not launch"
-   ```
-
-3. Snapshot the target tree so integrity is verifiable afterwards, and create a
-   per-run scratch dir:
-
-   ```bash
-   SCRATCH=$(mktemp -d /tmp/test-tests-XXXXXX)
+   command -v python3 >/dev/null || echo "python3 missing — do not launch"
+   SCRATCH=$(mktemp -d /tmp/test-tests-XXXXXX) && echo "SCRATCH=$SCRATCH"
    git -C "<path>" status --porcelain > "$SCRATCH/pre-status.txt"
    git -C "<path>" diff > "$SCRATCH/pre-diff.patch"
    ( cd "<path>" && git ls-files --others --exclude-standard -z | xargs -0 -r md5sum ) > "$SCRATCH/pre-untracked.md5"
@@ -63,15 +56,18 @@ Nothing is ever committed, no test is written, nothing is installed.
 
 4. Invoke the **Workflow** tool:
    - `scriptPath`: `<SKILL_DIR>/workflows/test-tests.js`
-   - `args`: `{ "repoRoot": "<path>", "scriptsDir": "<SKILL_DIR>/scripts", "level": "<level>", "scratchDir": "<SCRATCH>" }`
+   - `args`: `{ "repoRoot": "<path>", "scriptsDir": "<SKILL_DIR>/scripts", "level": "<level>", "scratchDir": "<the echoed SCRATCH>" }`
 
    The workflow measures four axes — sensitivity (mutants must be killed),
    specificity (no-op edits must not break tests), reliability (reruns, shuffle,
-   delay injection), speed — and aborts *with a remediation report* when the suite
-   is red, the repository exposes no conforming coverage-summary command (see
-   [Coverage comes from the repository](#coverage-comes-from-the-repository)), or the
-   suite is too slow to slice: the report then tells the user exactly how to make the
-   repo auditable.
+   delay injection), speed — and aborts *with a remediation report* rather than
+   guessing. It aborts when the suite is too slow to finish inside the cap, when the
+   suite is red, when the repository exposes no conforming coverage-summary command
+   (see [Coverage comes from the repository](#coverage-comes-from-the-repository)),
+   when no component could be grouped for audit, and when every worker failed so that
+   no component was audited at all — that last one because a score computed over zero
+   audited components would be a verdict resting on no evidence. The report then tells
+   the user exactly how to make the repo auditable.
 
 5. **Verify tree integrity** — after the workflow returns *or* fails:
 
