@@ -57,32 +57,20 @@ Nothing runs until the user confirms.
 
 ## 4. Launch the workflow
 
-First resolve the install (`$CLAUDE_PLUGIN_ROOT` is not exported to Bash and is not substituted
-in tool arguments either; locate under `$HOME`, version-sorted, with `$PWD` covered for dev
-installs). The glob must stay a `*tasks*` **substring** — cached installs live at
-`…/tasks/<version>/workflows`, and only a `*` spanning the version segment reaches them. That
-breadth can match unrelated paths, so walk candidates newest-first and take the first that
-actually carries the workflow:
+`SKILL_DIR` is the **base directory for this skill**, given at the top of this file when the
+skill loads: absolute and install-correct. `work.js` sits at the plugin root rather than under
+the skill — the layout `docs/OVERVIEW.md` allows for a workflow shared beyond one skill — so it
+is `<SKILL_DIR>/../../workflows/work.js`. If that file is missing, stop and tell the user the
+`tasks` plugin install is incomplete.
 
-```bash
-PLUGIN_DIR=$(find "$HOME/.claude/plugins" "$PWD" -type d -path '*tasks*/workflows' 2>/dev/null |
-  sort -V | tac | while read -r d; do
-    [ -f "$d/work.js" ] && { printf '%s\n' "${d%/workflows}"; break; }
-  done)
-[ -n "$PLUGIN_DIR" ] || echo "tasks workflow not located — do not launch"
-```
-
-Then call the **Workflow** tool with the resolved path and the confirmed scope as `args`:
+Call the **Workflow** tool with that path and the confirmed scope as `args`:
 
 ```
 Workflow({
-  scriptPath: "<PLUGIN_DIR>/workflows/work.js",
+  scriptPath: "<SKILL_DIR>/../../workflows/work.js",
   args: { taskIds: ["<id>", "<id>", …], epicId: "<epic-id-or-omit>" }
 })
 ```
-
-If `work.js` cannot be located, do not launch and do not improvise a path — tell the user the
-`tasks` plugin install could not be found, and stop.
 
 Pass `epicId` only when running an epic (it drives the epic-verification stage). The workflow owns
 all sequencing — it runs the tasks **sequentially** (one implement→verify→record at a time, since

@@ -19,20 +19,8 @@ the artifact to a temp file.
    the whole codebase. `ultra` is this skill's only depth setting: when the leading
    token is `low`, `medium`, or `high`, say so and take the rest as the scope.
 
-2. Resolve the install (`$CLAUDE_PLUGIN_ROOT` is not exported to Bash; locate under
-   `$HOME`, version-sorted, with `$PWD` covered for dev installs). The glob must stay a
-   `*project-review*` **substring** — cached installs live at
-   `…/project-review/<version>/skills`, and only a `*` spanning the version segment reaches
-   them. Walk candidates newest-first and take the first that actually carries this workflow:
-
-   ```bash
-   PLUGIN_DIR=$(find "$HOME/.claude/plugins" "$PWD" -type d -path '*project-review*/skills' 2>/dev/null |
-     sort -V | tac | while read -r d; do
-       [ -f "${d%/skills}/skills/project-review-codebase/workflows/review-codebase.js" ] && { printf '%s\n' "${d%/skills}"; break; }
-     done)
-   SKILL_DIR="$PLUGIN_DIR/skills/project-review-codebase"
-   [ -n "$PLUGIN_DIR" ] || echo "skill not located — do not launch; fall back to a manual review"
-   ```
+2. `SKILL_DIR` is the **base directory for this skill**, given at the top of this file when
+   the skill loads. It is absolute and install-correct — build every path below from it.
 
 3. Invoke the **Workflow** tool:
    - `scriptPath`: `<SKILL_DIR>/workflows/review-codebase.js`

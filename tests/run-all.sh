@@ -63,7 +63,7 @@ for test_script in "${TEST_SCRIPTS[@]}"; do
   fi
 done
 
-printf '\n========== marketplace test summary ==========\n'
+printf '\n========== %s test summary ==========\n' "${PLUGIN:-marketplace}"
 printf '%d suite(s) passed, %d suite(s) failed, %d suite(s) skipped\n' "$PASS" "$FAIL" "$SKIP"
 
 [[ "$FAIL" -eq 0 ]] || exit 1

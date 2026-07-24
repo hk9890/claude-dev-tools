@@ -158,7 +158,7 @@ happens:
 | Outcome | What the server does |
 |---|---|
 | User types a non-empty message and clicks **Send** | Writes `<basename>.feedback.json`, exits 0 → harness re-invokes Claude with the feedback file |
-| User clicks **Send** with an empty message | Exits 0 silently — no feedback file written, Claude is not re-invoked |
+| User clicks **Send** with an empty or whitespace-only message | Exits 0 silently — no feedback file written, Claude is not re-invoked (the UI trims, so blank input cannot reach the non-empty check) |
 | User closes the tab or navigates away, or the timeout (default 1800 s) is reached with no submit | Nothing is sent on tab close — the server keeps running until the timeout, then exits 0 silently; no feedback file, Claude is not re-invoked |
 
 All three paths exit 0. The only path that produces a feedback file (and a harness

@@ -26,7 +26,15 @@ const level = ['low', 'medium', 'high'].includes((A.level || '').toLowerCase())
   ? A.level.toLowerCase() : 'medium'
 // SKILL.md mints this per run with mktemp; worktree and backup paths below are indexed,
 // not unique, so the bare default is safe for one run at a time only.
-const scratchDir = A.scratchDir || '/tmp/test-tests-scratch'
+// Require absolute. This value is interpolated into `git worktree add` and
+// `git worktree remove --force`, and workers `mkdir -p` it — a relative value (an
+// unsubstituted "<SCRATCH>" placeholder is truthy and slips past a falsy check) would
+// put all of that inside the repository under audit.
+const scratchDirArg = String(A.scratchDir || '/tmp/test-tests-scratch')
+if (!scratchDirArg.startsWith('/')) {
+  return { error: `scratchDir must be an absolute path (got ${JSON.stringify(scratchDirArg)}) — worktrees and backups are created there, outside the repo`, repoRoot }
+}
+const scratchDir = scratchDirArg
 
 // Dials per level (design §8). Verify pass only at high; one rerun uses the
 // runner's shuffle flag at every level when the baseline discovered one.
@@ -627,19 +635,50 @@ const workers = workerResults.filter(Boolean)
 const audited = workers.filter(w => w.audited)
 log(`Workers: ${audited.length}/${components.length} component(s) fully audited (mode=${mode}${parallelWorkers ? ', parallel' : ', serialized'})`)
 
-// Nothing was audited, so there is no evidence to score: kill_rate is killed
-// over total mutants across AUDITED components, which is 0/0 here. Synthesis
-// would still be asked for a verdict and the schema permits any of them, so a
-// confident one could be reported on no evidence at all. Abort instead — the
-// whole value of the audit is a verdict that was earned.
-if (audited.length === 0) {
+// Guard the score's denominator, not just the component count. kill_rate is killed
+// over total mutants across AUDITED components; that is 0/0 whenever no audited
+// component carries a mutant, which includes the case where a worker reports
+// audited=true with an empty mutants array. Synthesis would still be asked for a
+// verdict and the schema permits any of them, so a confident one could be reported
+// on no evidence. Abort instead — the whole value of the audit is an earned verdict.
+const auditedMutants = audited.reduce((n, w) => n + ((w.mutants && w.mutants.length) || 0), 0)
+// The other three axes can carry findings even with no scoreable mutant, and they are
+// real measurements — aborting on a zero mutant count alone would discard them and
+// label a run that did measure something 'not-auditable'.
+const otherAxisFindings = audited.reduce((n, w) => n +
+  ((w.flakes && w.flakes.length) || 0) +
+  ((w.noops && w.noops.length) || 0) +
+  ((w.delays && w.delays.length) || 0), 0)
+
+if (auditedMutants === 0 && otherAxisFindings === 0) {
+  // Two distinct ways to get here, and only one of them means nobody finished:
+  //  - no worker completed the protocol at all; or
+  //  - workers completed but hold no mutant — at level=high the verify stage removes
+  //    refuted equivalent mutants, so a component whose mutants were all refuted ends
+  //    audited with an empty array.
+  // Name whichever actually happened; a fixed string would be false in the second case.
+  const reason = audited.length === 0
+    ? 'no component completed the protocol, so nothing was measured'
+    : 'every audited component finished with no scoreable mutant and no finding on any other axis'
+  // One line per worker, not just the incomplete ones: with audited-but-empty workers
+  // a filter on !audited yields an empty block while the counts above say otherwise.
+  const perWorker = workers
+    .map(w => w.audited
+      ? `  ${w.component}: audited, 0 mutants${w.notes ? ` — ${w.notes}` : ''}`
+      : `  ${w.component}: not audited — ${w.not_audited_reason || 'no reason reported'}`)
+    .join('\n')
   return await abortReport(
-    'no component was audited — every worker failed or was skipped, so no mutant was ever run',
+    reason,
     `Components selected: ${components.length} (${components.map(c => c.name).join(', ') || 'none'})\n` +
     `Workers returning a record: ${workers.length}\n` +
-    `Workers reporting audited=true: 0\n` +
-    `Mode: ${mode}${parallelWorkers ? '' : ' (serialized)'}, level=${level}, can_slice=${baseline.can_slice}`,
-    'Check whether the suite can be sliced to a single component (can_slice above) and whether the worker agents could write to the scratch dir; re-run at a lower level or scope the audit to one component with a known-good filter.'
+    `Workers reporting audited=true: ${audited.length}\n` +
+    `Mutants across audited components: 0\n` +
+    `Findings on other axes (flakes/no-ops/delays): 0\n` +
+    (perWorker ? `Per worker:\n${perWorker}\n` : '') +
+    `Mode: ${mode}${parallelWorkers ? '' : ' (serialized)'}, level=${level}\n` +
+    `Baseline: cmd="${baseline.test_cmd}" wall=${baseline.wall_s}s coverage=${baseline.coverage.pct != null ? baseline.coverage.pct + '%' : 'none'} ` +
+    `can_slice=${baseline.can_slice} filter_syntax=${baseline.filter_syntax || 'none found'}`,
+    'Start from the per-worker lines above. "not audited" citing filtering means the suite could not be sliced to a single component — check can_slice and filter_syntax and scope the audit to one component with a known-good filter; citing the workspace means the worker could not write to the scratch dir or the integrity check failed. "audited, 0 mutants" with verify notes means every injected mutant was refuted as equivalent, so the mutation targets need widening rather than the suite being at fault.'
   )
 }
 
