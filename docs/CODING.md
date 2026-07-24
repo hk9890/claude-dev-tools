@@ -32,6 +32,12 @@ need from it:
 <base directory for this skill>/workflows/<the-file-you-need>
 ```
 
+Two layouts exist, so check where the file actually sits before building the path
+(see [OVERVIEW.md](OVERVIEW.md)): a workflow owned by one skill lives under that skill, as
+above, while one shared beyond a single skill sits at the plugin root and is reached with
+`<base directory for this skill>/../../workflows/<the-file-you-need>` — `tasks` is the current
+example. Say which layout applies in the skill, so the `../..` reads as deliberate.
+
 Do not search the filesystem for the plugin. A `find`-based resolution is not just redundant,
 it is worse than the value the harness hands you: it can select a stale cached version or a
 long-dead copy of the plugin, and — because shell state does not persist between `Bash` tool

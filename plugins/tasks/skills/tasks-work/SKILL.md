@@ -57,16 +57,17 @@ Nothing runs until the user confirms.
 
 ## 4. Launch the workflow
 
-The **base directory for this skill** is given at the top of this file when the skill loads:
-absolute and install-correct. `work.js` sits at the plugin root rather than under the skill, so
-its path is `<base>/../../workflows/work.js`. If that file is missing, stop and tell the user the
+`SKILL_DIR` is the **base directory for this skill**, given at the top of this file when the
+skill loads: absolute and install-correct. `work.js` sits at the plugin root rather than under
+the skill — the layout `docs/OVERVIEW.md` allows for a workflow shared beyond one skill — so it
+is `<SKILL_DIR>/../../workflows/work.js`. If that file is missing, stop and tell the user the
 `tasks` plugin install is incomplete.
 
 Call the **Workflow** tool with that path and the confirmed scope as `args`:
 
 ```
 Workflow({
-  scriptPath: "<base-directory-of-this-skill>/../../workflows/work.js",
+  scriptPath: "<SKILL_DIR>/../../workflows/work.js",
   args: { taskIds: ["<id>", "<id>", …], epicId: "<epic-id-or-omit>" }
 })
 ```
