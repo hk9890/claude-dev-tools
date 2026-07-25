@@ -34,11 +34,16 @@ python3 scripts/analyze-sessions.py
 # Override the projects directory
 python3 scripts/analyze-sessions.py --projects-dir /path/to/projects
 
+# Scope the scan: one project (substring of the project dir name), recent files only
+python3 scripts/analyze-sessions.py --project dt-operator --since-days 2
+
 # Run against a single fixture file (for testing)
 python3 scripts/analyze-sessions.py --fixture scripts/fixtures/session-fixture.jsonl
 ```
 
-Run the script with `--help` for all options (`--plugins-dir`, `--output-dir`, `--max-slice-chars`, `--sample-rocky`, `--sample-baseline`).
+`--since-days` filters on file modification time — "sessions touched in the window", not "activity in the window". A long-lived session modified recently is included whole, old episodes and all.
+
+Run the script with `--help` for all options (`--plugins-dir`, `--output-dir`, `--project`, `--since-days`, `--max-slice-chars`, `--sample-rocky`, `--sample-baseline`).
 
 ### Output paths
 
@@ -59,6 +64,10 @@ An **episode** is a contiguous run of assistant messages that share the same `at
 1. A new episode opens when an assistant message carries an `attributionSkill` value that differs from the previous assistant message.
 2. User messages, `tool_result` blocks, and `system` events that fall between attributed assistant turns are assigned to the **currently-open episode by position** — they do not delimit or close an episode.
 3. When `attributionSkill` changes (or an unattributed assistant message appears), the open episode closes and a new one opens if the incoming skill resolves to a known marketplace plugin.
+
+### Resumed sessions and record dedup
+
+When a session is continued in another directory (e.g. work moving between a worktree and the main checkout), Claude Code copies the conversation history into a new transcript file, and each copied record keeps its original per-record `uuid`. The indexer deduplicates records by `uuid` across all files of one scan, so a copied history is counted once: the first file in the sorted walk order keeps the shared records, and a forked continuation contributes only its own new records. Records without a `uuid` field are never deduplicated.
 
 ### Rename-alias maps
 
@@ -97,8 +106,8 @@ Alongside friction, each episode carries four boolean outcome signals:
 |-------|----------------------|---------|
 | `ended_in_commit` | The serialized assistant message (whole JSON, incl. tool names/inputs) matches `COMMIT_RE` (`commit` / `git commit`) | The episode's assistant turns mention or invoke making a commit |
 | `ended_in_pr` | The serialized assistant message (whole JSON, incl. tool names/inputs) matches `PR_RE` (`pull request`, `gh pr create`, `pr url`) | The episode mentions or invokes opening a pull request |
-| `tests_run` | A `tool_result` string matches `TEST_RUN_RE` (`pytest`, `npm test`, `go test`, `cargo test`, `make test`, `mise run test`, `./test`) | Tests were run during the episode |
-| `tests_passed` | A `tool_result` string matches `TEST_PASS_RE` (e.g. `all tests passed`, `PASSED`) | A test run reported success |
+| `tests_run` | A `tool_result` string matches `TEST_RUN_RE` (`pytest`, `npm test`, `go test`, `cargo test`, `make test`, `bun test`, `mise run test`, `./test`) | Tests were run during the episode |
+| `tests_passed` | A `tool_result` string matches `TEST_PASS_RE` (e.g. `all tests passed`, `PASSED`), **and** `tests_run` is true for the episode | A test run reported success. Gated on `tests_run` so incidental "pass" text in unrelated output cannot report a pass with no detected run. |
 
 These are heuristic pattern matches (see the `*_RE` constants in the script), not verified outcomes — treat them as coarse signals. They appear per-episode in `dataset.json` and as per-skill aggregate counts (the **Commits** and **PRs** columns) in `summary.md`.
 
@@ -183,7 +192,7 @@ The friction signal `user_corrections` is a **heuristic**: it detects correction
 
 ## False-negative pass
 
-The unmatched-plugin table in `output/session-analysis/summary.md` shows plugins attributed in transcripts that did not resolve to any known marketplace plugin. This catches stale plugin names but does not catch sessions where attribution was absent entirely.
+The unmatched-plugin table in `output/session-analysis/summary.md` shows plugins attributed in transcripts that did not resolve to any known marketplace plugin. Plugins installed from *other* marketplaces (e.g. `commit-commands` from `claude-plugins-official`) are expected here — only a stale name of one of this marketplace's own plugins is actionable. The table catches those stale names but does not catch sessions where attribution was absent entirely.
 
 To check for missed attribution (sessions where a plugin was active but `attributionPlugin`/`attributionSkill` were never set):
 

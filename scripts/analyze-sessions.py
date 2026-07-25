@@ -9,7 +9,8 @@ Usage:
     python3 scripts/analyze-sessions.py [options]
 
 Run with --help for the option list (--projects-dir, --plugins-dir,
---output-dir, --fixture, --max-slice-chars, --sample-rocky, --sample-baseline).
+--output-dir, --project, --since-days, --fixture, --max-slice-chars,
+--sample-rocky, --sample-baseline).
 
 Outputs (under output-dir/):
     dataset.json         Per-episode summary records (no raw message content)
@@ -24,6 +25,7 @@ import json
 import os
 import re
 import sys
+import time
 import uuid
 from collections import defaultdict
 
@@ -173,7 +175,7 @@ PR_RE = re.compile(r"\bpull.?request\b|\bgh pr create\b|\bpr url\b", re.IGNORECA
 
 # Patterns that suggest tests were run
 TEST_RUN_RE = re.compile(
-    r"\b(pytest|npm test|go test|cargo test|make test|mise r(un)? test|\.\/test)\b",
+    r"\b(pytest|npm test|go test|cargo test|make test|bun test|mise r(un)? test|\.\/test)\b",
     re.IGNORECASE,
 )
 TEST_PASS_RE = re.compile(
@@ -333,7 +335,7 @@ class Episode:
         self.ended_in_commit = False
         self.ended_in_pr = False
         self.tests_run = False
-        self.tests_passed = False
+        self._tests_pass_seen = False  # raw TEST_PASS_RE hit; see tests_passed
 
         # Trigger classification
         self.trigger_type = "ambient"  # or "explicit"
@@ -345,6 +347,16 @@ class Episode:
     def friction_score(self):
         """Normalized friction score (0=smooth, higher=rockier)."""
         return self._compute_friction()
+
+    @property
+    def tests_passed(self):
+        """True only when a pass indicator AND a detected test run coincide.
+
+        TEST_PASS_RE alone false-positives on incidental "pass" text in
+        unrelated tool output; gating on tests_run keeps the pair coherent
+        (never "passed" without a run).
+        """
+        return self.tests_run and self._tests_pass_seen
 
     def to_summary_record(self):
         """Return a JSON-serializable summary dict (no raw content)."""
@@ -492,7 +504,7 @@ def _contains_skill_invocation(content_blocks, attribution_skill):
 # Core parser: one JSONL file -> list of Episode objects
 # ---------------------------------------------------------------------------
 
-def parse_file(filepath, alias_to_canonical):
+def parse_file(filepath, alias_to_canonical, seen_uuids=None):
     """Parse a single JSONL file and return (episodes, unmatched_plugins).
 
     episodes: list of Episode objects for plugins that resolve to known marketplace plugins.
@@ -501,6 +513,12 @@ def parse_file(filepath, alias_to_canonical):
 
     Only episodes whose attributionPlugin resolves (via alias_to_canonical)
     to a known marketplace plugin are kept in the episodes list.
+
+    seen_uuids: optional set of record uuids already counted, shared across the
+    files of one scan. A resumed or forked session copies its history into a
+    new transcript file with each copied record keeping its original uuid;
+    records whose uuid is already in the set are skipped (and new uuids added),
+    so every turn is counted exactly once across the scan.
 
     Walking strategy:
     - assistant records with attributionSkill start/continue an episode
@@ -526,6 +544,15 @@ def parse_file(filepath, alias_to_canonical):
     # filepath should be used as-is for the source_file field (full path)
 
     for lineno, record in iter_records(filepath):
+        # Cross-file dedup (see seen_uuids in the docstring). Records without
+        # a uuid are never deduplicated.
+        if seen_uuids is not None:
+            ruid = record.get("uuid")
+            if ruid:
+                if ruid in seen_uuids:
+                    continue
+                seen_uuids.add(ruid)
+
         rtype = record.get("type")
 
         if rtype == "assistant":
@@ -676,7 +703,7 @@ def parse_file(filepath, alias_to_canonical):
                             if TEST_RUN_RE.search(block_content):
                                 current.tests_run = True
                             if TEST_PASS_RE.search(block_content):
-                                current.tests_passed = True
+                                current._tests_pass_seen = True
 
                         # Interruption signal: toolUseResult.interrupted == True
                         # Note: toolUseResult is at the top-level of the user record,
@@ -717,16 +744,33 @@ def parse_file(filepath, alias_to_canonical):
 # Walk all project dirs
 # ---------------------------------------------------------------------------
 
-def walk_projects(projects_dir, alias_to_canonical):
+def walk_projects(projects_dir, alias_to_canonical, project_filter=None,
+                  since_days=None):
     """Walk all project subdirectories and parse every *.jsonl file.
 
     Yields one (episodes, unmatched_plugins) pair per parsed file, exactly as
     returned by parse_file. Unreadable files are skipped.
+
+    project_filter: only scan project subdirectories whose name contains this
+      substring.
+    since_days: only scan session files modified in the last N days. This is a
+      file-mtime filter — "sessions touched in the window" — so a long-lived
+      session modified recently is included whole, old episodes and all.
+
+    Records are deduplicated by uuid across all files of the scan (see
+    parse_file); the sorted walk order makes the surviving copy deterministic.
     """
     if not os.path.isdir(projects_dir):
         return
 
+    cutoff = None
+    if since_days is not None:
+        cutoff = time.time() - since_days * 86400
+
+    seen_uuids = set()
     for proj_name in sorted(os.listdir(projects_dir)):
+        if project_filter and project_filter not in proj_name:
+            continue
         proj_dir = os.path.join(projects_dir, proj_name)
         if not os.path.isdir(proj_dir):
             continue
@@ -735,7 +779,9 @@ def walk_projects(projects_dir, alias_to_canonical):
                 continue
             filepath = os.path.join(proj_dir, filename)
             try:
-                yield parse_file(filepath, alias_to_canonical)
+                if cutoff is not None and os.path.getmtime(filepath) < cutoff:
+                    continue
+                yield parse_file(filepath, alias_to_canonical, seen_uuids)
             except OSError:
                 continue
 
@@ -949,6 +995,8 @@ def write_summary(episodes, output_dir, extra_unmatched=None, skill_modes=None):
         "",
         "These plugin names appeared in attribution fields but do not match any",
         "current marketplace plugin (after rename aliases are applied).",
+        "Plugins installed from other marketplaces are expected here; only a",
+        "stale name of one of this marketplace's own plugins is actionable.",
         "",
     ]
 
@@ -1017,6 +1065,13 @@ def _parse_args(argv):
         "--projects-dir", default=os.path.expanduser("~/.claude/projects"),
         help="root directory containing project subdirs (default: ~/.claude/projects)")
     parser.add_argument(
+        "--project", default=None,
+        help="only scan project subdirectories whose name contains this substring")
+    parser.add_argument(
+        "--since-days", type=float, default=None,
+        help="only scan session files modified in the last N days (file-mtime "
+             "filter: a long-lived session touched recently is included whole)")
+    parser.add_argument(
         "--plugins-dir", default=os.path.join(_REPO_ROOT, "plugins"),
         help="root of the marketplace plugins directory (default: <repo-root>/plugins)")
     parser.add_argument(
@@ -1065,7 +1120,7 @@ def main():
         output_dir = os.path.join(output_dir, "fixture")
         print(f"Running fixture mode on: {fixture_path}")
         try:
-            eps, unmatched = parse_file(fixture_path, alias_to_canonical)
+            eps, unmatched = parse_file(fixture_path, alias_to_canonical, set())
             all_episodes.extend(eps)
             for k, v in unmatched.items():
                 all_unmatched[k] += v
@@ -1075,8 +1130,15 @@ def main():
     else:
         # Full scan mode
         projects_dir = args.projects_dir
-        print(f"Scanning projects under: {projects_dir}")
-        for episodes, unmatched in walk_projects(projects_dir, alias_to_canonical):
+        scope = ""
+        if args.project:
+            scope += f" [project contains: {args.project}]"
+        if args.since_days is not None:
+            scope += f" [modified in last {args.since_days:g} days]"
+        print(f"Scanning projects under: {projects_dir}{scope}")
+        for episodes, unmatched in walk_projects(
+                projects_dir, alias_to_canonical,
+                project_filter=args.project, since_days=args.since_days):
             before = len(all_episodes)
             all_episodes.extend(episodes)
             # Print progress roughly every 100 episodes

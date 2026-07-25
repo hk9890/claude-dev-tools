@@ -8,6 +8,8 @@
 #   - RENAME_ALIASES / SKILL_RENAME_ALIASES invariants: no alias key is a live
 #     name (the retired-name-reuse guard), every value resolves to a live plugin,
 #     and the maps are single-application (no value is also a key)
+#   - walk_projects: --project substring filter, --since-days mtime filter,
+#     cross-file uuid dedup, and no dedup of uuid-less records
 set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
@@ -15,9 +17,11 @@ SCRIPT="$REPO_ROOT/scripts/analyze-sessions.py"
 
 python3 - "$SCRIPT" <<'PYEOF'
 import importlib.util
+import json
 import os
 import sys
 import tempfile
+import time
 
 spec = importlib.util.spec_from_file_location("analyze_sessions", sys.argv[1])
 mod = importlib.util.module_from_spec(spec)
@@ -110,6 +114,69 @@ check([ep.episode_id for ep in small] == ["ep-00", "ep-01"],
 sample = mod.select_slice_sample(episodes[:7], rocky_n=3, baseline_n=10)
 check(len(sample) == 7,
       "select_slice_sample: baseline_n larger than remainder → all episodes, no crash")
+
+# ── walk_projects: scan filters and cross-file uuid dedup ────────────────────
+
+def write_session(projects_dir, proj, name, records):
+    proj_dir = os.path.join(projects_dir, proj)
+    os.makedirs(proj_dir, exist_ok=True)
+    path = os.path.join(proj_dir, name)
+    with open(path, "w", encoding="utf-8") as fh:
+        for r in records:
+            fh.write(json.dumps(r) + "\n")
+    return path
+
+def asst_record(uid):
+    r = {"type": "assistant",
+         "message": {"role": "assistant",
+                     "content": [{"type": "text", "text": "hi"}]},
+         "attributionSkill": "tasks:tasks", "attributionPlugin": "tasks"}
+    if uid is not None:
+        r["uuid"] = uid
+    return r
+
+def scan(projects_dir, **kwargs):
+    alias = {"tasks": "tasks"}
+    return [ep for eps, _ in mod.walk_projects(projects_dir, alias, **kwargs)
+            for ep in eps]
+
+# --project: only project dirs whose name contains the substring are scanned
+with tempfile.TemporaryDirectory() as projects_dir:
+    write_session(projects_dir, "proj-alpha", "a.jsonl", [asst_record("wa-1")])
+    write_session(projects_dir, "proj-beta", "b.jsonl", [asst_record("wb-1")])
+    eps = scan(projects_dir, project_filter="alpha")
+    check(len(eps) == 1 and eps[0].source_file.endswith("a.jsonl"),
+          "walk_projects: project_filter scans only matching project dirs")
+
+# --since-days: files with an mtime older than the cutoff are skipped
+with tempfile.TemporaryDirectory() as projects_dir:
+    old = write_session(projects_dir, "p", "old.jsonl", [asst_record("ws-1")])
+    write_session(projects_dir, "p", "new.jsonl", [asst_record("ws-2")])
+    stale = time.time() - 10 * 86400
+    os.utime(old, (stale, stale))
+    eps = scan(projects_dir, since_days=2)
+    check(len(eps) == 1 and eps[0].source_file.endswith("new.jsonl"),
+          "walk_projects: since_days skips files with an mtime past the cutoff")
+
+# uuid dedup: a record copied into a second file (same uuid) is counted once;
+# the first file in sorted walk order keeps it
+with tempfile.TemporaryDirectory() as projects_dir:
+    write_session(projects_dir, "p", "a.jsonl", [asst_record("dup-1")])
+    write_session(projects_dir, "p", "b.jsonl",
+                  [asst_record("dup-1"), asst_record("uniq-2")])
+    eps = scan(projects_dir)
+    total_turns = sum(ep.turn_count for ep in eps)
+    check(total_turns == 2,
+          "walk_projects: a record uuid seen in an earlier file is not re-counted")
+
+# records without a uuid are never deduplicated, however similar they look
+with tempfile.TemporaryDirectory() as projects_dir:
+    write_session(projects_dir, "p", "a.jsonl",
+                  [asst_record(None), asst_record(None)])
+    eps = scan(projects_dir)
+    check(len(eps) == 1 and eps[0].turn_count == 2,
+          "walk_projects: identical uuid-less records are all counted")
+
 
 # ── rename-alias invariants ──────────────────────────────────────────────────
 # The PR that split project-quality warned the retired-name-reuse hazard "recurs

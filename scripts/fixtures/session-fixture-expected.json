@@ -65,7 +65,7 @@
       "_friction_breakdown": "tool_errors=2*3.0 + interruptions=1*2.0 + permission_denials=1*2.0 + ask_user_questions=1*0.5 = 10.5 / 6 turns = 1.75"
     },
     {
-      "_description": "Episode 4: github-releases:release — a stale skill-name alias. dataset.json keeps the raw attribution_skill; SKILL_RENAME_ALIASES must merge it into the github-releases:github-releases summary row (see summary_skill_episodes).",
+      "_description": "Episode 4: github-releases:release — a stale skill-name alias. dataset.json keeps the raw attribution_skill; SKILL_RENAME_ALIASES must merge it into the github-releases:github-releases summary row (see summary_skill_episodes). Also the tests_passed-gate pin: its user-020 tool_result carries pass text ('All tests passed') but nothing matching TEST_RUN_RE, so tests_run and tests_passed must both stay false.",
       "attribution_skill": "github-releases:release",
       "attribution_plugin": "github-releases",
       "trigger_type": "ambient",
@@ -122,6 +122,8 @@
     "Episode 1: user-004b's correction words live only inside a <command-args> harness block; HARNESS_BLOCK_RE must strip it so user_corrections stays 1.",
     "Episode 1: user-004c's correction words appear only after the first sentence ('That looks fine to me.'); first-sentence scoping must keep user_corrections at 1.",
     "Episode 3: user-015's pytest result also carries a 32-char hex fingerprint (sanitized to [HEX] in the slice) and ~660 chars of padding so the slice event exceeds --max-slice-chars 400 and shows the '[truncated N chars]' suffix.",
-    "Episode 4: attributionSkill github-releases:release is a stale alias; dataset keeps the raw name, the summary table merges it into github-releases:github-releases (2 episodes) and must not show the alias as its own row."
+    "Episode 4: attributionSkill github-releases:release is a stale alias; dataset keeps the raw name, the summary table merges it into github-releases:github-releases (2 episodes) and must not show the alias as its own row.",
+    "Episode 4: user-020's tool_result matches TEST_PASS_RE ('All tests passed') but nothing matches TEST_RUN_RE; the tests_passed gate (tests_run AND pass-seen) keeps tests_passed=false — it would read true without the gate.",
+    "Dedup: the fixture ends with verbatim copies of the episode-2 records (asst-009, user-011, asst-010, sys-007 — same uuids). Record-uuid dedup must skip them, so episode_count stays 4 and challenge:kiss keeps 1 summary episode; without dedup a 5th episode opens and challenge:kiss reads 2."
   ]
 }
