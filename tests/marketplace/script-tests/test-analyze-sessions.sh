@@ -15,6 +15,10 @@
 #     over --max-slice-chars with a "[truncated N chars]" suffix
 #   - the SKILL_RENAME_ALIASES merge is pinned via check-fixture.py's
 #     summary-table assertions (canonical rows present, raw aliases absent)
+#   - tests_passed gate: pass text without a detected test run must not set
+#     tests_passed (episode 4 stays false)
+#   - uuid dedup: verbatim re-appended records (same uuids) must be skipped,
+#     not opened as a fifth episode
 set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
@@ -226,6 +230,31 @@ test_slice_truncates_long_text() {
   fi
 }
 
+# 10. tests_passed gate: episode 4's user-020 tool_result carries pass text
+#     ("All tests passed") but no test-run command; tests_passed must stay
+#     false (gated on tests_run).
+test_pass_without_run_not_counted() {
+  assert_json_field \
+    "tests-passed gate: tests_passed=false for pass text without a test run" \
+    "$TMP_DIR/output/fixture/dataset.json" \
+    "github-releases:release" \
+    "tests_passed" \
+    "false"
+}
+
+# 11. uuid dedup: the fixture ends with verbatim copies of the episode-2
+#     records (same uuids). Without record-uuid dedup they would open a 5th
+#     episode; the count must stay 4.
+test_duplicate_uuids_skipped() {
+  local count
+  count=$(python3 -c "import json; print(len(json.load(open('$TMP_DIR/output/fixture/dataset.json'))))")
+  if [[ "$count" == "4" ]]; then
+    ok "uuid dedup: re-appended duplicate records do not open a 5th episode"
+  else
+    fail "uuid dedup: expected 4 episodes, got $count"
+  fi
+}
+
 # ── run all tests (ordered — later tests depend on earlier output) ────────────
 
 test_fixture_runs
@@ -237,6 +266,8 @@ test_slice_has_content
 test_slice_redacts_credentials
 test_slice_redacts_long_hex
 test_slice_truncates_long_text
+test_pass_without_run_not_counted
+test_duplicate_uuids_skipped
 
 printf '\n'
 printf 'Results: %d passed, %d failed\n' "$PASS" "$FAIL"
