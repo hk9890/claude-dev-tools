@@ -4,7 +4,8 @@ The following file in this plugin is derived from
 [mattpocock/skills](https://github.com/mattpocock/skills) (the `codebase-design`
 skill), used under the MIT license:
 
-- `skills/project-review-codebase/references/design-vocabulary.md` — adapted
+- `skills/project-review-codebase/references/design-vocabulary.md` — adapted; its
+  terms trace to Ousterhout and Feathers
 
 ## MIT License (mattpocock/skills)
 

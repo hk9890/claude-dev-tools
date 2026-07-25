@@ -92,8 +92,8 @@ release/dispatch event.
 
 ## Choosing tooling for your stack
 
-This guide stays tech-agnostic on purpose. To make it concrete, find the
-equivalent of each of these in *your* ecosystem and CI provider:
+To make it concrete, find the equivalent of each of these in *your* ecosystem
+and CI provider:
 
 - a **build / publish** step that produces and uploads your distributable;
 - a **signing / provenance** mechanism (your registry's, or a standalone one);
