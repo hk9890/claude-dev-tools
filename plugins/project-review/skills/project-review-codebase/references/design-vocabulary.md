@@ -1,4 +1,3 @@
-<!-- Source: adapted from mattpocock/skills codebase-design (MIT) — see ../../../NOTICE.md; terms trace to Ousterhout and Feathers. -->
 # Design vocabulary for the architecture dimension
 
 Use these terms precisely in findings — substituting near-synonyms ("component",
