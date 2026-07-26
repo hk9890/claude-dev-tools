@@ -94,6 +94,11 @@ async function main() {
   eq('normalizeArgs: a trailing slash on scriptsDir still resolves the rules',
     '/s/references/project-doc-guidelines.md',
     normalizeArgs({ repoRoot: '/r', scriptsDir: '/s/scripts/' }).guidelinesFile);
+  // Anchored on the separator, matching test-tests.js. Unanchored, a directory merely
+  // ENDING in "scripts" would have its name rewritten mid-word to "myreferences".
+  eq('normalizeArgs: a directory ending in "scripts" is not rewritten mid-word',
+    '/s/myscripts/project-doc-guidelines.md',
+    normalizeArgs({ repoRoot: '/r', scriptsDir: '/s/myscripts' }).guidelinesFile);
 
   // The regression the seam exists for: args arriving as a JSON STRING must be parsed,
   // or every field is undefined and the run dies at "undefined/manifest.py".

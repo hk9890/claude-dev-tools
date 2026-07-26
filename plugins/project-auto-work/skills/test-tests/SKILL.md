@@ -106,7 +106,9 @@ If `python3` is missing or the workflow cannot launch, do not improvise an inlin
 audit — report which prerequisite is missing and stop. If the workflow returns an
 object with `error` and no `report` (bad arguments, or the baseline agent died),
 relay the error verbatim, state that the audit did not run, and do not improvise
-findings — still run the step-5 integrity check.
+findings — still run the step-5 integrity check. When the error carries `got`, the
+run never started and `got.keys` lists the arguments that actually arrived — surface
+it, since that is what shows a misspelled key.
 
 ## Coverage comes from the repository
 

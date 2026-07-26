@@ -96,8 +96,10 @@ function normalizeArgs(rawArgs) {
   return {
     repoRoot,
     scriptsDir,
-    // The authoring rules the read-review agents apply live next to the scripts.
-    guidelinesFile: scriptsDir.replace(/scripts\/?$/, 'references') + '/project-doc-guidelines.md',
+    // The authoring rules the read-review agents apply live next to the scripts. Anchored
+    // on the path separator, matching test-tests.js: unanchored, a scriptsDir ending in
+    // e.g. "myscripts" would silently resolve to "myreferences".
+    guidelinesFile: scriptsDir.replace(/\/scripts\/?$/, '/references') + '/project-doc-guidelines.md',
     level,
     maxExec,
     scratchDir,
