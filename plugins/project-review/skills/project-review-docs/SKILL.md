@@ -52,6 +52,12 @@ docs inline. The workflow returns a structured report; relay it.
    follow-up, **re-run the skill**; never answer from the report alone, and never
    from `grep`/link-checks.
 
+   If it returns `{ error: … }` and no `report`, the audit did not run: relay the
+   error **verbatim**, say so plainly, and do not improvise findings. An error
+   carrying `got` means an argument was wrong before any agent was spawned, and
+   `got.keys` lists the arguments that actually arrived — surface it, since that is
+   what shows a misspelled key.
+
 If `python3` is missing or the workflow cannot launch, read every doc in full
 against `references/project-setup.md` by hand and state that the workflow did not
 run — never report "docs look good" from mechanical checks alone.

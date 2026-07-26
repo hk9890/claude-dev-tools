@@ -126,6 +126,20 @@ async function main() {
   truthy('normalizeArgs: non-JSON string is rejected', normalizeArgs('not json').error);
   truthy('normalizeArgs: undefined is rejected', normalizeArgs(undefined).error);
 
+  // An unsubstituted "<…>" placeholder from the SKILL.md args template is a NON-EMPTY
+  // string, so a truthiness check passes it through — and this workflow interpolates
+  // repoRoot into `git -C <root> worktree add` and then mutates production files under it.
+  truthy('normalizeArgs: an unsubstituted placeholder repoRoot is rejected before any worktree',
+    /absolute path/.test(normalizeArgs({ repoRoot: '<path>', scriptsDir: '/s/scripts' }).error || ''));
+  truthy('normalizeArgs: a relative repoRoot is rejected',
+    /absolute path/.test(normalizeArgs({ repoRoot: 'some/dir', scriptsDir: '/s/scripts' }).error || ''));
+  truthy('normalizeArgs: a relative scriptsDir is rejected',
+    /absolute path/.test(normalizeArgs({ repoRoot: '/r', scriptsDir: 'rel/scripts' }).error || ''));
+  // The error names two arguments; without the keys that arrived, a caller who sent
+  // `scripts_dir` cannot tell which of the two is the wrong one.
+  eq('normalizeArgs: the received keys are echoed for diagnosis',
+    ['repoRoot', 'scripts_dir'], normalizeArgs({ repoRoot: '/r', scripts_dir: '/s' }).receivedKeys);
+
   // scratchDir is interpolated into `git worktree add` and `git worktree remove --force`.
   // A relative value would put worktrees and backups inside the repository under audit;
   // an unsubstituted "<SCRATCH>" placeholder is truthy and slips past a bare falsy check.
@@ -282,6 +296,82 @@ async function main() {
   eq('bailout: the error object echoes the received args type', 'string', ret && ret.got && ret.got.type);
   if (!agentCalled) ok('bailout: no agent spawned on the bad-args path');
   else bad('bailout: no agent spawned on the bad-args path');
+
+  // ── orchestration ────────────────────────────────────────────────────────────
+  // Drive the FULL baseline → grouping → workers → (verify) → synthesis pipeline through
+  // stubbed hooks. Without this the orchestration block never executes, so a variable
+  // dropped from its destructure would throw a ReferenceError only mid-audit — after
+  // workers have already mutated production files.
+  const runAudit = async (over, agentOver = {}) => {
+    const labels = [];
+    const prompts = [];
+    const agent = async (prompt, opts = {}) => {
+      labels.push(opts.label);
+      prompts.push(prompt);
+      if (agentOver[opts.label]) return agentOver[opts.label];
+      if (opts.label === 'baseline') return agentOver.baseline || healthyBaseline();
+      if (opts.label === 'grouping') {
+        return { components: [{ name: 'core', prod_paths: ['src/a.js'], test_selector: 'make test' }] };
+      }
+      if (opts.label.startsWith('worker:')) {
+        return {
+          component: 'core', audited: true, integrity_ok: true,
+          mutants: [{ file: 'src/a.js', line: 1, diff: 'd', stated_behavior_change: 'b', outcome: 'SURVIVED' }],
+          noops: [], delays: [], flakes: [],
+        };
+      }
+      if (opts.label.startsWith('verify-mutant:')) return { refuted: false };
+      return { verdict: 'adequate', headline: 'h', findings: [], proposals: [], checked: 'c', not_checked: [] };
+    };
+    const { ret } = await load({
+      agent,
+      args: { repoRoot: '/repo', scriptsDir: '/s/scripts', scratchDir: '/tmp/sc', ...over },
+      log: () => {},
+      phase: () => {},
+      parallel: async (thunks) => Promise.all(thunks.map((t) => t())),
+      pipeline: async (items, ...stages) => Promise.all(items.map(async (item, i) => {
+        let v = item;
+        for (const s of stages) v = await s(v, item, i);
+        return v;
+      })),
+    });
+    return { ret, labels, prompts };
+  };
+
+  const deep = await runAudit({ level: 'ultra' });
+  eq('orchestration: the audit completes and reports', 'adequate',
+    deep.ret && deep.ret.report && deep.ret.report.verdict);
+  eq('orchestration: it does not abort', undefined, deep.ret && deep.ret.aborted);
+  eq('orchestration: ultra verifies the surviving mutant',
+    1, deep.labels.filter((l) => l.startsWith('verify-mutant:')).length);
+  eq('orchestration: worktree mode is chosen when the baseline probe succeeded',
+    'worktree', deep.ret && deep.ret.mode);
+  eq('orchestration: the level is echoed back', 'ultra', deep.ret && deep.ret.level);
+  // The regression that motivates driving the pipeline: repoRoot and scratchDir reach the
+  // worker prompt, which is where worktrees are created and production files are mutated.
+  truthy('orchestration: the repo root reaches the worker prompt',
+    deep.prompts.some((p) => p.includes('/repo')));
+  truthy('orchestration: the scratch dir reaches the worker prompt',
+    deep.prompts.some((p) => p.includes('/tmp/sc')));
+
+  const shallow = await runAudit({ level: 'medium' });
+  eq('orchestration: below high nothing is verified',
+    0, shallow.labels.filter((l) => l.startsWith('verify-mutant:')).length);
+  eq('orchestration: the shallow run still reports', 'adequate',
+    shallow.ret && shallow.ret.report && shallow.ret.report.verdict);
+
+  // Each abort gate must produce a remediation report through the real pipeline, not crash.
+  const redRun = await runAudit({ level: 'low' }, { baseline: { ...healthyBaseline(), green: false, red_details: 'test_x failed' } });
+  eq('orchestration: a red baseline aborts with a remediation report', true, redRun.ret && redRun.ret.aborted);
+  truthy('orchestration: the red abort names its reason',
+    redRun.ret && /suite is red/.test(redRun.ret.abort_reason || ''));
+  truthy('orchestration: the abort still returns a report object', redRun.ret && !!redRun.ret.report);
+  eq('orchestration: an aborted run spawns no worker',
+    0, redRun.labels.filter((l) => l.startsWith('worker:')).length);
+
+  const slow = await runAudit({ level: 'low' }, { baseline: { ...healthyBaseline(), wall_s: 601, green: false } });
+  truthy('orchestration: a timed-out baseline aborts as too slow, not as red (gate ordering)',
+    slow.ret && /too slow/.test(slow.ret.abort_reason || ''), `got ${slow.ret && slow.ret.abort_reason}`);
 
   // ── broken-runtime guard ─────────────────────────────────────────────────────
   let threw = false;

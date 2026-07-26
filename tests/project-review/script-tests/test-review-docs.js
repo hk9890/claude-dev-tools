@@ -107,6 +107,20 @@ async function main() {
   truthy('normalizeArgs: non-JSON string is rejected', normalizeArgs('not json').error);
   truthy('normalizeArgs: undefined is rejected', normalizeArgs(undefined).error);
 
+  // An unsubstituted "<…>" placeholder is a non-empty string, so a truthiness check would
+  // pass it straight to `python3 manifest.py "<…>"`.
+  truthy('normalizeArgs: an unsubstituted placeholder repoRoot is rejected',
+    /absolute path/.test(normalizeArgs({ repoRoot: '<the step-1 path>', scriptsDir: '/s/scripts' }).error || ''));
+  truthy('normalizeArgs: a relative scriptsDir is rejected',
+    /absolute path/.test(normalizeArgs({ repoRoot: '/r', scriptsDir: 'rel/scripts' }).error || ''));
+
+  // `cost` was renamed to `level`. Silently ignoring it hands a caller who asked for an
+  // ultra audit a medium one — 3 routes, no refutation — and reports raw.level 'medium'.
+  truthy('normalizeArgs: the renamed `cost` argument is rejected, not silently dropped',
+    /level/.test(normalizeArgs({ repoRoot: '/r', scriptsDir: '/s/scripts', cost: 'ultra' }).error || ''));
+  eq('normalizeArgs: the received keys are echoed for diagnosis',
+    ['repoRoot', 'scriptDir'], normalizeArgs({ repoRoot: '/r', scriptDir: '/s' }).receivedKeys);
+
   // An unsubstituted "<SCRATCH>" placeholder is truthy and would slip past a bare falsy
   // check, then be created inside the repo the audit promised not to touch.
   truthy('normalizeArgs: a relative scratchDir is rejected',
@@ -137,6 +151,18 @@ async function main() {
     normalizeArgs({ repoRoot: '/r', scriptsDir: '/s', level: 'medium', maxExecutionRoutes: 7 }).maxExec);
   eq('maxExecutionRoutes: an explicit 0 is honoured, not treated as unset', 0,
     normalizeArgs({ repoRoot: '/r', scriptsDir: '/s', level: 'high', maxExecutionRoutes: 0 }).maxExec);
+  // selectFileRoutes branches on `=== 0` and `> 0`. A string "0" — which a model filling
+  // the args object as JSON text emits — satisfies neither, so without coercion it falls
+  // through to "run every route": the caller asks for none and gets one live action agent
+  // per AGENTS.md route.
+  eq('maxExecutionRoutes: a string "0" is coerced, not fallen through', 0,
+    normalizeArgs({ repoRoot: '/r', scriptsDir: '/s', maxExecutionRoutes: '0' }).maxExec);
+  eq('maxExecutionRoutes: a string "-1" is coerced', -1,
+    normalizeArgs({ repoRoot: '/r', scriptsDir: '/s', maxExecutionRoutes: '-1' }).maxExec);
+  eq('maxExecutionRoutes: null falls back to the level budget, not to every route', 3,
+    normalizeArgs({ repoRoot: '/r', scriptsDir: '/s', level: 'medium', maxExecutionRoutes: null }).maxExec);
+  truthy('maxExecutionRoutes: a non-integer is rejected rather than silently ignored',
+    /integer/.test(normalizeArgs({ repoRoot: '/r', scriptsDir: '/s', maxExecutionRoutes: 'all' }).error || ''));
 
   // ── parseManifest ────────────────────────────────────────────────────────────
   eq('parseManifest: raw JSON', { a: 1 }, parseManifest('{"a":1}'));
@@ -187,6 +213,95 @@ async function main() {
   eq('bailout: the error object echoes the received args type', 'string', ret && ret.got && ret.got.type);
   if (!agentCalled) ok('bailout: no agent spawned on the bad-args path');
   else bad('bailout: no agent spawned on the bad-args path');
+
+  // ── orchestration ────────────────────────────────────────────────────────────
+  // Drive the FULL manifest → read-review → execution → (ultra) verify → synthesis
+  // pipeline through stubbed hooks. Without this the orchestration block never executes,
+  // so a variable dropped from its destructure would throw a ReferenceError only during a
+  // real multi-agent run while every helper assertion above still passed.
+  const manifest = {
+    summary: { total_md: 1, canonical_missing: 0, unresolved_links: 0, orphans: 0 },
+    files: [{
+      path: 'docs/A.md', classification: 'canonical',
+      metrics: { lines: 10, words: 50, non_heading_lines: 8 },
+      contract: { audience: 'a', inside: 'i', not_inside: 'n' },
+    }],
+    agents_routes: [
+      { kind: 'file', target: 'docs/A.md' }, { kind: 'file', target: 'docs/B.md' },
+      { kind: 'file', target: 'docs/C.md' }, { kind: 'file', target: 'docs/D.md' },
+    ],
+    missing_canonical: [], orphans: [], location_violations: [],
+  };
+
+  const runAudit = async (over) => {
+    const labels = [];
+    const prompts = [];
+    const agent = async (prompt, opts = {}) => {
+      labels.push(opts.label);
+      prompts.push(prompt);
+      if (opts.label === 'manifest') return '```json\n' + JSON.stringify(manifest) + '\n```';
+      if (opts.label.startsWith('read:')) {
+        return { file: 'docs/A.md', findings: [{ category: 'accuracy', severity: 'major', observation: 'o', evidence: 'e', recommended_action: 'r' }] };
+      }
+      if (opts.label.startsWith('gen:')) return { task: 't', expected: 'e', tier: 'A' };
+      if (opts.label.startsWith('do:')) return { completed: true, answer: 'a', docs_consulted: [] };
+      if (opts.label.startsWith('grade:')) return { route: 'docs/A.md', verdict: 'routed-and-succeeded', attribution: 'doc' };
+      if (opts.label.startsWith('verify:')) return { refuted: false };
+      return { verdict: 'minor gaps', headline: 'h', findings: [] };
+    };
+    const { ret } = await load({
+      agent,
+      args: { repoRoot: '/repo', scriptsDir: '/s/scripts', scratchDir: '/tmp/sc', ...over },
+      log: () => {},
+      phase: () => {},
+      parallel: async (thunks) => Promise.all(thunks.map((t) => t())),
+      pipeline: async (items, ...stages) => Promise.all(items.map(async (item, i) => {
+        let v = item;
+        for (const s of stages) v = await s(v, item, i);
+        return v;
+      })),
+    });
+    return { ret, labels, prompts };
+  };
+
+  const deep = await runAudit({ level: 'ultra' });
+  eq('orchestration: ultra runs every deduped route', 4, deep.labels.filter((l) => l.startsWith('gen:')).length);
+  eq('orchestration: ultra refutes each read-review finding', 1, deep.labels.filter((l) => l.startsWith('verify:')).length);
+  eq('orchestration: the report is returned', 'minor gaps', deep.ret && deep.ret.report && deep.ret.report.verdict);
+  eq('orchestration: the level is echoed in raw', 'ultra', deep.ret && deep.ret.raw.level);
+  eq('orchestration: the pre-cap route total is reported', 4, deep.ret && deep.ret.raw.routes_total);
+  // The regression that motivates driving the pipeline: repoRoot and the derived
+  // guidelines path reach the read-review prompts.
+  truthy('orchestration: the repo root reaches the read-review prompts',
+    deep.prompts.some((p) => p.includes('Repo root: /repo')));
+  truthy('orchestration: the authoring rules path reaches the read-review prompts',
+    deep.prompts.some((p) => p.includes('/s/references/project-doc-guidelines.md')));
+  truthy('orchestration: the scratch dir reaches the execution prompts',
+    deep.prompts.some((p) => p.includes('/tmp/sc')));
+
+  const cappedRun = await runAudit({ level: 'medium' });
+  eq('orchestration: medium caps the execution phase at 3 of 4 routes',
+    3, cappedRun.labels.filter((l) => l.startsWith('gen:')).length);
+  eq('orchestration: medium runs no refutation', 0, cappedRun.labels.filter((l) => l.startsWith('verify:')).length);
+  eq('orchestration: the capped run still reports the pre-cap total', 4, cappedRun.ret && cappedRun.ret.raw.routes_total);
+
+  const noExec = await runAudit({ level: 'low' });
+  eq('orchestration: low runs no execution route at all',
+    0, noExec.labels.filter((l) => l.startsWith('gen:')).length);
+  eq('orchestration: low still read-reviews and reports', 'minor gaps',
+    noExec.ret && noExec.ret.report && noExec.ret.report.verdict);
+
+  // An unparseable manifest must abort with its own error, not proceed on garbage.
+  const { ret: badManifest } = await load({
+    agent: async (_p, o) => (o.label === 'manifest' ? 'no json here' : null),
+    args: { repoRoot: '/repo', scriptsDir: '/s/scripts', scratchDir: '/tmp/sc' },
+    log: () => {},
+    phase: () => {},
+    parallel: async (thunks) => Promise.all(thunks.map((t) => t())),
+    pipeline: async () => [],
+  });
+  truthy('orchestration: an unparseable manifest aborts loudly',
+    badManifest && /manifest parse failed/.test(badManifest.error || ''), `got ${JSON.stringify(badManifest)}`);
 
   // ── broken-runtime guard ─────────────────────────────────────────────────────
   let threw = false;

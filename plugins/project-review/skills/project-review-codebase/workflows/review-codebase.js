@@ -37,14 +37,35 @@ function normalizeArgs(rawArgs) {
   parsed = parsed || {}
   const raw = String(parsed.level || '').toLowerCase()
   const level = LEVELS.includes(raw) ? raw : 'medium'
-  const repoRoot = parsed.repoRoot || ''
+  const repoRoot = String(parsed.repoRoot || '')
+
+  let error = null
+  if (parsed.ultra !== undefined) {
+    // The boolean `ultra` this workflow used to take is gone. Accepting it silently would
+    // run a caller who asked for the refutation pass at the default depth instead, and
+    // report level:'medium' as though that is what they wanted.
+    error = 'the boolean `ultra` argument was replaced by `level` — pass "level": "ultra" instead'
+  } else if (!repoRoot) {
+    error = 'repoRoot is required — it is the tree every dimension agent walks'
+  } else if (!repoRoot.startsWith('/')) {
+    // SKILL.md step 3 hands the model a "<repo root, or the step-1 path>" template. An
+    // unsubstituted placeholder is a NON-EMPTY string, so a truthiness check passes it
+    // through and the dimension prompts ship it verbatim — three opus agents then review
+    // whatever directory they happen to land in and return a confident report about the
+    // wrong tree. Only an absolute path can be a repo root, so require one.
+    error = `repoRoot must be an absolute path (got ${JSON.stringify(repoRoot)}) — an unsubstituted "<…>" placeholder would otherwise reach the dimension agents`
+  }
+
   return {
     repoRoot,
     scope: parsed.scope || '',
     vocabFile: parsed.vocabFile || '',
     level,
     ultra: level === 'ultra',
-    error: repoRoot ? null : 'repoRoot is required — it is the tree every dimension agent walks',
+    // Echoed on a bail-out: naming the keys that actually arrived is what lets a caller
+    // spot a misspelling, which an error naming only the expected keys cannot.
+    receivedKeys: Object.keys(parsed),
+    error,
   }
 }
 
@@ -433,8 +454,8 @@ if (typeof agent === 'function') {
   if (cfg.error) {
     // A bail-out return surfaces to the harness as status:completed, so echo what we
     // received to make the failure diagnosable rather than a silent no-op.
-    log(`project-review-codebase: ${cfg.error} (args arrived as type "${typeof args}")`)
-    return { error: cfg.error, got: { type: typeof args, repoRoot: cfg.repoRoot } }
+    log(`project-review-codebase: ${cfg.error} (args arrived as type "${typeof args}", keys: ${cfg.receivedKeys.join(', ') || 'none'})`)
+    return { error: cfg.error, got: { type: typeof args, keys: cfg.receivedKeys, repoRoot: cfg.repoRoot } }
   }
 
   const { repoRoot, scope, vocabFile, level, ultra } = cfg

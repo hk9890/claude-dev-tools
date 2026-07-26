@@ -93,7 +93,10 @@ async function main() {
 
   // ── normalizeArgs ────────────────────────────────────────────────────────────
   eq('normalizeArgs: parsed object passes through',
-    { repoRoot: '/r', scope: 'the api layer', vocabFile: '/v.md', level: 'medium', ultra: false, error: null },
+    {
+      repoRoot: '/r', scope: 'the api layer', vocabFile: '/v.md', level: 'medium', ultra: false,
+      receivedKeys: ['repoRoot', 'scope', 'vocabFile'], error: null,
+    },
     normalizeArgs({ repoRoot: '/r', scope: 'the api layer', vocabFile: '/v.md' }));
 
   // The regression the seam exists for: args arriving as a JSON STRING must be parsed.
@@ -113,6 +116,25 @@ async function main() {
   truthy('normalizeArgs: missing repoRoot names the missing arg',
     /repoRoot/.test(normalizeArgs({ scope: 'x' }).error || ''));
   eq('normalizeArgs: a valid config carries no error', null, normalizeArgs({ repoRoot: '/r' }).error);
+
+  // An unsubstituted "<…>" placeholder from the SKILL.md args template is a non-empty
+  // string, so a truthiness check passes it through and three opus agents review whatever
+  // tree they land in — exactly what this validation exists to stop.
+  truthy('normalizeArgs: an unsubstituted placeholder repoRoot is rejected',
+    /absolute path/.test(normalizeArgs({ repoRoot: '<repo root, or the step-1 path>' }).error || ''));
+  truthy('normalizeArgs: a relative repoRoot is rejected',
+    /absolute path/.test(normalizeArgs({ repoRoot: 'some/dir' }).error || ''));
+
+  // The old boolean contract must fail loudly rather than silently running at medium.
+  truthy('normalizeArgs: the retired boolean `ultra` argument is rejected, not ignored',
+    /level/.test(normalizeArgs({ repoRoot: '/r', ultra: true }).error || ''));
+  truthy('normalizeArgs: even ultra:false is rejected rather than silently accepted',
+    normalizeArgs({ repoRoot: '/r', ultra: false }).error);
+
+  // A caller who misspells a key needs to see what actually arrived; an error naming only
+  // the expected keys cannot show that.
+  eq('normalizeArgs: the received keys are echoed for diagnosis',
+    ['repoRoot', 'scopr'], normalizeArgs({ repoRoot: '<x>', scopr: 'typo' }).receivedKeys);
 
   // ── the shared level vocabulary ──────────────────────────────────────────────
   eq('level: defaults to medium', 'medium', normalizeArgs({ repoRoot: '/r' }).level);
@@ -189,6 +211,85 @@ async function main() {
   eq('bailout: the error object echoes the received args type', 'string', ret && ret.got && ret.got.type);
   if (!agentCalled) ok('bailout: no agent spawned on the bad-args path');
   else bad('bailout: no agent spawned on the bad-args path');
+
+  // ── orchestration ────────────────────────────────────────────────────────────
+  // Drive the FULL review → (ultra) refute → synthesis pipeline through stubbed hooks.
+  // The helper assertions above all reach their functions directly, so without this the
+  // orchestration block — the code the seam was added for — would never execute: a
+  // variable dropped from its destructure throws a ReferenceError only on the first
+  // agent call, and every assertion above would still pass.
+  const runReview = async (level) => {
+    const labels = [];
+    const prompts = [];
+    const agent = async (prompt, opts = {}) => {
+      labels.push(opts.label);
+      prompts.push(prompt);
+      if (opts.label.startsWith('review:')) {
+        return {
+          dimension: opts.label.split(':')[1],
+          verdict: 'minor issues',
+          findings: [{
+            severity: 'major', location: 'a.js:1', observation: 'o',
+            evidence: 'e', why_it_matters: 'w', recommended_action: 'r',
+          }],
+        };
+      }
+      if (opts.label.startsWith('verify:')) return { refuted: false, reason: '' };
+      return {
+        verdict: 'minor issues', headline: 'h', findings: [],
+        recommended_actions: [], report_markdown: '# report',
+      };
+    };
+    const { ret } = await load({
+      agent,
+      args: { repoRoot: '/repo', scope: 'the api layer', vocabFile: '/v.md', level },
+      log: () => {},
+      phase: () => {},
+      parallel: async (thunks) => Promise.all(thunks.map((t) => t())),
+      pipeline: async (items, ...stages) => Promise.all(items.map(async (item, i) => {
+        let v = item;
+        for (const s of stages) v = await s(v, item, i);
+        return v;
+      })),
+    });
+    return { ret, labels, prompts };
+  };
+
+  const deep = await runReview('ultra');
+  eq('orchestration: one review agent per dimension',
+    ['review:consistency', 'review:structure', 'review:architecture'],
+    deep.labels.filter((l) => l.startsWith('review:')));
+  eq('orchestration: ultra refutes every finding', 3, deep.labels.filter((l) => l.startsWith('verify:')).length);
+  eq('orchestration: the report is returned', '# report', deep.ret && deep.ret.report && deep.ret.report.report_markdown);
+  eq('orchestration: the raw dimension results are carried out', 3, deep.ret && deep.ret.raw.dimensions.length);
+  eq('orchestration: the level is echoed back', 'ultra', deep.ret && deep.ret.level);
+  // The regression that motivates driving the pipeline at all: repoRoot and scope reach
+  // the dimension prompts. A ReferenceError here is invisible to every helper assertion.
+  truthy('orchestration: the repo root reaches the dimension prompts',
+    deep.prompts.some((p) => p.includes('Repo root: /repo')));
+  truthy('orchestration: the scope reaches the dimension prompts',
+    deep.prompts.some((p) => p.includes('the api layer')));
+
+  const shallow = await runReview('high');
+  eq('orchestration: below ultra nothing is refuted', 0, shallow.labels.filter((l) => l.startsWith('verify:')).length);
+  eq('orchestration: below ultra the review still reports', '# report',
+    shallow.ret && shallow.ret.report && shallow.ret.report.report_markdown);
+
+  // Every dimension agent dying is distinct from a bad-args failure and must say so.
+  const { ret: allDead } = await load({
+    agent: async () => null,
+    args: { repoRoot: '/repo' },
+    log: () => {},
+    phase: () => {},
+    parallel: async (thunks) => Promise.all(thunks.map((t) => t())),
+    pipeline: async (items, ...stages) => Promise.all(items.map(async (item, i) => {
+      let v = item;
+      for (const s of stages) v = await s(v, item, i);
+      return v;
+    })),
+  });
+  truthy('orchestration: no dimension completing returns its own error',
+    allDead && /no dimension review completed/.test(allDead.error || ''), `got ${JSON.stringify(allDead)}`);
 
   // ── broken-runtime guard ─────────────────────────────────────────────────────
   // No `agent` hook → the script must throw, not silently return undefined (which the

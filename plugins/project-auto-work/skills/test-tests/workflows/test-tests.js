@@ -55,8 +55,8 @@ function normalizeArgs(rawArgs) {
   }
   parsed = parsed || {}
 
-  const repoRoot = parsed.repoRoot || ''
-  const scriptsDir = parsed.scriptsDir || ''
+  const repoRoot = String(parsed.repoRoot || '')
+  const scriptsDir = String(parsed.scriptsDir || '')
   const raw = String(parsed.level || '').toLowerCase()
   const level = LEVELS.includes(raw) ? raw : 'medium'
 
@@ -71,6 +71,13 @@ function normalizeArgs(rawArgs) {
   let error = null
   if (!repoRoot || !scriptsDir) {
     error = 'missing required args: repoRoot and scriptsDir must both be set'
+  } else if (!repoRoot.startsWith('/')) {
+    // An unsubstituted "<…>" placeholder from the SKILL.md args template is a non-empty
+    // string, so a truthiness check passes it through — and this workflow interpolates
+    // repoRoot into `git -C <root> worktree add`, then mutates production files under it.
+    error = `repoRoot must be an absolute path (got ${JSON.stringify(repoRoot)}) — worktrees are created off it and production files are mutated under it`
+  } else if (!scriptsDir.startsWith('/')) {
+    error = `scriptsDir must be an absolute path (got ${JSON.stringify(scriptsDir)}) — it is interpolated into the coverage validator command`
   } else if (!scratchDir.startsWith('/')) {
     error = `scratchDir must be an absolute path (got ${JSON.stringify(scratchDir)}) — worktrees and backups are created there, outside the repo`
   }
@@ -81,6 +88,9 @@ function normalizeArgs(rawArgs) {
     level,
     dial: dialFor(level),
     scratchDir,
+    // Echoed on a bail-out: the error names the two expected keys, so without the keys
+    // that actually arrived a caller who sent `scripts_dir` cannot tell which one is wrong.
+    receivedKeys: Object.keys(parsed),
     validateTool: `python3 "${scriptsDir}/validate-coverage-summary.py"`,
     // Trailing slash tolerated, matching review-docs.js's sibling-path resolution: without
     // it a scriptsDir ending in "/" yields a doubled separator in the schema path.
@@ -407,8 +417,8 @@ if (typeof agent === 'function') {
   if (cfg.error) {
     // A bail-out return surfaces to the harness as status:completed, so echo what we
     // received to make the failure diagnosable rather than a silent no-op.
-    log(`test-tests: ${cfg.error} (args arrived as type "${typeof args}")`)
-    return { error: cfg.error, got: { type: typeof args, repoRoot: cfg.repoRoot } }
+    log(`test-tests: ${cfg.error} (args arrived as type "${typeof args}", keys: ${cfg.receivedKeys.join(', ') || 'none'})`)
+    return { error: cfg.error, got: { type: typeof args, keys: cfg.receivedKeys, repoRoot: cfg.repoRoot } }
   }
 
   const { repoRoot, level, dial, scratchDir, validateTool, schemaRef } = cfg

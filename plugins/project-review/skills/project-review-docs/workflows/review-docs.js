@@ -40,13 +40,26 @@ function normalizeArgs(rawArgs) {
   }
   parsed = parsed || {}
 
-  const repoRoot = parsed.repoRoot || ''
-  const scriptsDir = parsed.scriptsDir || ''
+  const repoRoot = String(parsed.repoRoot || '')
+  const scriptsDir = String(parsed.scriptsDir || '')
   const raw = String(parsed.level || '').toLowerCase()
   const level = LEVELS.includes(raw) ? raw : 'medium'
-  const maxExec = (parsed.maxExecutionRoutes !== undefined)
-    ? parsed.maxExecutionRoutes
-    : LEVEL_ROUTES[level]
+
+  // Coerce the override to an integer. selectFileRoutes branches on `=== 0` and `> 0`,
+  // so a null or a string "0" — which a model filling the args object as JSON text will
+  // emit — would satisfy neither test and fall through to "run every route": the caller
+  // asks for zero execution routes and instead gets one cold action agent per AGENTS.md
+  // route running commands in the live repository.
+  let maxExec = LEVEL_ROUTES[level]
+  let maxExecError = null
+  if (parsed.maxExecutionRoutes !== undefined && parsed.maxExecutionRoutes !== null) {
+    const n = Number(parsed.maxExecutionRoutes)
+    if (!Number.isInteger(n)) {
+      maxExecError = `maxExecutionRoutes must be an integer (got ${JSON.stringify(parsed.maxExecutionRoutes)}) — -1 runs every route, 0 skips the execution phase`
+    } else {
+      maxExec = n
+    }
+  }
 
   // SKILL.md mints this per run with mktemp. Trace filenames below are deterministic and
   // the grading stage treats a trace as primary evidence, so two runs sharing a directory
@@ -58,12 +71,26 @@ function normalizeArgs(rawArgs) {
   const scratchDir = String(parsed.scratchDir || '/tmp/docreview-scratch')
 
   let error = null
-  if (!repoRoot) {
+  if (parsed.cost !== undefined) {
+    // `cost` was renamed to `level`. Accepting it silently would hand a caller who asked
+    // for an ultra audit a medium one — capped at 3 routes with no refutation pass — and
+    // report raw.level as 'medium' with nothing in the run output saying their requested
+    // depth was dropped.
+    error = 'the `cost` argument was renamed to `level` — pass "level" with the same value'
+  } else if (!repoRoot) {
     error = 'repoRoot is required — it is the directory the manifest and every review agent read'
+  } else if (!repoRoot.startsWith('/')) {
+    // An unsubstituted "<…>" placeholder from the SKILL.md args template is a non-empty
+    // string, so a truthiness check passes it straight to `python3 manifest.py "<…>"`.
+    error = `repoRoot must be an absolute path (got ${JSON.stringify(repoRoot)}) — an unsubstituted "<…>" placeholder would otherwise reach the manifest`
   } else if (!scriptsDir) {
     error = 'scriptsDir is required — it locates manifest.py and the authoring rules'
+  } else if (!scriptsDir.startsWith('/')) {
+    error = `scriptsDir must be an absolute path (got ${JSON.stringify(scriptsDir)}) — it is interpolated into the manifest command`
   } else if (!scratchDir.startsWith('/')) {
     error = `scratchDir must be an absolute path (got ${JSON.stringify(scratchDir)}) — the execution agent creates it outside the repo`
+  } else if (maxExecError) {
+    error = maxExecError
   }
 
   return {
@@ -74,6 +101,9 @@ function normalizeArgs(rawArgs) {
     level,
     maxExec,
     scratchDir,
+    // Echoed on a bail-out: naming the keys that actually arrived is what lets a caller
+    // spot a misspelling, which an error naming only the expected keys cannot.
+    receivedKeys: Object.keys(parsed),
     error,
   }
 }
@@ -236,8 +266,8 @@ if (typeof agent === 'function') {
   if (cfg.error) {
     // A bail-out return surfaces to the harness as status:completed, so echo what we
     // received to make the failure diagnosable rather than a silent no-op.
-    log(`project-review-docs: ${cfg.error} (args arrived as type "${typeof args}")`)
-    return { error: cfg.error, got: { type: typeof args, repoRoot: cfg.repoRoot } }
+    log(`project-review-docs: ${cfg.error} (args arrived as type "${typeof args}", keys: ${cfg.receivedKeys.join(', ') || 'none'})`)
+    return { error: cfg.error, got: { type: typeof args, keys: cfg.receivedKeys, repoRoot: cfg.repoRoot } }
   }
 
   const { repoRoot, scriptsDir, guidelinesFile, level, maxExec, scratchDir } = cfg
