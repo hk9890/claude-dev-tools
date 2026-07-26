@@ -1,6 +1,7 @@
 export const meta = {
   name: 'tasks-work',
   description: 'Run ready taskmgr tasks end to end — implement → verify → record, then verify (never auto-close) the parent epic',
+  whenToUse: 'Launched by the /tasks-work skill. Runs a resolved set of ready taskmgr tasks sequentially against one working tree — implement, then review in parallel with test, then record the tracker decision — and verifies but never closes the parent epic.',
   phases: [
     { title: 'Implement', detail: 'one implementer per task' },
     { title: 'Verify', detail: 'review ∥ test per implemented task' },

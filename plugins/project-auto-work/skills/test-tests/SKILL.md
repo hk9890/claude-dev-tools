@@ -3,7 +3,7 @@ name: test-tests
 description: "Empirical test-suite strength audit — proves whether the tests detect injected bugs (mutation kill rate), stay quiet on non-bugs, are flake-free under reruns/shuffle/delays, and run fast. Reports findings and proposals; never keeps an edit."
 user-invocable: true
 disable-model-invocation: true
-argument-hint: "[low|medium|high] [path]"
+argument-hint: "[level] [path]"
 ---
 
 Empirical test-suite strength audit. Launch the audit workflow — do **not** probe the
@@ -16,10 +16,10 @@ Nothing is ever committed, no test is written, nothing is installed.
 
 ## Run the workflow
 
-1. Parse `$ARGUMENTS` as `[low|medium|high] [path]`. Both optional. A leading
-   `low` | `medium` | `high` token is the **level**; everything after it is the target
-   path (default: the repo root — resolve a free-form description to a directory or
-   fall back to the root).
+1. Parse `$ARGUMENTS` as `[low|medium|high|ultra] [path]`. Both optional. A leading
+   `low` | `medium` | `high` | `ultra` token is the **level**; everything after it is
+   the target path (default: the repo root — resolve a free-form description to a
+   directory or fall back to the root).
 
    If no level token is given, ask with `AskUserQuestion` (header "Level"):
    - `low` — the highest-churn components, a few mutants each. Quick signal.
@@ -28,7 +28,10 @@ Nothing is ever committed, no test is written, nothing is installed.
    - `high` — the deepest dials, plus an adversarial pass that refutes equivalent
      mutants. The trustworthy-numbers audit.
 
-   The exact per-level dials live in the workflow's `DIALS` table.
+   `ultra` is accepted so one depth token means the same thing across the audit
+   workflows, but this audit has no rung above `high` — its cost is the suite's own
+   runtime, not a refutation pass — so `ultra` runs the `high` dials. The exact
+   per-level dials live in the workflow's `DIALS` table.
 
    At every level, one rerun uses the runner's native order-shuffle flag (fixed
    seed) when one exists.
