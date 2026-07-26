@@ -15,7 +15,7 @@
 #   - pass: --include-plugins extends validation to plugins/**/*.md
 #   - scope: a directory link (no anchor) resolves in plugins/ but is flagged in steering/docs
 #   - misc: no args → exit 1; bad dir → exit 1
-set -euo pipefail
+set -uo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 SCRIPT="$REPO_ROOT/plugins/project-review/skills/project-review-docs/scripts/validate-routes.py"
@@ -76,6 +76,13 @@ make_base_repo() {
   printf '# Agents\n\nNo links here.\n' > "$dir/AGENTS.md"
   echo "$dir"
 }
+
+# tmpdir is called as dir=$(tmpdir), so a guard inside it could only exit the
+# subshell. Probe once here instead: with no temp dir the fixtures never
+# materialise, and the negative tests below would assert exit 1 against a
+# missing path — passing for the wrong reason.
+probe=$(tmpdir) || { printf 'FAIL: mktemp -d unavailable — fixtures cannot be built\n'; exit 1; }
+rmdir "$probe"
 
 # ── test cases ────────────────────────────────────────────────────────────────
 

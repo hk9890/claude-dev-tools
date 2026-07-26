@@ -44,3 +44,9 @@ SCRIPT="$REPO_ROOT/plugins/<plugin-name>/.../scripts/<name>"
 ```
 
 This keeps tests location-independent and works from any CWD inside the repo.
+
+## Shell options in test scripts
+
+Test scripts set `set -uo pipefail`, never `-euo`: this matches `run-all.sh` and the
+`PASS`/`FAIL`-counting design every suite uses, where a failed assertion must not abort
+the script before the `Results: N passed, N failed` summary prints.

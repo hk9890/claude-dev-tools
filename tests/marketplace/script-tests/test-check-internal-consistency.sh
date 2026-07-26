@@ -6,7 +6,7 @@
 #   - live: full repo scan exits 0 and resolves at least one real reference
 #   - fail/section: bogus "Phrase section in file.md" reference exits non-zero
 #   - fail/version: desynced plugin.json version exits non-zero
-set -euo pipefail
+set -uo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 SCRIPT="$REPO_ROOT/scripts/check-internal-consistency.py"
@@ -126,7 +126,7 @@ test_bad_version_message() {
 # 7. Good section ref: a correctly resolving reference exits 0
 test_good_section_ref_passes() {
   local tmp_dir
-  tmp_dir=$(mktemp -d)
+  tmp_dir=$(mktemp -d) || { printf 'FAIL: mktemp -d unavailable — fixture not built\n'; exit 1; }
 
   # Create a target file with a real heading
   printf '# Target Doc\n\n## Quick Start\n\nContent here.\n' > "$tmp_dir/guide.md"
@@ -146,7 +146,7 @@ test_good_section_ref_passes() {
 # 8. Good version match: matching versions exit 0
 test_good_version_passes() {
   local tmp_dir
-  tmp_dir=$(mktemp -d)
+  tmp_dir=$(mktemp -d) || { printf 'FAIL: mktemp -d unavailable — fixture not built\n'; exit 1; }
   mkdir -p "$tmp_dir/.claude-plugin" "$tmp_dir/plugins/alpha/.claude-plugin"
 
   printf '{"name":"alpha","version":"2.0.0","description":"x","author":{"name":"T"}}\n' \
@@ -170,7 +170,7 @@ test_good_version_passes() {
 #    case Check B alone cannot catch. Isolate Check D via the skip flags.
 test_version_uniformity_fails() {
   local tmp_dir
-  tmp_dir=$(mktemp -d)
+  tmp_dir=$(mktemp -d) || { printf 'FAIL: mktemp -d unavailable — fixture not built\n'; exit 1; }
   mkdir -p "$tmp_dir/.claude-plugin"
   printf '%s\n' \
     '{"name":"t","metadata":{"version":"1.0.0"},"plugins":[{"name":"alpha","version":"1.0.0","description":"a","source":"./plugins/alpha"},{"name":"beta","version":"1.1.0","description":"b","source":"./plugins/beta"}]}' \
@@ -194,7 +194,7 @@ test_version_uniformity_fails() {
 # 10. Positive / uniformity: metadata.version and all entries equal => exit 0
 test_version_uniformity_passes() {
   local tmp_dir
-  tmp_dir=$(mktemp -d)
+  tmp_dir=$(mktemp -d) || { printf 'FAIL: mktemp -d unavailable — fixture not built\n'; exit 1; }
   mkdir -p "$tmp_dir/.claude-plugin"
   printf '%s\n' \
     '{"name":"t","metadata":{"version":"1.0.0"},"plugins":[{"name":"alpha","version":"1.0.0","description":"a","source":"./plugins/alpha"},{"name":"beta","version":"1.0.0","description":"b","source":"./plugins/beta"}]}' \
@@ -214,7 +214,7 @@ test_version_uniformity_passes() {
 #     cannot mask a Check C regression.
 test_bad_description_fails() {
   local tmp_dir
-  tmp_dir=$(mktemp -d)
+  tmp_dir=$(mktemp -d) || { printf 'FAIL: mktemp -d unavailable — fixture not built\n'; exit 1; }
   mkdir -p "$tmp_dir/.claude-plugin" "$tmp_dir/plugins/alpha/.claude-plugin"
 
   printf '{"name":"alpha","version":"1.0.0","description":"Real description","author":{"name":"T"}}\n' \
@@ -244,7 +244,7 @@ test_bad_description_fails() {
 # 12. Negative / description: a plugin absent from marketplace.json exits non-zero.
 test_missing_description_entry_fails() {
   local tmp_dir
-  tmp_dir=$(mktemp -d)
+  tmp_dir=$(mktemp -d) || { printf 'FAIL: mktemp -d unavailable — fixture not built\n'; exit 1; }
   mkdir -p "$tmp_dir/.claude-plugin" "$tmp_dir/plugins/orphan/.claude-plugin"
 
   printf '{"name":"orphan","version":"1.0.0","description":"x","author":{"name":"T"}}\n' \
@@ -267,7 +267,7 @@ test_missing_description_entry_fails() {
 # 13. Positive / description: matching descriptions exit 0.
 test_good_description_passes() {
   local tmp_dir
-  tmp_dir=$(mktemp -d)
+  tmp_dir=$(mktemp -d) || { printf 'FAIL: mktemp -d unavailable — fixture not built\n'; exit 1; }
   mkdir -p "$tmp_dir/.claude-plugin" "$tmp_dir/plugins/alpha/.claude-plugin"
 
   printf '{"name":"alpha","version":"1.0.0","description":"Same description","author":{"name":"T"}}\n' \

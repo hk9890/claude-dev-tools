@@ -18,7 +18,7 @@
 #   - --no-wait --timeout-sec N: server exits 0 on timeout
 set -uo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+REPO_ROOT="$(git rev-parse --show-toplevel)"
 SERVER="$REPO_ROOT/plugins/html-visualization/bin/server.js"
 ASSETS_DIR="$REPO_ROOT/plugins/html-visualization/assets"
 

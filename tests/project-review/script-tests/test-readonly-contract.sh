@@ -14,7 +14,7 @@
 # contracts — the read-review agents forbid running commands at all, and the execution
 # action-agent is a task-doer allowed to write one trace file — so they are not copies of this
 # sentence and must not be forced to match it. A single copy has nothing to drift against.
-set -euo pipefail
+set -uo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 

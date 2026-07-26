@@ -10,7 +10,7 @@
 
 set -uo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+REPO_ROOT="$(git rev-parse --show-toplevel)"
 APP_JS="$REPO_ROOT/plugins/html-visualization/assets/ask/app.js"
 
 PASS=0

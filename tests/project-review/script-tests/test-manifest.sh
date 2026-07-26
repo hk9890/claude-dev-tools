@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -uo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 SCRIPT="$REPO_ROOT/plugins/project-review/skills/project-review-docs/scripts/manifest.py"
@@ -58,6 +58,13 @@ EOF
   printf '# Hollow\n' > "$dir/docs/HOLLOW.md"   # heading only → hollow
   echo "$dir"
 }
+
+# tmpdir is called as dir=$(tmpdir), so a guard inside it could only exit the
+# subshell. Probe once here instead: with no temp dir no fixture materialises,
+# and an assertion that greps a fixture's output for an unwanted string would
+# pass against the resulting empty output.
+probe=$(tmpdir) || { printf 'FAIL: mktemp -d unavailable — fixtures cannot be built\n'; exit 1; }
+rmdir "$probe"
 
 # 1. bad invocation
 test_no_args()  { assert_exit "no-args: exit 1" 1 "$SCRIPT"; }

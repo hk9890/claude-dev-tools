@@ -10,7 +10,7 @@
 #     and the maps are single-application (no value is also a key)
 #   - walk_projects: --project substring filter, --since-days mtime filter,
 #     cross-file uuid dedup, and no dedup of uuid-less records
-set -euo pipefail
+set -uo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 SCRIPT="$REPO_ROOT/scripts/analyze-sessions.py"
