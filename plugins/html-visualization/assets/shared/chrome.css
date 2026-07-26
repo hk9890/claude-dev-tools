@@ -1,0 +1,253 @@
+/* chrome.css — page chrome shared by the ask and feedback modes.
+ *
+ * Theme: "Editorial" — warm paper, ink text, a single terracotta accent,
+ * a serif display face paired with a refined sans body. Light + dark.
+ *
+ * Imported by assets/ask/style.css and assets/feedback/style.css, which then
+ * add their own rules; equal-specificity mode rules come after this import and
+ * therefore win. Declarations the two modes genuinely disagree on (page
+ * measure, freeform spacing, button colour) are left out of the rules below and
+ * are set by each mode.
+ *
+ * Design tokens come from tokens.css, imported here so a mode stylesheet needs
+ * only this one import.
+ *
+ * The class names, ids and data-attributes below are a contract with
+ * assets/ask/app.js and assets/feedback/app.js — restyle freely, but do not
+ * rename them here without also changing those files.
+ */
+
+@import "/assets/shared/tokens.css";
+
+/* ── Reset / base ─────────────────────────────────────────────────────────── */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--hv-font-body);
+  font-size: 16px;
+  color: var(--hv-text);
+  background:
+    radial-gradient(1200px 620px at 100% -8%, rgba(var(--hv-accent-rgb),.06), transparent 62%),
+    radial-gradient(900px 520px at -5% 8%, rgba(169,120,26,.05), transparent 60%),
+    var(--hv-bg);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--hv-accent-tint);
+  color: var(--hv-text);
+}
+
+/* ── Motion ───────────────────────────────────────────────────────────────── */
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ── Page chrome ──────────────────────────────────────────────────────────── */
+
+.page-chrome {
+  margin: 0 auto;
+  padding: 40px 22px 64px;
+}
+
+.page-header {
+  position: relative;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--hv-border);
+  animation: rise 0.5s ease both;
+}
+
+.page-header::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 58px;
+  height: 3px;
+  background: var(--hv-accent);
+  border-radius: 2px;
+}
+
+.page-header h1 {
+  margin: 0 0 7px;
+  font-family: var(--hv-font-display);
+  font-size: 2.1rem;
+  font-weight: 600;
+  line-height: 1.14;
+  letter-spacing: -0.018em;
+  color: var(--hv-text);
+}
+
+.page-header .subtitle {
+  font-family: var(--hv-font-display);
+  font-style: italic;
+  font-size: 1.08rem;
+  line-height: 1.45;
+  color: var(--hv-muted);
+}
+
+/* ── Freeform section ─────────────────────────────────────────────────────── */
+
+.freeform-section {
+  background: var(--hv-surface);
+  border: 1px solid var(--hv-border);
+  border-radius: var(--hv-radius);
+  padding: 22px 26px;
+  box-shadow: var(--hv-shadow);
+}
+
+.freeform-section h2 {
+  font-family: var(--hv-font-display);
+  font-size: 1.3rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--hv-text);
+}
+
+.freeform-section textarea {
+  width: 100%;
+  padding: 11px 13px;
+  border: 1px solid var(--hv-border);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  resize: vertical;
+  color: var(--hv-text);
+  background: var(--hv-surface-2);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.freeform-section textarea::placeholder { color: var(--hv-faint); }
+
+.freeform-section textarea:focus {
+  outline: none;
+  border-color: var(--hv-accent);
+  background: var(--hv-surface);
+  box-shadow: 0 0 0 3px var(--hv-accent-tint);
+}
+
+/* ── Submit row ───────────────────────────────────────────────────────────── */
+
+.submit-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 22px;
+}
+
+.submit-btn {
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.97rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+/* The pressed state is per mode: it has to come after that mode's :hover rule
+   to win, and the hover colours differ. */
+.submit-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+  box-shadow: none;
+}
+
+.copy-btn {
+  padding: 11px 21px;
+  background: transparent;
+  color: var(--hv-muted);
+  border: 1px solid var(--hv-border);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.13s ease, border-color 0.13s ease, color 0.13s ease;
+}
+
+.copy-btn:hover {
+  background: var(--hv-surface);
+  border-color: var(--hv-accent);
+  color: var(--hv-text);
+}
+
+.copy-btn.copied {
+  color: var(--hv-ok-deep);
+  border-color: var(--hv-ok);
+  background: var(--hv-ok-tint);
+}
+
+.submit-error {
+  color: var(--hv-bad-deep);
+  background: var(--hv-bad-tint);
+  border: 1px solid var(--hv-bad);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  margin-top: 14px;
+  width: 100%;
+}
+
+/* ── Post-submit states ───────────────────────────────────────────────────── */
+
+.state-submitted,
+.state-already-submitted {
+  display: none;
+  border-radius: var(--hv-radius);
+  padding: 34px 30px;
+  text-align: center;
+  margin-top: 24px;
+  box-shadow: var(--hv-shadow);
+  animation: rise 0.45s ease both;
+}
+
+.state-submitted {
+  background: var(--hv-ok-tint);
+  border: 1px solid var(--hv-ok);
+}
+
+.state-already-submitted {
+  background: var(--hv-warn-tint);
+  border: 1px solid var(--hv-warn);
+}
+
+.state-submitted h2,
+.state-already-submitted h2 {
+  margin: 0 0 8px;
+  font-family: var(--hv-font-display);
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.state-submitted h2 { color: var(--hv-ok-deep); }
+.state-already-submitted h2 { color: var(--hv-warn-deep); }
+
+.state-submitted p,
+.state-already-submitted p {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.state-submitted p { color: var(--hv-ok-deep); }
+.state-already-submitted p { color: var(--hv-warn-deep); }

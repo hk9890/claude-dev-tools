@@ -7,8 +7,9 @@
  * DOM wiring (only runs when document is available):
  *   - Collects answers from .widget[data-qid] elements.
  *   - Renders an always-visible free-text note field on each .annotatable widget.
- *   - Reads CSRF_TOKEN global injected by server.
- *   - POSTs to /submit and handles 200 / 410 / other responses.
+ *   - Submits, copies and reports errors through the globals defined in
+ *     /assets/shared/submit.js, which the page loads before this file:
+ *     hvSubmit, hvCopy, hvShowError, hvClearError.
  *   - "Copy feedback" button copies the exact /submit JSON payload.
  *
  * Widget vocabulary (full contract in markup.md):
@@ -218,66 +219,41 @@ if (typeof document !== 'undefined') {
       if (submitBtn) submitBtn.textContent = on ? 'Submitting…' : 'Submit feedback';
     }
 
-    function showError(msg) {
-      if (submitError) {
-        submitError.textContent = msg;
-        submitError.style.display = 'block';
-      }
-    }
-
-    function clearError() {
-      if (submitError) {
-        submitError.textContent = '';
-        submitError.style.display = 'none';
-      }
-    }
-
     if (submitBtn) {
       submitBtn.addEventListener('click', function () {
-        clearError();
-        var payload = buildCurrentPayload();
+        hvClearError(submitError);
 
         // No field is required to submit — the user may send feedback back
         // even with the verdict or any question left unanswered. Claude is
         // told (in the skill) to report which items were not answered.
 
-        // Read CSRF token from server-injected global
-        var token = (typeof CSRF_TOKEN !== 'undefined') ? CSRF_TOKEN : '';
-
         setSubmitting(true);
 
-        fetch('/submit', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': token,
-          },
-          body: JSON.stringify(payload),
-        })
-          .then(function (res) {
-            if (res.status === 200) {
-              if (mainForm) hide(mainForm);
-              if (stateSubmitted) {
-                stateSubmitted.style.display = 'block';
-              }
-            } else if (res.status === 410) {
-              if (mainForm) hide(mainForm);
-              if (stateAlreadySubmitted) {
-                stateAlreadySubmitted.style.display = 'block';
-              }
-            } else {
-              return res.json().then(function (body) {
-                setSubmitting(false);
-                showError('Submit failed (' + res.status + '): ' + (body.error || 'unknown error'));
-              });
+        hvSubmit(buildCurrentPayload(), {
+          accepted: function () {
+            if (mainForm) hide(mainForm);
+            if (stateSubmitted) {
+              stateSubmitted.style.display = 'block';
             }
-          })
-          .catch(function (err) {
+          },
+          alreadySubmitted: function () {
+            if (mainForm) hide(mainForm);
+            if (stateAlreadySubmitted) {
+              stateAlreadySubmitted.style.display = 'block';
+            }
+          },
+          failed: function (status, errorText) {
             setSubmitting(false);
-            showError(
+            hvShowError(submitError, 'Submit failed (' + status + '): ' + errorText);
+          },
+          unreachable: function () {
+            setSubmitting(false);
+            hvShowError(
+              submitError,
               'Could not reach the server. Use "Copy feedback" to copy the JSON payload and paste it into Claude directly.'
             );
-          });
+          },
+        });
       });
     }
 
@@ -286,44 +262,8 @@ if (typeof document !== 'undefined') {
 
     if (copyBtn) {
       copyBtn.addEventListener('click', function () {
-        var payload = buildCurrentPayload();
-        var json = JSON.stringify(payload, null, 2);
-
-        function markCopied() {
-          copyBtn.textContent = 'Copied!';
-          copyBtn.classList.add('copied');
-          setTimeout(function () {
-            copyBtn.textContent = 'Copy feedback';
-            copyBtn.classList.remove('copied');
-          }, 2000);
-        }
-
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(json).then(markCopied).catch(function () {
-            fallbackCopy(json, markCopied);
-          });
-        } else {
-          fallbackCopy(json, markCopied);
-        }
+        hvCopy(copyBtn, JSON.stringify(buildCurrentPayload(), null, 2));
       });
-    }
-
-    function fallbackCopy(text, onSuccess) {
-      var ta = document.createElement('textarea');
-      ta.value = text;
-      ta.style.position = 'fixed';
-      ta.style.top = '-9999px';
-      ta.style.left = '-9999px';
-      document.body.appendChild(ta);
-      ta.focus();
-      ta.select();
-      try {
-        document.execCommand('copy');
-        onSuccess();
-      } catch (e) {
-        // If both clipboard paths fail, nothing actionable we can do silently
-      }
-      document.body.removeChild(ta);
     }
 
   }); // end DOMContentLoaded

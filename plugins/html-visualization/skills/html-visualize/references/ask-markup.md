@@ -5,7 +5,7 @@ This document is the single source of truth for the HTML vocabulary Claude must 
 ## How it works
 
 1. Claude writes a complete HTML file based on `ask-template.html` (also in this references directory).
-2. The file is served by `bin/server.js`, which injects a CSRF token and serves the skill's assets from `assets/ask/`.
+2. The file is served by `bin/server.js`, which injects a CSRF token and serves the skill's assets from `assets/ask/` and `assets/shared/`.
 3. `assets/ask/app.js` reads the widget DOM and assembles the `/submit` payload.
 4. On submit, the server writes a feedback file and exits — re-invoking Claude.
 
@@ -33,6 +33,7 @@ Every document must have this top-level structure:
     <div id="state-submitted" class="state-submitted"> … </div>
     <div id="state-already-submitted" class="state-already-submitted"> … </div>
   </div>
+  <script src="/assets/shared/submit.js"></script>
   <script src="/assets/ask/app.js"></script>
 </body>
 </html>
@@ -190,5 +191,5 @@ Before finalising an ask-mode document:
 - [ ] The verdict section contains all three radio options with the exact values above.
 - [ ] `id="freeform-input"` is on the freeform textarea.
 - [ ] `id="submit-btn"`, `id="copy-btn"`, `id="submit-error"`, `id="main-form"`, `id="state-submitted"`, `id="state-already-submitted"` are all present once.
-- [ ] `<link>` to `/assets/ask/style.css` is in `<head>`; `<script>` for `/assets/ask/app.js` is before `</body>`.
+- [ ] `<link>` to `/assets/ask/style.css` is in `<head>`; `<script>` for `/assets/shared/submit.js` and then `/assets/ask/app.js` — in that order — are before `</body>`.
 - [ ] No `<script>const CSRF_TOKEN = …</script>` block — the server injects this.

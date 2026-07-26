@@ -98,8 +98,9 @@ contract in
   field. Do NOT add it to `text` widgets; their `<textarea>` is already the
   free-text field.
 - Do NOT add `<script>const CSRF_TOKEN = "...";</script>` — the server injects it.
-- The `/assets/ask/style.css` link and `/assets/ask/app.js` script are correct
-  as-is; do not change the paths.
+- The `/assets/ask/style.css` link and the `/assets/shared/submit.js` +
+  `/assets/ask/app.js` scripts are correct as-is; do not change the paths or
+  their order.
 
 Consult `"$(cat "$HTML_DIR/.plugin-root")/skills/html-visualize/references/ask-markup.md"`
 for the full vocabulary (classes, data attributes, required IDs, verdict radio
@@ -115,8 +116,9 @@ question faster*, so reach for —
 - **Code blocks** (`<pre><code>`) for snippets, file paths, or diffs under review.
 - **Inline SVG** when a picture decides a question faster than a sentence.
 
-Author extra styling inline or in a `<style>` block in `<head>` — never edit the
-shared `/assets/ask/style.css`.
+Author extra styling inline or in a `<style>` block in `<head>` — never edit
+`/assets/ask/style.css`, and never edit `/assets/shared/chrome.css` or
+`/assets/shared/tokens.css`, which the feedback mode renders from too.
 
 ### 2d. Compute and record the feedback file path
 

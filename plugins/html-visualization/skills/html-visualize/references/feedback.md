@@ -114,8 +114,9 @@ Render the content inside `<div id="content">` per the markup contract in
   `data-block-id` (printable ASCII, no whitespace).
 - A whole list is one block — `data-block-id` on the `<ul>`/`<ol>`, not each `<li>`.
 - Do NOT add `<script>const CSRF_TOKEN = "...";</script>` — the server injects it.
-- The `/assets/feedback/style.css` link and `/assets/feedback/app.js` script are
-  correct as-is; do not change the paths.
+- The `/assets/feedback/style.css` link and the `/assets/shared/submit.js` +
+  `/assets/feedback/app.js` scripts are correct as-is; do not change the paths
+  or their order.
 
 Consult `"$(cat "$HTML_DIR/.plugin-root")/skills/html-visualize/references/feedback-markup.md"`
 for the full vocabulary (block rules, required IDs, the `fb-generation` meta).
@@ -128,8 +129,9 @@ so it must look the way it is meant to be read. If the source is markdown,
 convert it faithfully to HTML — real headings, lists, tables, and code blocks,
 never paragraphs of raw markdown.
 
-Author extra styling inline or in a `<style>` block in `<head>` — never edit the
-shared `/assets/feedback/style.css`.
+Author extra styling inline or in a `<style>` block in `<head>` — never edit
+`/assets/feedback/style.css`, and never edit `/assets/shared/chrome.css` or
+`/assets/shared/tokens.css`, which the ask mode renders from too.
 
 ### 2e. The feedback file path
 

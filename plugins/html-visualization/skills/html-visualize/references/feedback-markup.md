@@ -10,7 +10,7 @@ and attributes defined here — without reading `style.css` or `app.js`.
    `feedback-template.html` (also in this references directory).
 2. Each commentable unit of content carries a unique `data-block-id`.
 3. The file is served by `bin/server.js`, which injects a CSRF token and serves
-   the skill's assets from `assets/feedback/`.
+   the skill's assets from `assets/feedback/` and `assets/shared/`.
 4. `assets/feedback/app.js` watches for text selections inside `#content`. When
    the user selects text, a floating 💬 button appears at the selection; clicking
    it opens a comment editor. The comment is anchored to the block and quotes the
@@ -58,6 +58,7 @@ Every document must have this top-level structure:
     <div id="state-submitted" class="state-submitted"> … </div>
     <div id="state-already-submitted" class="state-already-submitted"> … </div>
   </div>
+  <script src="/assets/shared/submit.js"></script>
   <script src="/assets/feedback/app.js"></script>
 </body>
 </html>
@@ -142,8 +143,9 @@ These `id` values are hard-wired in `app.js` and must be present exactly once:
 
 `page-chrome`, `page-header`, `subtitle`, `comment-count`, `freeform-section`,
 `submit-row`, `apply-btn`, `submit-btn`, `copy-btn`, `submit-error`,
-`state-applying`, `state-submitted`, `state-already-submitted` — all defined in
-`assets/feedback/style.css`. Use them exactly as in `feedback-template.html`.
+`state-applying`, `state-submitted`, `state-already-submitted` — defined across
+`assets/shared/chrome.css` and `assets/feedback/style.css`. Use them exactly as
+in `feedback-template.html`.
 
 The comment UI classes (`fb-float-btn`, `fb-comment-editor`, `fb-comment-card`,
 `fb-quote`, `fb-highlight`, …) are injected by `app.js` at runtime. **Do not
@@ -168,5 +170,6 @@ Before finalising a feedback-mode document:
       `id="state-submitted"`, `id="state-already-submitted"` are each present
       exactly once.
 - [ ] `<link>` to `/assets/feedback/style.css` is in `<head>`; `<script>` for
-      `/assets/feedback/app.js` is before `</body>`.
+      `/assets/shared/submit.js` and then `/assets/feedback/app.js` — in that
+      order — are before `</body>`.
 - [ ] No `<script>const CSRF_TOKEN = …</script>` block — the server injects it.
