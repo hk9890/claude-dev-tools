@@ -16,7 +16,8 @@
 # sentence and must not be forced to match it. A single copy has nothing to drift against.
 set -uo pipefail
 
-REPO_ROOT="$(git rev-parse --show-toplevel)"
+REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
+[[ -n "$REPO_ROOT" ]] || { printf 'FAIL: cannot resolve repo root from %s\n' "${BASH_SOURCE[0]}" >&2; exit 1; }
 
 # The canonical read-only contract. Any change to the reviewer's read-only rule must be made
 # here AND verbatim in both files below — that three-way friction is deliberate: it forces a

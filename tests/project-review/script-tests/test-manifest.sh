@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-REPO_ROOT="$(git rev-parse --show-toplevel)"
+REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
+[[ -n "$REPO_ROOT" ]] || { printf 'FAIL: cannot resolve repo root from %s\n' "${BASH_SOURCE[0]}" >&2; exit 1; }
 SCRIPT="$REPO_ROOT/plugins/project-review/skills/project-review-docs/scripts/manifest.py"
 
 PASS=0

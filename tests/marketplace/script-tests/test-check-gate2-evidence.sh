@@ -16,7 +16,8 @@
 # whether real gh/taskmgr are installed.
 set -uo pipefail
 
-REPO_ROOT="$(git rev-parse --show-toplevel)"
+REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
+[[ -n "$REPO_ROOT" ]] || { printf 'FAIL: cannot resolve repo root from %s\n' "${BASH_SOURCE[0]}" >&2; exit 1; }
 SCRIPT="$REPO_ROOT/scripts/check-gate2-evidence.sh"
 
 PASS=0
@@ -72,7 +73,11 @@ assert_eq() {
 # The script only invokes `gh pr view ... -q .body` and `taskmgr show <id>`.
 # Both stubs ignore their arguments and echo controllable env-driven output.
 
-STUB_DIR=$(mktemp -d)
+# Also the suite's mktemp probe: build_merge_repo runs in a command substitution,
+# so a guard inside it could only exit the subshell. Without a temp dir the stubs
+# never land, PATH gains a bare "" entry, and the audit would be driven by whatever
+# real gh/taskmgr the machine happens to have.
+STUB_DIR=$(mktemp -d) || { printf 'FAIL: mktemp -d unavailable — stubs and fixtures cannot be built\n'; exit 1; }
 cat > "$STUB_DIR/gh" <<'STUB'
 #!/usr/bin/env bash
 # stub gh: prints $GH_PR_BODY (the PR body the audit greps for a task id).
@@ -176,14 +181,20 @@ test_script_exists() {
   fi
 }
 
+# The script's own root defaults to `git rev-parse --show-toplevel`, i.e. the CWD's
+# repo. Pin it to the checkout this suite lives in — as the integration cases below
+# already do for their throwaway repos — so the smoke tests audit this tree from any
+# CWD rather than whatever repo the runner happened to be invoked from.
 test_empty_range_exits_0() {
-  assert_exit "empty range (HEAD..HEAD): exits 0" 0 bash "$SCRIPT" HEAD
+  assert_exit "empty range (HEAD..HEAD): exits 0" 0 \
+    env REPO_ROOT="$REPO_ROOT" bash "$SCRIPT" HEAD
 }
 
 test_empty_range_output_pass() {
-  assert_output_contains "empty range: output contains PASS" "PASS" bash "$SCRIPT" HEAD
+  assert_output_contains "empty range: output contains PASS" "PASS" \
+    env REPO_ROOT="$REPO_ROOT" bash "$SCRIPT" HEAD
   assert_output_contains "empty range: mentions no merge commits" "No merge commits" \
-    bash "$SCRIPT" HEAD
+    env REPO_ROOT="$REPO_ROOT" bash "$SCRIPT" HEAD
 }
 
 # ── unit: extract_task_id (pure helper, loaded by sourcing the script) ─────────

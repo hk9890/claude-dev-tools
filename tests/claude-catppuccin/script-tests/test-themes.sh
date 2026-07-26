@@ -15,7 +15,8 @@
 
 set -uo pipefail
 
-REPO_ROOT="$(git rev-parse --show-toplevel)"
+REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
+[[ -n "$REPO_ROOT" ]] || { printf 'FAIL: cannot resolve repo root from %s\n' "${BASH_SOURCE[0]}" >&2; exit 1; }
 PLUGIN_DIR="$REPO_ROOT/plugins/claude-catppuccin"
 THEMES_DIR="$PLUGIN_DIR/themes"
 
@@ -118,7 +119,9 @@ else
 fi
 
 # 3. Drift check — committed output must equal a fresh generation.
-tmp="$(mktemp -d)"
+# Unguarded, an empty $tmp would make generate-themes.mjs fall back to its default
+# THEMES_OUT_DIR and overwrite the committed themes this suite is checking.
+tmp="$(mktemp -d)" || { printf 'FAIL: mktemp -d unavailable — drift check not run\n'; exit 1; }
 trap 'rm -rf "$tmp"' EXIT
 if THEMES_OUT_DIR="$tmp" node "$PLUGIN_DIR/scripts/generate-themes.mjs" >/dev/null; then
   ok "generate-themes.mjs runs"

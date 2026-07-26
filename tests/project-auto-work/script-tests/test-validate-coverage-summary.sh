@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-REPO_ROOT="$(git rev-parse --show-toplevel)"
+REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
+[[ -n "$REPO_ROOT" ]] || { printf 'FAIL: cannot resolve repo root from %s\n' "${BASH_SOURCE[0]}" >&2; exit 1; }
 SCRIPT="$REPO_ROOT/plugins/project-auto-work/skills/test-tests/scripts/validate-coverage-summary.py"
 
 PASS=0
@@ -23,6 +24,18 @@ assert_exit() {
     fail "$label — expected exit $expected_code, got $actual_code"; fi
 }
 json_val() { python3 -c "import json,sys; d=json.loads(sys.stdin.read()); print($2)" <<< "$1"; }
+
+# The validator exits 3 for a missing file as well as for a non-conforming one, so a
+# reject fixture that failed to write satisfies its own assertion and the rejection
+# path goes unexercised while the suite reports all-passed. Attribute that to the
+# fixture. mktemp -d still succeeds on a full or read-only tmpfs, so the DIR guard
+# below does not cover this.
+fixture_written() {
+  local path="$1"
+  [[ -s "$path" ]] && return 0
+  fail "fixture: ${path##*/} not written — reject case not exercised"
+  return 1
+}
 
 DIR=$(tmpdir) || { printf 'FAIL: mktemp -d unavailable — fixtures cannot be built\n'; exit 1; }
 
@@ -98,11 +111,13 @@ for pair in "abs:$abs" "dotdot:$dotdot" "badrange:$badrange" "nonint:$nonint" \
             "nofiles:$nofiles" "emptyfiles:$emptyfiles"; do
   name="${pair%%:*}"; body="${pair#*:}"
   printf '%s' "$body" > "$DIR/$name.json"
+  fixture_written "$DIR/$name.json" || continue
   assert_exit "reject: $name" 3 "$SCRIPT" "$DIR/$name.json"
 done
 
 echo "not json at all" > "$DIR/garbage.txt"
-assert_exit "reject: non-JSON"      3 "$SCRIPT" "$DIR/garbage.txt"
+fixture_written "$DIR/garbage.txt" &&
+  assert_exit "reject: non-JSON"    3 "$SCRIPT" "$DIR/garbage.txt"
 assert_exit "reject: missing file"  3 "$SCRIPT" "$DIR/does-not-exist.json"
 assert_exit "usage: too many args"  2 "$SCRIPT" a b
 

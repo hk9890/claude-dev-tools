@@ -19,7 +19,8 @@
 
 set -uo pipefail
 
-REPO_ROOT="$(git rev-parse --show-toplevel)"
+REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
+[[ -n "$REPO_ROOT" ]] || { printf 'FAIL: cannot resolve repo root from %s\n' "${BASH_SOURCE[0]}" >&2; exit 1; }
 SCRIPT="$REPO_ROOT/plugins/keep-awake-linux/bin/keep-awake"
 
 [[ -x "$SCRIPT" ]] || { echo "FAIL: $SCRIPT is not executable"; exit 1; }
@@ -94,6 +95,10 @@ trap cleanup EXIT
 # leave the EXIT trap with nothing to reap — which is how a failing run leaks the
 # very inhibitors this plugin exists to release.
 new_sid() { NEW_SID="$RUN_TAG-$1"; SIDS+=("$NEW_SID"); }
+# Every caller passes a fresh mktemp -d as $1 and must check it: keep-awake falls
+# back to /tmp/claude-keep-awake-$(id -u) when XDG_RUNTIME_DIR is empty, so an
+# unguarded mktemp failure would point the suite at the developer's live session
+# state and start, stop and gc real inhibitors there.
 run()     { XDG_RUNTIME_DIR="$1" KEEP_AWAKE_TTL="$TTL" "$SCRIPT" "${@:2}"; }
 marker()  { cat "$1/claude-keep-awake/sessions/$2.pid" 2>/dev/null || true; }
 
@@ -107,7 +112,8 @@ assert_eq() {
 
 lifecycle() {
   local rt sid
-  rt="$(mktemp -d)"; new_sid life; sid="$NEW_SID"
+  rt="$(mktemp -d)" || { printf 'FAIL: mktemp -d unavailable — runtime dir not built\n'; exit 1; }
+  new_sid life; sid="$NEW_SID"
 
   run "$rt" start "$sid" >/dev/null 2>&1
   settle_for "$sid" 1
@@ -139,7 +145,8 @@ lifecycle() {
 # ── Hook dispatch ────────────────────────────────────────────────────────────
 
 hook_dispatch() {
-  local rt sid; rt="$(mktemp -d)"; new_sid hook; sid="$NEW_SID"
+  local rt sid; rt="$(mktemp -d)" || { printf 'FAIL: mktemp -d unavailable — runtime dir not built\n'; exit 1; }
+  new_sid hook; sid="$NEW_SID"
   command -v jq >/dev/null 2>&1 || { ok "hook: skipped, jq absent"; rm -rf "$rt"; return; }
 
   echo "{\"session_id\":\"$sid\"}" | run "$rt" hook SessionStart >/dev/null 2>&1
@@ -164,7 +171,8 @@ hook_dispatch() {
 # ── Concurrency: N racing starts must yield exactly one inhibitor ────────────
 
 concurrent_starts() {
-  local n="$1" rt sid; rt="$(mktemp -d)"; new_sid "start$n"; sid="$NEW_SID"
+  local n="$1" rt sid; rt="$(mktemp -d)" || { printf 'FAIL: mktemp -d unavailable — runtime dir not built\n'; exit 1; }
+  new_sid "start$n"; sid="$NEW_SID"
 
   local i
   for ((i = 0; i < n; i++)); do run "$rt" start "$sid" >/dev/null 2>&1 & done
@@ -190,7 +198,8 @@ concurrent_starts() {
 stop_races_start() {
   local trials="$1" leaked=0 i rt sid
   for ((i = 0; i < trials; i++)); do
-    rt="$(mktemp -d)"; new_sid "race$i"; sid="$NEW_SID"
+    rt="$(mktemp -d)" || { printf 'FAIL: mktemp -d unavailable — runtime dir not built\n'; exit 1; }
+    new_sid "race$i"; sid="$NEW_SID"
     run "$rt" start "$sid" >/dev/null 2>&1
     run "$rt" stop  "$sid" >/dev/null 2>&1 &
     run "$rt" start "$sid" >/dev/null 2>&1 &
@@ -212,7 +221,7 @@ stop_races_start() {
 
 gc_during_starts() {
   local n="$1" rt i untracked=0
-  rt="$(mktemp -d)"
+  rt="$(mktemp -d)" || { printf 'FAIL: mktemp -d unavailable — runtime dir not built\n'; exit 1; }
   local -a sids=()
   for ((i = 0; i < n; i++)); do new_sid "gc$i"; sids+=("$NEW_SID"); done
   for sid in "${sids[@]}"; do run "$rt" start "$sid" >/dev/null 2>&1 & done
@@ -232,7 +241,7 @@ gc_during_starts() {
 # ── Invalid input never blocks the harness ──────────────────────────────────
 
 invalid_sid() {
-  local rt code=0; rt="$(mktemp -d)"
+  local rt code=0; rt="$(mktemp -d)" || { printf 'FAIL: mktemp -d unavailable — runtime dir not built\n'; exit 1; }
   run "$rt" start 'bad;sid' >/dev/null 2>&1 || code=$?
   assert_eq "invalid session_id: exits 0 without spawning" 0 "$code"
   assert_eq "invalid session_id: no inhibitor" 0 "$(inhibitors_for 'bad;sid')"
