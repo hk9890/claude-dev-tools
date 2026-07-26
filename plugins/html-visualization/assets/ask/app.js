@@ -219,6 +219,28 @@ if (typeof document !== 'undefined') {
       if (submitBtn) submitBtn.textContent = on ? 'Submitting…' : 'Submit feedback';
     }
 
+    // A page that forgot the /assets/shared/submit.js tag renders and accepts
+    // answers normally, then throws on the first click and POSTs nothing —
+    // leaving the blocking server waiting for a submit that can never arrive.
+    // Report it at load, while the user can still copy their answers out by hand.
+    if (typeof hvSubmit !== 'function' || typeof hvCopy !== 'function' ||
+        typeof hvShowError !== 'function' || typeof hvClearError !== 'function') {
+      var missingMsg = 'This page did not load /assets/shared/submit.js, so it cannot send ' +
+        'anything back. Add <script src="/assets/shared/submit.js"></script> before ' +
+        '<script src="/assets/ask/app.js"></script> and reload.';
+      if (submitError) {
+        submitError.textContent = missingMsg;
+        submitError.style.display = 'block';
+      }
+      [submitBtn, copyBtn].forEach(function (btn) {
+        if (btn) {
+          btn.disabled = true;
+          btn.title = missingMsg;
+        }
+      });
+      return;
+    }
+
     if (submitBtn) {
       submitBtn.addEventListener('click', function () {
         hvClearError(submitError);

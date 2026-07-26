@@ -154,7 +154,11 @@ body {
   margin-top: 22px;
 }
 
-.submit-btn {
+/* .apply-btn (feedback mode only) sits next to .submit-btn in the same row and
+   must match it everywhere except padding, background and shadow, which each
+   mode sets. */
+.submit-btn,
+.apply-btn {
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -167,7 +171,8 @@ body {
 
 /* The pressed state is per mode: it has to come after that mode's :hover rule
    to win, and the hover colours differ. */
-.submit-btn:disabled {
+.submit-btn:disabled,
+.apply-btn:disabled {
   opacity: 0.5;
   cursor: default;
   box-shadow: none;

@@ -12,7 +12,10 @@
  *       handlers.accepted()                 — 200, the server took it
  *       handlers.alreadySubmitted()         — 410, a submit already landed
  *       handlers.failed(status, errorText)  — any other status
- *       handlers.unreachable()              — network error, or a handler threw
+ *       handlers.unreachable()              — the request never completed
+ *     unreachable() covers the network phase only. An exception thrown by a
+ *     handler rejects the returned promise — it must not be reported as an
+ *     unreachable server, because by then the submit has already landed.
  *   hvCopy(button, text)     — copy text to the clipboard, then flip the button
  *                              into its transient "Copied!" state
  *   hvShowError(el, message) / hvClearError(el) — the .submit-error panel
@@ -23,6 +26,10 @@
 function hvSubmit(payload, handlers) {
   var token = (typeof CSRF_TOKEN !== 'undefined') ? CSRF_TOKEN : '';
 
+  // The network phase resolves to an outcome; the dispatch phase runs the
+  // handler. They are separate .then()s so the .catch between them cannot see
+  // an exception thrown by a handler and mis-report a landed submit as an
+  // unreachable server.
   return fetch('/submit', {
     method: 'POST',
     headers: {
@@ -32,18 +39,27 @@ function hvSubmit(payload, handlers) {
     body: JSON.stringify(payload),
   })
     .then(function (res) {
-      if (res.status === 200) {
-        handlers.accepted();
-      } else if (res.status === 410) {
-        handlers.alreadySubmitted();
-      } else {
-        return res.json().then(function (body) {
-          handlers.failed(res.status, body.error || 'unknown error');
-        });
+      if (res.status === 200 || res.status === 410) {
+        return { status: res.status, error: '' };
       }
+      return res.json().then(
+        function (body) { return { status: res.status, error: body.error || 'unknown error' }; },
+        function () { return { status: res.status, error: 'unknown error' }; }
+      );
     })
     .catch(function () {
-      handlers.unreachable();
+      return null;
+    })
+    .then(function (outcome) {
+      if (!outcome) {
+        handlers.unreachable();
+      } else if (outcome.status === 200) {
+        handlers.accepted();
+      } else if (outcome.status === 410) {
+        handlers.alreadySubmitted();
+      } else {
+        handlers.failed(outcome.status, outcome.error);
+      }
     });
 }
 

@@ -15,6 +15,8 @@
  *      and reports "Closed."; a padded message arrives trimmed.
  *   3. Feedback Apply loop: after an Apply submit the open browser tab
  *      auto-reloads when a fresh fb-generation is served on the same port.
+ *   4. Missing shared client: an ask page authored without the
+ *      /assets/shared/submit.js tag reports it and disables Submit.
  */
 
 'use strict';
@@ -68,6 +70,8 @@ const VIS_TMPL  = path.join(REPO_ROOT, 'plugins', 'html-visualization',
                              'skills', 'html-visualize', 'references', 'visualize-template.html');
 const FB_TMPL   = path.join(REPO_ROOT, 'plugins', 'html-visualization',
                              'skills', 'html-visualize', 'references', 'feedback-template.html');
+const ASK_TMPL  = path.join(REPO_ROOT, 'plugins', 'html-visualization',
+                             'skills', 'html-visualize', 'references', 'ask-template.html');
 
 // ── Counters ───────────────────────────────────────────────────────────────
 
@@ -486,12 +490,106 @@ async function testFeedbackApplyLoop() {
   }
 }
 
+// ── Test 4: a page missing the shared submit client says so ────────────────
+//
+// The two required <script> tags are enforced only by the template and a
+// markup checklist. A page authored with just the mode app.js renders and
+// accepts every answer normally, so the omission is invisible until Submit
+// throws — no POST, no error panel, and a blocking server waiting out its
+// timeout. app.js checks for the client at load instead; this pins that, and
+// the intact template pins that the check does not misfire.
+
+async function testMissingSharedClient() {
+  console.log('\n--- test: ask page missing /assets/shared/submit.js ---');
+  let browser = null;
+  let tmpDir = null;
+
+  try {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hv-test-noclient-'));
+    const askHtml = fs.readFileSync(ASK_TMPL, 'utf8');
+    const stripped = askHtml.replace(
+      /[ \t]*<script src="\/assets\/shared\/submit\.js"><\/script>\r?\n/,
+      ''
+    );
+    if (stripped === askHtml) {
+      fail('missing shared client: could not strip the submit.js tag from ask-template.html');
+      return;
+    }
+
+    browser = await chromium.launch({ headless: true });
+
+    // Serve `html` and read back the state of the submit row.
+    async function probe(html, name) {
+      const htmlFile = path.join(tmpDir, name);
+      fs.writeFileSync(htmlFile, html, 'utf8');
+      const srv = await startServer(htmlFile, ['--no-wait', '--timeout-sec', '30']);
+      try {
+        const ctx  = await browser.newContext();
+        const page = await ctx.newPage();
+        await page.goto(srv.baseUrl + '/');
+        await page.waitForLoadState('domcontentloaded');
+        const state = await page.evaluate(() => {
+          const err = document.getElementById('submit-error');
+          const btn = document.getElementById('submit-btn');
+          return {
+            errorShown: !!err && getComputedStyle(err).display !== 'none',
+            errorText: err ? err.textContent : '',
+            submitDisabled: !!btn && btn.disabled,
+            submitTitle: btn ? (btn.title || '') : '',
+          };
+        });
+        await ctx.close();
+        return state;
+      } finally {
+        killServer(srv);
+      }
+    }
+
+    const broken = await probe(stripped, 'ask-no-client.html');
+
+    if (broken.errorShown && /submit\.js/.test(broken.errorText)) {
+      ok('missing shared client: #submit-error names the missing script at load');
+    } else {
+      fail('missing shared client: #submit-error not shown with the script name '
+           + '(shown=' + broken.errorShown + ', text=' + JSON.stringify(broken.errorText) + ')');
+    }
+
+    if (broken.submitDisabled) ok('missing shared client: Submit is disabled');
+    else                        fail('missing shared client: Submit still enabled');
+
+    if (/submit\.js/.test(broken.submitTitle)) {
+      ok('missing shared client: Submit carries an explanatory title');
+    } else {
+      fail('missing shared client: Submit title does not explain why '
+           + '(title=' + JSON.stringify(broken.submitTitle) + ')');
+    }
+
+    const intact = await probe(askHtml, 'ask-intact.html');
+
+    if (!intact.errorShown) ok('intact ask page: no error panel at load');
+    else                     fail('intact ask page: error panel shown at load — the check misfires');
+
+    if (!intact.submitDisabled) ok('intact ask page: Submit stays enabled');
+    else                         fail('intact ask page: Submit disabled — the check misfires');
+
+    await browser.close();
+    browser = null;
+
+  } catch (err) {
+    fail('missing shared client: unexpected error — ' + err.message);
+    if (browser) { try { await browser.close(); } catch (_) {} }
+  } finally {
+    if (tmpDir) { try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {} }
+  }
+}
+
 // ── Main ───────────────────────────────────────────────────────────────────
 
 (async () => {
   await testVisualize();
   await testVisualizeSubmitTrims();
   await testFeedbackApplyLoop();
+  await testMissingSharedClient();
 
   console.log('\nResults: ' + PASS + ' passed, ' + FAIL + ' failed');
   if (FAIL > 0) {

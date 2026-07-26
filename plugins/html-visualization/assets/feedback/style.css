@@ -372,28 +372,14 @@ mark.fb-highlight {
 
 .apply-btn {
   padding: 12px 26px;
-  color: #fff;
   background: var(--hv-accent);
-  border: none;
-  border-radius: 8px;
-  font-family: inherit;
-  font-size: 0.97rem;
-  font-weight: 600;
-  cursor: pointer;
   box-shadow: 0 6px 16px -8px rgba(var(--hv-accent-rgb),.7);
-  transition: background 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease, opacity 0.15s ease;
 }
 
 .apply-btn:hover:not(:disabled) {
   background: var(--hv-accent-deep);
   transform: translateY(-1px);
   box-shadow: 0 10px 22px -8px rgba(var(--hv-accent-rgb),.75);
-}
-
-.apply-btn:disabled {
-  opacity: 0.5;
-  cursor: default;
-  box-shadow: none;
 }
 
 .submit-btn {

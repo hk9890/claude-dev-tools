@@ -18,7 +18,8 @@
 #   - --no-wait --timeout-sec N: server exits 0 on timeout
 set -uo pipefail
 
-REPO_ROOT="$(git rev-parse --show-toplevel)"
+REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
+[[ -n "$REPO_ROOT" ]] || { printf 'FAIL: cannot resolve repo root from %s\n' "${BASH_SOURCE[0]}" >&2; exit 1; }
 SERVER="$REPO_ROOT/plugins/html-visualization/bin/server.js"
 ASSETS_DIR="$REPO_ROOT/plugins/html-visualization/assets"
 
@@ -175,16 +176,23 @@ test_startup_output() {
   ok "startup: Feedback file path printed to stdout"
 }
 
-# 3. GET /assets/<file> serves a committed asset file. Fetches an asset that
-#    ships with the plugin instead of writing a fixture into the tracked tree —
+# 3. GET /assets/<file> serves a committed asset file. Fetches assets that
+#    ship with the plugin instead of writing a fixture into the tracked tree —
 #    the test must never mutate plugins/.
+#
+#    Every shared asset is fetched: they are referenced only from generated
+#    pages, so a rename or a mistyped path in one of them has no other way to
+#    surface before a user hits the broken page.
 test_get_asset() {
-  local asset_rel="shared/tokens.css"
-  local asset_file="$ASSETS_DIR/$asset_rel"
-  if [[ ! -f "$asset_file" ]]; then
-    fail "GET /assets/<file>: committed asset $asset_rel missing under $ASSETS_DIR"
-    return
-  fi
+  local shared_assets=(shared/tokens.css shared/chrome.css shared/submit.js)
+
+  local asset_rel
+  for asset_rel in "${shared_assets[@]}"; do
+    if [[ ! -f "$ASSETS_DIR/$asset_rel" ]]; then
+      fail "GET /assets/<file>: committed asset $asset_rel missing under $ASSETS_DIR"
+      return
+    fi
+  done
 
   local tmp_html
   tmp_html=$(mktemp --suffix=.html)
@@ -196,25 +204,26 @@ test_get_asset() {
     return
   fi
 
-  local tmp_body status
+  local tmp_body
   tmp_body=$(mktemp)
-  status=$(curl -s -o "$tmp_body" -w '%{http_code}' "$BASE_URL/assets/$asset_rel")
+
+  for asset_rel in "${shared_assets[@]}"; do
+    local status
+    status=$(curl -s -o "$tmp_body" -w '%{http_code}' "$BASE_URL/assets/$asset_rel")
+
+    if [[ "$status" != "200" ]]; then
+      fail "GET /assets/$asset_rel: expected 200, got $status"
+      continue
+    fi
+    if ! cmp -s "$tmp_body" "$ASSETS_DIR/$asset_rel"; then
+      fail "GET /assets/$asset_rel: response body does not match the file on disk"
+      continue
+    fi
+    ok "GET /assets/$asset_rel: returns 200 with the committed asset's exact content"
+  done
 
   kill_server
-  rm -f "$tmp_html"
-
-  if [[ "$status" != "200" ]]; then
-    fail "GET /assets/<file>: expected 200, got $status"
-    rm -f "$tmp_body"
-    return
-  fi
-  if ! cmp -s "$tmp_body" "$asset_file"; then
-    fail "GET /assets/<file>: response body does not match $asset_rel on disk"
-    rm -f "$tmp_body"
-    return
-  fi
-  rm -f "$tmp_body"
-  ok "GET /assets/<file>: returns 200 with the committed asset's exact content"
+  rm -f "$tmp_html" "$tmp_body"
 }
 
 # 4. GET /assets/../../etc/passwd returns 404 (path traversal)

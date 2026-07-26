@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # test-ask-payload.sh — unit tests for buildAskPayload in the ask-mode app.js
-# (assets/ask/app.js).
+# (assets/ask/app.js), plus the shared submit client every ask page loads
+# alongside it (assets/shared/submit.js).
 #
 # Loads the pure function via Node require() (no DOM, no CSRF_TOKEN global)
 # and asserts it produces an object matching the ask-submit-schema.md
@@ -10,8 +11,10 @@
 
 set -uo pipefail
 
-REPO_ROOT="$(git rev-parse --show-toplevel)"
+REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
+[[ -n "$REPO_ROOT" ]] || { printf 'FAIL: cannot resolve repo root from %s\n' "${BASH_SOURCE[0]}" >&2; exit 1; }
 APP_JS="$REPO_ROOT/plugins/html-visualization/assets/ask/app.js"
+SUBMIT_JS="$REPO_ROOT/plugins/html-visualization/assets/shared/submit.js"
 
 PASS=0
 FAIL=0
@@ -54,6 +57,39 @@ if [[ $? -ne 0 ]]; then
 else
   ok "app.js syntax check (node --check)"
 fi
+
+# ── Verify the shared submit client app.js depends on ─────────────────────────
+# submit.js is loaded by <script> and never require()d, so nothing else in the
+# suite would notice a syntax error or a renamed global in it — and an ask page
+# whose Submit throws still looks fine until the user clicks.
+
+if [[ ! -f "$SUBMIT_JS" ]]; then
+  printf 'FAIL: shared submit.js not found at %s\n' "$SUBMIT_JS"
+  exit 1
+fi
+
+if node --check "$SUBMIT_JS" 2>&1; then
+  ok "shared submit.js syntax check (node --check)"
+else
+  fail "shared submit.js syntax check"
+  exit 1
+fi
+
+# The names are spelled out, not derived from app.js: renaming a global on both
+# sides at once still breaks every already-authored ask page, so it must fail here.
+run_node_test "shared submit.js defines the globals ask/app.js calls" "
+var fs = require('fs'), vm = require('vm');
+var ctx = {};
+vm.createContext(ctx);
+vm.runInContext(fs.readFileSync('$SUBMIT_JS', 'utf8'), ctx, { filename: 'submit.js' });
+var missing = ['hvSubmit', 'hvCopy', 'hvShowError', 'hvClearError'].filter(function (n) {
+  return typeof ctx[n] !== 'function';
+});
+if (missing.length > 0) {
+  console.error('assets/shared/submit.js does not define: ' + missing.join(', '));
+  process.exit(1);
+}
+"
 
 # ── Test 1: payload has exactly the four required keys ────────────────────────
 

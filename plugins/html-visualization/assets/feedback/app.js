@@ -456,11 +456,39 @@ if (typeof document !== 'undefined') {
     var stateAlreadySubmitted = document.getElementById('state-already-submitted');
     var feedbackDoc = document.getElementById('feedback-doc');
 
+    var sharedClientReady =
+      typeof hvSubmit === 'function' && typeof hvCopy === 'function' &&
+      typeof hvShowError === 'function' && typeof hvClearError === 'function';
+
     function updateActionButtons() {
+      // Without the shared client the buttons stay disabled by the guard below;
+      // adding a comment must not put Apply back into a state that cannot work.
+      if (!sharedClientReady) return;
       // Apply with nothing to apply is a no-op round-trip — disable it then.
       if (applyBtn) applyBtn.disabled = !hasContent();
     }
     updateActionButtons();
+
+    // A page that forgot the /assets/shared/submit.js tag renders and takes
+    // comments normally, then throws on the first click and POSTs nothing —
+    // leaving the blocking server waiting for a submit that can never arrive.
+    // Report it at load, while the user can still copy their comments out by hand.
+    if (!sharedClientReady) {
+      var missingMsg = 'This page did not load /assets/shared/submit.js, so it cannot send ' +
+        'anything back. Add <script src="/assets/shared/submit.js"></script> before ' +
+        '<script src="/assets/feedback/app.js"></script> and reload.';
+      if (submitError) {
+        submitError.textContent = missingMsg;
+        submitError.style.display = 'block';
+      }
+      [applyBtn, submitBtn, copyBtn].forEach(function (btn) {
+        if (btn) {
+          btn.disabled = true;
+          btn.title = missingMsg;
+        }
+      });
+      return;
+    }
 
     var freeformEl = document.getElementById('freeform-input');
     if (freeformEl) freeformEl.addEventListener('input', updateActionButtons);
