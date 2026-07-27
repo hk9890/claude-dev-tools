@@ -4,24 +4,70 @@ export const meta = {
   whenToUse: 'Launched by the /project-review-codebase skill. Reviews a codebase for internal consistency, physical layout, and module architecture; dedupes findings across dimensions and returns a standalone Markdown report with Mermaid diagrams.',
   phases: [
     { title: 'Review', detail: 'one adversarial agent per dimension' },
-    { title: 'Verify', detail: 'adversarially refute each finding (ultra only)' },
+    { title: 'Verify', detail: 'adversarially refute each finding (level=ultra only)' },
     { title: 'Synthesis', detail: 'dedupe + reconcile + deepening candidates + Markdown artifact' },
   ],
 }
 
-// args: { repoRoot, scope?, vocabFile?, ultra? }
-// Robust to args arriving as either a parsed object or a JSON-encoded string.
-let A = args
-if (typeof A === 'string') { try { A = JSON.parse(A) } catch (e) { A = {} } }
-A = A || {}
-const repoRoot = A.repoRoot
-const scope = A.scope || ''
-const vocabFile = A.vocabFile || ''
-const ultra = !!A.ultra
+// args: { repoRoot, scope?, vocabFile?, level? }
 
 // ---------------------------------------------------------------------------
-// Schemas
+// Pure helpers — no runtime globals, so they are reachable without launching a
+// multi-agent run. Unit-tested via tests/project-review/script-tests/test-review-codebase.js.
 // ---------------------------------------------------------------------------
+
+// The depth vocabulary is shared with project-review-docs and test-tests: one
+// argument name, one token set, so a token learned at one skill means the same
+// thing at the next. Here only `ultra` changes behaviour — it adds the
+// per-finding refutation pass; the other three run the same three dimensions.
+const LEVELS = ['low', 'medium', 'high', 'ultra']
+
+// Normalize the incoming `args` value into the review's configuration, and reject an
+// unusable one here rather than three dimension agents later.
+// Defensive: the runtime may hand `args` over as a JSON *string* rather than a parsed
+// object (observed in practice). A string has no `.repoRoot`, so reading it directly
+// would leave repoRoot undefined, which the dimension prompts would interpolate as the
+// literal "undefined" — the agents would then review whatever directory they happened
+// to be in and report confidently on the wrong tree, which is worse than a failure.
+function normalizeArgs(rawArgs) {
+  let parsed = rawArgs
+  if (typeof parsed === 'string') {
+    try { parsed = JSON.parse(parsed) } catch { parsed = {} }
+  }
+  parsed = parsed || {}
+  const raw = String(parsed.level || '').toLowerCase()
+  const level = LEVELS.includes(raw) ? raw : 'medium'
+  const repoRoot = String(parsed.repoRoot || '')
+
+  let error = null
+  if (parsed.ultra !== undefined) {
+    // The boolean `ultra` this workflow used to take is gone. Accepting it silently would
+    // run a caller who asked for the refutation pass at the default depth instead, and
+    // report level:'medium' as though that is what they wanted.
+    error = 'the boolean `ultra` argument was replaced by `level` — pass "level": "ultra" instead'
+  } else if (!repoRoot) {
+    error = 'repoRoot is required — it is the tree every dimension agent walks'
+  } else if (!repoRoot.startsWith('/')) {
+    // SKILL.md step 3 hands the model a "<repo root, or the step-1 path>" template. An
+    // unsubstituted placeholder is a NON-EMPTY string, so a truthiness check passes it
+    // through and the dimension prompts ship it verbatim — three opus agents then review
+    // whatever directory they happen to land in and return a confident report about the
+    // wrong tree. Only an absolute path can be a repo root, so require one.
+    error = `repoRoot must be an absolute path (got ${JSON.stringify(repoRoot)}) — an unsubstituted "<…>" placeholder would otherwise reach the dimension agents`
+  }
+
+  return {
+    repoRoot,
+    scope: parsed.scope || '',
+    vocabFile: parsed.vocabFile || '',
+    level,
+    ultra: level === 'ultra',
+    // Echoed on a bail-out: naming the keys that actually arrived is what lets a caller
+    // spot a misspelling, which an error naming only the expected keys cannot.
+    receivedKeys: Object.keys(parsed),
+    error,
+  }
+}
 
 const VERDICTS = ['clean', 'minor issues', 'significant issues', 'broken']
 
@@ -174,9 +220,11 @@ const PERSONA =
   `not fully prove as plausible inside its observation. Return an empty findings array if the dimension is genuinely ` +
   `clean — do not invent problems.`
 
-const scopeLine = scope
-  ? `Scope of this review (from the user): ${scope}. Confine findings to it.`
-  : `Scope: the whole codebase — walk the tree.`
+function scopeLine(scope) {
+  return scope
+    ? `Scope of this review (from the user): ${scope}. Confine findings to it.`
+    : `Scope: the whole codebase — walk the tree.`
+}
 
 // ---------------------------------------------------------------------------
 // Dimension procedures
@@ -210,7 +258,7 @@ const CONSISTENCY_PROCEDURE =
   `NOT THIS DIMENSION: pure formatting (whitespace, brackets — linter territory); whether the shared pattern is the ` +
   `right design (architecture dimension); where files live (structure dimension).`
 
-// CROSS-PLUGIN CONTRACT: the Mermaid class names below and in ARCHITECTURE_PROCEDURE
+// CROSS-PLUGIN CONTRACT: the Mermaid class names below and in architectureProcedure()
 // (misplaced, dead, god, leak, deep) are coloured by html-visualization's
 // visualize-template.html, which carries a matching `.vis-mermaid-wrap .<name>` rule for
 // each. Renaming one here silently drops its colour when the artifact is rendered as HTML.
@@ -251,71 +299,74 @@ const STRUCTURE_PROCEDURE =
   `NOT THIS DIMENSION: module granularity and layering (architecture dimension); naming and casing conventions ` +
   `(consistency dimension).`
 
-const ARCHITECTURE_PROCEDURE =
-  `Dimension: ARCHITECTURE — are the module boundaries earning their keep?\n\n` +
-  (vocabFile
-    ? `First read the design vocabulary at ${vocabFile} and use its terms (module, interface, depth, seam, adapter, ` +
-      `leverage, locality) precisely in findings.\n\n`
-    : '') +
-  `Work through these checks in sequence:\n` +
-  `1. SHALLOW / PASS-THROUGH MODULES — interfaces as large as their implementation: wrappers that forward calls, ` +
-  `layers that add no behaviour. Apply the deletion test: if the module were removed, would its complexity scatter ` +
-  `across N callers (it earns its place) or simply vanish (it was forwarding — flag it)?\n` +
-  `2. UNJUSTIFIED SEAMS — interfaces, abstract bases, or adapter layers with exactly one implementation and no ` +
-  `concrete second one in sight. One adapter signals hypothetical variation; recommend collapsing the seam unless ` +
-  `there is evidence of real variation (a test double counts only when it genuinely substitutes at that seam).\n` +
-  `3. MISSING SEAMS / TESTABILITY — modules that instantiate their dependencies internally instead of receiving ` +
-  `them, apply side effects instead of returning results, or can only be tested by reaching past their interface. ` +
-  `The interface is the test boundary; tests importing a module's internals are evidence of a missing or misplaced seam.\n` +
-  `4. LAYERING VIOLATIONS — imports reaching into a sibling module's internals rather than its public interface; ` +
-  `cross-layer imports in the wrong direction. Map the intended layers from the docs and tree first, then find violations.\n` +
-  `5. MODULE GRANULARITY — god-files owning far more responsibility than their directory implies ("utils" ` +
-  `accumulators, entry points that do everything), or one logical unit fragmented across many tiny files that are ` +
-  `always imported together and have no assembly point. Recommended action: split or merge.\n\n` +
-  `ALSO PRODUCE candidates: DEEPENING PROPOSALS, which are a different deliverable from findings. A finding says ` +
-  `what is wrong; a candidate says what to build instead. Derive them from the findings above — the strongest ` +
-  `findings usually collapse into a smaller number of candidates, and one candidate often subsumes several ` +
-  `findings. Do not pad: emit only proposals you would actually defend, and an empty array if the architecture is ` +
-  `genuinely sound. Aim for at most 5; ordering is by what you would tackle first.\n` +
-  `Each candidate carries:\n` +
-  `  - title: names the deepening, imperative and concrete ("Collapse the Order intake pipeline").\n` +
-  `  - strength: Strong (evidence is decisive) / Worth exploring (real friction, contested design) / Speculative ` +
-  `(a hunch worth a conversation). Be honest — a page of "Strong" is not credible.\n` +
-  `  - dependency_category: what the deepened module depends on, which decides how it gets tested. ` +
-  `in-process (pure computation, no I/O — merge and test directly, no adapter); local-substitutable (a real local ` +
-  `stand-in exists, e.g. an in-memory database — seam stays internal); ports & adapters (your own service across a ` +
-  `network — define a port, HTTP adapter in production, in-memory adapter in tests); mock (a third party you do not ` +
-  `control — inject the port, mock adapter in tests).\n` +
-  `  - files: the modules involved, exact paths.\n` +
-  `  - problem / solution: ONE sentence each. Problem is the friction today; solution is what changes.\n` +
-  `  - wins: up to 4 bullets, at most 6 words each, stated in leverage and locality terms ("one interface, N call ` +
-  `sites", "bugs concentrate in one module"). Never "easier to maintain" or "cleaner code" — those claim nothing.\n` +
-  `  - mermaid_before / mermaid_after: a matched pair of \`flowchart LR\` diagrams showing the module structure ` +
-  `now and as proposed. Keep BOTH under a dozen nodes and reuse identical node names across the pair so a reader ` +
-  `can see what moved. Mark leaking or misplaced edges in the BEFORE diagram with:\n` +
-  `      classDef leak stroke-width:2px,stroke-dasharray:4 4;\n` +
-  `and the consolidated deep module in the AFTER diagram with:\n` +
-  `      classDef deep stroke-width:4px;\n` +
-  `Emit raw Mermaid source only — no \`\`\` fences, the renderer adds them. WRAP EVERY NODE LABEL IN DOUBLE QUOTES — ` +
-  `A["OrderIntake (3 wrappers)"], never A[OrderIntake (3 wrappers)]: an unquoted "(" is a hard parse error that ` +
-  `replaces the whole diagram with an error graphic. Escape any double quote inside a label as #quot; — Mermaid's ` +
-  `own entity syntax, which survives both renderers, where an &quot; is decoded back to a raw quote by the HTML ` +
-  `parser before Mermaid sees it and is the same fatal parse error.\n` +
-  `A candidate whose before and after diagrams are identical is not a candidate; drop it.\n\n` +
-  `NOT THIS DIMENSION: naming (consistency dimension); physical placement (structure dimension). Candidates are ` +
-  `PROPOSALS the user chooses from, never edits you make — this review never modifies the repository. Walking one ` +
-  `decision through its tree interactively is challenge:kiss, not here.`
+function architectureProcedure(vocabFile) {
+  return `Dimension: ARCHITECTURE — are the module boundaries earning their keep?\n\n` +
+    (vocabFile
+      ? `First read the design vocabulary at ${vocabFile} and use its terms (module, interface, depth, seam, adapter, ` +
+        `leverage, locality) precisely in findings.\n\n`
+      : '') +
+    `Work through these checks in sequence:\n` +
+    `1. SHALLOW / PASS-THROUGH MODULES — interfaces as large as their implementation: wrappers that forward calls, ` +
+    `layers that add no behaviour. Apply the deletion test: if the module were removed, would its complexity scatter ` +
+    `across N callers (it earns its place) or simply vanish (it was forwarding — flag it)?\n` +
+    `2. UNJUSTIFIED SEAMS — interfaces, abstract bases, or adapter layers with exactly one implementation and no ` +
+    `concrete second one in sight. One adapter signals hypothetical variation; recommend collapsing the seam unless ` +
+    `there is evidence of real variation (a test double counts only when it genuinely substitutes at that seam).\n` +
+    `3. MISSING SEAMS / TESTABILITY — modules that instantiate their dependencies internally instead of receiving ` +
+    `them, apply side effects instead of returning results, or can only be tested by reaching past their interface. ` +
+    `The interface is the test boundary; tests importing a module's internals are evidence of a missing or misplaced seam.\n` +
+    `4. LAYERING VIOLATIONS — imports reaching into a sibling module's internals rather than its public interface; ` +
+    `cross-layer imports in the wrong direction. Map the intended layers from the docs and tree first, then find violations.\n` +
+    `5. MODULE GRANULARITY — god-files owning far more responsibility than their directory implies ("utils" ` +
+    `accumulators, entry points that do everything), or one logical unit fragmented across many tiny files that are ` +
+    `always imported together and have no assembly point. Recommended action: split or merge.\n\n` +
+    `ALSO PRODUCE candidates: DEEPENING PROPOSALS, which are a different deliverable from findings. A finding says ` +
+    `what is wrong; a candidate says what to build instead. Derive them from the findings above — the strongest ` +
+    `findings usually collapse into a smaller number of candidates, and one candidate often subsumes several ` +
+    `findings. Do not pad: emit only proposals you would actually defend, and an empty array if the architecture is ` +
+    `genuinely sound. Aim for at most 5; ordering is by what you would tackle first.\n` +
+    `Each candidate carries:\n` +
+    `  - title: names the deepening, imperative and concrete ("Collapse the Order intake pipeline").\n` +
+    `  - strength: Strong (evidence is decisive) / Worth exploring (real friction, contested design) / Speculative ` +
+    `(a hunch worth a conversation). Be honest — a page of "Strong" is not credible.\n` +
+    `  - dependency_category: what the deepened module depends on, which decides how it gets tested. ` +
+    `in-process (pure computation, no I/O — merge and test directly, no adapter); local-substitutable (a real local ` +
+    `stand-in exists, e.g. an in-memory database — seam stays internal); ports & adapters (your own service across a ` +
+    `network — define a port, HTTP adapter in production, in-memory adapter in tests); mock (a third party you do not ` +
+    `control — inject the port, mock adapter in tests).\n` +
+    `  - files: the modules involved, exact paths.\n` +
+    `  - problem / solution: ONE sentence each. Problem is the friction today; solution is what changes.\n` +
+    `  - wins: up to 4 bullets, at most 6 words each, stated in leverage and locality terms ("one interface, N call ` +
+    `sites", "bugs concentrate in one module"). Never "easier to maintain" or "cleaner code" — those claim nothing.\n` +
+    `  - mermaid_before / mermaid_after: a matched pair of \`flowchart LR\` diagrams showing the module structure ` +
+    `now and as proposed. Keep BOTH under a dozen nodes and reuse identical node names across the pair so a reader ` +
+    `can see what moved. Mark leaking or misplaced edges in the BEFORE diagram with:\n` +
+    `      classDef leak stroke-width:2px,stroke-dasharray:4 4;\n` +
+    `and the consolidated deep module in the AFTER diagram with:\n` +
+    `      classDef deep stroke-width:4px;\n` +
+    `Emit raw Mermaid source only — no \`\`\` fences, the renderer adds them. WRAP EVERY NODE LABEL IN DOUBLE QUOTES — ` +
+    `A["OrderIntake (3 wrappers)"], never A[OrderIntake (3 wrappers)]: an unquoted "(" is a hard parse error that ` +
+    `replaces the whole diagram with an error graphic. Escape any double quote inside a label as #quot; — Mermaid's ` +
+    `own entity syntax, which survives both renderers, where an &quot; is decoded back to a raw quote by the HTML ` +
+    `parser before Mermaid sees it and is the same fatal parse error.\n` +
+    `A candidate whose before and after diagrams are identical is not a candidate; drop it.\n\n` +
+    `NOT THIS DIMENSION: naming (consistency dimension); physical placement (structure dimension). Candidates are ` +
+    `PROPOSALS the user chooses from, never edits you make — this review never modifies the repository. Walking one ` +
+    `decision through its tree interactively is challenge:kiss, not here.`
+}
 
-const DIMENSIONS = [
-  { key: 'consistency', procedure: CONSISTENCY_PROCEDURE, schema: DIMENSION_SCHEMA },
-  { key: 'structure', procedure: STRUCTURE_PROCEDURE, schema: STRUCTURE_SCHEMA },
-  { key: 'architecture', procedure: ARCHITECTURE_PROCEDURE, schema: ARCHITECTURE_SCHEMA },
-]
+function buildDimensions(vocabFile) {
+  return [
+    { key: 'consistency', procedure: CONSISTENCY_PROCEDURE, schema: DIMENSION_SCHEMA },
+    { key: 'structure', procedure: STRUCTURE_PROCEDURE, schema: STRUCTURE_SCHEMA },
+    { key: 'architecture', procedure: architectureProcedure(vocabFile), schema: ARCHITECTURE_SCHEMA },
+  ]
+}
 
-function dimensionPrompt(d) {
+function dimensionPrompt(d, cfg) {
   return (
     `${PERSONA}\n\n` +
-    `Repo root: ${repoRoot}\n${scopeLine}\n\n` +
+    `Repo root: ${cfg.repoRoot}\n${scopeLine(cfg.scope)}\n\n` +
     `${d.procedure}\n\n` +
     `Deliverable: verdict for THIS dimension (clean / minor issues / significant issues / broken — clean requires a ` +
     `genuine attempt to find problems, not just absence of findings) plus the findings. Each finding: severity ` +
@@ -332,43 +383,12 @@ function dimensionPrompt(d) {
   )
 }
 
-// ---------------------------------------------------------------------------
-// Review → (ultra) per-finding refutation. pipeline: each dimension's findings
-// go to verification as soon as that dimension's review completes.
-// ---------------------------------------------------------------------------
-
-phase('Review')
-
-const results = await pipeline(
-  DIMENSIONS,
-  d => agent(dimensionPrompt(d), { label: `review:${d.key}`, phase: 'Review', model: 'opus', schema: d.schema }),
-  (review, d) => {
-    if (!review) return null
-    if (!ultra || !review.findings.length) return review
-    return parallel(review.findings.map(f => () =>
-      agent(
-        `Adversarially verify this ${d.key} finding against the repository at ${repoRoot} (read-only) and try to ` +
-        `REFUTE it. Default refuted=true if the cited evidence does not clearly hold up on inspection.\n\n` +
-        `Severity: ${f.severity}\nLocation: ${f.location}\nClaim: ${f.observation}\nEvidence cited: ${f.evidence}\n\n` +
-        `Return {refuted, reason}.`,
-        { label: `verify:${d.key}`, phase: 'Verify', model: 'opus', schema: VERIFY_SCHEMA }
-      ).then(v => ({ f, refuted: !!(v && v.refuted), reason: v ? (v.reason || '') : 'no verdict' }))
-    )).then(verdicts => {
-      const vs = verdicts.filter(Boolean)
-      const kept = vs.filter(v => !v.refuted).map(v => v.f)
-      const refuted = vs.filter(v => v.refuted).map(v => ({ observation: v.f.observation, reason: v.reason }))
-      log(`verify:${d.key} — ${kept.length}/${review.findings.length} findings survived refutation`)
-      return { ...review, findings: kept, refuted }
-    })
-  }
-)
-
-const reviews = results.filter(Boolean)
-if (!reviews.length) {
-  return { error: 'no dimension review completed' }
+// Which dimensions never came back. A dimension agent that dies returns null, and the
+// synthesis stage must be told so explicitly — otherwise it silently reports a verdict
+// on two dimensions as though it had reviewed three.
+function missingDimensions(reviews, keys) {
+  return keys.filter(k => !reviews.some(r => r && r.dimension === k))
 }
-const missing = DIMENSIONS.filter(d => !reviews.some(r => r.dimension === d.key)).map(d => d.key)
-if (missing.length) log(`WARNING: dimension(s) did not complete: ${missing.join(', ')} — report covers the rest`)
 
 // ---------------------------------------------------------------------------
 // The markdown artifact — the standalone deliverable the skill writes to a temp
@@ -416,56 +436,122 @@ const ARTIFACT_FORMAT =
   `## Notes\n\n` +
   `cross_dimension_notes as prose; omit the section when it is empty.`
 
+// Expose the pure helpers to any module loader (the Node unit tests in
+// tests/project-review/script-tests use this). Assigned before the orchestration below so
+// it is reached whichever path that takes.
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { normalizeArgs, dimensionSchema, buildDimensions, dimensionPrompt, missingDimensions, scopeLine, LEVELS }
+}
+
 // ---------------------------------------------------------------------------
-// Synthesis
+// Orchestration — runs only under the Workflow runtime, which injects the `agent`
+// hook (plus args/log/parallel/pipeline/phase). Without that hook the runtime
+// contract is broken, so we throw rather than silently no-op (see the else).
 // ---------------------------------------------------------------------------
 
-phase('Synthesis')
+if (typeof agent === 'function') {
+  const cfg = normalizeArgs(args)
+  if (cfg.error) {
+    // A bail-out return surfaces to the harness as status:completed, so echo what we
+    // received to make the failure diagnosable rather than a silent no-op.
+    log(`project-review-codebase: ${cfg.error} (args arrived as type "${typeof args}", keys: ${cfg.receivedKeys.join(', ') || 'none'})`)
+    return { error: cfg.error, got: { type: typeof args, keys: cfg.receivedKeys, repoRoot: cfg.repoRoot } }
+  }
 
-const report = await agent(
-  `You are assembling the final codebase-review report for ${repoRoot}. ${scopeLine}\n` +
-  `Be adversarial and honest; a clean verdict must be earned.\n\n` +
-  `PER-DIMENSION RESULTS${ultra ? ' (findings already survived adversarial refutation)' : ''}:\n` +
-  `${JSON.stringify(reviews, null, 2)}\n\n` +
-  `Do all of the following:\n` +
-  `1. SPOT-VERIFY the load-bearing findings before you report them: for EVERY blocker and major finding, independently ` +
-  `re-check its cited evidence against the repo yourself (read-only — \`wc -l\`, \`grep\`, read the cited lines). Drop ` +
-  `a finding whose evidence does not hold up, or downgrade its severity to match what you can actually confirm, and ` +
-  `record what you dropped or downgraded in cross_dimension_notes. Do this first so a hallucinated or overstated ` +
-  `major cannot anchor the report${ultra ? ' (findings already passed a per-finding refutation pass, so treat this as a fast final confirmation, not a re-litigation)' : ''}.\n` +
-  `2. Merge and DEDUPE findings across dimensions — the same defect surfaced by two dimensions is ONE finding: keep ` +
-  `the strongest evidence and tag it with the dimension whose recommended action is most actionable.\n` +
-  `3. Reconcile conflicts the dimension agents could not see: where two dimensions recommend incompatible actions on ` +
-  `the same files (e.g. consistency says rename, structure says delete), resolve to one coherent recommendation and ` +
-  `note the conflict in cross_dimension_notes.\n` +
-  `4. Assign final per-dimension verdicts (clean / minor issues / significant issues / broken) — start from each ` +
-  `dimension agent's verdict, adjusting where dedupe, refutation, or your step-1 spot-verify changed the picture` +
-  `${missing.length ? `; a dimension that did not complete (${missing.join(', ')}) gets no verdict better than "minor issues" and a note that it did not run` : ''} — ` +
-  `and ONE overall verdict, never cleaner than the worst dimension.\n` +
-  `5. Produce recommended_actions: a prioritised list ordered by what the developer should tackle first, each entry ` +
-  `referencing its finding(s). Mandatory even when there is only one action — the ordering is itself the deliverable.\n` +
-  `6. Carry the architecture dimension's candidates into architecture_candidates, ordered by what you would tackle ` +
-  `first. A candidate is a proposal built ON TOP OF findings, and it was generated BEFORE any of them were ` +
-  `challenged — so re-check each one against the findings that actually survived. Drop a candidate whose supporting ` +
-  `evidence you dropped or downgraded in step 1${ultra ? `, or whose supporting finding appears in a dimension's ` +
-  `"refuted" list` : ''} — a proposal resting on a finding that did not survive is not a proposal — and note the ` +
-  `drop in cross_dimension_notes. Do not invent new candidates here; you did not walk the code, the dimension agent ` +
-  `did. Copy each candidate's mermaid_before and mermaid_after through unchanged. Empty array if the architecture ` +
-  `dimension produced none.\n` +
-  `7. Write report_markdown: the entire review as ONE standalone Markdown document, following this format exactly:\n\n` +
-  `${ARTIFACT_FORMAT}\n\n` +
-  `Every finding, action and candidate you report in the structured fields must also appear in report_markdown — ` +
-  `the file is the artifact the developer keeps, so it cannot be a summary of the report, it must BE the report.\n\n` +
-  `Each finding's why_it_matters states the concrete cost, risk, or trap — not a restatement of the observation. ` +
-  `cross_dimension_notes is a PLAIN-TEXT prose field. ` +
-  `Headline must not claim "clean/all good" unless there are zero blocker and major findings.`,
-  { label: 'synthesis', phase: 'Synthesis', model: 'opus', effort: 'high', schema: REPORT_SCHEMA }
-)
+  const { repoRoot, scope, vocabFile, level, ultra } = cfg
+  const DIMENSIONS = buildDimensions(vocabFile)
 
-return {
-  repoRoot,
-  scope: scope || '(whole codebase)',
-  ultra,
-  report,
-  raw: { dimensions: reviews },
+  // ── Review → (ultra) per-finding refutation. pipeline: each dimension's findings
+  // go to verification as soon as that dimension's review completes.
+
+  phase('Review')
+
+  const results = await pipeline(
+    DIMENSIONS,
+    d => agent(dimensionPrompt(d, cfg), { label: `review:${d.key}`, phase: 'Review', model: 'opus', schema: d.schema }),
+    (review, d) => {
+      if (!review) return null
+      if (!ultra || !review.findings.length) return review
+      return parallel(review.findings.map(f => () =>
+        agent(
+          `Adversarially verify this ${d.key} finding against the repository at ${repoRoot} (read-only) and try to ` +
+          `REFUTE it. Default refuted=true if the cited evidence does not clearly hold up on inspection.\n\n` +
+          `Severity: ${f.severity}\nLocation: ${f.location}\nClaim: ${f.observation}\nEvidence cited: ${f.evidence}\n\n` +
+          `Return {refuted, reason}.`,
+          { label: `verify:${d.key}`, phase: 'Verify', model: 'opus', schema: VERIFY_SCHEMA }
+        ).then(v => ({ f, refuted: !!(v && v.refuted), reason: v ? (v.reason || '') : 'no verdict' }))
+      )).then(verdicts => {
+        const vs = verdicts.filter(Boolean)
+        const kept = vs.filter(v => !v.refuted).map(v => v.f)
+        const refuted = vs.filter(v => v.refuted).map(v => ({ observation: v.f.observation, reason: v.reason }))
+        log(`verify:${d.key} — ${kept.length}/${review.findings.length} findings survived refutation`)
+        return { ...review, findings: kept, refuted }
+      })
+    }
+  )
+
+  const reviews = results.filter(Boolean)
+  if (!reviews.length) {
+    return { error: 'no dimension review completed' }
+  }
+  const missing = missingDimensions(reviews, DIMENSIONS.map(d => d.key))
+  if (missing.length) log(`WARNING: dimension(s) did not complete: ${missing.join(', ')} — report covers the rest`)
+
+  // ── Synthesis
+
+  phase('Synthesis')
+
+  const report = await agent(
+    `You are assembling the final codebase-review report for ${repoRoot}. ${scopeLine(scope)}\n` +
+    `Be adversarial and honest; a clean verdict must be earned.\n\n` +
+    `PER-DIMENSION RESULTS${ultra ? ' (findings already survived adversarial refutation)' : ''}:\n` +
+    `${JSON.stringify(reviews, null, 2)}\n\n` +
+    `Do all of the following:\n` +
+    `1. SPOT-VERIFY the load-bearing findings before you report them: for EVERY blocker and major finding, independently ` +
+    `re-check its cited evidence against the repo yourself (read-only — \`wc -l\`, \`grep\`, read the cited lines). Drop ` +
+    `a finding whose evidence does not hold up, or downgrade its severity to match what you can actually confirm, and ` +
+    `record what you dropped or downgraded in cross_dimension_notes. Do this first so a hallucinated or overstated ` +
+    `major cannot anchor the report${ultra ? ' (findings already passed a per-finding refutation pass, so treat this as a fast final confirmation, not a re-litigation)' : ''}.\n` +
+    `2. Merge and DEDUPE findings across dimensions — the same defect surfaced by two dimensions is ONE finding: keep ` +
+    `the strongest evidence and tag it with the dimension whose recommended action is most actionable.\n` +
+    `3. Reconcile conflicts the dimension agents could not see: where two dimensions recommend incompatible actions on ` +
+    `the same files (e.g. consistency says rename, structure says delete), resolve to one coherent recommendation and ` +
+    `note the conflict in cross_dimension_notes.\n` +
+    `4. Assign final per-dimension verdicts (clean / minor issues / significant issues / broken) — start from each ` +
+    `dimension agent's verdict, adjusting where dedupe, refutation, or your step-1 spot-verify changed the picture` +
+    `${missing.length ? `; a dimension that did not complete (${missing.join(', ')}) gets no verdict better than "minor issues" and a note that it did not run` : ''} — ` +
+    `and ONE overall verdict, never cleaner than the worst dimension.\n` +
+    `5. Produce recommended_actions: a prioritised list ordered by what the developer should tackle first, each entry ` +
+    `referencing its finding(s). Mandatory even when there is only one action — the ordering is itself the deliverable.\n` +
+    `6. Carry the architecture dimension's candidates into architecture_candidates, ordered by what you would tackle ` +
+    `first. A candidate is a proposal built ON TOP OF findings, and it was generated BEFORE any of them were ` +
+    `challenged — so re-check each one against the findings that actually survived. Drop a candidate whose supporting ` +
+    `evidence you dropped or downgraded in step 1${ultra ? `, or whose supporting finding appears in a dimension's ` +
+    `"refuted" list` : ''} — a proposal resting on a finding that did not survive is not a proposal — and note the ` +
+    `drop in cross_dimension_notes. Do not invent new candidates here; you did not walk the code, the dimension agent ` +
+    `did. Copy each candidate's mermaid_before and mermaid_after through unchanged. Empty array if the architecture ` +
+    `dimension produced none.\n` +
+    `7. Write report_markdown: the entire review as ONE standalone Markdown document, following this format exactly:\n\n` +
+    `${ARTIFACT_FORMAT}\n\n` +
+    `Every finding, action and candidate you report in the structured fields must also appear in report_markdown — ` +
+    `the file is the artifact the developer keeps, so it cannot be a summary of the report, it must BE the report.\n\n` +
+    `Each finding's why_it_matters states the concrete cost, risk, or trap — not a restatement of the observation. ` +
+    `cross_dimension_notes is a PLAIN-TEXT prose field. ` +
+    `Headline must not claim "clean/all good" unless there are zero blocker and major findings.`,
+    { label: 'synthesis', phase: 'Synthesis', model: 'opus', effort: 'high', schema: REPORT_SCHEMA }
+  )
+
+  return {
+    repoRoot,
+    scope: scope || '(whole codebase)',
+    level,
+    ultra,
+    report,
+    raw: { dimensions: reviews },
+  }
+} else {
+  // No `agent` hook: the Workflow runtime failed to inject it. Fail LOUD — returning
+  // undefined here would be recorded by the harness as status:completed, i.e. a silent
+  // no-op.
+  throw new Error('project-review-codebase: the Workflow runtime did not inject the `agent` hook')
 }

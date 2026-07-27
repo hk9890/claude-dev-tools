@@ -3,7 +3,7 @@ name: project-review-docs
 description: "Read-only audit of a project's docs for accuracy, staleness, gaps, misplaced content, and whether an agent can actually use them — runs a multi-agent workflow, reports fixes, never edits."
 user-invocable: true
 disable-model-invocation: true
-argument-hint: "[low|medium|high|ultra] [what-to-review]"
+argument-hint: "[level] [path]"
 ---
 
 Read-only documentation audit. Launch the review workflow — do **not** review the
@@ -12,9 +12,9 @@ docs inline. The workflow returns a structured report; relay it.
 ## Run the workflow
 
 1. Parse `$ARGUMENTS` as `[low|medium|high|ultra] [what-to-review]`. Both are optional.
-   A leading `low` | `medium` | `high` | `ultra` token is the **cost** (default
+   A leading `low` | `medium` | `high` | `ultra` token is the **level** (default
    `medium`); everything after it is **what to review**. Most invocations pass only a
-   cost.
+   level.
 
    Unlike the other reviewers, what-to-review here must resolve to a **path** —
    `manifest.py` takes a directory, not a free-form description. Default: the repo root.
@@ -37,8 +37,8 @@ docs inline. The workflow returns a structured report; relay it.
 
 3. Invoke the **Workflow** tool:
    - `scriptPath`: `<SKILL_DIR>/workflows/review-docs.js`
-   - `args`: `{ "repoRoot": "<the step-1 path>", "scriptsDir": "<SKILL_DIR>/scripts", "cost": "<the step-1 cost>", "scratchDir": "<the absolute path printed above>" }`
-   - `cost` rungs, on top of the per-file read-review that always runs:
+   - `args`: `{ "repoRoot": "<the step-1 path>", "scriptsDir": "<SKILL_DIR>/scripts", "level": "<the step-1 level>", "scratchDir": "<the absolute path printed above>" }`
+   - `level` rungs, on top of the per-file read-review that always runs:
      `low` = no execution phase; `medium` = execution on ~3 AGENTS routes;
      `high` = execution on every route; `ultra` = `high` plus an adversarial pass that
      tries to refute each finding and drops the ones that fail.
@@ -51,6 +51,12 @@ docs inline. The workflow returns a structured report; relay it.
    — surface `.report`, and do not re-derive it. For a "did you really check X?"
    follow-up, **re-run the skill**; never answer from the report alone, and never
    from `grep`/link-checks.
+
+   If it returns `{ error: … }` and no `report`, the audit did not run: relay the
+   error **verbatim**, say so plainly, and do not improvise findings. An error
+   carrying `got` means an argument was wrong before any agent was spawned, and
+   `got.keys` lists the arguments that actually arrived — surface it, since that is
+   what shows a misspelled key.
 
 If `python3` is missing or the workflow cannot launch, read every doc in full
 against `references/project-setup.md` by hand and state that the workflow did not

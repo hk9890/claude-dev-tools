@@ -3,7 +3,7 @@ name: project-review-codebase
 description: "Read-only codebase review across three dimensions — consistency, structure, architecture — via a multi-agent workflow that dedupes findings across dimensions and writes a standalone Markdown report with Mermaid diagrams; reports fixes, never edits."
 user-invocable: true
 disable-model-invocation: true
-argument-hint: "[ultra] [what-to-review]"
+argument-hint: "[level] [what-to-review]"
 ---
 
 Read-only codebase review across three dimensions — consistency, structure, and
@@ -13,22 +13,27 @@ the artifact to a temp file.
 
 ## Run the workflow
 
-1. Parse `$ARGUMENTS` as `[ultra] [what-to-review]`. Both are optional. A leading
-   `ultra` enables the adversarial refutation pass; the rest is **what to review** —
-   a free-form description ("naming across the service layer") or a path. Default:
-   the whole codebase. `ultra` is this skill's only depth setting: when the leading
-   token is `low`, `medium`, or `high`, say so and take the rest as the scope.
+1. Parse `$ARGUMENTS` as `[low|medium|high|ultra] [what-to-review]`. Both are
+   optional. A leading `low` | `medium` | `high` | `ultra` token is the **level**
+   (default `medium`); everything after it is **what to review** — a free-form
+   description ("naming across the service layer") or a path. Default: the whole
+   codebase.
 
 2. `SKILL_DIR` is the **base directory for this skill**, given at the top of this file when
    the skill loads. It is absolute and install-correct — build every path below from it.
 
 3. Invoke the **Workflow** tool:
    - `scriptPath`: `<SKILL_DIR>/workflows/review-codebase.js`
-   - `args`: `{ "repoRoot": "<repo root, or the step-1 path>", "scope": "<the step-1 what-to-review, or empty>", "vocabFile": "<SKILL_DIR>/references/design-vocabulary.md", "ultra": <true if the ultra token was given> }`
+   - `args`: `{ "repoRoot": "<repo root, or the step-1 path>", "scope": "<the step-1 what-to-review, or empty>", "vocabFile": "<SKILL_DIR>/references/design-vocabulary.md", "level": "<the step-1 level>" }`
    - The workflow fans out one adversarial read-only agent per dimension
      (consistency, structure, architecture), then a synthesis stage dedupes and
-     reconciles findings across dimensions. With `ultra`, every finding first
-     passes an adversarial refutation gate; findings that fail are dropped.
+     reconciles findings across dimensions. `ultra` is the only rung that changes
+     the run, adding an adversarial refutation gate every finding must pass before
+     it is reported. `low`, `medium` and `high` are accepted so one depth token
+     means the same thing across the audit skills, but they are **not** cheaper
+     here — all three run the same three opus dimension agents and the same
+     high-effort synthesis. If the user asked for `low` expecting a quick pass,
+     say so before launching.
 
 4. Relay the report. The workflow returns
    `{ report: { verdict, dimension_verdicts, headline, findings[], recommended_actions[], architecture_candidates[], report_markdown, … }, raw, … }`
@@ -39,9 +44,14 @@ the artifact to a temp file.
    really check X?" follow-up, **re-run the skill**; never answer from the report
    alone.
 
-5. Write the artifact. If the workflow returned `{ error: … }` instead of a report —
-   every dimension failed — there is no `report_markdown`; say the review did not
-   complete and **stop here**, do not write a file. Otherwise
+5. Write the artifact. If the workflow returned `{ error: … }` instead of a report
+   there is no `report_markdown`: say the review did not complete, relay the error
+   **verbatim**, and **stop here** — do not write a file and do not improvise
+   findings. Distinguish the two cases rather than guessing: an error carrying
+   `got` means the run never started because an argument was wrong, and `got.keys`
+   lists the arguments that actually arrived — surface it, since that is what shows
+   a misspelled key. An error without `got` means the agents ran and every dimension
+   failed. Otherwise
    `report.report_markdown` is the whole review as a standalone Markdown document
    with Mermaid diagrams. Write it **verbatim** — never summarised, reformatted, or
    truncated — to a fresh temp file, then print the path:

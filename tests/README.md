@@ -36,11 +36,32 @@ bash tests/project-review/script-tests/test-manifest.sh
 
 ## Path resolution in test scripts
 
-Test scripts resolve the scripts they test via `git rev-parse --show-toplevel`:
+Test scripts resolve the scripts they test via `git rev-parse --show-toplevel`, anchored on
+the suite's own directory with `git -C`:
 
 ```bash
-REPO_ROOT="$(git rev-parse --show-toplevel)"
+REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
+[[ -n "$REPO_ROOT" ]] || { printf 'FAIL: cannot resolve repo root from %s\n' "${BASH_SOURCE[0]}" >&2; exit 1; }
 SCRIPT="$REPO_ROOT/plugins/<plugin-name>/.../scripts/<name>"
 ```
 
-This keeps tests location-independent and works from any CWD inside the repo.
+This keeps tests location-independent and works from **any** CWD, inside the repo or not —
+`run-all.sh` resolves itself from `${BASH_SOURCE[0]}` too, so a suite and the runner that
+discovered it always agree on which checkout is under test.
+
+The `-C` is load-bearing. A bare `git rev-parse --show-toplevel` resolves against the
+caller's CWD: run from outside any repo it fails and leaves `REPO_ROOT` empty, and run from
+inside a *different* checkout or a nested `.claude/worktrees/` worktree it returns that
+tree's root — so the suite would assert against a tree the runner never scanned and report
+the result against the wrong one.
+
+The emptiness guard is load-bearing too. Suites set `-uo pipefail`, not `-e` (see below), so
+an unresolvable root is not fatal on its own; every path would become `/plugins/...` and the
+suite would emit a cascade of bogus "file missing" failures blaming the plugin. The guard
+turns that into one failure that names the real cause.
+
+## Shell options in test scripts
+
+Test scripts set `set -uo pipefail`, never `-euo`: this matches `run-all.sh` and the
+`PASS`/`FAIL`-counting design every suite uses, where a failed assertion must not abort
+the script before the `Results: N passed, N failed` summary prints.

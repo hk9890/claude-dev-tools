@@ -15,16 +15,18 @@
 
 set -uo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
+[[ -n "$REPO_ROOT" ]] || { printf 'FAIL: cannot resolve repo root from %s\n' "${BASH_SOURCE[0]}" >&2; exit 1; }
 PLUGIN_DIR="$REPO_ROOT/plugins/claude-catppuccin"
 THEMES_DIR="$PLUGIN_DIR/themes"
 
 command -v jq >/dev/null 2>&1   || { echo "jq not found"; exit 1; }
 command -v node >/dev/null 2>&1 || { echo "node not found"; exit 1; }
 
-fail=0
-note_fail() { printf 'FAIL: %s\n' "$1"; fail=1; }
+PASS=0
+FAIL=0
+ok()   { printf 'PASS: %s\n' "$1"; PASS=$((PASS + 1)); }
+fail() { printf 'FAIL: %s\n' "$1"; FAIL=$((FAIL + 1)); }
 
 expected_flavors=(latte frappe macchiato mocha)
 
@@ -49,50 +51,96 @@ expected_tokens="$(printf '%s\n' \
 # 1. Structural validation per flavour.
 for flavor in "${expected_flavors[@]}"; do
   f="$THEMES_DIR/catppuccin-$flavor.json"
-  [[ -f "$f" ]] || { note_fail "missing theme file: catppuccin-$flavor.json"; continue; }
-  jq empty "$f" 2>/dev/null || { note_fail "invalid JSON: catppuccin-$flavor.json"; continue; }
+  if [[ -f "$f" ]]; then
+    ok "$flavor: theme file present"
+  else
+    fail "$flavor: missing theme file catppuccin-$flavor.json"
+    continue
+  fi
 
-  [[ -n "$(jq -r '.name // empty' "$f")" ]] || note_fail "$flavor: missing .name"
+  if jq empty "$f" 2>/dev/null; then
+    ok "$flavor: valid JSON"
+  else
+    fail "$flavor: invalid JSON"
+    continue
+  fi
+
+  if [[ -n "$(jq -r '.name // empty' "$f")" ]]; then
+    ok "$flavor: .name is a non-empty string"
+  else
+    fail "$flavor: missing .name"
+  fi
 
   base="$(jq -r '.base // empty' "$f")"
-  [[ "$base" == "dark" || "$base" == "light" ]] \
-    || note_fail "$flavor: .base must be dark|light (got '$base')"
+  if [[ "$base" == "dark" || "$base" == "light" ]]; then
+    ok "$flavor: .base is $base"
+  else
+    fail "$flavor: .base must be dark|light (got '$base')"
+  fi
 
-  [[ "$(jq -r '.overrides | type' "$f")" == "object" ]] \
-    || { note_fail "$flavor: .overrides is not an object"; continue; }
+  if [[ "$(jq -r '.overrides | type' "$f")" == "object" ]]; then
+    ok "$flavor: .overrides is an object"
+  else
+    fail "$flavor: .overrides is not an object"
+    continue
+  fi
 
   bad="$(jq -r '.overrides | to_entries[]
                 | select((.value | type) != "string" or (.value | test("^#[0-9a-f]{6}$") | not))
                 | "\(.key)=\(.value)"' "$f")"
-  [[ -z "$bad" ]] || note_fail "$flavor: non-hex override value(s): $bad"
+  if [[ -z "$bad" ]]; then
+    ok "$flavor: every override value is a 6-digit hex colour"
+  else
+    fail "$flavor: non-hex override value(s): $bad"
+  fi
 
   # Key names, not just values — an unrecognised token is silently inert.
   actual_tokens="$(jq -r '.overrides | keys_unsorted[]' "$f" | sort)"
   unknown="$(comm -23 <(printf '%s\n' "$actual_tokens") <(printf '%s\n' "$expected_tokens") | tr '\n' ' ')"
   absent="$(comm -13 <(printf '%s\n' "$actual_tokens") <(printf '%s\n' "$expected_tokens") | tr '\n' ' ')"
-  [[ -z "${unknown// /}" ]] || note_fail "$flavor: override key(s) not in the pinned token set: $unknown"
-  [[ -z "${absent// /}" ]] || note_fail "$flavor: pinned token(s) missing from overrides: $absent"
+  if [[ -z "${unknown// /}" ]]; then
+    ok "$flavor: no override key outside the pinned token set"
+  else
+    fail "$flavor: override key(s) not in the pinned token set: $unknown"
+  fi
+  if [[ -z "${absent// /}" ]]; then
+    ok "$flavor: every pinned token present in overrides"
+  else
+    fail "$flavor: pinned token(s) missing from overrides: $absent"
+  fi
 done
 
 # 2. Exactly the four expected files, nothing extra.
 count="$(find "$THEMES_DIR" -maxdepth 1 -name '*.json' | wc -l | tr -d ' ')"
-[[ "$count" -eq 4 ]] || note_fail "expected 4 theme files in themes/, found $count"
+if [[ "$count" -eq 4 ]]; then
+  ok "themes/ holds exactly 4 theme files"
+else
+  fail "expected 4 theme files in themes/, found $count"
+fi
 
 # 3. Drift check — committed output must equal a fresh generation.
-tmp="$(mktemp -d)"
+# Unguarded, an empty $tmp would make generate-themes.mjs fall back to its default
+# THEMES_OUT_DIR and overwrite the committed themes this suite is checking.
+tmp="$(mktemp -d)" || { printf 'FAIL: mktemp -d unavailable — drift check not run\n'; exit 1; }
 trap 'rm -rf "$tmp"' EXIT
 if THEMES_OUT_DIR="$tmp" node "$PLUGIN_DIR/scripts/generate-themes.mjs" >/dev/null; then
+  ok "generate-themes.mjs runs"
   for flavor in "${expected_flavors[@]}"; do
-    diff -q "$THEMES_DIR/catppuccin-$flavor.json" "$tmp/catppuccin-$flavor.json" >/dev/null 2>&1 \
-      || note_fail "catppuccin-$flavor.json out of sync with generate-themes.mjs (run: node scripts/generate-themes.mjs)"
+    if diff -q "$THEMES_DIR/catppuccin-$flavor.json" "$tmp/catppuccin-$flavor.json" >/dev/null 2>&1; then
+      ok "$flavor: committed theme matches a fresh generation"
+    else
+      fail "catppuccin-$flavor.json out of sync with generate-themes.mjs (run: node scripts/generate-themes.mjs)"
+    fi
   done
   gen_count="$(find "$tmp" -maxdepth 1 -name '*.json' | wc -l | tr -d ' ')"
-  [[ "$gen_count" -eq 4 ]] || note_fail "generator produced $gen_count files, expected 4"
+  if [[ "$gen_count" -eq 4 ]]; then
+    ok "generator produced exactly 4 files"
+  else
+    fail "generator produced $gen_count files, expected 4"
+  fi
 else
-  note_fail "generate-themes.mjs failed to run"
+  fail "generate-themes.mjs failed to run"
 fi
 
-if [[ "$fail" -eq 0 ]]; then
-  printf 'PASS: 4 Catppuccin themes valid and in sync with generator\n'
-fi
-exit "$fail"
+printf '\nResults: %d passed, %d failed\n' "$PASS" "$FAIL"
+[[ "$FAIL" -eq 0 ]] || exit 1

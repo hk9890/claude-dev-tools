@@ -19,9 +19,10 @@
 #     tests_passed (episode 4 stays false)
 #   - uuid dedup: verbatim re-appended records (same uuids) must be skipped,
 #     not opened as a fifth episode
-set -euo pipefail
+set -uo pipefail
 
-REPO_ROOT="$(git rev-parse --show-toplevel)"
+REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
+[[ -n "$REPO_ROOT" ]] || { printf 'FAIL: cannot resolve repo root from %s\n' "${BASH_SOURCE[0]}" >&2; exit 1; }
 SCRIPT="$REPO_ROOT/scripts/analyze-sessions.py"
 CHECK_SCRIPT="$REPO_ROOT/tests/marketplace/script-tests/check-fixture.py"
 FIXTURE="$REPO_ROOT/scripts/fixtures/session-fixture.jsonl"
@@ -93,7 +94,7 @@ PYEOF
 
 # ── test cases ────────────────────────────────────────────────────────────────
 
-TMP_DIR=$(mktemp -d)
+TMP_DIR=$(mktemp -d) || { printf 'FAIL: mktemp -d unavailable — fixture run not attempted\n'; exit 1; }
 trap 'rm -rf "$TMP_DIR"' EXIT
 
 # 1. Script runs against the fixture without error.

@@ -4,8 +4,9 @@
  * a serif display face paired with a refined sans body. Light + dark.
  *
  * IMPORTANT: This file has TWO delivery paths:
- *   1. Linked via @import — used by assets/ask/style.css and
- *      assets/feedback/style.css, which are served by the local server.
+ *   1. Linked via @import — used by assets/shared/chrome.css, which
+ *      assets/ask/style.css and assets/feedback/style.css import in turn; all
+ *      three are served by the local server.
  *   2. Inlined inside <style> — used by
  *      skills/html-visualize/references/visualize-template.html, which must
  *      remain fully self-contained for file:// use.
