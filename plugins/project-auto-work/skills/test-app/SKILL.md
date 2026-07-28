@@ -55,6 +55,10 @@ know what the app reaches. Point it at an environment whose data you can afford 
    - `scriptPath`: `<SKILL_DIR>/workflows/test-app.js`
    - `args`: `{ "repoRoot": "<absolute path to the project>", "referencesDir": "<SKILL_DIR>/references", "focus": "<the step-1 focus, or empty>", "level": "<the step-1 level>", "scratchDir": "<the absolute path printed above>" }`
 
+   `referencesDir` must contain `break-it.md` — the workflow hands that path to every
+   driver at `medium` and above, so moving or renaming the file silently removes the
+   probing instincts from three of the four levels.
+
    The workflow reads the project's user-facing docs to build a launch contract, a
    monitoring contract and a flow inventory; then runs a serial loop where one agent uses
    the app and reports only what it saw, and a second agent reads that plus the monitoring
