@@ -159,8 +159,14 @@ function reconAbort(recon, focus) {
 // stays deterministic — the reason for using a workflow at all. Leads come first: they are
 // the things an analyst just found reason to suspect, and a lead left to the end of the
 // inventory would routinely never be reached before the ceiling.
-function composeBatch(inventory, exercisedIds, size) {
-  const done = new Set(exercisedIds)
+//
+// The exclusion set is what was ATTEMPTED, not what was completed. Keying it on completion
+// livelocks the loop against any flow the driver cannot finish — and the driver is told to
+// report exactly that state rather than substitute a different interface — so a GUI whose
+// flows no agent can drive would be re-assigned the same impossible batch every iteration
+// until the ceiling, producing nothing and reporting it as "never reached".
+function composeBatch(inventory, attemptedIds, size) {
+  const done = new Set(attemptedIds)
   const open = inventory.filter(f => f && f.id && !done.has(f.id))
   const leads = open.filter(f => f.origin === 'lead')
   const planned = open.filter(f => f.origin !== 'lead')
@@ -263,13 +269,29 @@ function renderFallbackMarkdown(report, meta) {
   ].join('\n')
 }
 
+// Why a flow the plan named was never reached. The loop has four exits and each means
+// something different to a reader: naming the ceiling after an aborted run would explain
+// the gap with a cause that did not happen, inside the section whose whole job is to stop
+// false impressions.
+function unreachedReason(stopReason, dial, level) {
+  const reason = String(stopReason || '')
+  if (reason === 'dry') return 'the loop exited early on a dry streak'
+  if (reason.startsWith('abort:')) return `the run stopped before reaching it — ${reason.slice('abort:'.length)}`
+  if (reason === 'exhausted') return 'the planned inventory was exhausted'
+  return `the iteration ceiling of ${dial.ceiling} at level=${level} was reached first`
+}
+
 // Everything the run did NOT cover, so a short findings list cannot read as a clean bill of
 // health. Assembled in code so it survives an agent that would rather not mention it.
-function notCheckedList({ level, dial, focus, monitoring, inventory, exercisedIds, stopReason, failedIterations }) {
-  const done = new Set(exercisedIds)
-  const unreached = inventory.filter(f => f && f.id && !done.has(f.id))
+// `attemptedIds` and `exercisedIds` are deliberately different sets: a flow the driver tried
+// and could not complete was NOT never-reached, and reporting it that way would send the
+// reader looking for time that was never the problem.
+function notCheckedList({ level, dial, focus, monitoring, inventory, exercisedIds, attemptedIds, blocked, stopReason, failedIterations }) {
+  const tried = new Set(attemptedIds || exercisedIds)
+  const unreached = inventory.filter(f => f && f.id && !tried.has(f.id))
   return [
-    ...unreached.map(f => `flow "${f.area}: ${f.exercise}" — never reached (${stopReason === 'dry' ? 'loop exited early on a dry streak' : `iteration ceiling ${dial.ceiling} reached at level=${level}`})`),
+    ...unreached.map(f => `flow "${f.area}: ${f.exercise}" — never reached (${unreachedReason(stopReason, dial, level)})`),
+    ...(blocked || []).map(b => `flow "${b.area}: ${b.exercise}" — attempted but could not be exercised: ${b.reason || 'no reason reported'}`),
     ...(evidenceBasis(monitoring) === 'surface-only'
       ? [`internal behaviour — the project documents no monitoring contract${monitoring && monitoring.why_absent ? ` (${monitoring.why_absent})` : ''}, so a failure swallowed into a log or a metric would not have been seen`]
       : []),
@@ -526,7 +548,7 @@ const DOCUMENT_SCHEMA = {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     normalizeArgs, dialFor, reconAbort, composeBatch, leadId, isDry,
-    evidenceBasis, stampBasis, notCheckedList,
+    evidenceBasis, stampBasis, notCheckedList, unreachedReason,
     buildDrift, isUsableMarkdown, renderFallbackMarkdown,
     LEVELS, DIALS, DRY_LIMIT, AGGRESSION_BRIEF,
   }
@@ -691,7 +713,9 @@ if (typeof agent === 'function') {
   phase('Loop')
 
   const ledger = {
-    exercised: [],       // flow ids the driver actually completed
+    exercised: [],       // flow ids a driver actually completed — the coverage claim
+    attempted: [],       // flow ids handed to a driver that launched — what the planner excludes
+    blocked: [],         // flows attempted but not completable, with the driver's reason
     findings: [],        // analyst findings, iteration-stamped
     questions: [],
     iterations: [],      // per-iteration summary lines for later agents
@@ -717,7 +741,7 @@ if (typeof agent === 'function') {
   )
 
   for (let i = 1; i <= dial.ceiling; i++) {
-    const batch = composeBatch(inventory, ledger.exercised, dial.flows)
+    const batch = composeBatch(inventory, ledger.attempted, dial.flows)
     if (batch.length === 0) {
       stopReason = 'exhausted'
       log(`Iteration ${i}: every planned flow has been exercised — stopping.`)
@@ -775,9 +799,17 @@ if (typeof agent === 'function') {
         stopReason = 'abort:the documented launch command did not start the application'
         break
       }
+      // An iteration that produced no evidence is not evidence of quiet, so it must not
+      // advance the dry streak toward an early exit that would be reported as "the
+      // application went quiet". Same reasoning as isDry(null).
+      dryStreak = 0
       continue
     }
 
+    // The batch is attempted the moment a driver launches with it. Recording this — rather
+    // than only what completed — is what stops a flow the driver cannot finish from being
+    // re-assigned every remaining iteration.
+    ledger.attempted.push(...batch.map(f => f.id))
     ledger.builds.push({ iteration: i, build_identity: observations.build_identity || '' })
     ;(observations.mutating_actions || []).forEach(a => ledger.mutations.push({ iteration: i, action: a }))
 
@@ -825,13 +857,22 @@ if (typeof agent === 'function') {
       failedIterations.push(i)
       ledger.iterations.push(`iteration ${i}: driver completed, but the analyst died — its observations were never judged`)
       log(`Iteration ${i}: analyst failed; observations unjudged.`)
+      dryStreak = 0
       continue
     }
 
     // Coverage is what the DRIVER completed, not what the analyst claims: an analyst
     // listing a flow it never received would silently shrink the not-checked list.
-    const completed = (observations.flows || []).filter(f => f.completed).map(f => f.id)
+    // Bound it to the assigned batch too — an id the driver invented would otherwise enter
+    // the coverage claim and remove a flow from not_checked that nobody ever ran.
+    const assigned = new Set(batch.map(f => f.id))
+    const reported = (observations.flows || []).filter(f => f && assigned.has(f.id))
+    const completed = reported.filter(f => f.completed).map(f => f.id)
     ledger.exercised.push(...completed)
+    reported.filter(f => !f.completed).forEach(f => {
+      const flow = batch.find(b => b.id === f.id)
+      ledger.blocked.push({ id: f.id, area: flow.area, exercise: flow.exercise, reason: f.blocked_reason || '' })
+    })
     ledger.findings.push(...(analysis.findings || []).map(f => ({ ...f, iteration: i })))
     ledger.questions.push(...(analysis.questions || []))
 
@@ -908,7 +949,8 @@ if (typeof agent === 'function') {
 
   const notChecked = notCheckedList({
     level, dial, focus, monitoring, inventory,
-    exercisedIds: ledger.exercised, stopReason, failedIterations,
+    exercisedIds: ledger.exercised, attemptedIds: ledger.attempted,
+    blocked: ledger.blocked, stopReason, failedIterations,
   })
 
   const drift = buildDrift(ledger.builds)
@@ -931,6 +973,7 @@ if (typeof agent === 'function') {
     `FINDINGS${dial.confirm ? ' (each already re-run in isolation — carry repro_confirmed through verbatim)' : ''}:\n${JSON.stringify(confirmed, null, 2)}\n\n` +
     `QUESTIONS:\n${JSON.stringify(ledger.questions, null, 2)}\n\n` +
     `FLOWS EXERCISED: ${ledger.exercised.join(', ') || '(none)'}\n` +
+    `FLOWS ATTEMPTED BUT NOT COMPLETABLE (present these as attempted-and-blocked, never as untested):\n${JSON.stringify(ledger.blocked, null, 2)}\n` +
     `NOT-CHECKED LIST — include every entry verbatim, and add anything else you notice was missed:\n${JSON.stringify(notChecked, null, 2)}\n\n` +
     `Build the report:\n` +
     `1. findings: carry each one through with its evidence intact. Dedupe: the same problem seen twice is ONE finding with the strongest evidence. ` +
@@ -984,6 +1027,8 @@ if (typeof agent === 'function') {
       monitoring_contract: monitoring,
       inventory,
       exercised: ledger.exercised,
+      attempted: ledger.attempted,
+      blocked: ledger.blocked,
       iterations: ledger.iterations,
       builds: ledger.builds,
       mutations: ledger.mutations,

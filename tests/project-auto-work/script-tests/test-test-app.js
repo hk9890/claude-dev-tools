@@ -108,14 +108,14 @@ async function main() {
 
   const {
     normalizeArgs, dialFor, reconAbort, composeBatch, leadId, isDry,
-    evidenceBasis, stampBasis, notCheckedList,
+    evidenceBasis, stampBasis, notCheckedList, unreachedReason,
     buildDrift, isUsableMarkdown, renderFallbackMarkdown,
     DIALS, DRY_LIMIT, AGGRESSION_BRIEF,
   } = helpers;
 
   const required = {
     normalizeArgs, dialFor, reconAbort, composeBatch, leadId, isDry,
-    evidenceBasis, stampBasis, notCheckedList,
+    evidenceBasis, stampBasis, notCheckedList, unreachedReason,
     buildDrift, isUsableMarkdown, renderFallbackMarkdown,
   };
   const missingExport = Object.keys(required).filter((k) => typeof required[k] !== 'function');
@@ -298,6 +298,35 @@ async function main() {
   truthy('notCheckedList: a dry exit is named as the reason a flow went unreached',
     notCheckedList({ ...baseNotChecked, stopReason: 'dry' }).some((s) => /dry streak/.test(s)));
 
+  // A flow the driver tried and could not complete is NOT never-reached. Reporting it that
+  // way sends the reader looking for time, when the real problem is that nothing can drive
+  // that interface.
+  const withBlocked = notCheckedList({
+    ...baseNotChecked,
+    attemptedIds: ['flow-1', 'flow-2'],
+    blocked: [{ id: 'flow-2', area: 'b', exercise: 'y', reason: 'no way to drive the GUI from a shell' }],
+  });
+  truthy('notCheckedList: an attempted-but-blocked flow is not reported as never reached',
+    !withBlocked.some((s) => /b: y.*never reached/.test(s)));
+  truthy('notCheckedList: it is reported as attempted, with the driver\'s reason',
+    withBlocked.some((s) => /attempted but could not be exercised: no way to drive the GUI/.test(s)));
+  truthy('notCheckedList: attemptedIds falls back to exercisedIds when absent',
+    notCheckedList(baseNotChecked).some((s) => /b: y/.test(s)));
+
+  // ── unreachedReason ──────────────────────────────────────────────────────────
+  // The loop has four exits; naming the ceiling after an aborted run explains the gap with
+  // a cause that did not happen, inside the section meant to prevent false impressions.
+  truthy('unreachedReason: a dry exit says so',
+    /dry streak/.test(unreachedReason('dry', DIALS.medium, 'medium')));
+  truthy('unreachedReason: the ceiling names the level and the number',
+    /ceiling of 4 at level=medium/.test(unreachedReason('ceiling', DIALS.medium, 'medium')));
+  truthy('unreachedReason: an abort does NOT blame the ceiling',
+    !/ceiling/.test(unreachedReason('abort:the documented launch command did not start the application', DIALS.medium, 'medium')));
+  truthy('unreachedReason: an abort carries its own cause',
+    /did not start the application/.test(unreachedReason('abort:the documented launch command did not start the application', DIALS.medium, 'medium')));
+  truthy('unreachedReason: an exhausted inventory says so',
+    /inventory was exhausted/.test(unreachedReason('exhausted', DIALS.medium, 'medium')));
+
   // ── buildDrift ───────────────────────────────────────────────────────────────
   // Each driver launches the application itself, so nothing structurally binds the
   // iterations to one build. The first live run silently exercised the installed release in
@@ -389,7 +418,8 @@ async function main() {
         };
       }
       if (o.label && o.label.startsWith('analyst-')) {
-        return { iteration, ...analystFor(iteration) };
+        const a = analystFor(iteration);
+        return a === null ? null : { iteration, ...a };
       }
       if (o.label && o.label.startsWith('confirm-')) return { reproduced: true, evidence: 'seen again' };
       if (o.label && o.label.startsWith('janitor-')) return { summary: 'stopped a stray process' };
@@ -557,6 +587,58 @@ async function main() {
   truthy('orchestration: the drift is handed to the synthesis agent',
     mixed.prompts.some((p, i) => mixed.labels[i] === 'synthesis' && /BUILD DRIFT/.test(p)));
   eq('orchestration: one consistent build reports no drift', null, full.ret && full.ret.build_drift);
+
+  // ── the blocked-flow livelock (orchestration) ────────────────────────────────
+  // THE bug this guards: keying the planner on COMPLETION means a flow the driver cannot
+  // finish is the highest-priority unexercised item forever. The driver is explicitly told
+  // to report that state rather than substitute another interface, so a GUI app would get
+  // the same impossible batch every iteration until the ceiling, produce nothing, and have
+  // it reported as "never reached".
+  const blockedRun = await runTest({ level: 'medium' }, {
+    analyst: finding,
+    driver: (i, prompt) => ({
+      iteration: i, launched: true, teardown_ok: true, build_identity: 'v1.0',
+      flows: [...prompt.matchAll(BATCH_IDS)].map((m) => ({
+        id: m[1], steps_taken: 's', observed: 'o',
+        completed: false, blocked_reason: 'no way to drive this interface from a shell',
+      })),
+    }),
+  });
+  const firstBatch = [...blockedRun.prompts[blockedRun.labels.indexOf('driver-1')].matchAll(BATCH_IDS)].map((m) => m[1]);
+  const secondBatch = [...blockedRun.prompts[blockedRun.labels.indexOf('driver-2')].matchAll(BATCH_IDS)].map((m) => m[1]);
+  eq('livelock: a blocked flow is not re-assigned to the next iteration',
+    [], secondBatch.filter((id) => firstBatch.includes(id)));
+  truthy('livelock: the run still advances through the plan', secondBatch.length > 0);
+  truthy('livelock: a blocked flow is reported as attempted, not as never reached',
+    blockedRun.ret && blockedRun.ret.raw.not_checked.some((s) => /attempted but could not be exercised/.test(s)));
+  eq('livelock: a blocked flow is not counted as coverage', [], blockedRun.ret.raw.exercised);
+  truthy('livelock: it IS counted as attempted, so the planner moves on',
+    blockedRun.ret && blockedRun.ret.raw.attempted.length === firstBatch.length * 4);
+
+  // An id the driver invented would otherwise enter the coverage claim and quietly remove a
+  // flow from not_checked that nobody ran.
+  const hallucinated = await runTest({ level: 'low' }, {
+    driver: (i, prompt) => ({
+      iteration: i, launched: true, teardown_ok: true,
+      flows: [...prompt.matchAll(BATCH_IDS)].map((m) => ({ id: m[1], steps_taken: 's', observed: 'o', completed: true }))
+        .concat([{ id: 'flow-999', steps_taken: 's', observed: 'o', completed: true }]),
+    }),
+  });
+  truthy('coverage: an id outside the assigned batch is not counted',
+    hallucinated.ret && !hallucinated.ret.raw.exercised.includes('flow-999'),
+    `exercised: ${hallucinated.ret && hallucinated.ret.raw.exercised}`);
+
+  // ── the dry streak survives nothing (orchestration) ──────────────────────────
+  // An iteration that produced no evidence is not evidence of quiet. Letting it sit inside
+  // the streak ends the run early and reports it as "the application went quiet".
+  const interrupted = await runTest({ level: 'high' }, {
+    recon: healthyRecon(40),
+    analyst: (i) => (i === 2 ? null : { findings: [], questions: [], leads: [] }),
+  });
+  eq('dry streak: a failed iteration breaks the streak instead of advancing it',
+    4, interrupted.labels.filter((l) => l.startsWith('driver-')).length);
+  eq('dry streak: two genuinely consecutive dry iterations still stop the run',
+    'dry', interrupted.ret && interrupted.ret.stop_reason);
 
   // ── broken-runtime guard ─────────────────────────────────────────────────────
   let threw = false;
