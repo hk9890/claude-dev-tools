@@ -24,8 +24,7 @@ id=$(curl -s localhost:8080/widgets -d '{"name":"bolt","quantity":12}' | jq -r .
 curl -s "localhost:8080/widgets/$id"
 ```
 
-The service is agent-driven over HTTP via `curl`/`httpie`; there is no UI, so a human
-would exercise the same endpoints.
+There is no UI — drive every check over HTTP.
 
 ## Reproduce a reported bug
 

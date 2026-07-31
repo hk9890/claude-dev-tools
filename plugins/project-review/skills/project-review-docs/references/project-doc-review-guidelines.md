@@ -12,8 +12,8 @@ Use with the authoring standard this review measures against — the
 
 ## Rules to cite
 
-- **Ownership** · **Local delta** · **Anchors** · **Economy** · **Obligation** — the authoring
-  rules, defined in `project-doc-guidelines.md`; cite them by name. *Obligation* is judged on
+- **Ownership** · **Local delta** · **Anchors** · **Command register** · **Economy** ·
+  **Obligation** — the authoring rules, defined in `project-doc-guidelines.md`; cite them by name. *Obligation* is judged on
   `AGENTS.md` itself: an advisory route is a finding even when it points at the right doc, since the
   agent reads it as skippable.
 - **R10** — the review-side of *Ownership*: content outside a file's *Inside* boundary is a finding even when accurate.

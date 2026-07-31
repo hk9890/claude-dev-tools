@@ -77,7 +77,7 @@ for how it must be written — and state that the workflow did not run. Never re
 
 The standard is authored elsewhere and only applied here. `instruction-writing:writing-project-docs`
 owns `references/project-setup.md` (the canonical doc set and each file's audience /
-Inside / Not-inside ownership), `references/project-doc-guidelines.md` (the five named
+Inside / Not-inside ownership), `references/project-doc-guidelines.md` (the six named
 rules, the failure modes, and the bar each suggested fix must clear), and the worked
 `examples/`. `manifest.py` parses the first and injects each file's contract
 inline into the read-review agents, which load the second and apply it.

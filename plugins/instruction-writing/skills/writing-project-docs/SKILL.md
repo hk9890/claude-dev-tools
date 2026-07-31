@@ -29,8 +29,8 @@ under discussion.
    the doc that **MUST** be read and the action that triggers it — there are no optional routes.
    It routes; it never carries the procedure itself.
 3. **How is it written?** [`references/project-doc-guidelines.md`](references/project-doc-guidelines.md)
-   — the five named rules (*Ownership*, *Local delta*, *Anchors*, *Economy*, *Obligation*), the
-   failure modes, and the bar any change must clear before it lands.
+   — the six named rules (*Ownership*, *Local delta*, *Anchors*, *Command register*, *Economy*,
+   *Obligation*), the failure modes, and the bar any change must clear before it lands.
 
 ## Sediment
 

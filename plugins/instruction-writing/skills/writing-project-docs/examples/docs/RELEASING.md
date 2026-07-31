@@ -21,7 +21,7 @@ Review the output, group changes into **Added**, **Fixed**, **Changed**, and **R
 
 ## Trigger the release
 
-Once the checklist is complete and release notes are approved, create and push the version tag to trigger the release pipeline:
+With the checklist complete and the notes approved, tag and push:
 
 ```bash
 git tag v1.2.3

@@ -57,15 +57,36 @@ and changes nothing:
 > **write** "Run `make test` from the repo root before `git push`; CI enforces it in
 > `.github/workflows/ci.yml`."
 
-Reach for a command, a path, a checklist, or a decision table before reaching for a paragraph. Point
-at a file rather than pasting it — a fifty-line script inline is a fifty-line maintenance liability
-that the file itself already holds. Paste only the invariant a reader cannot get by opening it.
+Point at a file rather than pasting it — a fifty-line script inline is a fifty-line maintenance
+liability that the file itself already holds. Paste only the invariant a reader cannot get by
+opening it.
+
+## Command register
+
+Write instructions the way a command reference does, not the way a colleague explains:
+
+- **One instruction per line, in the imperative.** "Create it with the worktree tool" — not "a
+  worktree should be created", and not a paragraph the reader has to extract the action from.
+- **Rationale earns its place by changing what the reader does.** Keep it as a trailing clause where
+  it decides something — "`dev-db` binds `5432`, so stop the other container first" — and cut it
+  where it only explains.
+- **A paragraph is the last resort**, for the one thing no list can carry.
+
+Anchors are not enough on their own. This passage names three real anchors and is still four lines
+of prose:
+
+> A fresh worktree has no `.env` and no running database — copy `.env` across and run `make dev-db`
+> in it before `make test-integration`, or the suite fails on a connection error that looks like a
+> code bug.
+
+One line does the work:
+
+> Run `scripts/setup-worktree.sh` before any `make` target — a fresh tree has no `.env` and no database.
 
 ## Economy
 
-Write for an agent reading under load, in the register of a command reference rather than narrative
-prose. Each section as short as its content allows; explicit headings; one idea per bullet; a link
-where background would otherwise be retold.
+Write for an agent reading under load. Each section as short as its content allows; explicit
+headings; one idea per bullet; a link where background would otherwise be retold.
 
 A file that spends more words than its content earns is defective on its own, independent of
 accuracy — it buries the procedure it exists to document, and the next reader skims past the line
@@ -99,6 +120,9 @@ Use these to diagnose a doc set that is not working.
   proceeds from guesswork.
 - **Generic advice** — a rule with no anchor into this repository. It reads as content and behaves
   as a no-op.
+- **Explanatory prose** — an instruction wrapped in its own justification, so the reader has to
+  extract the action before taking it. Anchored prose still fails this: check the register
+  separately from the anchors.
 - **Hollow doc** — a file whose content is a header plus "No rules yet", "TBD", or "Coming soon".
   It costs a load and returns nothing, and it teaches the reader to distrust the set. Delete it;
   create it when there is something to record.
