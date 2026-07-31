@@ -20,8 +20,15 @@ Use the `commit-commands:commit` skill for the standard flow.
 3. One approval required before merge.
 4. Squash-merge; delete branch after merge.
 
+## Worktrees
+
+Use one whenever the main checkout holds work you are not part of.
+
+- Create it with Claude Code's worktree tool, never `git worktree add`.
+- Run `scripts/setup-worktree.sh` before any `make` target — a fresh tree has no `.env` and no database.
+- Remove the worktree and delete the branch once it is merged.
+
 ## CI — required checks
 
-The check list and how to run it locally are in [TESTING.md](TESTING.md); CI adds the Docker image
-build. All of them must be green before merge is allowed — a red check blocks the merge button, it
-is not a warning to argue past.
+- Run the checks locally first — [TESTING.md](TESTING.md) has the list; CI adds the Docker image build.
+- Fix a red check before asking for review; a red check blocks the merge button.

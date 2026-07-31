@@ -10,9 +10,6 @@ A skill exists to wrangle determinism out of a stochastic system. **Predictabili
 
 **Bold terms** are defined in [`GLOSSARY.md`](GLOSSARY.md); look them up there for the full meaning.
 
-This skill is about **skills**. For a project's own docs — `AGENTS.md`, `README.md`, the topic files
-under `docs/` — the standard is `writing-project-docs`.
-
 **What to write or review:** $ARGUMENTS — a skill path, a draft, or a request; with no argument, the
 skill under discussion. Apply every rule below to it. The work is done when each one has been held
 against that target and either cleared or named as a defect — not when the rubric has been read.

@@ -5,8 +5,7 @@
 Before cutting a release, verify all of the following:
 
 - [ ] All CI checks green on `main`
-- [ ] `make test-integration` passes locally against a clean DB (`make dev-db`)
-- [ ] Manual smoke test — launch and drive per [RUNNING.md](RUNNING.md), then delete what you created
+- [ ] The release checks pass — [TESTING.md § Checks required before a release](TESTING.md#checks-required-before-a-release)
 - [ ] No open issues tagged `release-blocker` for the target version
 - [ ] `CHANGELOG.md` updated with changes since last release
 
@@ -22,7 +21,7 @@ Review the output, group changes into **Added**, **Fixed**, **Changed**, and **R
 
 ## Trigger the release
 
-Once the checklist is complete and release notes are approved, create and push the version tag to trigger the release pipeline:
+With the checklist complete and the notes approved, tag and push:
 
 ```bash
 git tag v1.2.3

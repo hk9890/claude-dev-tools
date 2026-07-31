@@ -2,12 +2,16 @@
 
 ## Metrics
 
-Prometheus metrics exposed at `GET /metrics`.
+Reported to Dynatrace by the OneAgent on each pod; query them in DQL.
 
-| Metric | Labels | Description |
-|--------|--------|-------------|
-| `widget_requests_total` | method, path, status | HTTP request count |
-| `widget_db_query_duration_seconds` | query | DB query latency histogram |
+| Metric | Dimensions | Description |
+|--------|------------|-------------|
+| `widget.requests.count` | method, path, status | HTTP request count |
+| `widget.db.query.duration` | query | DB query latency histogram |
+
+```
+timeseries sum(widget.requests.count), by:{status}, from:-1h
+```
 
 ## Logs
 
@@ -24,6 +28,6 @@ GET /healthz   → 200 OK when DB connection is live
 
 ## Dashboards
 
-Grafana dashboard source: `monitoring/grafana/widget-service.json`
-
-Import it into the shared Grafana instance to get request rate, error rate, and DB latency panels.
+Dynatrace dashboard source: `monitoring/dynatrace/widget-service.json` — request rate, error rate,
+and DB latency tiles. Upload it with `monitoring/deploy-dashboard.sh` after changing it; the
+environment is `https://abc12345.apps.dynatrace.com`.
