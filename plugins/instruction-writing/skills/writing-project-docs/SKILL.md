@@ -1,15 +1,15 @@
 ---
 name: writing-project-docs
-description: "The structure a project's agent-facing docs follow — the canonical file set, each file's ownership boundary, the authoring rules, and a worked example of every file."
-when_to_use: "Use when creating or editing a project's agent-facing docs — AGENTS.md, CLAUDE.md, README.md, CONTRIBUTING.md, or a topic doc under docs/ (OVERVIEW, CODING, TESTING, RELEASING, MONITORING, CHANGE-WORKFLOW, REVIEWING, RUNNING) — including adding a routing entry or deciding which file a piece of content belongs in. Triggers on 'AGENTS.md', 'project docs', 'doc structure', 'where does this belong', 'restructure the docs'. Not for auditing an existing doc set (that is `project-review:project-review-docs`), and not for writing skills (that is `writing-skills`)."
+description: "The standard a project's agent-facing docs follow — which file owns what, plus a worked example of each."
+when_to_use: "Use when writing or fixing a project's agent-facing docs — AGENTS.md, CLAUDE.md, README.md, CONTRIBUTING.md, or a topic doc under docs/ — including deciding where a piece of content belongs. Triggers on 'AGENTS.md' and 'project docs'. Also loaded by name when another skill needs the standard. Not for auditing a doc set (`project-review:project-review-docs`) or writing skills (`writing-skills`)."
 argument-hint: "[doc-path-or-request]"
 ---
 
 # Writing project docs
 
-Every file in the set has one owner: an audience, and a boundary of what belongs inside it. Content
-placed outside that boundary is a defect **even when every sentence in it is true** — a reader who
-loads the file for its topic pays for the stray content and still has to go find the real thing.
+Every file in the set has one owner. Content placed outside that owner's boundary is a defect
+**even when every sentence in it is true** — a reader who loads the file for its topic pays for the
+stray content and still has to go find the real thing.
 
 Only `README.md`, `AGENTS.md` and `CLAUDE.md` are required. Every topic doc under `docs/` is
 optional and created lazily, when the repository has real local guidance for that topic.
@@ -24,22 +24,17 @@ under discussion.
    destination before the wording; content that fails the contract moves to the file that owns it
    rather than getting softened to fit.
 2. **What does that file look like?** [`examples/`](examples/) holds a worked example of each one.
-   Match its structure and register — do not invent a layout, and do not import a convention from
-   another project. `AGENTS.md` especially: `### <use case>` sections, each naming the one doc to
-   load and a one-line reason. It routes; it never carries the procedure itself.
+   Match its structure and register. `AGENTS.md` especially: `### <use case>` sections, each naming
+   the one doc to load and a one-line reason. It routes; it never carries the procedure itself.
 3. **How is it written?** [`references/project-doc-guidelines.md`](references/project-doc-guidelines.md)
    — authoring rules A1–A11, the hard prohibitions, and the bar any change must clear.
 
-## What keeps the set from drifting
+## Sediment
 
-Doc sets rot by accretion: each addition is locally reasonable, and the file is permanently longer.
-Two rules carry that weight, both defined in the guidelines above.
-
-- **A change is an edit, not an append.** Name what the new text replaces, or state why nothing is
-  superseded. A round of pure addition is how a routing file turns into a handbook.
-- **`AGENTS.md` is the single routing surface (A7).** Topic docs do not re-list the files, docs or
-  skills it routes to, and do not restate its summary. When two files could hold a fact, exactly one
-  keeps it and the other links.
+Doc sets fail by **sediment**: layers that settle because adding feels safe and removing feels
+risky, until the routing file has become a handbook. Two of the guidelines carry that weight — a
+change is an *edit, not an append*, and `AGENTS.md` is the *single routing surface* (A7). Read both
+where they are defined, then hold them against every line you write.
 
 ## Done means
 
