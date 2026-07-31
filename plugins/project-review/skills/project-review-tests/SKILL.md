@@ -158,6 +158,15 @@ The skill-specific pieces below slot into that skeleton:
 
 ---
 
+## Presenting results
+
+Whoever relays this report to the user may offer `/html-visualize-ask` built
+from the findings — a browser HTML question/decision form to approve/reject
+each one instead of doing it turn by turn in chat. Only offer this if that
+skill exists; it ships in the separate `html-visualization` plugin. This is a
+follow-up offered after the report is complete, not a pause during the
+interrogation above.
+
 ## Not covered
 
 Production-code structure, naming, and over-engineering → `project-review-codebase`;
