@@ -59,7 +59,7 @@ Each element of the `comments` array MUST have exactly two fields:
 
 ## CSRF protection
 
-The server is bound to `127.0.0.1` and accepts POST requests from any local browser tab. The localhost bind is NOT a CSRF boundary. Real protection is a per-invocation unguessable startup token.
+The server is bound to `0.0.0.0` and accepts POST requests from any browser tab that can reach the port — local or on the network. The bind is NOT a CSRF boundary and NOT an access boundary. Real protection is a per-invocation unguessable startup token, and it proves only that a request came from the served page: `GET /` hands the token to whoever asks.
 
 ### Token lifecycle
 
@@ -79,7 +79,7 @@ The server is bound to `127.0.0.1` and accepts POST requests from any local brow
 The server MUST additionally validate:
 
 - If `Sec-Fetch-Site` is present, its value MUST be `"same-origin"` or `"none"`. Any other value (e.g. `"cross-site"`) MUST result in `403`.
-- If `Origin` is present, it MUST match the server's own `http://127.0.0.1:<port>` origin. Mismatch MUST result in `403`.
+- If `Origin` is present, it MUST match `http://<Host header of the same request>` — the server answers to every name that resolves to it, so there is no single origin string to compare against. Mismatch MUST result in `403`.
 
 These checks are secondary; the startup-token check is the primary defence.
 

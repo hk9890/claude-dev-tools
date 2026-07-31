@@ -106,7 +106,7 @@ node "$(cat "$HTML_DIR/.plugin-root")/bin/server.js" "$HTML_DIR/feedback.html"
 On startup the server prints two lines:
 
 ```
-[html-visualization] URL: http://127.0.0.1:<port>/
+[html-visualization] URL: http://<hostname>:<port>/
 [html-visualization] Feedback file: /tmp/html-ask-.../feedback.feedback.json
 ```
 
@@ -146,7 +146,7 @@ node "$(cat "$HTML_DIR/.plugin-root")/bin/server.js" "$HTML_DIR/visualization.ht
 On startup the server prints one line (no Feedback file line in `--no-wait` mode):
 
 ```
-[html-visualization] URL: http://127.0.0.1:<port>/
+[html-visualization] URL: http://<hostname>:<port>/
 ```
 
 Surface the URL to the user as a markdown link, then continue immediately — do
@@ -183,7 +183,7 @@ node "$(cat "$HTML_DIR/.plugin-root")/bin/server.js" "$HTML_DIR/review.html"
 On startup the server prints two lines:
 
 ```
-[html-visualization] URL: http://127.0.0.1:<port>/
+[html-visualization] URL: http://<hostname>:<port>/
 [html-visualization] Feedback file: /tmp/html-feedback-.../review.feedback.json
 ```
 
@@ -250,12 +250,23 @@ After each `action: "apply"` response:
 In all three cycles, render the URL as a **markdown link**, not a bare URL string:
 
 ```
-[Open feedback form](http://127.0.0.1:PORT/)
+[Open feedback form](http://HOST:PORT/)
 ```
 
 This makes it clickable in the terminal. Include a brief instruction for what the
 user should do after opening it and what happens after they act (you continue,
 the page loops, or it is just to view) — never leave the user guessing.
+
+**Use the URL the server printed, verbatim.** The server binds all interfaces and
+names itself in that line by the machine's own hostname, so the same link works
+from the user's browser whether Claude is running locally or on a remote box the
+user reaches by DNS name. Never substitute `127.0.0.1` or `localhost` for the
+printed host — that link is dead on any machine but the one serving it.
+
+> **Exposure**: an all-interfaces bind means anyone who can reach the port can
+> open the page and submit through it. `GET /` hands out the CSRF token, so that
+> token proves a request came from the page, not that it came from the user. On
+> an untrusted network, treat the served content as readable by others.
 
 ---
 

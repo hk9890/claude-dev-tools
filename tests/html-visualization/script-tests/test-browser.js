@@ -102,15 +102,18 @@ function startServer(htmlFile, extraArgs = []) {
     const interval = setInterval(() => {
       let log = '';
       try { log = fs.readFileSync(logFile, 'utf8'); } catch (_) {}
-      const urlMatch = log.match(/\[html-visualization\] URL: (http:\/\/127\.0\.0\.1:(\d+)\/)/);
+      // The server binds all interfaces and prints its URL under the machine's
+      // own hostname; take the port from that line and drive the browser over
+      // loopback, so the suite does not depend on that name resolving here.
+      const urlMatch = log.match(/\[html-visualization\] URL: http:\/\/[^/]+:(\d+)\//);
       if (urlMatch) {
         clearInterval(interval);
         clearTimeout(timeout);
         fs.closeSync(logFd);
         if (!resolved) {
           resolved = true;
-          const baseUrl     = urlMatch[1].replace(/\/$/, '');
-          const port        = parseInt(urlMatch[2], 10);
+          const port        = parseInt(urlMatch[1], 10);
+          const baseUrl     = `http://127.0.0.1:${port}`;
           const fbMatch     = log.match(/\[html-visualization\] Feedback file: (.+)/);
           const feedbackFile = fbMatch ? fbMatch[1].trim() : null;
           resolve({ pid: proc.pid, proc, baseUrl, feedbackFile, logFile, port });

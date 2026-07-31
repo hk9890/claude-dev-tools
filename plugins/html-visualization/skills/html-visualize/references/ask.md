@@ -137,7 +137,7 @@ Since the HTML file is `$HTML_DIR/feedback.html`, the feedback file will be
 See `references/serve.md` — Cycle A (blocking submit round-trip). Surface the URL
 to the user as a markdown link with the message:
 
-> Your feedback form is ready → **[Open feedback form](http://127.0.0.1:PORT/)**
+> Your feedback form is ready → **[Open feedback form](http://HOST:PORT/)**
 >
 > Click that link, answer the questions, and click "Submit feedback". I will
 > continue as soon as you submit.

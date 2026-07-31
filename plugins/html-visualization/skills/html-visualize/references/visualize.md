@@ -354,7 +354,7 @@ container (already in the template). For SVGs, set `width="100%"` plus a
 See `references/serve.md` — Cycle B (non-blocking serve-and-continue). Surface
 the URL to the user as a markdown link with the message:
 
-> Your visualization is ready → **[Open visualization](http://127.0.0.1:PORT/)**
+> Your visualization is ready → **[Open visualization](http://HOST:PORT/)**
 >
 > Open that link in your browser to view it. You can optionally type a message in
 > the footer and click **Send** to share feedback or a follow-up request — or click
@@ -405,8 +405,10 @@ button disabled. This is intentional: a saved copy opened as a `file://` URL can
 reach the server, so Send cannot work. Save is the intended "keep this page offline"
 path; Send requires the live server.
 
-> **Degraded-environment fallback only**: if the user's environment has Node but not
-> a browser that can reach localhost (e.g. a remote SSH session with no port
-> forwarding), the server URL is not reachable. In that case, offer to save the HTML
-> file to a user-specified path so they can open it directly. This is a last-resort
+> **Degraded-environment fallback only**: the server binds all interfaces and
+> prints its URL under the machine's own hostname, so a remote SSH session is
+> normally fine — the user's browser reaches the box by DNS name, no port
+> forwarding needed. If that name does not resolve from the user's machine, or a
+> firewall blocks the port, the URL is unreachable: offer to save the HTML file to
+> a user-specified path so they can open it directly. This is a last-resort
 > accommodation — the normal path is always to serve via the server.

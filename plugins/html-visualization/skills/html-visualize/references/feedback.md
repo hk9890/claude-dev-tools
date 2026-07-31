@@ -150,7 +150,7 @@ exactly; do not glob for it.
 See `references/serve.md` — Cycle C (Apply loop). Surface the URL as a markdown
 link with the message:
 
-> Your review page is ready → **[Open review page](http://127.0.0.1:PORT/)**
+> Your review page is ready → **[Open review page](http://HOST:PORT/)**
 >
 > Select any text and click 💬 to comment. Click **Apply & preview** to have me
 > apply your comments and refresh the page, or **Submit & finish** when you're done.

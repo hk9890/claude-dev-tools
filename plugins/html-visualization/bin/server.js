@@ -7,9 +7,16 @@
  * Usage:
  *   node server.js <html-file> [--port N] [--timeout-sec N] [--no-wait]
  *
- * Binds 127.0.0.1 on port 0 (or --port N), serves the HTML document at GET /,
+ * Binds 0.0.0.0 on port 0 (or --port N), serves the HTML document at GET /,
  * shared assets at GET /assets/*, accepts authenticated feedback at POST /submit,
  * writes feedback JSON and exits 0 on first successful submit.
+ *
+ * The bind is all-interfaces so the page is reachable from another machine —
+ * a laptop opening a page served by a remote dev box over SSH, addressed by the
+ * host's DNS name. The printed URL therefore uses os.hostname(), not loopback.
+ * Consequence: anyone who can reach the port can read the page and submit
+ * through it. GET / hands out the CSRF token, so that token authenticates the
+ * page, not the person — reachability is the whole access boundary.
  *
  * With --no-wait: serves the page and returns immediately (prints only the URL
  * line, no Feedback file line). POST /submit is still accepted for a one-shot
@@ -34,6 +41,7 @@
 
 const http = require('node:http');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
 
@@ -263,10 +271,14 @@ async function handleRequest(req, res) {
       return;
     }
 
+    // The server binds all interfaces, so it answers to every name that resolves
+    // to this host — there is no single origin string to compare against.
+    // Same-origin means the Origin matches the Host the browser actually
+    // addressed; a cross-site post carries the attacker's origin and fails here.
     const origin = req.headers['origin'];
     if (origin !== undefined) {
-      const serverOrigin = `http://127.0.0.1:${server.address().port}`;
-      if (origin !== serverOrigin) {
+      const host = req.headers['host'];
+      if (!host || origin !== `http://${host}`) {
         jsonResponse(res, 403, { error: 'forbidden' });
         return;
       }
@@ -380,9 +392,11 @@ const server = http.createServer((req, res) => {
   });
 });
 
-server.listen(listenPort, '127.0.0.1', () => {
+server.listen(listenPort, '0.0.0.0', () => {
   const { port } = server.address();
-  const url = `http://127.0.0.1:${port}/`;
+  // Address the page by the host's own name so the link works from another
+  // machine; a local browser resolves it too.
+  const url = `http://${os.hostname()}:${port}/`;
   console.log(`[html-visualization] URL: ${url}`);
   if (!noWait) {
     console.log(`[html-visualization] Feedback file: ${feedbackFile}`);
