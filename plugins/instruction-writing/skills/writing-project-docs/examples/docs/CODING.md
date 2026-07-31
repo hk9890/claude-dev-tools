@@ -37,4 +37,4 @@ Re-run after changing any interface in `internal/store/` or `internal/api/`.
 make lint       # golangci-lint with repo config at .golangci.yml
 ```
 
-Lint must pass before opening a PR.
+Rules live in `.golangci.yml`; the gate that runs it is in [TESTING.md](TESTING.md).

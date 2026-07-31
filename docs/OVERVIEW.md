@@ -19,8 +19,6 @@ claude-dev-tools/
 
 `.claude-plugin/marketplace.json` is the **repo-level manifest** — it lists every plugin in the marketplace with its name, version, description, and source path. It is distinct from the per-plugin `.claude-plugin/plugin.json`, which carries only that plugin's own metadata.
 
-All plugins are released together under a single repo-level version tag. Every `plugin.json` and the matching entry in `marketplace.json` are bumped to the same version in each release. See [RELEASING.md](RELEASING.md) for details.
-
 For the full list of plugins, see the [plugin table in README.md](../README.md#plugins).
 
 ## Plugin directory layout
@@ -42,5 +40,17 @@ plugins/<plugin-name>/
 
 Not all component types are required — a plugin may have only commands, only skills, or a mix.
 
-For implementation steps (adding a plugin, scaffolding) see [CODING.md](CODING.md).
+## Finding things
+
+```bash
+ls plugins/*/skills/*/SKILL.md                                 # every skill in the marketplace
+git grep -ln 'name: <skill>' -- 'plugins/*/skills/*/SKILL.md'  # which plugin ships a skill
+git grep -n '<plugin>:<skill>' -- plugins                      # where a skill is referenced by its qualified name
+ls -d plugins/*/hooks                                          # which plugins define hooks
+```
+
+## External references
+
+- [Claude Code plugin docs](https://code.claude.com/docs/en/plugins) — the plugin and marketplace format this repo targets.
+
 

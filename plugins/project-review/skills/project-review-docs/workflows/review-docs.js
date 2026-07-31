@@ -11,7 +11,7 @@ export const meta = {
   ],
 }
 
-// args: { repoRoot, scriptsDir, level?, maxExecutionRoutes?, scratchDir? }
+// args: { repoRoot, scriptsDir, standardDir, level?, maxExecutionRoutes?, scratchDir? }
 
 // ---------------------------------------------------------------------------
 // Pure helpers — no runtime globals, so they are reachable without launching a
@@ -42,6 +42,10 @@ function normalizeArgs(rawArgs) {
 
   const repoRoot = String(parsed.repoRoot || '')
   const scriptsDir = String(parsed.scriptsDir || '')
+  // The authoring standard lives in a different plugin, so its path cannot be derived
+  // from scriptsDir — SKILL.md loads that skill and passes the base directory the
+  // harness printed for it.
+  const standardDir = String(parsed.standardDir || '').replace(/\/$/, '')
   const raw = String(parsed.level || '').toLowerCase()
   const level = LEVELS.includes(raw) ? raw : 'medium'
 
@@ -84,9 +88,13 @@ function normalizeArgs(rawArgs) {
     // string, so a truthiness check passes it straight to `python3 manifest.py "<…>"`.
     error = `repoRoot must be an absolute path (got ${JSON.stringify(repoRoot)}) — an unsubstituted "<…>" placeholder would otherwise reach the manifest`
   } else if (!scriptsDir) {
-    error = 'scriptsDir is required — it locates manifest.py and the authoring rules'
+    error = 'scriptsDir is required — it locates manifest.py'
   } else if (!scriptsDir.startsWith('/')) {
     error = `scriptsDir must be an absolute path (got ${JSON.stringify(scriptsDir)}) — it is interpolated into the manifest command`
+  } else if (!standardDir) {
+    error = 'standardDir is required — it is the base directory of the instruction-writing:writing-project-docs skill, which owns the authoring rules and the ownership contracts'
+  } else if (!standardDir.startsWith('/')) {
+    error = `standardDir must be an absolute path (got ${JSON.stringify(standardDir)}) — load the instruction-writing:writing-project-docs skill and pass the base directory it prints`
   } else if (!scratchDir.startsWith('/')) {
     error = `scratchDir must be an absolute path (got ${JSON.stringify(scratchDir)}) — the execution agent creates it outside the repo`
   } else if (maxExecError) {
@@ -96,10 +104,11 @@ function normalizeArgs(rawArgs) {
   return {
     repoRoot,
     scriptsDir,
-    // The authoring rules the read-review agents apply live next to the scripts. Anchored
-    // on the path separator, matching test-tests.js: unanchored, a scriptsDir ending in
-    // e.g. "myscripts" would silently resolve to "myreferences".
-    guidelinesFile: scriptsDir.replace(/\/scripts\/?$/, '/references') + '/project-doc-guidelines.md',
+    standardDir,
+    // Both artifacts of the authoring standard: the rules every read-review agent applies,
+    // and the ownership contracts manifest.py parses to attach a boundary to each file.
+    guidelinesFile: standardDir + '/references/project-doc-guidelines.md',
+    setupFile: standardDir + '/references/project-setup.md',
     level,
     maxExec,
     scratchDir,
@@ -272,14 +281,14 @@ if (typeof agent === 'function') {
     return { error: cfg.error, got: { type: typeof args, keys: cfg.receivedKeys, repoRoot: cfg.repoRoot } }
   }
 
-  const { repoRoot, scriptsDir, guidelinesFile, level, maxExec, scratchDir } = cfg
+  const { repoRoot, scriptsDir, guidelinesFile, setupFile, level, maxExec, scratchDir } = cfg
 
   // ── Manifest (deterministic facts)
 
   phase('Manifest')
   const manifestText = await agent(
     `Run this exact command and return ONLY its raw stdout — no prose, no markdown fences:\n\n` +
-    `python3 "${scriptsDir}/manifest.py" "${repoRoot}" --format=json\n\n` +
+    `python3 "${scriptsDir}/manifest.py" "${repoRoot}" --format=json --setup-md="${setupFile}"\n\n` +
     `Do not summarize, do not edit the output. Return the JSON exactly as printed.`,
     { label: 'manifest', phase: 'Manifest', model: 'haiku', effort: 'low' }
   )
@@ -314,7 +323,7 @@ if (typeof agent === 'function') {
       `Metrics (from the deterministic manifest — do NOT recompute): ${m.lines} lines, ${m.words} words, ${m.non_heading_lines} content lines.\n` +
       `Links were already resolved by the manifest. Unresolved links in this file:\n${dead}\n\n` +
       `Read the FULL file now, then judge it. You see only THIS file and its contract — there is no doc set to satisfice against.\n` +
-      `\nApply the authoring rules — read ${guidelinesFile} once, all of it: rules A1–A11, the hard prohibitions, and the closing "What a good fix looks like" bar. The rules define the accuracy, belonging, and form bar for the file; the closing bar is what every fix you recommend must itself clear. Apply them alongside this file's contract.\n`
+      `\nApply the authoring rules — read ${guidelinesFile} once, all of it: the six named rules (Ownership, Local delta, Anchors, Command register, Economy, Obligation), the failure modes, and the closing bar a change must clear before it lands. The rules define the accuracy, belonging, and form bar for the file; the closing bar is what every fix you recommend must itself clear. Apply them alongside this file's contract.\n`
 
     if (f.contract) {
       const c = f.contract
@@ -325,8 +334,8 @@ if (typeof agent === 'function') {
         `  Not inside: ${c.not_inside || '(unspecified)'}\n\n` +
         `For EVERY unit of content — each claim, command, path, table, and section — ask two questions before moving on:\n` +
         `1. TRUE? Verify it against the repo with read-only grep/read (the referenced file/script/flag/command actually exists and matches). A false claim is an accuracy finding.\n` +
-        `2. BELONGS HERE? Is it inside this file's Inside boundary? Content that matches Not-inside is a BELONGING finding EVEN IF perfectly accurate (rule A10). Its fix routes the content to the owning file — never "keep it as a subsection here". A file that is largely the wrong genre is a blocker; a localized spill is major.\n\n` +
-        `Then judge the file as a whole against rule A11 (economy) — it spends ${m.lines} lines on what it says. A11 defines that bar; apply it from the rules file rather than from memory, and raise what fails it as a form finding naming the spans you would cut.\n\n` +
+        `2. BELONGS HERE? Is it inside this file's Inside boundary? Content that matches Not-inside is a BELONGING finding EVEN IF perfectly accurate (the Ownership rule). Its fix routes the content to the owning file — never "keep it as a subsection here". A file that is largely the wrong genre is a blocker; a localized spill is major.\n\n` +
+        `Then judge the file as a whole against the Economy rule — it spends ${m.lines} lines on what it says. That rule defines the bar; apply it from the rules file rather than from memory, and raise what fails it as a form finding naming the spans you would cut.\n\n` +
         `Do not run commands. Read-only. Return findings with concrete evidence (quote the offending lines / cite the repo fact). Empty findings array if the file is genuinely clean — do not invent problems.`
     }
     // Non-standard file: judge placement (does its content belong to a canonical topic?).

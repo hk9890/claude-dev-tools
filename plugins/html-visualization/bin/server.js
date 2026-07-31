@@ -7,9 +7,21 @@
  * Usage:
  *   node server.js <html-file> [--port N] [--timeout-sec N] [--no-wait]
  *
- * Binds 127.0.0.1 on port 0 (or --port N), serves the HTML document at GET /,
- * shared assets at GET /assets/*, accepts authenticated feedback at POST /submit,
- * writes feedback JSON and exits 0 on first successful submit.
+ * Binds every interface on port 0 (or --port N), serves the HTML document at
+ * GET /, shared assets at GET /assets/*, accepts authenticated feedback at
+ * POST /submit, writes feedback JSON and exits 0 on first successful submit.
+ *
+ * The bind is all-interfaces so the page is reachable from another machine —
+ * a laptop opening a page served by a remote dev box over SSH, addressed by the
+ * host's DNS name. The printed URL therefore uses os.hostname(), not loopback.
+ * Consequence: anyone who can reach the port can read the page and submit
+ * through it. GET / hands out the CSRF token, so that token authenticates the
+ * page, not the person — reachability is the whole access boundary.
+ *
+ * os.hostname() is advertised as-is; whether it resolves for the client is the
+ * environment's business, not this server's. When it does not (a container ID,
+ * a box reached through an SSH tunnel), the same port on loopback still serves
+ * the page — see the fallback guidance in references/serve.md.
  *
  * With --no-wait: serves the page and returns immediately (prints only the URL
  * line, no Feedback file line). POST /submit is still accepted for a one-shot
@@ -34,6 +46,7 @@
 
 const http = require('node:http');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
 
@@ -263,10 +276,25 @@ async function handleRequest(req, res) {
       return;
     }
 
+    // The server binds every interface, so it answers to every name that
+    // resolves to this host — there is no single origin string to compare
+    // against. Same-origin means the Origin names the same host the browser
+    // actually addressed; a cross-site post carries a foreign host and fails.
+    //
+    // Compare hosts, not whole origins: a TLS-terminating forwarder (Codespaces,
+    // VS Code forwarded ports, Tailscale Serve, ngrok) gives the browser an
+    // https:// page while this server still speaks http, so matching the scheme
+    // too would 403 every submit made through one.
     const origin = req.headers['origin'];
     if (origin !== undefined) {
-      const serverOrigin = `http://127.0.0.1:${server.address().port}`;
-      if (origin !== serverOrigin) {
+      const host = req.headers['host'];
+      let originHost = null;
+      try {
+        originHost = new URL(origin).host;
+      } catch (_) {
+        // Unparseable, or the literal "null" a sandboxed iframe sends.
+      }
+      if (!host || originHost !== host) {
         jsonResponse(res, 403, { error: 'forbidden' });
         return;
       }
@@ -380,9 +408,15 @@ const server = http.createServer((req, res) => {
   });
 });
 
-server.listen(listenPort, '127.0.0.1', () => {
+// No host argument: Node binds :: with dual-stack where the OS supports it, so
+// a hostname that resolves to AAAA works too. Passing '0.0.0.0' would be
+// IPv4-only, and the URL below advertises a name whose address family is not
+// ours to predict.
+server.listen(listenPort, () => {
   const { port } = server.address();
-  const url = `http://127.0.0.1:${port}/`;
+  // Address the page by the host's own name so the link works from another
+  // machine; a local browser resolves it too.
+  const url = `http://${os.hostname()}:${port}/`;
   console.log(`[html-visualization] URL: ${url}`);
   if (!noWait) {
     console.log(`[html-visualization] Feedback file: ${feedbackFile}`);

@@ -3,7 +3,7 @@ name: project-review-docs
 description: "Read-only audit of a project's docs for accuracy, staleness, gaps, misplaced content, and whether an agent can actually use them — runs a multi-agent workflow, reports fixes, never edits."
 user-invocable: true
 disable-model-invocation: true
-argument-hint: "[level] [path]"
+argument-hint: "[low|medium|high|ultra] [path]"
 ---
 
 Read-only documentation audit. Launch the review workflow — do **not** review the
@@ -24,6 +24,15 @@ docs inline. The workflow returns a structured report; relay it.
 2. `SKILL_DIR` is the **base directory for this skill**, given at the top of this file when
    the skill loads. It is absolute and install-correct — build every path below from it.
 
+   The standard this review measures against is **not** in this plugin: the ownership
+   contracts and the authoring rules belong to `instruction-writing:writing-project-docs`.
+   Load that skill now — the same "Base directory for this skill" line comes with it, and
+   that path is `STANDARD_DIR`. Take it from the load; never construct it and never search
+   the filesystem for the plugin: a sibling plugin's install directory is not derivable
+   from this one's, and a guess selects a stale cached version. If the skill is not installed,
+   stop and say so — `project-review` declares it as a dependency, so a missing one means
+   a broken install, not an optional extra.
+
    Then check the prerequisite and mint a per-run scratch dir. The workflow writes execution
    traces to that dir under deterministic names, and the grading stage treats a trace as
    primary evidence — so two concurrent reviews sharing one directory would grade each
@@ -37,7 +46,7 @@ docs inline. The workflow returns a structured report; relay it.
 
 3. Invoke the **Workflow** tool:
    - `scriptPath`: `<SKILL_DIR>/workflows/review-docs.js`
-   - `args`: `{ "repoRoot": "<the step-1 path>", "scriptsDir": "<SKILL_DIR>/scripts", "level": "<the step-1 level>", "scratchDir": "<the absolute path printed above>" }`
+   - `args`: `{ "repoRoot": "<the step-1 path>", "scriptsDir": "<SKILL_DIR>/scripts", "standardDir": "<STANDARD_DIR>", "level": "<the step-1 level>", "scratchDir": "<the absolute path printed above>" }`
    - `level` rungs, on top of the per-file read-review that always runs:
      `low` = no execution phase; `medium` = execution on ~3 AGENTS routes;
      `high` = execution on every route; `ultra` = `high` plus an adversarial pass that
@@ -58,19 +67,30 @@ docs inline. The workflow returns a structured report; relay it.
    `got.keys` lists the arguments that actually arrived — surface it, since that is
    what shows a misspelled key.
 
-If `python3` is missing or the workflow cannot launch, read every doc in full
-against `references/project-setup.md` by hand and state that the workflow did not
-run — never report "docs look good" from mechanical checks alone.
+   Once relayed, offer to decide on the findings via a form: `/html-visualize-ask`
+   built from `findings[]` renders a browser HTML question/decision form so they
+   can approve/reject each one instead of doing it turn by turn in chat. Only
+   offer this if that skill exists; it ships in the separate `html-visualization`
+   plugin.
+
+If `python3` is missing or the workflow cannot launch, read every doc in full by
+hand against both halves of the standard — `<STANDARD_DIR>/references/project-setup.md`
+for what belongs in the file, and `<STANDARD_DIR>/references/project-doc-guidelines.md`
+for how it must be written — and state that the workflow did not run. Never report
+"docs look good" from mechanical checks alone.
 
 ## Rubric
 
-`manifest.py` parses `references/project-setup.md` (the canonical doc set and each
-file's audience / Inside / Not-inside ownership) and injects each file's contract
-inline into the read-review agents, which also load
-`references/project-doc-guidelines.md` (authoring rules A1–A11, the prohibitions,
-and the bar each suggested fix must clear) and apply it.
-`references/project-doc-review-guidelines.md` (the review process) is maintainer
-documentation and the manual-fallback rubric; the workflow does not load it.
+The standard is authored elsewhere and only applied here. `instruction-writing:writing-project-docs`
+owns `references/project-setup.md` (the canonical doc set and each file's audience /
+Inside / Not-inside ownership), `references/project-doc-guidelines.md` (the six named
+rules, the failure modes, and the bar each suggested fix must clear), and the worked
+`examples/`. `manifest.py` parses the first and injects each file's contract
+inline into the read-review agents, which load the second and apply it.
+
+`references/project-doc-review-guidelines.md` — the review process, the rules to
+cite, and severities — stays here: it is maintainer documentation and the manual-fallback
+rubric, and the workflow does not load it.
 
 Verdict labels: `accurate` · `minor gaps` · `significant gaps` · `misleading`. A
 clean `accurate` requires no blocker/major finding and positive coverage — a green
@@ -80,4 +100,6 @@ manifest is necessary, never sufficient.
 
 Codebase consistency, layout, and architecture → `project-review-codebase`;
 test quality → `project-review-tests`. Challenging a single design decision
-interactively → `challenge:kiss`.
+interactively → `challenge:kiss`. **Writing or fixing the docs** — the file set,
+where a piece of content belongs, the worked examples →
+`instruction-writing:writing-project-docs`; this skill only audits what is there.
