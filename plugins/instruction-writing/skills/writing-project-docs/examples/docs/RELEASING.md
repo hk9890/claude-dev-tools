@@ -6,7 +6,7 @@ Before cutting a release, verify all of the following:
 
 - [ ] All CI checks green on `main`
 - [ ] `make test-integration` passes locally against a clean DB (`make dev-db`)
-- [ ] Manual smoke test: start the server, create a widget, list widgets, delete it
+- [ ] Manual smoke test — launch and drive per [RUNNING.md](RUNNING.md), then delete what you created
 - [ ] No open issues tagged `release-blocker` for the target version
 - [ ] `CHANGELOG.md` updated with changes since last release
 

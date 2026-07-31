@@ -26,11 +26,13 @@ with a skill's default, this file wins.
 - Version bumps must stay in lockstep across the marketplace manifest and changed
   plugins (see [RELEASING.md](RELEASING.md)); flag a partial bump.
 - A new canonical doc must be registered in the taxonomy reference
-  (`project-setup.md`) and in `manifest.py`'s canonical lists — both under
-  `plugins/project-review/skills/project-review-docs/` — otherwise the manifest
-  classifies it as a non-standard doc. That classification is advisory (the review's
-  per-file agents judge placement); registering the topic is a human step, not an
-  automatic gate.
+  (`plugins/instruction-writing/skills/writing-project-docs/references/project-setup.md`,
+  plus a worked example beside it under `examples/`) **and** in `manifest.py`'s canonical
+  lists (`plugins/project-review/skills/project-review-docs/scripts/`) — the standard and
+  the reviewer that applies it live in different plugins, so flag a change that lands in
+  only one. Otherwise the manifest classifies the doc as non-standard. That classification
+  is advisory (the review's per-file agents judge placement); registering the topic is a
+  human step, not an automatic gate.
 - Reviews here suggest; they never edit the project or the task tracker.
 
 ## Out of scope / non-blocking

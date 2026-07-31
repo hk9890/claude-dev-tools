@@ -53,6 +53,24 @@ Two related points:
 
 When a needed file is genuinely missing, stop and tell the user — never improvise a path.
 
+### Reaching another plugin's files
+
+`../..` stops at the plugin root. A **sibling plugin's** install directory is not derivable
+from this one's — the two are versioned separately in a cached install and unversioned in a
+dev checkout — so there is no relative path to write and `find` is worse than useless here.
+
+Reach it the way the harness already hands out paths: **load the other plugin's skill**, and
+take the `Base directory for this skill:` line it prints. That value is the sibling's install
+directory, correct in every install shape. Pass it into whatever needs it — a workflow arg, a
+script flag — and validate it at that boundary rather than letting a missing one degrade
+silently. `project-review:project-review-docs` is the worked example: it loads
+`instruction-writing:writing-project-docs` for the authoring standard, passes the result as
+`standardDir`, and its workflow rejects a missing or relative value before spawning an agent.
+
+Declare the dependency in `plugin.json` so the harness installs the sibling, and say in the
+skill what to do when it is absent — a missing dependency is a broken install, not an
+optional extra.
+
 ## SKILL.md conventions
 
 These apply to every `SKILL.md` under `plugins/<plugin-name>/skills/<skill-name>/`.

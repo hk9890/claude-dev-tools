@@ -3,14 +3,18 @@
 The rubric for reviewing project docs: the rule codes to apply, the review
 contract, the stages, and the vocabulary the report uses.
 
-Use with:
+Use with the authoring standard this review measures against — the
+`instruction-writing:writing-project-docs` skill, which owns:
 
-- [project-setup.md](project-setup.md) — canonical doc set + file ownership (Inside / Not inside)
-- [project-doc-guidelines.md](project-doc-guidelines.md) — authoring rules A1–A11 + hard prohibitions
+- `references/project-setup.md` — canonical doc set + file ownership (Inside / Not inside)
+- `references/project-doc-guidelines.md` — authoring rules A1–A12 + hard prohibitions
+- `examples/` — a worked example of every canonical file
 
 ## Rule codes
 
-- **A1–A11** — the authoring rules (defined in `project-doc-guidelines.md`).
+- **A1–A12** — the authoring rules (defined in `project-doc-guidelines.md`). A12 (routes are
+  obligations) is judged on `AGENTS.md` itself: an advisory route is a finding even when it points
+  at the right doc, since the agent reads it as skippable.
 - **R10** — audience/purpose fit: content outside a file's *Inside* boundary is a finding even when accurate (the review-side of A10).
 - **R11** — canonical-topic placement: a non-canonical doc whose content *is* a canonical topic is renamed or linked to its canonical home (mechanic in `project-setup.md`).
 

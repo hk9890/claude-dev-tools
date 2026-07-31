@@ -4,6 +4,9 @@ set -uo pipefail
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
 [[ -n "$REPO_ROOT" ]] || { printf 'FAIL: cannot resolve repo root from %s\n' "${BASH_SOURCE[0]}" >&2; exit 1; }
 SCRIPT="$REPO_ROOT/plugins/project-review/skills/project-review-docs/scripts/manifest.py"
+# The ownership contracts belong to the authoring standard, which lives in another plugin —
+# manifest.py is handed the path and never guesses it.
+SETUP_MD="$REPO_ROOT/plugins/instruction-writing/skills/writing-project-docs/references/project-setup.md"
 
 PASS=0
 FAIL=0
@@ -161,7 +164,7 @@ test_reachability() {
 # 9. ownership contract attached from the real project-setup.md
 test_contract() {
   local dir; dir=$(make_fixture)
-  local out; out=$("$SCRIPT" "$dir")
+  local out; out=$("$SCRIPT" "$dir" --setup-md="$SETUP_MD")
   local ni; ni=$(json_val "$out" "([f['contract'] for f in d['files'] if f['path']=='README.md'][0] or {}).get('not_inside','')")
   assert_contains "contract: README not_inside mentions dev setup" "dev" "$ni"
   local aud; aud=$(json_val "$out" "([f['contract'] for f in d['files'] if f['path']=='README.md'][0] or {}).get('audience','')")
@@ -170,6 +173,13 @@ test_contract() {
   # contract must still attach (regression: basename lookup vs path-prefixed heading).
   local ci; ci=$(json_val "$out" "([f['contract'] for f in d['files'] if f['path']=='docs/CODING.md'][0] or {}).get('inside','')")
   assert_contains "contract: docs/CODING.md inside is populated" "build" "$ci"
+  # Without the flag the contracts are simply absent — the manifest must still emit its
+  # facts rather than fail, since the standard is another plugin's file and may be absent.
+  local bare; bare=$("$SCRIPT" "$dir")
+  assert_eq "contract: omitted when no --setup-md is given" "None" \
+    "$(json_val "$bare" "[f.get('contract') for f in d['files'] if f['path']=='README.md'][0]")"
+  assert_eq "contract: the manifest still emits its files without --setup-md" "True" \
+    "$(json_val "$bare" "len(d['files']) > 0")"
   rm -rf "$dir"
 }
 

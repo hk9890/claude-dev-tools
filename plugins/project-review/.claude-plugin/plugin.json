@@ -9,5 +9,6 @@
   "homepage": "https://github.com/hk9890/claude-dev-tools",
   "repository": "https://github.com/hk9890/claude-dev-tools",
   "license": "MIT",
-  "keywords": ["review", "codebase", "structure", "tests", "consistency", "architecture", "docs", "adversarial", "quality"]
+  "keywords": ["review", "codebase", "structure", "tests", "consistency", "architecture", "docs", "adversarial", "quality"],
+  "dependencies": ["instruction-writing"]
 }

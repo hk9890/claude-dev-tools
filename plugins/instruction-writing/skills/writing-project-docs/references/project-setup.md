@@ -45,13 +45,13 @@ validates content against these (R10).
 - **Inside**: exactly `@AGENTS.md` (one line, optional trailing newline).
 - **Not inside**: anything else — new routing goes to `AGENTS.md`, never here.
 - Existing non-canonical content (framing text, embedded handbooks, injected tool blocks, personal notes) is a finding; the fix names the destination: routing → `AGENTS.md`; topic procedures → `docs/<TOPIC>.md`; personal notes → `.claude.local.md`; injected tool blocks → a topic doc or `.claude.local.md` (never a steering doc).
-- Reported by `scripts/manifest.py` (the `CLAUDE.md` invariant).
+- Mechanically reported by the reviewer's `manifest.py` (the `CLAUDE.md` invariant).
 
 ### `.claude.local.md` (optional, personal)
 
 - **Inside**: personal/local context — Claude preferences, machine-specific paths, scratch notes.
 - **Not inside**: shared/team guidance, routing, anything the canonical doc flows write.
-- Gitignored; never written by canonical doc flows (the user edits it directly). Surfaced by `scripts/manifest.py` (classification `personal-local`).
+- Gitignored; never written by canonical doc flows (the user edits it directly). Surfaced by the reviewer's `manifest.py` (classification `personal-local`).
 
 ### `README.md`
 
@@ -70,9 +70,10 @@ validates content against these (R10).
 ### `AGENTS.md`
 
 - **Audience**: AI agents.
-- **Inside**: a 2–3 sentence project summary and task → doc/skill routes.
+- **Inside**: a 2–3 sentence project summary and task → doc/skill routes, every one of them an obligation.
 - **Not inside**: full procedures, README-style prose, content duplicated from the docs it routes to.
-- **Conformance** (checked against the example): one `###` section per use case, each naming the doc/skill to load and a one-line reason; skip hollow entries; keep the summary to 2–3 sentences; route to installed skills by name when no local doc exists.
+- **No optional routes** (A12): a use case with a doc behind it reads `MUST read <doc> before <the action that triggers it>` — a release loads `RELEASING.md` first, touching a source file loads `CODING.md` first, searching the repo loads `OVERVIEW.md` first. A preamble states once that loading afterwards does not count. "Load X to understand Y" is advisory phrasing and is a finding.
+- **Conformance** (checked against the example): one `###` section per use case, each naming the doc/skill to load, the action that triggers it, and a one-line reason; skip hollow entries; keep the summary to 2–3 sentences; route to installed skills by name when no local doc exists.
 - Example: [../examples/AGENTS.md](../examples/AGENTS.md)
 
 ### `docs/OVERVIEW.md`
