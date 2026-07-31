@@ -4,7 +4,7 @@
 # The adversarial-reviewer read-only contract is authored in TWO places that must stay
 # byte-identical. Workflow scripts cannot import shared code, so the sentence is inlined in
 # both rather than shared from one module:
-#   - plugins/project-review/agents/project-reviewer.md                    (the fork-skill reviewer agent)
+#   - plugins/project-review/agents/project-reviewer.md                    (the agent the tasks plugin's review leg runs on — plugins/tasks/workflows/work.js)
 #   - plugins/project-review/skills/project-review-codebase/workflows/review-codebase.js  (workflow PERSONA)
 # This test fails if either copy is missing or has drifted, so a tightening in one place can
 # never silently skip the other — the exact failure that motivated it: the agent copy had lost

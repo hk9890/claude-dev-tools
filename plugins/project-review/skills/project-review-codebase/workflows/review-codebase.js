@@ -1,7 +1,7 @@
 export const meta = {
   name: 'project-review-codebase',
-  description: 'Read-only codebase review: consistency + structure + architecture dimension agents → cross-dimension synthesis → Markdown artifact',
-  whenToUse: 'Launched by the /project-review-codebase skill. Reviews a codebase for internal consistency, physical layout, and module architecture; dedupes findings across dimensions and returns a standalone Markdown report with Mermaid diagrams.',
+  description: 'Read-only codebase review: consistency + structure + architecture + tests dimension agents → cross-dimension synthesis → Markdown artifact',
+  whenToUse: 'Launched by the /project-review-codebase skill. Reviews a codebase for internal consistency, physical layout, module architecture, and test quality judgeable by reading; dedupes findings across dimensions and returns a standalone Markdown report with Mermaid diagrams.',
   phases: [
     { title: 'Review', detail: 'one adversarial agent per dimension' },
     { title: 'Verify', detail: 'adversarially refute each finding (level=ultra only)' },
@@ -19,11 +19,11 @@ export const meta = {
 // The depth vocabulary is shared with project-review-docs and test-tests: one
 // argument name, one token set, so a token learned at one skill means the same
 // thing at the next. Here only `ultra` changes behaviour — it adds the
-// per-finding refutation pass; the other three run the same three dimensions.
+// per-finding refutation pass; the other three run the same four dimensions.
 const LEVELS = ['low', 'medium', 'high', 'ultra']
 
 // Normalize the incoming `args` value into the review's configuration, and reject an
-// unusable one here rather than three dimension agents later.
+// unusable one here rather than four dimension agents later.
 // Defensive: the runtime may hand `args` over as a JSON *string* rather than a parsed
 // object (observed in practice). A string has no `.repoRoot`, so reading it directly
 // would leave repoRoot undefined, which the dimension prompts would interpolate as the
@@ -50,7 +50,7 @@ function normalizeArgs(rawArgs) {
   } else if (!repoRoot.startsWith('/')) {
     // SKILL.md step 3 hands the model a "<repo root, or the step-1 path>" template. An
     // unsubstituted placeholder is a NON-EMPTY string, so a truthiness check passes it
-    // through and the dimension prompts ship it verbatim — three opus agents then review
+    // through and the dimension prompts ship it verbatim — the opus agents then review
     // whatever directory they happen to land in and return a confident report about the
     // wrong tree. Only an absolute path can be a repo root, so require one.
     error = `repoRoot must be an absolute path (got ${JSON.stringify(repoRoot)}) — an unsubstituted "<…>" placeholder would otherwise reach the dimension agents`
@@ -115,7 +115,8 @@ const CANDIDATE_ITEMS = {
 }
 
 // Every dimension returns verdict + findings; structure and architecture each add one
-// visual payload on top. Kept as one builder so the shared core cannot drift apart.
+// visual payload on top, and consistency and tests run on the bare core. Kept as one
+// builder so the shared core cannot drift apart.
 function dimensionSchema(extra) {
   return {
     type: 'object',
@@ -155,8 +156,9 @@ const REPORT_SCHEMA = {
         consistency: { type: 'string', enum: VERDICTS },
         structure: { type: 'string', enum: VERDICTS },
         architecture: { type: 'string', enum: VERDICTS },
+        tests: { type: 'string', enum: VERDICTS },
       },
-      required: ['consistency', 'structure', 'architecture'],
+      required: ['consistency', 'structure', 'architecture', 'tests'],
     },
     headline: { type: 'string' },
     findings: {
@@ -164,7 +166,7 @@ const REPORT_SCHEMA = {
       items: {
         type: 'object',
         properties: {
-          dimension: { type: 'string', enum: ['consistency', 'structure', 'architecture'] },
+          dimension: { type: 'string', enum: ['consistency', 'structure', 'architecture', 'tests'] },
           severity: { type: 'string', enum: ['blocker', 'major', 'minor'] },
           location: { type: 'string' },
           observation: { type: 'string' },
@@ -355,11 +357,77 @@ function architectureProcedure(vocabFile) {
     `decision through its tree interactively is challenge:kiss, not here.`
 }
 
+// The STATIC half of test review: everything judgeable by reading the tests as they are.
+// Everything that needs the suite to actually run — wall time, flakiness, whether a test
+// detects an injected bug, which lines coverage reaches — belongs to the
+// project-auto-work:test-tests audit, which measures it instead of estimating it. That
+// boundary is the whole reason this dimension is bounded the way it is: a check whose
+// honest answer requires running something does not belong here at any confidence level.
+const TESTS_PROCEDURE =
+  `Dimension: TESTS — do the tests earn the confidence they imply?\n\n` +
+  `You judge the tests BY READING THEM. Do not run the suite: no check below depends on running it, and an ` +
+  `estimate of a measurable quantity is worse than no answer.\n` +
+  `First establish the project's OWN conventions from its docs, its test-runner configuration, and its directory ` +
+  `layout: what this project calls a fast or unit test, how it marks a slower or integration one, what counts as ` +
+  `public versus internal for a module here, and how it substitutes dependencies. Judge every check below against ` +
+  `THOSE conventions. Never import a convention, idiom, or naming pattern from a language or framework this project ` +
+  `does not use — if you cannot find the project's convention for something, say so in the finding rather than ` +
+  `assuming one.\n\n` +
+  `Work through these checks in sequence:\n` +
+  `1. FAST TESTS THAT ACQUIRE REAL EXTERNAL RESOURCES — a test the project's own classification places in the fast ` +
+  `suite that nonetheless acquires a real resource outside the process (a filesystem path, a network endpoint, a ` +
+  `database, a spawned process, a wall-clock wait) instead of a substitute. Evidence is the acquisition site: the ` +
+  `line where the real resource is reached. Recommended action: substitute the dependency, or reclassify the test ` +
+  `into the slower suite the project already maintains.\n` +
+  `2. ASSERTIONS THAT CANNOT VARY WITH THE CODE UNDER TEST — an assertion whose outcome is fixed by the test's own ` +
+  `construction rather than by the subject's behaviour: a value compared against itself, a property that holds for ` +
+  `every possible result, or an assertion on a value the test handed to a substitute and the substitute handed ` +
+  `straight back. Evidence: the assertion together with the line that fixes its outcome. These are not weak tests, ` +
+  `they are absent ones wearing a test's shape.\n` +
+  `3. TESTS BOUND TO INTERNALS RATHER THAN BEHAVIOUR — a test that reaches past the interface its subject exposes: ` +
+  `naming an internal helper, asserting the order or number of internal calls, or pinning a structure the interface ` +
+  `does not promise, instead of asserting the result returned or the effect produced. Evidence: the internal name or ` +
+  `call-sequence assertion, plus what the public interface offers instead. If the behaviour genuinely cannot be ` +
+  `reached through the public interface, say so — that is a missing-seam finding for the architecture dimension, ` +
+  `not a defect of the test.\n` +
+  `4. SUBSTITUTED DEPENDENCIES CONFIGURED ONLY TO SUCCEED — for each dependency the tests substitute, check whether ` +
+  `any test configures it to fail. Then read the production code's handling of that failure: where a failure branch ` +
+  `exists and no test drives the substitute into it, that branch is unexercised. Report the specific branch, with ` +
+  `the failure-handling code and the absence of any test configuring that outcome as evidence — never a general ` +
+  `complaint that the suite uses substitutes.\n` +
+  `5. TESTS THAT DISCARD THE OUTCOME THEY PRODUCED — a test that exercises the subject and then asserts nothing ` +
+  `about the result, or whose body absorbs any outcome so that success and failure end the test identically. ` +
+  `Evidence: the test body. This is the structural case ONLY. A test that does assert, but whose assertions are too ` +
+  `weak to distinguish correct behaviour from incorrect, cannot be established by reading — that is what the ` +
+  `test-tests mutation audit proves, and claiming it here without proof is exactly the false confidence this ` +
+  `dimension exists to find.\n` +
+  `6. INPUT CLASSES THE CODE ITSELF DISTINGUISHES BUT NO TEST SUPPLIES — for the most branch-dense subjects in ` +
+  `scope, enumerate the input classes the code's OWN branches and guards distinguish: the boundary each comparison ` +
+  `sits on, the empty or absent case each guard checks, the limit each bound enforces, the error each raise or ` +
+  `return-early answers. Then check which of those classes a test actually supplies. Report the classes the code ` +
+  `distinguishes and no test reaches. Evidence: the branch or guard, plus the absence of a test reaching it. This ` +
+  `check is bounded by the code's own structure — never invent an input class the code does not itself distinguish, ` +
+  `and never infer from coverage numbers you did not measure.\n` +
+  `7. TEST-SUITE MAINTENANCE LIABILITIES — observable properties only: fixture or setup data no test reads; setup ` +
+  `shared across tests that serves several unrelated purposes at once; the same setup duplicated across files ` +
+  `instead of shared; helpers a reader must trace through several layers to learn what a test actually asserts. ` +
+  `Evidence: the definition and its use sites, or their absence. Do not speculate about how long a newcomer would ` +
+  `take — report the property, not a predicted cost.\n\n` +
+  `BASELINE RULE: test code is production code for this dimension's purposes — the project's documented conventions ` +
+  `bind it too. A finding must name the specific test or subject; "the suite could use more tests" is not a finding.\n\n` +
+  `NOT THIS DIMENSION — ANYTHING THAT REQUIRES RUNNING THE SUITE. How long the suite takes, whether it is flaky, ` +
+  `whether a test actually detects an injected bug, and which lines coverage reaches are all measured by the ` +
+  `project-auto-work:test-tests audit. Do not estimate any of them from reading; if one is the real question, say ` +
+  `it belongs to that audit. Also not here: production-code module boundaries and missing seams (architecture ` +
+  `dimension); where test files physically live (structure dimension); test naming and casing conventions ` +
+  `(consistency dimension).`
+
 function buildDimensions(vocabFile) {
   return [
     { key: 'consistency', procedure: CONSISTENCY_PROCEDURE, schema: DIMENSION_SCHEMA },
     { key: 'structure', procedure: STRUCTURE_PROCEDURE, schema: STRUCTURE_SCHEMA },
     { key: 'architecture', procedure: architectureProcedure(vocabFile), schema: ARCHITECTURE_SCHEMA },
+    { key: 'tests', procedure: TESTS_PROCEDURE, schema: DIMENSION_SCHEMA },
   ]
 }
 
@@ -385,7 +453,7 @@ function dimensionPrompt(d, cfg) {
 
 // Which dimensions never came back. A dimension agent that dies returns null, and the
 // synthesis stage must be told so explicitly — otherwise it silently reports a verdict
-// on two dimensions as though it had reviewed three.
+// on three dimensions as though it had reviewed four.
 function missingDimensions(reviews, keys) {
   return keys.filter(k => !reviews.some(r => r && r.dimension === k))
 }
@@ -405,8 +473,8 @@ const ARTIFACT_FORMAT =
   `# Codebase review — <the repo's directory name>\n\n` +
   `One italic line giving the scope reviewed and whether the adversarial refutation pass ran.\n\n` +
   `## Verdict\n\n` +
-  `A table with columns Dimension | Verdict, one row each for consistency, structure and architecture, then a final ` +
-  `**Overall** row. Follow it with the headline as a short paragraph.\n\n` +
+  `A table with columns Dimension | Verdict, one row each for consistency, structure, architecture and tests, then a ` +
+  `final **Overall** row. Follow it with the headline as a short paragraph.\n\n` +
   `## Deepening candidates\n\n` +
   `Omit this section entirely when there are no candidates. Otherwise one \`###\` block per candidate, NUMBERED FROM ` +
   `1 in array order — the number is how the user selects it, so it must match architecture_candidates exactly:\n\n` +
@@ -426,8 +494,8 @@ const ARTIFACT_FORMAT =
   `since the raw Markdown has no stylesheet to distinguish the two border weights. Then tree_mermaid verbatim in a ` +
   `fenced mermaid block — again byte-for-byte.\n\n` +
   `## Findings\n\n` +
-  `Grouped under \`###\` by dimension in the order consistency, structure, architecture; skip a dimension with no ` +
-  `findings. Within a group order blocker → major → minor. One bullet per finding:\n` +
+  `Grouped under \`###\` by dimension in the order consistency, structure, architecture, tests; skip a dimension ` +
+  `with no findings. Within a group order blocker → major → minor. One bullet per finding:\n` +
   `- **\`<location>\`** — <severity>. <observation> **Evidence:** <evidence> **Why it matters:** <why_it_matters> ` +
   `**Fix:** <recommended_action>\n\n` +
   `The evidence is what makes a finding checkable rather than an assertion — never drop it from a bullet.\n\n` +

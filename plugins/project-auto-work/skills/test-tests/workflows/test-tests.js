@@ -1,10 +1,10 @@
 export const meta = {
   name: 'test-tests',
   description: 'Empirical test-suite strength audit: baseline → grouping → per-component mutation/no-op/rerun/delay probes → verify → synthesis',
-  whenToUse: 'Launched by the /project-auto-work:test-tests skill. Proves whether a test suite detects bugs (mutation kill rate), stays quiet on non-bugs, is flake-free, and runs fast. Reports and proposes; never keeps an edit.',
+  whenToUse: 'Launched by the /project-auto-work:test-tests skill. Proves whether a test suite detects bugs (mutation kill rate), stays quiet on non-bugs, is flake-free, runs fast, and reaches the code that carries risk. Reports and proposes; never keeps an edit.',
   phases: [
     { title: 'Baseline', detail: 'test command, clean run, coverage, workspace probe' },
-    { title: 'Grouping', detail: 'components: prod slice + tests + selector + churn' },
+    { title: 'Grouping', detail: 'components: prod slice + tests + selector + churn + uncovered risk' },
     { title: 'Hermeticity', detail: 'same slice twice in parallel — safe to parallelize?' },
     { title: 'Workers', detail: 'per component: reruns, mutants, no-ops, delays, integrity' },
     { title: 'Verify', detail: 'refute survivors as equivalent mutants (level=high|ultra only)' },
@@ -146,9 +146,12 @@ function baselineAbort(baseline, schemaRef) {
 // total mutants across AUDITED components; that is 0/0 whenever no audited component
 // carries a mutant, which includes a worker reporting audited=true with an empty mutants
 // array. Synthesis would still be asked for a verdict and the schema permits any of them,
-// so a confident one could be reported on no evidence. The other three axes can carry
-// findings even with no scoreable mutant and are real measurements, so only the case where
-// EVERY axis is empty aborts. Returns null when there is something to score.
+// so a confident one could be reported on no evidence. The other three WORKER axes can
+// carry findings even with no scoreable mutant and are real measurements, so the abort
+// fires only when all four are empty. Uncovered-risk is deliberately NOT counted here: it
+// comes from the grouping stage's coverage read, not from any worker, so a run where every
+// worker failed would otherwise look scoreable while no test was ever executed against a
+// mutation. Returns null when there is something to score.
 function scoreabilityAbort(workers) {
   const audited = workers.filter(w => w && w.audited)
   const mutants = audited.reduce((n, w) => n + ((w.mutants && w.mutants.length) || 0), 0)
@@ -179,10 +182,20 @@ function scoreabilityAbort(workers) {
 
 // Everything the audit did NOT measure, so the report can say so out loud instead of
 // letting a capped or skipped axis read as a clean one.
-function notCheckedList({ level, dial, baseline, components, workerResults, skippedComponents, mode }) {
+// `dial` is derived, not passed: it is always dialFor(level) at the call site, and taking
+// both admits a caller whose level and dials disagree — which would disclaim the wrong
+// set of skipped axes while naming the right level.
+function notCheckedList({ level, baseline, components, workerResults, skippedComponents, mode }) {
+  const dial = dialFor(level)
   return [
     ...skippedComponents.map(n => `component ${n} — beyond the level=${level} cap`),
     ...components.filter((c, i) => !workerResults[i]).map(c => `component ${c.name} — worker agent failed`),
+    // An empty uncovered_risk across every component is ambiguous — the grouping agent
+    // either judged the uncovered remainder harmless or never filled the field. Silence
+    // would read as the first; say it explicitly so a reader knows which they are looking at.
+    ...(components.some(c => c.uncovered_risk && c.uncovered_risk.length)
+      ? []
+      : ['uncovered-risk — no component reported risk-carrying uncovered code; unreviewed uncovered code cannot be ruled out']),
     ...(baseline.shuffle_flag ? [] : ['test-order shuffle — the runner has no native shuffle flag']),
     ...(dial.verify ? [] : ['equivalent-mutant verification — runs at level=high and level=ultra only; survivors are candidates']),
     ...(dial.hermeticity ? [] : ['hermeticity probe — skipped at level=low; workers were serialized instead']),
@@ -230,6 +243,23 @@ const BASELINE_SCHEMA = {
   required: ['test_cmd', 'green', 'wall_s', 'coverage', 'can_slice', 'worktree_ok', 'dirty_tree'],
 }
 
+// uncovered_risk rides along with the grouping because the grouping agent already holds
+// both inputs it needs — the normalized coverage summary and the component's production
+// slice — so ranking what is uncovered costs no extra agent. It is the one judgement the
+// mutation probes structurally cannot make: they mutate COVERED lines only, so code no
+// test reaches is invisible to every later phase. Without this the audit can report a
+// strong kill rate over the tested half of a component and say nothing about the other.
+const UNCOVERED_RISK_ITEMS = {
+  type: 'object',
+  properties: {
+    file: { type: 'string' },
+    lines: { type: 'string' },
+    behavior: { type: 'string' },
+    risk: { type: 'string' },
+  },
+  required: ['file', 'lines', 'behavior', 'risk'],
+}
+
 const COMPONENTS_SCHEMA = {
   type: 'object',
   properties: {
@@ -244,6 +274,7 @@ const COMPONENTS_SCHEMA = {
           est_runtime_s: { type: 'number' },
           coverage_pct: { type: 'number' },
           churn_rank: { type: 'integer' },
+          uncovered_risk: { type: 'array', items: UNCOVERED_RISK_ITEMS },
         },
         required: ['name', 'prod_paths', 'test_selector'],
       },
@@ -347,6 +378,7 @@ const REPORT_SCHEMA = {
         brittle_breaks: { type: 'integer' },
         flaky_tests: { type: 'integer' },
         timing_sensitive: { type: 'integer' },
+        uncovered_risks: { type: 'integer' },
         suite_wall_s: { type: 'number' },
       },
     },
@@ -355,7 +387,7 @@ const REPORT_SCHEMA = {
       items: {
         type: 'object',
         properties: {
-          axis: { type: 'string', enum: ['sensitivity', 'specificity', 'reliability', 'timing', 'speed', 'auditability'] },
+          axis: { type: 'string', enum: ['sensitivity', 'specificity', 'reliability', 'timing', 'speed', 'uncovered-risk', 'auditability'] },
           component: { type: 'string' },
           severity: { type: 'string', enum: ['blocker', 'major', 'minor'] },
           observation: { type: 'string' },
@@ -529,6 +561,15 @@ if (typeof agent === 'function') {
     `- coverage_pct: the component's aggregate line coverage computed from the per-file summary entries of its prod_paths — ` +
     `never totals.pct (the totals may include test helpers/fixtures and would skew the figure).\n` +
     `- churn_rank: 1 = most-churned. Compute from \`git -C ${repoRoot} log --since="6 months ago" --name-only --pretty=format:\` file-change counts aggregated per component.\n` +
+    `- uncovered_risk: the component's UNCOVERED code that carries real risk. Every later phase of this audit mutates ` +
+    `covered lines only, so code no test reaches is invisible to all of them — this field is the audit's only account ` +
+    `of it. Read the summary's uncovered_ranges for the component's prod_paths, then read that code and keep only the ` +
+    `ranges whose failure would matter: error and recovery handling, boundary and limit enforcement, ` +
+    `state transitions, anything guarding data loss or an external contract. Each entry: file (repo-relative), lines ` +
+    `(the uncovered range), behavior (what that code does, from reading it), risk (what reaches production undetected ` +
+    `while it stays untested). Rank most-serious first and cap at 5 per component. Skip trivia — generated code, ` +
+    `plain accessors, unreachable defensive branches — and return an empty array when the uncovered remainder is ` +
+    `genuinely low-risk. Judge only what you actually read; never infer risk from a coverage percentage alone.\n` +
     `Return the components list ordered by churn_rank (most-churned first), plus a short rationale.`,
     { label: 'grouping', phase: 'Grouping', schema: COMPONENTS_SCHEMA }
   )
@@ -781,7 +822,17 @@ if (typeof agent === 'function') {
 
   phase('Synthesis')
 
-  const notChecked = notCheckedList({ level, dial, baseline, components, workerResults, skippedComponents, mode })
+  const notChecked = notCheckedList({ level, baseline, components, workerResults, skippedComponents, mode })
+
+  // Uncovered risk is grouping-stage judgement, not a worker measurement, so it never
+  // reaches synthesis through the worker records. Scoped to the SELECTED components, not
+  // the audited ones: the evidence behind it is the baseline coverage run, which happened
+  // before any worker existed, so a component whose worker later died still has a valid
+  // account of what no test reaches. A component dropped by the level cap is excluded —
+  // nobody looked at it — and is already named in the not-checked list.
+  const uncoveredRisk = components
+    .filter(c => c.uncovered_risk && c.uncovered_risk.length)
+    .map(c => ({ component: c.name, uncovered_risk: c.uncovered_risk }))
 
   const report = await agent(
     `Assemble the final test-suite strength report for ${repoRoot}. Be adversarial and honest; a strong verdict must be earned.\n\n` +
@@ -789,21 +840,28 @@ if (typeof agent === 'function') {
     `${hermeticityNote ? 'HERMETICITY: ' + hermeticityNote + '\n' : ''}` +
     `BASELINE (measured): ${JSON.stringify({ test_cmd: baseline.test_cmd, wall_s: baseline.wall_s, coverage_pct: baseline.coverage.pct, shuffle_flag: baseline.shuffle_flag, dirty_tree: baseline.dirty_tree, slow_tests: baseline.slow_tests }, null, 2)}\n\n` +
     `PER-COMPONENT WORKER RECORDS${dial.verify ? ' (survivors already adversarially verified; refuted findings dropped, see notes)' : ''}:\n${JSON.stringify(workers, null, 2)}\n\n` +
+    `UNCOVERED RISK, per component selected for audit — risk-carrying production code the coverage run proved no test reaches. ` +
+    `Its evidence is the baseline coverage run, not the workers, so it holds for a component whose worker later failed. ` +
+    `Every mutation probe above ran on COVERED lines only, so none of this code was exercised by any of them:\n` +
+    `${JSON.stringify(uncoveredRisk, null, 2)}\n\n` +
     `NOT-CHECKED LIST (include verbatim, plus anything you notice is missing):\n${JSON.stringify(notChecked, null, 2)}\n\n` +
     `Build the report:\n` +
-    `1. scores: kill_rate = killed / total mutants across AUDITED components; brittle_breaks = no-ops that broke tests; flaky_tests = distinct flaky tests; timing_sensitive = distinct tests broken by delay injection; suite_wall_s = baseline wall.\n` +
-    `2. findings: one per proven weakness. axis: sensitivity (survived mutant), specificity (brittle break), reliability (flake), timing (test broken by delay injection), speed (slow suite/tests), auditability. ` +
+    `1. scores: kill_rate = killed / total mutants across AUDITED components; brittle_breaks = no-ops that broke tests; flaky_tests = distinct flaky tests; timing_sensitive = distinct tests broken by delay injection; uncovered_risks = entries in the UNCOVERED RISK block; suite_wall_s = baseline wall.\n` +
+    `2. findings: one per proven weakness. axis: sensitivity (survived mutant), specificity (brittle break), reliability (flake), timing (test broken by delay injection), speed (slow suite/tests), uncovered-risk, auditability. ` +
+    `uncovered-risk: one finding per UNCOVERED RISK entry, evidence = the file and uncovered line range plus what that code does, implication = the entry's risk statement, candidate=false — that no test reaches those lines is measured, and the entry states the judgement openly for the user to weigh. ` +
     `Each carries the concrete evidence (the diff or run-log excerpt), an implication stating what broken behavior would ship undetected or what the weakness costs, and candidate: ` +
     `${dial.verify
       ? 'false for verify-confirmed survivors and brittle breaks — EXCEPT items flagged verify_failed=true (their verify agent failed), which stay candidate=true; '
       : 'true for ALL survivors and brittle breaks (no verify pass ran); '}` +
     `delay-injection findings are ALWAYS candidate=true (a latency contract may be legitimate). Dedupe: the same weakness surfaced twice is ONE finding with the strongest evidence.\n` +
     `Severity rubric: blocker = a core behavior could be fully inverted/removed undetected or a test is proven vacuous; major = a meaningful branch, bound, or computation is unpinned, or a proven flake/brittle break; minor = a narrow edge case or an inefficiency. ` +
-    `Timing findings: major when multiple tests share the timing dependence, minor for an isolated test.\n` +
-    `3. proposals: concrete next actions — "add a test that kills this survivor in <file>:<line> (assert <behavior>)", "quarantine flaky test X", "split/exclude slow test Y". Each tied to its finding. No code, just the actions.\n` +
+    `Timing findings: major when multiple tests share the timing dependence, minor for an isolated test. ` +
+    `Uncovered-risk findings: blocker when a core behavior has no test at all, major when the untested code handles a failure, enforces a bound, or guards data, minor otherwise.\n` +
+    `3. proposals: concrete next actions — "add a test that kills this survivor in <file>:<line> (assert <behavior>)", "add a first test covering <file>:<lines> (assert <behavior>)", "quarantine flaky test X", "split/exclude slow test Y". Each tied to its finding. No code, just the actions.\n` +
     `4. components table: per component kill_rate, flakes, brittle, slice_wall_s, audited.\n` +
-    `5. checked: one compact prose line — components audited, mutants applied, no-ops, delays, reruns, coverage pct, mode.\n` +
-    `6. verdict: untrustworthy = baseline flaky enough to distrust results; strong = kill_rate >= 0.75 across audited components AND zero flakes AND zero brittle breaks AND suite < ~120 s — must be EARNED; weak = kill_rate low or vacuous tests proven; else adequate. ` +
+    `5. checked: one compact prose line — components audited, mutants applied, no-ops, delays, reruns, coverage pct, uncovered-risk entries reported, mode.\n` +
+    `6. verdict: untrustworthy = baseline flaky enough to distrust results; strong = kill_rate >= 0.75 across audited components AND zero flakes AND zero brittle breaks AND no blocker or major uncovered-risk finding AND suite < ~120 s — must be EARNED ` +
+    `(kill_rate is measured over covered lines only, so without the uncovered-risk conjunct a suite that tests a fraction of the code perfectly would score strong); weak = kill_rate low or vacuous tests proven; else adequate. ` +
     `Headline must not claim strength unless the verdict is strong.`,
     { label: 'synthesis', phase: 'Synthesis', schema: REPORT_SCHEMA, effort: 'high' }
   )

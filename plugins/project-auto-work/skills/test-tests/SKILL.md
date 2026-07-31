@@ -1,6 +1,6 @@
 ---
 name: test-tests
-description: "Empirical test-suite strength audit — proves whether the tests detect injected bugs (mutation kill rate), stay quiet on non-bugs, are flake-free under reruns/shuffle/delays, and run fast. Reports findings and proposals; never keeps an edit."
+description: "Empirical test-suite strength audit — proves whether the tests detect injected bugs (mutation kill rate), stay quiet on non-bugs, are flake-free under reruns/shuffle/delays, run fast, and reach the code that carries risk. Reports findings and proposals; never keeps an edit."
 user-invocable: true
 disable-model-invocation: true
 argument-hint: "[low|medium|high|ultra] [path]"
@@ -60,10 +60,11 @@ Nothing is ever committed, no test is written, nothing is installed.
    - `scriptPath`: `<SKILL_DIR>/workflows/test-tests.js`
    - `args`: `{ "repoRoot": "<path>", "scriptsDir": "<SKILL_DIR>/scripts", "level": "<level>", "scratchDir": "<the absolute path printed above>" }`
 
-   The workflow measures four axes — sensitivity (mutants must be killed),
+   The workflow measures five axes — sensitivity (mutants must be killed),
    specificity (no-op edits must not break tests), reliability (reruns, shuffle,
-   delay injection), speed — and aborts *with a remediation report* rather than
-   guessing. It aborts when:
+   delay injection), speed, and uncovered-risk (production code the coverage run
+   proved no test reaches, ranked by what its failure would cost) — and aborts
+   *with a remediation report* rather than guessing. It aborts when:
 
    - the suite is too slow to finish inside the cap
    - the suite is red
@@ -118,9 +119,10 @@ its own docs like the test command, that emits a coverage summary as JSON on std
 conforming to [`references/coverage-summary-schema.md`](references/coverage-summary-schema.md)
 (a `files` array of repo-relative path + covered/uncovered line ranges). The workflow
 runs it, validates the output with `scripts/validate-coverage-summary.py`, and mutates
-only covered lines. No conforming command → the audit aborts with a remediation report
-telling the user what command to add and how to document it. All format-specific work
-lives in the repo, never here.
+only covered lines — which is exactly why the uncovered remainder needs its own axis:
+no mutation probe ever touches it. No conforming command → the audit aborts with a
+remediation report telling the user what command to add and how to document it. All
+format-specific work lives in the repo, never here.
 
 ## Verdicts
 
@@ -130,10 +132,13 @@ computed by the workflow; relay them as returned. Below `high`, surviving mutant
 labeled `candidate: true` — possible equivalent mutants, presented with their diff,
 never as proof. Delay-injection findings are always candidates: a test failing under
 an added delay may be brittle or may encode a legitimate latency contract — the user
-decides.
+decides. Uncovered-risk findings are never candidates: that no test reaches those lines
+is measured, and each finding states its risk judgment openly for the user to weigh.
 
 ## Not covered
 
-Reading-based test-quality judgment (mock discipline, readability, what-matters
-reasoning) → `project-review-tests`. Writing or fixing tests → out of scope by
-design; the report's proposals name the missing tests, the user decides what to do.
+Test quality judgeable by reading — assertions that cannot vary, tests bound to
+internals, substitutes configured only to succeed, maintenance liabilities → the tests
+dimension of `project-review:project-review-codebase`. Writing or fixing tests → out of
+scope by design; the report's proposals name the missing tests, the user decides what to
+do.

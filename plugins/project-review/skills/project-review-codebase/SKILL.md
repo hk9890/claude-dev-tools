@@ -1,15 +1,20 @@
 ---
 name: project-review-codebase
-description: "Read-only codebase review across three dimensions — consistency, structure, architecture — via a multi-agent workflow that dedupes findings across dimensions and writes a standalone Markdown report with Mermaid diagrams; reports fixes, never edits."
+description: "Read-only codebase review across four dimensions — consistency, structure, architecture, tests — via a multi-agent workflow that dedupes findings across dimensions and writes a standalone Markdown report with Mermaid diagrams; reports fixes, never edits."
 user-invocable: true
 disable-model-invocation: true
 argument-hint: "[low|medium|high|ultra] [what-to-review]"
 ---
 
-Read-only codebase review across three dimensions — consistency, structure, and
-architecture. Launch the review workflow — do **not** review inline. The workflow
-returns a structured report plus a Markdown artifact; relay the report and write
-the artifact to a temp file.
+Read-only codebase review across four dimensions — consistency, structure,
+architecture, and tests. Launch the review workflow — do **not** review inline. The
+workflow returns a structured report plus a Markdown artifact; relay the report and
+write the artifact to a temp file.
+
+The tests dimension judges the tests by reading them. Anything that needs the suite to
+actually run — how long it takes, whether it is flaky, whether a test detects an
+injected bug, what coverage reaches — is measured by `/project-auto-work:test-tests`,
+not estimated here.
 
 ## Run the workflow
 
@@ -26,12 +31,12 @@ the artifact to a temp file.
    - `scriptPath`: `<SKILL_DIR>/workflows/review-codebase.js`
    - `args`: `{ "repoRoot": "<repo root, or the step-1 path>", "scope": "<the step-1 what-to-review, or empty>", "vocabFile": "<SKILL_DIR>/references/design-vocabulary.md", "level": "<the step-1 level>" }`
    - The workflow fans out one adversarial read-only agent per dimension
-     (consistency, structure, architecture), then a synthesis stage dedupes and
-     reconciles findings across dimensions. `ultra` is the only rung that changes
+     (consistency, structure, architecture, tests), then a synthesis stage dedupes
+     and reconciles findings across dimensions. `ultra` is the only rung that changes
      the run, adding an adversarial refutation gate every finding must pass before
      it is reported. `low`, `medium` and `high` are accepted so one depth token
      means the same thing across the audit skills, but they are **not** cheaper
-     here — all three run the same three opus dimension agents and the same
+     here — all three run the same four opus dimension agents and the same
      high-effort synthesis. If the user asked for `low` expecting a quick pass,
      say so before launching.
 
@@ -79,17 +84,19 @@ the artifact to a temp file.
    - **Keep it** — if they want it in the repo, they say where and you copy it.
      Do not pick a location or copy it unprompted.
 
-If the Workflow tool is unavailable or the workflow cannot launch, run the three
+If the Workflow tool is unavailable or the workflow cannot launch, run the four
 dimension procedures inline yourself — they are embedded in
 `workflows/review-codebase.js`, along with the artifact format; read them from
 there, produce the same Markdown file, and state that the workflow did not run.
 
 ## Not covered
 
-Documentation accuracy and staleness → `project-review-docs`; test quality →
-`project-review-tests`; pure formatting → linters. Challenging a single design
-decision interactively is `challenge:kiss` — the architecture dimension here is
-its audit-mode counterpart, not a replacement.
+Documentation accuracy and staleness → `project-review-docs`; empirical test-suite
+strength — mutation kill rate, flakiness, suite speed, coverage →
+`project-auto-work:test-tests`, which measures what this review can only read; pure
+formatting → linters. Challenging a single design decision interactively is
+`challenge:kiss` — the architecture dimension here is its audit-mode counterpart,
+not a replacement.
 
 **Implementing a candidate is not part of this skill.** Deepening candidates are
 proposals; the review never edits. If the user picks some ("implement 2 and 4"),

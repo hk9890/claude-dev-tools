@@ -20,6 +20,8 @@
 //   - scoreabilityAbort distinguishes "nobody finished" from "finished with nothing to
 //     score", and abstains when any axis carries a measurement
 //   - notCheckedList names every axis that did not run
+//   - the grouping stage's uncovered_risk reaches synthesis (no worker carries it, so a
+//     dropped hand-off would silently lose the audit's only account of untested code)
 //   - the bad-args bailout returns the diagnostic error object without spawning agents
 //   - a broken runtime (no agent hook) fails loudly instead of no-op
 
@@ -157,6 +159,17 @@ async function main() {
   eq('level: is case-insensitive', 'high',
     normalizeArgs({ repoRoot: '/r', scriptsDir: '/s', level: 'HIGH' }).level);
 
+  // Pin the table itself against literals. Every other dial assertion compares the
+  // subject's output to the subject's own table — `dialFor('ultra')` returns the very
+  // object `DIALS.high` is, so both sides move together and a one-character edit to any
+  // number here would change how many components are audited and how many mutants are
+  // injected while all of them still passed.
+  eq('dials: the documented rungs', {
+    low: { components: 3, K: 3, M: 0, D: 0, R: 2, hermeticity: false, verify: false },
+    medium: { components: 8, K: 5, M: 2, D: 1, R: 3, hermeticity: true, verify: false },
+    high: { components: 12, K: 8, M: 3, D: 2, R: 5, hermeticity: true, verify: true },
+  }, DIALS);
+
   eq('dials: low skips no-op and delay probes', [0, 0], [dialFor('low').M, dialFor('low').D]);
   eq('dials: low serializes workers rather than probing hermeticity', false, dialFor('low').hermeticity);
   eq('dials: the verify pass runs at high, not below',
@@ -256,7 +269,6 @@ async function main() {
   // ── notCheckedList ───────────────────────────────────────────────────────────
   const baseNotChecked = {
     level: 'low',
-    dial: DIALS.low,
     baseline: { ...healthyBaseline(), shuffle_flag: '', dirty_tree: true },
     components: [{ name: 'core' }],
     workerResults: [{ component: 'core' }],
@@ -276,17 +288,26 @@ async function main() {
   truthy('notCheckedList: warns that worktree mode audits HEAD, not the dirty tree',
     has('uncommitted working-tree changes'));
 
-  const highList = notCheckedList({
+  truthy('notCheckedList: silence about uncovered risk is disclaimed, not implied',
+    has('uncovered-risk'));
+
+  const fullHigh = {
     ...baseNotChecked,
     level: 'high',
-    dial: DIALS.high,
     baseline: healthyBaseline(),
+    components: [{ name: 'core', uncovered_risk: [{ file: 'a', lines: '1-2', behavior: 'b', risk: 'r' }] }],
     skippedComponents: [],
     mode: 'worktree',
-  });
-  eq('notCheckedList: a full high run with a shuffle flag has nothing to disclaim', [], highList);
+  };
+  eq('notCheckedList: a full high run with a shuffle flag has nothing to disclaim', [],
+    notCheckedList(fullHigh));
+  // An axis that produced no finding and an axis nobody looked at read identically in a
+  // report. Only the second belongs on the not-checked list, so the disclosure keys off
+  // whether the grouping stage filled the field at all.
+  eq('notCheckedList: a run whose components report no uncovered risk says so', 1,
+    notCheckedList({ ...fullHigh, components: [{ name: 'core', uncovered_risk: [] }] }).length);
   truthy('notCheckedList: a worker that died is named',
-    notCheckedList({ ...baseNotChecked, dial: DIALS.high, baseline: healthyBaseline(), skippedComponents: [], workerResults: [null] })
+    notCheckedList({ ...baseNotChecked, level: 'high', baseline: healthyBaseline(), skippedComponents: [], workerResults: [null] })
       .some((s) => s.includes('worker agent failed')));
 
   // ── bad-args bailout (orchestration) ─────────────────────────────────────────
@@ -311,16 +332,25 @@ async function main() {
       if (agentOver[opts.label]) return agentOver[opts.label];
       if (opts.label === 'baseline') return agentOver.baseline || healthyBaseline();
       if (opts.label === 'grouping') {
-        return { components: [{ name: 'core', prod_paths: ['src/a.js'], test_selector: 'make test' }] };
+        return {
+          components: [{
+            name: 'core', prod_paths: ['src/a.js'], test_selector: 'make test',
+            uncovered_risk: [{
+              file: 'src/a.js', lines: '40-58', behavior: 'retries the upstream call',
+              risk: 'a retry storm would ship undetected',
+            }],
+          }],
+        };
       }
       if (opts.label.startsWith('worker:')) {
+        if (agentOver.worker !== undefined) return agentOver.worker;
         return {
           component: 'core', audited: true, integrity_ok: true,
           mutants: [{ file: 'src/a.js', line: 1, diff: 'd', stated_behavior_change: 'b', outcome: 'SURVIVED' }],
           noops: [], delays: [], flakes: [],
         };
       }
-      if (opts.label.startsWith('verify-mutant:')) return { refuted: false };
+      if (opts.label.startsWith('verify-mutant:')) return agentOver.verifyMutant || { refuted: false };
       return { verdict: 'adequate', headline: 'h', findings: [], proposals: [], checked: 'c', not_checked: [] };
     };
     const { ret } = await load({
@@ -353,12 +383,65 @@ async function main() {
     deep.prompts.some((p) => p.includes('/repo')));
   truthy('orchestration: the scratch dir reaches the worker prompt',
     deep.prompts.some((p) => p.includes('/tmp/sc')));
+  // uncovered_risk is grouping-stage judgement, so it reaches the report ONLY through the
+  // synthesis prompt — no worker record carries it. Every mutation probe runs on covered
+  // lines, which makes this the audit's only account of code no test reaches: drop the
+  // hand-off and the report goes quiet about it while still reading as complete.
+  truthy('orchestration: the grouping stage\'s uncovered risk reaches synthesis',
+    deep.prompts.some((p) => p.includes('UNCOVERED RISK') && p.includes('retry storm')));
+  truthy('orchestration: the uncovered-risk block says the mutation probes never ran there',
+    deep.prompts.some((p) => /UNCOVERED RISK[\s\S]*COVERED lines only/.test(p)));
 
   const shallow = await runAudit({ level: 'medium' });
   eq('orchestration: below high nothing is verified',
     0, shallow.labels.filter((l) => l.startsWith('verify-mutant:')).length);
   eq('orchestration: the shallow run still reports', 'adequate',
     shallow.ret && shallow.ret.report && shallow.ret.report.verdict);
+
+  // The janitor is the ONLY code that restores a user's uncommitted work after a worker
+  // dies mid-mutation in live-tree mode. Both of its triggers — a worker that returns a
+  // record failing its integrity gate, and one that dies outright — were unreachable while
+  // the stub could only succeed, so a dropped await or a wrong backup index would have been
+  // invisible while every assertion still passed.
+  const brokenIntegrity = await runAudit({ level: 'medium' }, {
+    worker: {
+      component: 'core', audited: true, integrity_ok: false,
+      mutants: [{ file: 'src/a.js', line: 1, diff: 'd', stated_behavior_change: 'b', outcome: 'SURVIVED' }],
+      noops: [], delays: [], flakes: [],
+    },
+  });
+  eq('orchestration: a failed integrity gate summons the janitor',
+    1, brokenIntegrity.labels.filter((l) => l === 'janitor:core').length);
+  truthy('orchestration: the janitor is told which failure it is cleaning up',
+    brokenIntegrity.prompts.some((p) => /failed its integrity gate/.test(p)));
+
+  const deadWorker = await runAudit({ level: 'medium' }, { worker: null });
+  eq('orchestration: a dead worker summons the janitor',
+    1, deadWorker.labels.filter((l) => l === 'janitor:core').length);
+  truthy('orchestration: a dead worker aborts rather than scoring nothing',
+    deadWorker.ret && deadWorker.ret.aborted);
+
+  // Refutation is what separates high/ultra from medium, and its job is to REMOVE a
+  // finding. The all-survive stub proved only that verify agents were spawned: an inverted
+  // filter, or a drop applied to a copy, would keep every refuted mutant and stay green.
+  // The flake keeps another axis populated so the run reaches synthesis instead of tripping
+  // the scoreability gate once the only mutant is gone.
+  const dropped = await runAudit({ level: 'ultra' }, {
+    worker: {
+      component: 'core', audited: true, integrity_ok: true,
+      mutants: [{ file: 'src/a.js', line: 1, diff: 'd', stated_behavior_change: 'b', outcome: 'SURVIVED' }],
+      noops: [], delays: [], flakes: [{ test: 't', symptom: 's' }],
+    },
+    verifyMutant: { refuted: true, reason: 'equivalent' },
+  });
+  const droppedWorker = dropped.ret && dropped.ret.raw && dropped.ret.raw.workers[0];
+  eq('orchestration: a refuted mutant is removed from the worker record',
+    0, droppedWorker && droppedWorker.mutants.length);
+  truthy('orchestration: the drop is recorded in the worker notes with its reason',
+    droppedWorker && /dropped equivalent mutant src\/a\.js:1 — equivalent/.test(droppedWorker.notes || ''),
+    `got notes ${JSON.stringify(droppedWorker && droppedWorker.notes)}`);
+  truthy('orchestration: the run still reports once its only mutant is refuted',
+    dropped.ret && dropped.ret.report && !dropped.ret.aborted);
 
   // Each abort gate must produce a remediation report through the real pipeline, not crash.
   const redRun = await runAudit({ level: 'low' }, { baseline: { ...healthyBaseline(), green: false, red_details: 'test_x failed' } });

@@ -38,6 +38,9 @@ fixture_written() {
 }
 
 DIR=$(tmpdir) || { printf 'FAIL: mktemp -d unavailable — fixtures cannot be built\n'; exit 1; }
+# Every sibling suite cleans up its fixtures; without this each run leaves a directory of
+# them behind, which accumulates silently on a developer machine.
+trap 'rm -rf "$DIR"' EXIT
 
 # ---------------------------------------------------------------------------
 # Valid document → normalized summary

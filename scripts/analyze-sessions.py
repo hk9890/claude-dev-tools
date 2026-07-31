@@ -106,7 +106,7 @@ SKILL_RENAME_ALIASES = {
     "project-quality:project-review-complexity": "challenge:kiss",
     "project-quality:project-review-consistency": "project-review:project-review-codebase",
     "project-quality:project-review-structure": "project-review:project-review-codebase",
-    "project-quality:project-review-tests": "project-review:project-review-tests",
+    "project-quality:project-review-tests": "project-review:project-review-codebase",
     "project-quality:project-review-docs": "project-review:project-review-docs",
     # complexity-review plugin era (plugin later renamed; the skill now lives in challenge)
     "complexity-review:complexity-review": "challenge:kiss",
@@ -117,13 +117,19 @@ SKILL_RENAME_ALIASES = {
     "project-review:complexity-review": "challenge:kiss",
     "project-review:consistency-review": "project-review:project-review-codebase",
     "project-review:structure-review": "project-review:project-review-codebase",
-    "project-review:test-review": "project-review:project-review-tests",
-    "project-review:project-review-test": "project-review:project-review-tests",
+    "project-review:test-review": "project-review:project-review-codebase",
+    "project-review:project-review-test": "project-review:project-review-codebase",
     # consistency + structure merged into the single codebase review skill; their
     # episodes attribute to the successor (a merge is a rename with one live target,
     # unlike the removed project-review-all umbrella, which kept a retired name).
     "project-review:project-review-consistency": "project-review:project-review-codebase",
     "project-review:project-review-structure": "project-review:project-review-codebase",
+    # project-review-tests was retired: its reading-based checks became the codebase
+    # review's tests dimension, its one execution-based check was already covered by
+    # project-auto-work:test-tests. One live successor, so its episodes attribute there
+    # rather than keeping a retired name. Legal as a key only because the skill is gone —
+    # the rule above forbids keying on a name that is still live.
+    "project-review:project-review-tests": "project-review:project-review-codebase",
     # project-explore skill renamed (explore-project -> project-explore)
     "project-explore:explore-project": "project-explore:project-explore",
     # grill extracted from project-quality into its own standalone plugin, which was

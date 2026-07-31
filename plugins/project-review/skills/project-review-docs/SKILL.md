@@ -98,8 +98,9 @@ manifest is necessary, never sufficient.
 
 ## Not covered
 
-Codebase consistency, layout, and architecture → `project-review-codebase`;
-test quality → `project-review-tests`. Challenging a single design decision
+Codebase consistency, layout, architecture, and test quality →
+`project-review-codebase`; empirical test-suite strength →
+`project-auto-work:test-tests`. Challenging a single design decision
 interactively → `challenge:kiss`. **Writing or fixing the docs** — the file set,
 where a piece of content belongs, the worked examples →
 `instruction-writing:writing-project-docs`; this skill only audits what is there.

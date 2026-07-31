@@ -1,8 +1,10 @@
 # Reviewing
 
-Project-specific review rules. The generic review lenses (complexity, structure,
-consistency, tests, docs) are covered by the `project-review-*` skills — this file
-records only the local delta. Where it conflicts with a skill's default, this file wins.
+Project-specific review rules. The generic review lenses are covered by the
+`project-review-*` skills — `project-review-codebase` (consistency, structure,
+architecture and tests) and `project-review-docs` — with empirical test-suite strength
+measured separately by `project-auto-work:test-tests`. This file records only the local
+delta. Where it conflicts with a skill's default, this file wins.
 
 ## What to prioritise
 
