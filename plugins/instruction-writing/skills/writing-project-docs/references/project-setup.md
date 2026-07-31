@@ -36,10 +36,11 @@ docs/
 
 ## File ownership boundaries
 
-Each block states the file's **Audience** (who it serves), its **Inside** (what belongs) and its
-**Not inside** (what routes elsewhere). Content outside a file's boundary is a defect even when
-every statement in it is true — see *Ownership* in
-[project-doc-guidelines.md](project-doc-guidelines.md).
+Each block states the file's **Inside** (what belongs) and **Not inside** (what routes elsewhere),
+plus an **Audience** line naming who it serves and at which moment — or a **Purpose** line where
+that clarifies more. The two steering files whose content is fixed to a single line carry neither.
+Content outside a file's boundary is a defect even when every statement in it is true — see
+*Ownership* in [project-doc-guidelines.md](project-doc-guidelines.md).
 
 ### `CLAUDE.md`
 

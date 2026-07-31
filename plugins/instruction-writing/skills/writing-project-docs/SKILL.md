@@ -23,7 +23,8 @@ under discussion.
    canonical file set and every file's *Audience* / *Inside* / *Not inside* contract. Decide the
    destination before the wording; content that fails the contract moves to the file that owns it
    rather than getting softened to fit.
-2. **What does that file look like?** [`examples/`](examples/) holds a worked example of each one.
+2. **What does that file look like?** [`examples/`](examples/) holds a worked example of every file
+   with real structure (`CLAUDE.md`'s is its single `@AGENTS.md` line, fixed in the contract).
    Match its structure and register. `AGENTS.md` especially: `### <use case>` sections, each naming
    the doc that **MUST** be read and the action that triggers it — there are no optional routes.
    It routes; it never carries the procedure itself.
@@ -33,10 +34,10 @@ under discussion.
 
 ## Sediment
 
-Doc sets fail by **sediment**: layers that settle because adding feels safe and removing feels
-risky, until the routing file has become a handbook. Two of the guidelines carry that weight — a
-change is an *edit, not an append*, and `AGENTS.md` is the only place routing lives. Read both
-where they are defined, then hold them against every line you write.
+Doc sets fail by **sediment** — the failure mode the guidelines define, and the one every rule
+below the surface is guarding. Two things hold it off: a change is an *edit, not an append*, and
+`AGENTS.md` is the only place routing lives. Read both where they are defined, then hold them
+against every line you write.
 
 ## Done means
 

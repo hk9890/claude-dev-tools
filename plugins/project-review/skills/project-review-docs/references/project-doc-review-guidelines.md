@@ -1,6 +1,6 @@
 # Review Process & Rubric (Read-Only)
 
-The rubric for reviewing project docs: the rule codes to apply, the review
+The rubric for reviewing project docs: the rules to apply, the review
 contract, the stages, and the vocabulary the report uses.
 
 Use with the authoring standard this review measures against — the
@@ -10,7 +10,7 @@ Use with the authoring standard this review measures against — the
 - `references/project-doc-guidelines.md` — the named authoring rules + the failure modes
 - `examples/` — a worked example of every canonical file
 
-## Rule codes
+## Rules to cite
 
 - **Ownership** · **Local delta** · **Anchors** · **Economy** · **Obligation** — the authoring
   rules, defined in `project-doc-guidelines.md`; cite them by name. *Obligation* is judged on
@@ -27,7 +27,7 @@ Use with the authoring standard this review measures against — the
 
 ## The four stages (what the workflow does)
 
-1. **Manifest** — `scripts/manifest.py` emits the deterministic facts (files, present/missing canonical docs, line/word/byte counts, link + anchor resolution, reachability from `AGENTS.md`, the `CLAUDE.md` invariant, hollow docs, routes). Facts only; scripts never judge belonging or accuracy.
+1. **Manifest** — `scripts/manifest.py` emits the deterministic facts (files, present/missing canonical docs, line/word/byte counts, link + anchor resolution, reachability from `AGENTS.md`, the `CLAUDE.md` invariant, hollow docs, injected blocks, routes). Facts only; scripts never judge belonging or accuracy.
 2. **Read-review** — one agent per doc, each carrying only its own ownership contract. For every unit of content it asks *true?* (verify against the repo) and *belongs here?* (accurate-but-misplaced content is a finding — *Ownership*/R10), and judges the file as a whole against *Economy*. Non-standard docs are judged for placement (R11).
 3. **Execution test** — the docs are used, not just read. Per `AGENTS.md` route: a driver generates a task from the target doc and holds the answer key; a cold, uncoached action agent attempts it from `AGENTS.md` in the live repo; the driver grades the session against its key.
 4. **Synthesis** — merge, dedupe, and reconcile across files (sibling contradictions; a missing canonical doc whose content lives under a different name), then verdict + report.
