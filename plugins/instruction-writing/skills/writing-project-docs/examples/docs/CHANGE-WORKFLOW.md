@@ -20,6 +20,19 @@ Use the `commit-commands:commit` skill for the standard flow.
 3. One approval required before merge.
 4. Squash-merge; delete branch after merge.
 
+## Worktrees
+
+Work on a branch in a worktree whenever the main checkout holds changes you are not part of — it
+keeps that work untouched instead of carrying it onto your branch.
+
+**Create one with Claude Code's worktree tool, not `git worktree add`.** The tool places the tree
+under `.claude/worktrees/<name>`, branches it from the default branch, and moves the session into
+it; a hand-made worktree lands outside that layout and the session keeps running in the old
+directory, so edits go to the wrong tree.
+
+Once the branch is merged, remove the worktree and delete the branch — a stale worktree keeps its
+branch alive and `git worktree list` stops being a picture of what is in flight.
+
 ## CI — required checks
 
 The check list and how to run it locally are in [TESTING.md](TESTING.md); CI adds the Docker image

@@ -323,7 +323,7 @@ if (typeof agent === 'function') {
       `Metrics (from the deterministic manifest — do NOT recompute): ${m.lines} lines, ${m.words} words, ${m.non_heading_lines} content lines.\n` +
       `Links were already resolved by the manifest. Unresolved links in this file:\n${dead}\n\n` +
       `Read the FULL file now, then judge it. You see only THIS file and its contract — there is no doc set to satisfice against.\n` +
-      `\nApply the authoring rules — read ${guidelinesFile} once, all of it: rules A1–A12, the hard prohibitions, and the closing "What a good fix looks like" bar. The rules define the accuracy, belonging, and form bar for the file; the closing bar is what every fix you recommend must itself clear. Apply them alongside this file's contract.\n`
+      `\nApply the authoring rules — read ${guidelinesFile} once, all of it: the five named rules (Ownership, Local delta, Anchors, Economy, Obligation), the failure modes, and the closing bar a change must clear before it lands. The rules define the accuracy, belonging, and form bar for the file; the closing bar is what every fix you recommend must itself clear. Apply them alongside this file's contract.\n`
 
     if (f.contract) {
       const c = f.contract
@@ -334,8 +334,8 @@ if (typeof agent === 'function') {
         `  Not inside: ${c.not_inside || '(unspecified)'}\n\n` +
         `For EVERY unit of content — each claim, command, path, table, and section — ask two questions before moving on:\n` +
         `1. TRUE? Verify it against the repo with read-only grep/read (the referenced file/script/flag/command actually exists and matches). A false claim is an accuracy finding.\n` +
-        `2. BELONGS HERE? Is it inside this file's Inside boundary? Content that matches Not-inside is a BELONGING finding EVEN IF perfectly accurate (rule A10). Its fix routes the content to the owning file — never "keep it as a subsection here". A file that is largely the wrong genre is a blocker; a localized spill is major.\n\n` +
-        `Then judge the file as a whole against rule A11 (economy) — it spends ${m.lines} lines on what it says. A11 defines that bar; apply it from the rules file rather than from memory, and raise what fails it as a form finding naming the spans you would cut.\n\n` +
+        `2. BELONGS HERE? Is it inside this file's Inside boundary? Content that matches Not-inside is a BELONGING finding EVEN IF perfectly accurate (the Ownership rule). Its fix routes the content to the owning file — never "keep it as a subsection here". A file that is largely the wrong genre is a blocker; a localized spill is major.\n\n` +
+        `Then judge the file as a whole against the Economy rule — it spends ${m.lines} lines on what it says. That rule defines the bar; apply it from the rules file rather than from memory, and raise what fails it as a form finding naming the spans you would cut.\n\n` +
         `Do not run commands. Read-only. Return findings with concrete evidence (quote the offending lines / cite the repo fact). Empty findings array if the file is genuinely clean — do not invent problems.`
     }
     // Non-standard file: judge placement (does its content belong to a canonical topic?).

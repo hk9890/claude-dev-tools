@@ -14,7 +14,7 @@ boundaries** below):
 
 **Every `docs/` topic file is optional** — create one only when the repository has real
 local guidance for that topic. No topic doc is ever reported missing; the canonical names
-below are the names to *use* when you document a topic (R11), not a required set. Only the
+below are the names to *use* when you document a topic, not a required set. Only the
 root steering files (`README.md`, `AGENTS.md`, `CLAUDE.md`) are required.
 
 ## Canonical topic set
@@ -32,13 +32,14 @@ docs/
 ```
 
 - If a reusable skill fully covers a topic with no local delta, do not create a hollow doc for it.
-- A doc whose **content** is a canonical topic but sits under a **non-canonical name** (anywhere under `docs/` or at the repo root) is a finding (R11): rename it to the canonical name when that slot is empty, or link it from the canonical doc when the slot is filled. Content-driven — the review never invents a doc for an absent topic.
+- A doc whose **content** is a canonical topic but sits under a **non-canonical name** (anywhere under `docs/` or at the repo root) is a defect: rename it to the canonical name when that slot is empty, or link it from the canonical doc when the slot is filled. Content-driven — the review never invents a doc for an absent topic.
 
 ## File ownership boundaries
 
-Each block states the file's **Inside** (what belongs) and **Not inside** (what routes
-elsewhere), with an **Audience** or **Purpose** line where it clarifies. The review
-validates content against these (R10).
+Each block states the file's **Audience** (who it serves), its **Inside** (what belongs) and its
+**Not inside** (what routes elsewhere). Content outside a file's boundary is a defect even when
+every statement in it is true — see *Ownership* in
+[project-doc-guidelines.md](project-doc-guidelines.md).
 
 ### `CLAUDE.md`
 
@@ -69,40 +70,47 @@ validates content against these (R10).
 
 ### `AGENTS.md`
 
-- **Audience**: AI agents.
+- **Audience**: AI agents — the first file they read, and the one that sends them everywhere else.
+- **Stays small.** It routes and nothing else: a 2–3 sentence summary plus one entry per use case. Anything a route's destination could hold belongs in that destination. A routing file that grows procedures stops being scannable at the moment it is needed most — the first seconds of a task.
 - **Inside**: a 2–3 sentence project summary and task → doc/skill routes, every one of them an obligation.
 - **Not inside**: full procedures, README-style prose, content duplicated from the docs it routes to.
-- **No optional routes** (A12): a use case with a doc behind it reads `MUST read <doc> before <the action that triggers it>` — a release loads `RELEASING.md` first, touching a source file loads `CODING.md` first, searching the repo loads `OVERVIEW.md` first. A preamble states once that loading afterwards does not count. "Load X to understand Y" is advisory phrasing and is a finding.
+- **No optional routes** (*Obligation*): a use case with a doc behind it reads `MUST read <doc> before <the action that triggers it>` — a release loads `RELEASING.md` first, touching a source file loads `CODING.md` first, searching the repo loads `OVERVIEW.md` first. A preamble states once that loading afterwards does not count. "Load X to understand Y" is advisory phrasing and is a finding.
 - **Conformance** (checked against the example): one `###` section per use case, each naming the doc/skill to load, the action that triggers it, and a one-line reason; skip hollow entries; keep the summary to 2–3 sentences; route to installed skills by name when no local doc exists.
 - Example: [../examples/AGENTS.md](../examples/AGENTS.md)
 
 ### `docs/OVERVIEW.md`
 
+- **Audience**: AI agents — read before searching, so they find things in the repo quickly instead of grepping blind.
 - **Purpose**: a *findability map* — lets an agent locate things in and outside the repo without duplicating what the repo already contains.
+- **Stays small.** A map, not a survey: it points at where things live and how to search for them. Anything it describes in full is a second copy of the source, stale from the next rename.
 - **Inside**: high-level structure and architecture (not per-file detail); important external links; search expressions (`grep`/`rg`) for finding things.
-- **Not inside**: detailed package/file lists or domain model (those live in source), build/test commands, usage, and any re-listing of what `AGENTS.md` already routes to (A7).
+- **Not inside**: detailed package/file lists or domain model (those live in source), build/test commands, usage, and any re-listing of what `AGENTS.md` already routes to (*Ownership*).
 - Example: [../examples/docs/OVERVIEW.md](../examples/docs/OVERVIEW.md)
 
 ### `docs/CODING.md`
 
+- **Audience**: AI agents, when they create or change a file in the repo.
 - **Inside**: build commands and the coding rules/guidelines needed when modifying files — short, with examples pointing to real classes/files.
 - **Not inside**: end-user usage, release process, observability, PR/merge etiquette.
 - Example: [../examples/docs/CODING.md](../examples/docs/CODING.md)
 
 ### `docs/TESTING.md`
 
+- **Audience**: AI agents, before they commit and whenever they write a test.
 - **Inside**: test layers, commands, fixtures, minimum checks and CI gates; coverage targets and how to run with coverage; when integration tests are required; and how to write tests, with examples pointing to existing tests.
 - **Not inside**: driving the product (→`docs/RUNNING.md`), release steps, architecture.
 - Example: [../examples/docs/TESTING.md](../examples/docs/TESTING.md)
 
 ### `docs/RELEASING.md`
 
+- **Audience**: AI agents, when they cut a release or change what the project ships.
 - **Inside**: repo-specific release steps, triggers, entrypoints, and verification commands.
 - **Not inside**: routine build/test, end-user usage, architecture.
 - Example: [../examples/docs/RELEASING.md](../examples/docs/RELEASING.md)
 
 ### `docs/MONITORING.md`
 
+- **Audience**: AI agents, when they need evidence of what the running product already did.
 - **Inside**: how the agent accesses monitoring data (logs, spans, metrics, sessions, usage) and how to interpret it.
 - **Not inside**: driving the live product (→`docs/RUNNING.md`), test suites, architecture.
 - **Boundary vs `RUNNING.md`**: MONITORING inspects the evidence of what already happened; RUNNING drives the live product to make something happen. Bug reproduction is driven from `RUNNING.md`, which may pull MONITORING data as evidence.
@@ -110,20 +118,23 @@ validates content against these (R10).
 
 ### `docs/CHANGE-WORKFLOW.md`
 
+- **Audience**: AI agents, before any git operation — commit, branch, worktree, push, PR.
 - **Inside**: commit/branch/push/PR/review/merge expectations and pre-handoff gates.
 - **Not inside**: build/test command reference (→`docs/CODING.md`/`docs/TESTING.md`), usage, architecture.
 - Example: [../examples/docs/CHANGE-WORKFLOW.md](../examples/docs/CHANGE-WORKFLOW.md)
 
 ### `docs/REVIEWING.md`
 
-- **Inside**: repo-specific review priorities, must-check rules, and out-of-scope / non-blocking conventions — the **local delta** the generic `project-review-*` skills cannot know. State only what is local and link the skills (A4).
+- **Audience**: AI agents, when they review a PR or a diff.
+- **Inside**: repo-specific review priorities, must-check rules, and out-of-scope / non-blocking conventions — the **local delta** the generic `project-review-*` skills cannot know. State only what is local and link the skills (*Local delta*).
 - **Not inside**: generic review checklists (those live in the `project-review-*` skills), implementation rules.
 - **Precedence**: where local policy conflicts with a skill's default lens, the local rule wins.
 - Example: [../examples/docs/REVIEWING.md](../examples/docs/REVIEWING.md)
 
 ### `docs/RUNNING.md`
 
-- **Inside**: how the *agent* builds, starts, and drives the product by hand (start the webapp and inspect pages, run the CLI/TUI) to reproduce a bug or verify a change — the local delta (launch command, entrypoints, how to reach a state, where output lands). State only what is local and link the `run`/`verify` skills (A4).
+- **Audience**: AI agents, when they run the product by hand to reproduce a bug or verify a change.
+- **Inside**: how the *agent* builds, starts, and drives the product by hand (start the webapp and inspect pages, run the CLI/TUI) to reproduce a bug or verify a change — the local delta (launch command, entrypoints, how to reach a state, where output lands). State only what is local and link the `run`/`verify` skills (*Local delta*).
 - **Not inside**: automated test suites (→`docs/TESTING.md`), coding/implementation (→`docs/CODING.md`), log inspection (→`docs/MONITORING.md`).
 - **Precedence**: where a local instruction conflicts with the generic `run`/`verify` flow, the local instruction wins. (Boundary vs `MONITORING.md`: see that block.)
 - Example: [../examples/docs/RUNNING.md](../examples/docs/RUNNING.md)

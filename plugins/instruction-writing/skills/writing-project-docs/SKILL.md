@@ -25,16 +25,17 @@ under discussion.
    rather than getting softened to fit.
 2. **What does that file look like?** [`examples/`](examples/) holds a worked example of each one.
    Match its structure and register. `AGENTS.md` especially: `### <use case>` sections, each naming
-   the doc that **MUST** be read and the action that triggers it — there are no optional routes
-   (A12). It routes; it never carries the procedure itself.
+   the doc that **MUST** be read and the action that triggers it — there are no optional routes.
+   It routes; it never carries the procedure itself.
 3. **How is it written?** [`references/project-doc-guidelines.md`](references/project-doc-guidelines.md)
-   — authoring rules A1–A12, the hard prohibitions, and the bar any change must clear.
+   — the five named rules (*Ownership*, *Local delta*, *Anchors*, *Economy*, *Obligation*), the
+   failure modes, and the bar any change must clear before it lands.
 
 ## Sediment
 
 Doc sets fail by **sediment**: layers that settle because adding feels safe and removing feels
 risky, until the routing file has become a handbook. Two of the guidelines carry that weight — a
-change is an *edit, not an append*, and `AGENTS.md` is the *single routing surface* (A7). Read both
+change is an *edit, not an append*, and `AGENTS.md` is the only place routing lives. Read both
 where they are defined, then hold them against every line you write.
 
 ## Done means

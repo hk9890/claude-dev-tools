@@ -5,8 +5,7 @@
 Before cutting a release, verify all of the following:
 
 - [ ] All CI checks green on `main`
-- [ ] `make test-integration` passes locally against a clean DB (`make dev-db`)
-- [ ] Manual smoke test — launch and drive per [RUNNING.md](RUNNING.md), then delete what you created
+- [ ] The release checks pass — [TESTING.md § Checks required before a release](TESTING.md#checks-required-before-a-release)
 - [ ] No open issues tagged `release-blocker` for the target version
 - [ ] `CHANGELOG.md` updated with changes since last release
 

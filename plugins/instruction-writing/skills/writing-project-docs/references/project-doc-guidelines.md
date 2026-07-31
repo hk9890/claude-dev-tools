@@ -1,180 +1,117 @@
 # Project-Doc Authoring Guidelines
 
-Authoring standard for canonical project docs.
+A project doc exists so an agent can act correctly on this repository without re-deriving it.
+**Use** is the root virtue — a doc that is never loaded, or is loaded and skimmed past, has failed
+however true every sentence in it is. Every rule below serves being used.
 
-Use with:
+Which file a piece of content belongs to is fixed in [project-setup.md](project-setup.md), by each
+file's **Audience** and its *Inside* / *Not inside* boundary. This file is how to write once you are
+inside one.
 
-- [project-setup.md](project-setup.md) — the canonical file set and every file's ownership contract.
-- The review side of these rules — rule codes, stages, severities — is
-  `project-review:project-review-docs`, in its `references/project-doc-review-guidelines.md`.
+## Ownership
 
-## Authoring objectives
+Every fact has **one home**, decided on two axes — and content can satisfy one while failing the
+other:
 
-1. Keep docs actionable for this repository.
-2. Keep docs compact enough for selective loading (A11).
-3. Preserve strict topic boundaries.
-4. Avoid duplicating reusable baseline workflows already provided by installed skills.
+- **Topic** — what the fact is about.
+- **Audience** — who it serves. Two files can share a topic and differ by audience: `CODING.md`
+  instructs the agent about to change a file, `CONTRIBUTING.md` orients the human proposing a change.
 
-## Core rules
+Write into the file that owns the fact, not merely one where the statement is true. Accurate content
+in the wrong file is still a defect: the reader who loaded that file for its topic pays for it, and
+the reader who needed it never arrives.
 
-### A1 — Action-first writing
+**A second copy is worse than a wrong home.** Copies drift — one gets corrected, the other keeps
+being read, and nothing in either says which is stale. When two files could hold a fact, one keeps
+it and the other links; when a section here restates a section there, cut it and link. This binds
+hardest inside a single file, where the same rule restated two sections apart reads as two rules.
 
-Prefer:
+The homes most often got wrong:
 
-- commands
-- file paths
-- checklists
-- decision tables
+| Fact | Home |
+|---|---|
+| Routing — which doc to load for which task | `AGENTS.md`, alone. No topic doc re-lists the files, docs or skills it routes to, or restates its summary. Binds `OVERVIEW.md` hardest, which is next to it in subject. |
+| How a change lands — commit, branch, PR, merge, pre-handoff gates | `CHANGE-WORKFLOW.md` |
+| What a reviewer must check in this repo | `REVIEWING.md`, never scattered into `CODING.md` |
+| Driving the built product by hand | `RUNNING.md` — not `TESTING.md`, which owns the automated suites, and not `MONITORING.md`, which owns reading the evidence afterwards |
 
-### A2 — Repo-local anchors required
+## Local delta
 
-Every operational rule should include at least one local anchor:
+An installed skill already carries the generic flow. The doc adds only what the skill cannot know —
+this repository's commands, paths, exceptions, and which side wins when they disagree. Name the
+skill, then state the delta:
 
-- command
-- path
-- test location
-- workflow entrypoint
+> Use the `commit-commands:commit` skill for the standard flow.
+> **Local delta:** add a `Refs: <task-id>` line when a taskmgr task exists for the change.
 
-### A3 — Topic boundaries
+Restating the skill's own content costs load twice: once to read, and again when the skill changes
+and the copy does not.
 
-Each canonical file should stay on its assigned topic.
+## Anchors
 
-### A4 — Skill-aware local delta
+Every operational rule names something in this repository — a command, a path, a test location, an
+entrypoint. Advice that would hold in any repository is advice the model already has; it spends load
+and changes nothing:
 
-When a skill covers a generic workflow, local docs should only add repository-specific deltas.
+> **Instead of** "Always run tests before pushing to ensure code quality"
+> **write** "Run `make test` from the repo root before `git push`; CI enforces it in
+> `.github/workflows/ci.yml`."
 
-### A5 — Scanability
+Reach for a command, a path, a checklist, or a decision table before reaching for a paragraph. Point
+at a file rather than pasting it — a fifty-line script inline is a fifty-line maintenance liability
+that the file itself already holds. Paste only the invariant a reader cannot get by opening it.
 
-Structure a reader can skim (length itself is A11):
+## Economy
 
-- explicit headings
-- one idea per bullet
-- links over duplicated background
+Write for an agent reading under load, in the register of a command reference rather than narrative
+prose. Each section as short as its content allows; explicit headings; one idea per bullet; a link
+where background would otherwise be retold.
 
-### A6 — Canonical change-landing placement
+A file that spends more words than its content earns is defective on its own, independent of
+accuracy — it buries the procedure it exists to document, and the next reader skims past the line
+that mattered. Judge it by naming the spans you would cut, so the claim is falsifiable rather than a
+verdict on the file's feel.
 
-Change-landing guidance belongs in `CHANGE-WORKFLOW.md`.
+## Obligation
 
-### A7 — No duplication of AGENTS.md content
-
-`AGENTS.md` is the single routing surface: canonical `docs/` files MUST NOT re-list the
-files, directories, docs, or skills it routes to, nor restate its project summary or
-routing table — link to it instead. Binds `docs/OVERVIEW.md` in particular (describe
-structure and domain, not the routes `AGENTS.md` already declares).
-
-### A8 — Canonical review-guidance placement
-
-Project-specific review guidance (priorities, must-check rules, out-of-scope conventions)
-belongs in `REVIEWING.md`, not scattered into `CODING.md`/`CHANGE-WORKFLOW.md`. Like A4,
-state only the local delta and link the `project-review-*` skills, not a generic checklist.
-
-### A9 — Canonical product-operation placement
-
-How-to-operate-the-product guidance (launch the built artifact and drive it by hand to
-reproduce a bug or verify a fix) belongs in `RUNNING.md`, not `TESTING.md` (automated
-suites) or `MONITORING.md` (log/usage analysis). Like A4, state only the local delta and
-link the `run`/`verify` skills.
-
-### A10 — Audience/purpose fit
-
-Write content into the file whose **audience** it serves, not merely one where the
-statement is true. Misplaced content is a finding even when every statement is accurate —
-distinct from A3 (the *topic* axis): two files can share a topic yet differ by audience
-(`CODING.md` for the agent, `CONTRIBUTING.md` for a human). Each file's audience and
-*Inside* / *Not inside* boundary is fixed in [project-setup.md](project-setup.md)
-(**File ownership boundaries**); enforced on the review side by R10.
-
-### A11 — Economy
-
-Write for an agent reading under load: each section as short as its content allows, in the
-register of a command reference rather than narrative prose. A file spending more words than
-its content earns is a finding on its own, independent of accuracy — as is a hollow section
-kept for symmetry, or review-commentary and TODOs left in the body.
-
-An economy finding cites the specific spans it would cut, so the recommendation is
-falsifiable rather than a verdict on the file's feel. Severity tracks what the bloat costs a
-reader: a file whose length actively obscures the procedure it documents is `major`, not a
-housekeeping note.
-
-### A12 — Routes are obligations, not suggestions
-
-An `AGENTS.md` route exists because the doc behind it holds something the agent needs for that
-kind of work. State it that way: **`MUST read <doc> before <the action that triggers it>`** —
-cutting a release loads `RELEASING.md` first, touching a file in the source tree loads `CODING.md`
-first, searching the repository loads `OVERVIEW.md` first. There are no optional routes.
+An `AGENTS.md` route exists because the doc behind it holds something the agent needs for that kind
+of work. State it that way: **`MUST read <doc> before <the action that triggers it>`** — cutting a
+release loads `RELEASING.md` first, touching a file in the source tree loads `CODING.md` first,
+searching the repository loads `OVERVIEW.md` first. There are no optional routes.
 
 Two things make the obligation fire:
 
 - **Name the triggering action, not the topic.** "before you create or edit ANY file under `src/`"
   fires at a moment the agent can recognize; "for implementation guidance" does not.
-- **Say once, in a preamble, that loading afterwards does not count.** Otherwise a route is
-  satisfied retroactively by reading the doc after the work is done, which is not routing.
+- **Say once, in a preamble, that loading afterwards does not count.** Otherwise the route is
+  satisfied retroactively by reading the doc once the work is done, which is not routing.
 
-Advisory phrasing is a finding: "load X to understand Y", "see X for details", "consider reading
-X", "X may help". An agent under load reads those as skippable and skips them — the measured
-result is that the routed doc goes unopened while the work proceeds from guesswork.
+## Failure modes
 
-## Hard prohibitions
+Use these to diagnose a doc set that is not working.
 
-Canonical docs should avoid:
+- **Duplication** — the same fact in two files, or twice in one. Costs maintenance and tokens, and
+  inflates the fact's apparent importance. Pick the owner, cut the copy, link.
+- **Sediment** — layers that settle because adding feels safe and removing feels risky, until the
+  routing file has become a handbook. The default fate of any doc set without a pruning discipline.
+- **Advisory route** — "load X to understand Y", "see X for details", "consider reading X". An agent
+  under load reads these as skippable and skips them; the routed doc goes unopened while the work
+  proceeds from guesswork.
+- **Generic advice** — a rule with no anchor into this repository. It reads as content and behaves
+  as a no-op.
+- **Hollow doc** — a file whose content is a header plus "No rules yet", "TBD", or "Coming soon".
+  It costs a load and returns nothing, and it teaches the reader to distrust the set. Delete it;
+  create it when there is something to record.
+- **Injected block** — an external tool's `<!-- BEGIN <TOOL> -->` … `<!-- END <TOOL> -->` markers in
+  `CLAUDE.md` or `AGENTS.md`. Those two are hand-authored steering surfaces; a generated block
+  belongs in a topic doc under `docs/`, or in `.claude.local.md` when it is personal or transient.
+- **Left-behind commentary** — review notes, TODOs, and "we should probably…" in the body. Land the
+  decision or drop the line.
 
-- generic advice without local anchors
-- large pasted code blocks when a file pointer is enough
-- **auto-injected blocks** from external tools in `CLAUDE.md` or `AGENTS.md` — these files are hand-authored steering surfaces. Markers like `<!-- BEGIN <TOOL> -->` ... `<!-- END <TOOL> -->` belong in topic-specific docs under `docs/` (or, if the tool's content is truly transient/personal, in `.claude.local.md`). Detected by the reviewer's `manifest.py` (`injected_blocks`).
-- **stub / placeholder docs** — files whose only content is a header plus "No rules yet", "TBD", "Coming soon", or similar. Delete the file; create it lazily when there is real content to record. A hollow doc imposes a cognitive cost (readers load it, find nothing, and lose trust in the doc set) without any payoff.
+## Before you land the change
 
-## Concrete rewrites
-
-Side-by-side examples for the most common violations. Use these as templates when correcting drift.
-
-### Generic advice → repo-local anchor (A1/A2)
-
-**Bad** — generic, no anchors:
-
-> Always run tests before pushing to ensure code quality.
-
-**Good** — actionable, repo-local:
-
-> Run `make test` from repo root before `git push`. CI also enforces this via `.github/workflows/ci.yml`.
-
-### Duplicating skill content → local delta only (A4)
-
-**Bad** — restates what an installed skill already covers:
-
-> ## Commits
-> Use Conventional Commits format (`feat:`, `fix:`, `chore:`, ...). Subject line under 72 chars. Include a body explaining the why. Add `Signed-off-by:` line.
-
-**Good** — links to skill, adds only the local delta:
-
-> ## Commits
-> Use the `commit-commands:commit` skill for the standard flow.
-> **Local delta:** include `Refs: <task-id>` line when a taskmgr task exists for the change.
-
-### Wall of code → file pointer + invariant (A5/A11)
-
-**Bad** — 50-line script pasted inline.
-
-**Good** — pointer with the only thing a reader needs to know:
-
-> Release: run `scripts/release.sh <version>`. The script is idempotent — safe to re-run after a failed step. Failure-mode checklist in `[docs/RELEASING.md](docs/RELEASING.md)`.
-
-### Stub doc → deletion
-
-**Bad** — placeholder file kept for "structure":
-
-> # project-foo plugin — rules & design decisions
->
-> No rules or design decisions recorded yet.
-
-**Good** — delete the file. Re-create it (with real content) only when an actual rule or decision needs to be recorded.
-
-## What a good fix looks like
-
-A suggested fix should clear this bar before you recommend it (the auditor proposes, it never finalizes edits):
-
-1. Paths and commands referenced by the suggested fix are real.
-2. Linked files/anchors in the suggested fix resolve.
-3. Skill-backed sections in the suggested fix describe local deltas rather than duplicating full generic flow.
-4. The fix is an **edit, not an append** — it names what the new text replaces, or states why
-   nothing is superseded. Rounds of pure addition are each locally reasonable and leave the
-   doc set permanently longer.
+1. Every path and command you wrote is real, and every link and anchor resolves.
+2. A skill-backed section names the skill and states only the delta.
+3. The change is an **edit, not an append** — it names what the new text replaces, or says why
+   nothing is superseded. Rounds of pure addition are each locally reasonable and leave the doc set
+   permanently longer.
