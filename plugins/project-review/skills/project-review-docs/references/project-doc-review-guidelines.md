@@ -27,20 +27,29 @@ class of defect.
    from `AGENTS.md`, the `CLAUDE.md` invariant, hollow docs, location violations, injected
    tool-blocks, and the route list. Scripts do facts; agents do judgment — nothing here
    judges belonging or accuracy.
-2. **Read-review** — one agent per doc, each carrying only its own ownership contract and
-   seeing no sibling, so there is no doc set to satisfice against. For every unit of content
-   it asks *true?* and *belongs here?*; accurate-but-misplaced content is a finding under
-   *Ownership*. Non-standard docs are judged for canonical-topic placement instead of against
-   a boundary. `CLAUDE.md` is excluded here — the manifest checks its invariant mechanically
-   and synthesis raises it.
-3. **Execution** — the docs are used, not just read. Per `AGENTS.md` route: a driver generates
-   a task from the target doc and holds the answer key; a cold, uncoached action agent attempts
-   it from `AGENTS.md` in the live tree; the driver grades the trace against the key.
+2. **Read-review** — two legs, one agent each, none seeing a sibling, so there is no doc set
+   to satisfice against.
+   - *Per use case*: one agent per canonical topic doc that exists, framed as arriving to do
+     that work rather than to audit a file — can it actually code from `CODING.md`? A use
+     case whose doc is absent gets no agent, because the standard makes topic docs optional
+     and never reports one missing.
+   - *Per file*: `README.md` and `CONTRIBUTING.md` serve humans, `AGENTS.md` is the router
+     itself, and a non-standard doc is judged for canonical-topic placement. `CLAUDE.md` is
+     excluded — the manifest checks its invariant mechanically and synthesis raises it.
+
+   Both legs ask *true?* and *belongs here?* of every unit of content against the file's
+   ownership contract; accurate-but-misplaced content is a finding under *Ownership*.
+3. **History** — the docs were used or they were not, and past sessions say which.
+   `scripts/history.py` extracts the user messages of this repo's transcripts; a small model
+   labels each with a use case; the script then filters, stratifies, and projects; a judge
+   decides per use case whether the doc was opened, and opened before the first action of
+   that kind. Details below.
+4. **Execution** (`level=ultra` only) — the synthetic counterpart. Per `AGENTS.md` route: a
+   driver generates a task from the target doc and holds the answer key; a cold, uncoached
+   action agent attempts it in the live tree; the driver grades the trace against the key.
    Attribution to doc / agent / environment is the driver's core judgment — get it wrong and
    the stage either misses real bugs or cries wolf. Tier-C (destructive) tasks are classified
-   but never run.
-4. **Verify** (`level=ultra` only) — each read-review finding faces an agent told to refute it;
-   findings whose cited evidence does not hold up are dropped before synthesis.
+   but never run. Routes history could not evaluate are probed first.
 5. **Synthesis** — merge and dedupe, reconcile across files (sibling contradictions; a missing
    canonical doc whose content lives under another name), raise the mechanical facts no reading
    agent covered, then verdict and report.
@@ -53,9 +62,37 @@ Change them at the authoritative site. This table is the index, not the source.
 |---|---|
 | The six authoring rules, the failure modes | `instruction-writing:writing-project-docs`, loaded by each read-review agent |
 | Per-file ownership contract | `project-setup.md`, parsed by `manifest.py`, injected per agent |
-| Severity (`blocker` / `major` / `minor`) and the escalation rule | the common block of `readReviewPrompt` |
-| Execution verdicts | `GRADE_SCHEMA` and the stage-3 grader prompt |
+| Severity (`blocker` / `major` / `minor`) and the escalation rule | the `commonFrame` block in `review-docs.js` |
+| Use case → doc, and the classifier's label vocabulary | `USE_CASES` in `review-docs.js` and `USE_CASE_DOCS` in `history.py` — two copies, because workflow scripts cannot import; pinned by `test-history.sh` |
+| What each level buys | `LEVEL_CONFIG` in `review-docs.js` |
+| History finding floor | `MIN_SEGMENTS_FOR_FINDING` in `review-docs.js` |
+| Execution verdicts | `GRADE_SCHEMA` and the grader prompt |
 | Overall verdict (`accurate` / `minor gaps` / `significant gaps` / `misleading`) | `REPORT_SCHEMA` and the synthesis prompt |
+
+## The history stage
+
+The only stage that measures use rather than inferring it, and the only one that can be
+wrong in a way the others cannot: it is a **lagging indicator**. A session used the docs as
+they were that day, so every segment is filtered against how much its doc has changed since
+(`git log --numstat`, summed, over the doc's current length). Summing over-counts a line
+edited twice, which errs toward excluding — the safe direction for a filter that only has to
+be conservative. Rewrite a doc and its history goes quiet; that is correct.
+
+Two rules keep it honest:
+
+- **Attribution is by route wording.** A doc that gets skipped when its route is advisory is
+  a doc finding — the *Advisory route* failure mode, measured instead of guessed. A doc that
+  gets skipped when its route is a hard obligation naming the triggering action is an
+  observation about the agent, not a defect in the file. `AGENTS.md` is always in context and
+  never Read, so its absence from a transcript means nothing; the destination doc is the
+  entire signal.
+- **No evidence is never a finding.** Below the floor, or with no sessions at all, the stage
+  reports coverage and stops. A repository nobody has opened in Claude Code produces an empty
+  history stage and a complete audit.
+
+Intent is the one judgment the script never makes. `history.py` extracts user messages and a
+model labels them; nothing greps a prompt to guess what it was about, because a filter that
+decided intent would quietly decide the findings too.
 
 ## Read-only contract
 
@@ -65,11 +102,13 @@ user's separate step. The contract is **not** uniform across stages, deliberatel
 wording and exempts this workflow on those grounds.
 
 - **Read-review agents** run no commands at all. Reading only.
+- **History agents** read transcripts under `~/.claude/projects` and write only into the
+  scratch dir. They never touch the repository.
 - **The action agent** is a task-doer working in the live tree, so it audits uncommitted doc
   edits rather than `HEAD`. It may not create, modify, or delete any file in the repo, and may
   not change git state; a build or test run is allowed, and the untracked cache output it
   leaves behind is acceptable. Its one writable path is a trace file in the scratch dir,
   outside the repo.
-- **The scratch dir** is minted per run by `SKILL.md`. Trace filenames are deterministic and
-  the grader treats a trace as primary evidence, so two runs sharing a directory would grade
-  each other.
+- **The scratch dir** is minted per run by `SKILL.md` and holds both the history extracts and
+  the execution traces. Filenames are deterministic and the grader treats a trace as primary
+  evidence, so two runs sharing a directory would grade each other.

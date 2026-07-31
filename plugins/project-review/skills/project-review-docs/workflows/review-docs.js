@@ -1,12 +1,12 @@
 export const meta = {
   name: 'project-review-docs',
-  description: 'Read-only documentation audit: manifest → per-file read-review → execution test → synthesis',
-  whenToUse: 'Launched by the /project-review-docs skill. Audits a project\'s docs for accuracy, boundary/belonging, form, and whether an agent can actually use them.',
+  description: 'Read-only documentation audit: manifest → per-use-case read-review → history → execution test → synthesis',
+  whenToUse: 'Launched by the /project-review-docs skill. Audits a project\'s docs for accuracy, boundary/belonging, form, and whether agents actually use them.',
   phases: [
     { title: 'Manifest', detail: 'deterministic facts: files, metrics, links, routes' },
-    { title: 'Read-review', detail: 'one agent per doc — belongs? accurate? well-formed?' },
-    { title: 'Execution', detail: 'per AGENTS route: cold agent does a task, driver grades' },
-    { title: 'Verify', detail: 'adversarially refute each finding (level=ultra only)' },
+    { title: 'Read-review', detail: 'one agent per use case, plus the files that are not use cases' },
+    { title: 'History', detail: 'did past sessions open the doc their route points at?' },
+    { title: 'Execution', detail: 'per AGENTS route: cold agent does a task, driver grades (level=ultra)' },
     { title: 'Synthesis', detail: 'dedupe + cross-file reconciliation + report' },
   ],
 }
@@ -23,9 +23,35 @@ export const meta = {
 // at the next. Here it bundles the real thoroughness levers.
 const LEVELS = ['low', 'medium', 'high', 'ultra']
 
-// How many AGENTS routes the execution phase runs per level (-1 = all): low = read-review
-// only, medium = a few routes, high = every route, ultra = every route plus a verify pass.
-const LEVEL_ROUTES = { low: 0, medium: 3, high: -1, ultra: -1 }
+// Use case -> the doc AGENTS.md routes it to, and the work an agent arrives wanting to do.
+// Mirrors USE_CASE_DOCS in scripts/history.py, which owns the classifier's label
+// vocabulary. Workflow scripts cannot import shared code, so the two copies are pinned
+// against drift by tests/project-review/script-tests/test-history.sh.
+const USE_CASES = {
+  'searching': { doc: 'docs/OVERVIEW.md', work: 'find your way around the repository — locate code, understand the layout' },
+  'coding': { doc: 'docs/CODING.md', work: 'create or edit a file in the source tree' },
+  'testing': { doc: 'docs/TESTING.md', work: 'run or write tests, or judge whether a change is verified' },
+  'running': { doc: 'docs/RUNNING.md', work: 'launch the product by hand to reproduce a bug or verify a change' },
+  'change-workflow': { doc: 'docs/CHANGE-WORKFLOW.md', work: 'commit, branch, push, or open a PR' },
+  'reviewing': { doc: 'docs/REVIEWING.md', work: 'review a PR or a diff' },
+  'releasing': { doc: 'docs/RELEASING.md', work: 'cut a release' },
+  'monitoring': { doc: 'docs/MONITORING.md', work: 'read logs, traces, or usage data' },
+}
+
+// What each level buys. Read-review always runs — only its model changes, because a
+// rung that costs the same as the one above it is a lie the skill then has to explain.
+// History always runs; at low the sample is below the finding floor, so it reports
+// coverage only. Execution is ultra alone: it is roughly 3x everything else combined.
+const LEVEL_CONFIG = {
+  low: { reviewModel: 'sonnet', sessionLimit: 15, perUseCase: 1, historyFindings: false, execution: false },
+  medium: { reviewModel: 'opus', sessionLimit: 40, perUseCase: 3, historyFindings: true, execution: false },
+  high: { reviewModel: 'opus', sessionLimit: 0, perUseCase: 5, historyFindings: true, execution: false },
+  ultra: { reviewModel: 'opus', sessionLimit: 0, perUseCase: 5, historyFindings: true, execution: true },
+}
+
+// A single miss is not a pattern. Below this many valid segments a use case reports
+// coverage only — the floor that stops "no evidence" from being read as "bad doc".
+const MIN_SEGMENTS_FOR_FINDING = 3
 
 // Normalize the incoming `args` value into the audit's configuration, and reject an
 // unusable one here rather than several stages later.
@@ -54,7 +80,9 @@ function normalizeArgs(rawArgs) {
   // emit — would satisfy neither test and fall through to "run every route": the caller
   // asks for zero execution routes and instead gets one cold action agent per AGENTS.md
   // route running commands in the live repository.
-  let maxExec = LEVEL_ROUTES[level]
+  // Execution is a level switch now, not a route budget: ultra runs every route, every
+  // other rung runs none. maxExecutionRoutes stays as the manual override.
+  let maxExec = LEVEL_CONFIG[level].execution ? -1 : 0
   let maxExecError = null
   if (parsed.maxExecutionRoutes !== undefined && parsed.maxExecutionRoutes !== null) {
     const n = Number(parsed.maxExecutionRoutes)
@@ -110,6 +138,7 @@ function normalizeArgs(rawArgs) {
     guidelinesFile: standardDir + '/references/project-doc-guidelines.md',
     setupFile: standardDir + '/references/project-setup.md',
     level,
+    levelConfig: LEVEL_CONFIG[level],
     maxExec,
     scratchDir,
     // Echoed on a bail-out: naming the keys that actually arrived is what lets a caller
@@ -148,6 +177,58 @@ function selectFileRoutes(agentsRoutes, maxExec) {
   if (maxExec === 0) return { routes: [], total }
   if (maxExec > 0 && total > maxExec) return { routes: distinct.slice(0, maxExec), total }
   return { routes: distinct, total }
+}
+
+// Split the manifest's reviewable files into the two read-review legs.
+//
+// A use case is reviewed only when its doc exists: the standard makes every topic doc
+// optional and never reports one missing, so an absent doc is a choice rather than a gap.
+// Everything else keeps a per-file reviewer, because it is not a use case — README and
+// CONTRIBUTING serve humans rather than working agents, AGENTS.md is the router rather
+// than any route's destination, and a non-standard doc is judged for placement.
+function splitReviewTargets(manifestFiles) {
+  const files = (manifestFiles || []).filter(f =>
+    f && f.classification !== 'meta' &&
+    f.classification !== 'personal-local' &&
+    f.path !== 'CLAUDE.md') // mechanically checked in the manifest
+  const byPath = new Map(files.map(f => [f.path, f]))
+  const useCases = []
+  for (const name of Object.keys(USE_CASES)) {
+    const spec = USE_CASES[name]
+    const file = byPath.get(spec.doc)
+    if (file) useCases.push({ useCase: name, doc: spec.doc, work: spec.work, file })
+  }
+  const claimed = new Set(useCases.map(u => u.doc))
+  return { useCases, residual: files.filter(f => !claimed.has(f.path)) }
+}
+
+// Probe order for the execution stage: use cases history could not evaluate go first,
+// then those it saw skip the doc, then the rest. Uncapped this changes nothing, so it
+// costs nothing; capped it spends the expensive stage where there is no evidence yet.
+function orderRoutesByHistoryGap(routes, historyByDoc) {
+  const rank = (route) => {
+    const h = (historyByDoc || {})[route.target]
+    if (!h || !h.evaluated) return 0 // no behavioural evidence at all
+    if (h.missed) return 1           // evidence, and it showed the doc skipped
+    return 2                         // evidence, and it looked fine
+  }
+  return (routes || []).map((r, i) => ({ r, i }))
+    .sort((a, b) => rank(a.r) - rank(b.r) || a.i - b.i)
+    .map(x => x.r)
+}
+
+// Whether a use case's history evidence can carry a finding at all. Below the floor it
+// reports coverage only: one skipped read is an anecdote, and reporting it as a defect
+// is how this stage would start crying wolf.
+function historyFindingBar(entry, levelConfig) {
+  const valid = (entry && entry.coverage && entry.coverage.valid) || 0
+  if (!levelConfig || !levelConfig.historyFindings) {
+    return { canFind: false, valid, reason: 'coverage-only at this level' }
+  }
+  if (valid < MIN_SEGMENTS_FOR_FINDING) {
+    return { canFind: false, valid, reason: `${valid} valid segment(s); floor is ${MIN_SEGMENTS_FOR_FINDING}` }
+  }
+  return { canFind: true, valid, reason: `${valid} valid segments` }
 }
 
 // ---------------------------------------------------------------------------
@@ -250,20 +331,50 @@ const REPORT_SCHEMA = {
   required: ['verdict', 'headline', 'findings'],
 }
 
-const VERIFY_SCHEMA = {
+// The classifier writes its labels to a file rather than returning them: history.py
+// reads them back, and a few thousand label rows do not belong on a command line. It
+// still returns counts so an empty or failed classification is visible in the log
+// instead of surfacing later as "no sessions had evidence".
+const LABEL_WRITE_SCHEMA = {
   type: 'object',
   properties: {
-    refuted: { type: 'boolean' },
-    reason: { type: 'string' },
+    labels_file: { type: 'string' },
+    sessions_labelled: { type: 'integer' },
+    messages_labelled: { type: 'integer' },
+    notes: { type: 'string' },
   },
-  required: ['refuted'],
+  required: ['labels_file', 'sessions_labelled'],
+}
+
+const HISTORY_SCHEMA = {
+  type: 'object',
+  properties: {
+    use_case: { type: 'string' },
+    doc: { type: 'string' },
+    segments_judged: { type: 'integer' },
+    routed: { type: 'integer' },
+    late: { type: 'integer' },
+    missed: { type: 'integer' },
+    not_applicable: { type: 'integer' },
+    route_wording: { type: 'string', enum: ['obligation', 'advisory', 'absent'] },
+    attribution: { type: 'string', enum: ['doc', 'agent', 'insufficient-evidence', 'none'] },
+    severity: { type: 'string', enum: ['none', 'minor', 'major', 'blocker'] },
+    finding: { type: 'string' },
+    evidence: { type: 'string' },
+  },
+  required: ['use_case', 'doc', 'segments_judged', 'routed', 'late', 'missed',
+             'route_wording', 'attribution', 'severity'],
 }
 
 // Expose the pure helpers to any module loader (the Node unit tests in
 // tests/project-review/script-tests use this). Assigned before the orchestration below so
 // it is reached whichever path that takes.
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { normalizeArgs, parseManifest, selectFileRoutes, LEVELS, LEVEL_ROUTES }
+  module.exports = {
+    normalizeArgs, parseManifest, selectFileRoutes, splitReviewTargets,
+    orderRoutesByHistoryGap, historyFindingBar,
+    LEVELS, LEVEL_CONFIG, USE_CASES, MIN_SEGMENTS_FOR_FINDING,
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -281,7 +392,7 @@ if (typeof agent === 'function') {
     return { error: cfg.error, got: { type: typeof args, keys: cfg.receivedKeys, repoRoot: cfg.repoRoot } }
   }
 
-  const { repoRoot, scriptsDir, guidelinesFile, setupFile, level, maxExec, scratchDir } = cfg
+  const { repoRoot, scriptsDir, guidelinesFile, setupFile, level, levelConfig, maxExec, scratchDir } = cfg
 
   // ── Manifest (deterministic facts)
 
@@ -308,22 +419,24 @@ if (typeof agent === 'function') {
 
   phase('Read-review')
 
-  const reviewFiles = manifest.files.filter(f =>
-    f.classification !== 'meta' &&
-    f.classification !== 'personal-local' &&
-    f.path !== 'CLAUDE.md' // mechanically checked in the manifest
-  )
+  // The route's own wording, keyed by destination — the use-case agent is judging
+  // whether that route delivers it to a doc it can work from.
+  const routeText = {}
+  for (const r of (manifest.agents_routes || [])) {
+    if (r && r.target && !routeText[r.target]) routeText[r.target] = r.text || ''
+  }
 
-  const readReviewPrompt = (f) => {
+  const { useCases, residual } = splitReviewTargets(manifest.files)
+
+  // Shared preamble: the deterministic metrics, the authoring rules, and the severity
+  // bar. Every read-review agent gets exactly this, whichever leg it belongs to.
+  const commonFrame = (f) => {
     const m = f.metrics || {}
     const dead = (f.unresolved_links || []).map(l => `  - L${l.line} ${l.ref} (${l.reason})`).join('\n') || '  (none)'
-    const common =
-      `Repo root: ${repoRoot}\n` +
-      `You are auditing ONE documentation file: ${f.path}\n` +
-      `Metrics (from the deterministic manifest — do NOT recompute): ${m.lines} lines, ${m.words} words, ${m.non_heading_lines} content lines.\n` +
-      `Links were already resolved by the manifest. Unresolved links in this file:\n${dead}\n\n` +
-      `Read the FULL file now, then judge it. You see only THIS file and its contract — there is no doc set to satisfice against.\n` +
-      `\nApply the authoring rules — read ${guidelinesFile} once, all of it: the six named rules (Ownership, Local delta, Anchors, Command register, Economy, Obligation), the failure modes, and the closing bar a change must clear before it lands. The rules define the accuracy, belonging, and form bar for the file; the closing bar is what every fix you recommend must itself clear. Apply them alongside this file's contract.\n` +
+    return `Repo root: ${repoRoot}\n` +
+      `Metrics for ${f.path} (from the deterministic manifest — do NOT recompute): ${m.lines} lines, ${m.words} words, ${m.non_heading_lines} content lines.\n` +
+      `Links were already resolved by the manifest. Unresolved links in this file:\n${dead}\n` +
+      `\nApply the authoring rules — read ${guidelinesFile} once, all of it: the six named rules (Ownership, Local delta, Anchors, Command register, Economy, Obligation), the failure modes, and the closing bar a change must clear before it lands. The rules define the accuracy, belonging, and form bar for the file; the closing bar is what every fix you recommend must itself clear.\n` +
       // Severity is a required enum on every finding, so leaving the bar unstated does not
       // produce fewer severities — it produces severities assigned from the model's priors,
       // which vary run to run. This is the whole rubric; it has no other home the agent reads.
@@ -332,22 +445,49 @@ if (typeof agent === 'function') {
       `  major:   a real scope, actionability, or belonging gap (a localized out-of-boundary spill, a stale command, a routing gap), or bloat heavy enough to obscure the procedure the file exists to document.\n` +
       `  minor:   clarity, scanability, and economy defects a reader absorbs without being misled.\n` +
       `Raise one level when the defect directly breaks a real workflow — a stale command in RELEASING.md is a blocker, not a minor. Judge Economy by what the bloat costs a reader rather than by line count, and treat minor as its floor, not its ceiling.\n`
+  }
 
-    if (f.contract) {
-      const c = f.contract
-      return common +
-        `\nThis file's ownership contract (the bar for "belongs here"):\n` +
-        `  Audience: ${c.audience || '(unspecified)'}\n` +
-        `  Inside:   ${c.inside || '(unspecified)'}\n` +
-        `  Not inside: ${c.not_inside || '(unspecified)'}\n\n` +
-        `For EVERY unit of content — each claim, command, path, table, and section — ask two questions before moving on:\n` +
-        `1. TRUE? Verify it against the repo with read-only grep/read (the referenced file/script/flag/command actually exists and matches). A false claim is an accuracy finding.\n` +
-        `2. BELONGS HERE? Is it inside this file's Inside boundary? Content that matches Not-inside is a BELONGING finding EVEN IF perfectly accurate (the Ownership rule). Its fix routes the content to the owning file — never "keep it as a subsection here".\n\n` +
-        `Then judge the file as a whole against the Economy rule — it spends ${m.lines} lines on what it says. That rule defines the bar; apply it from the rules file rather than from memory, and raise what fails it as a form finding naming the spans you would cut.\n\n` +
-        `Do not run commands. Read-only. Return findings with concrete evidence (quote the offending lines / cite the repo fact). Empty findings array if the file is genuinely clean — do not invent problems.`
+  // The per-unit accuracy and belonging pass, shared by any file that has a contract.
+  const contractBlock = (f) => {
+    const c = f.contract || {}
+    return `\nThis file's ownership contract (the bar for "belongs here"):\n` +
+      `  Audience: ${c.audience || '(unspecified)'}\n` +
+      `  Inside:   ${c.inside || '(unspecified)'}\n` +
+      `  Not inside: ${c.not_inside || '(unspecified)'}\n\n` +
+      `For EVERY unit of content — each claim, command, path, table, and section — ask two questions before moving on:\n` +
+      `1. TRUE? Verify it against the repo with read-only grep/read (the referenced file/script/flag/command actually exists and matches). A false claim is an accuracy finding.\n` +
+      `2. BELONGS HERE? Is it inside this file's Inside boundary? Content that matches Not-inside is a BELONGING finding EVEN IF perfectly accurate (the Ownership rule). Its fix routes the content to the owning file — never "keep it as a subsection here".\n\n` +
+      `Then judge the file as a whole against the Economy rule — it spends ${(f.metrics || {}).lines} lines on what it says. Apply that rule from the rules file rather than from memory, and raise what fails it as a form finding naming the spans you would cut.\n`
+  }
+
+  // Leg 1 — one agent per use case. It arrives wanting to do the work, not to audit a
+  // file: the doc has to carry it through the task, and a doc that reads well but leaves
+  // the work undoable is the defect this framing catches and a file audit does not.
+  const useCasePrompt = (uc) => commonFrame(uc.file) +
+    `\nYou are here to ${uc.work}. That is the task; ${uc.doc} is where AGENTS.md sends you for it.\n` +
+    `AGENTS.md is always in the agent's context, so treat its route as already read. Its wording for this route is:\n  ${routeText[uc.doc] ? JSON.stringify(routeText[uc.doc]) : '(no route to this doc found in AGENTS.md)'}\n\n` +
+    `Read ${uc.doc} in full, then judge it from that seat:\n` +
+    `A. COULD YOU DO THE WORK? Walk the task through the doc. Name every point where you would have to guess, leave the doc, or already know something it never states. A gap that stops the work is a blocker; one that slows it is major.\n` +
+    `B. Does the route above actually deliver you here at the right moment? A route that names a topic rather than a triggering action, or reads as optional, is an Obligation finding against AGENTS.md — report it with routes_to "AGENTS.md".\n` +
+    contractBlock(uc.file) +
+    `\nDo not run commands. Read-only. Return findings with concrete evidence (quote the offending lines / cite the repo fact). Empty findings array if the doc genuinely carries the work — do not invent problems.`
+
+  // Leg 2 — the files that are not use cases. README and CONTRIBUTING serve humans,
+  // AGENTS.md is the router itself, and a non-standard doc is judged for placement.
+  const residualPrompt = (f) => {
+    const frame = commonFrame(f) +
+      `\nYou are auditing ONE documentation file: ${f.path}. You see only this file and its contract — there is no doc set to satisfice against. Read the FULL file now, then judge it.\n`
+    if (f.path === 'AGENTS.md') {
+      return frame +
+        `\nThis is the routing layer. Judge it as a router: every route an obligation naming the triggering action (the Obligation rule), no procedure that belongs in a destination, and short enough to scan in the first seconds of a task.\n` +
+        contractBlock(f) +
+        `\nDo not run commands. Read-only. Return findings with concrete evidence. Empty array if it is genuinely clean.`
     }
-    // Non-standard file: judge placement (does its content belong to a canonical topic?).
-    return common +
+    if (f.contract) {
+      return frame + contractBlock(f) +
+        `\nDo not run commands. Read-only. Return findings with concrete evidence (quote the offending lines / cite the repo fact). Empty findings array if the file is genuinely clean — do not invent problems.`
+    }
+    return frame +
       `\nThis is a NON-STANDARD doc (not one of the canonical files). Judge placement, not an ownership boundary:\n` +
       `- Does its content actually BELONG to a canonical topic (OVERVIEW / CODING / TESTING / RELEASING / MONITORING / CHANGE-WORKFLOW / RUNNING / REVIEWING / README / CONTRIBUTING)? If so, it is a placement finding: recommend RENAME to docs/<TOPIC>.md when that canonical slot is empty (missing canonical: ${JSON.stringify(manifest.missing_canonical)}), or LINK it from the canonical doc when that slot is filled.\n` +
       `- If it maps to no canonical topic, it is legitimately project-specific — no finding.\n` +
@@ -355,25 +495,137 @@ if (typeof agent === 'function') {
       `Read the full file, decide which case applies, and return findings (category 'placement' or 'hollow' or 'other') with evidence. Empty array if it is fine as-is. Read-only.`
   }
 
+  const reviewJobs = [
+    ...useCases.map(uc => ({ label: `use-case:${uc.useCase}`, prompt: useCasePrompt(uc) })),
+    ...residual.map(f => ({ label: `read:${f.path}`, prompt: residualPrompt(f) })),
+  ]
+
   const reviewResults = await parallel(
-    reviewFiles.map(f => () =>
-      agent(readReviewPrompt(f), {
-        label: `read:${f.path}`,
+    reviewJobs.map(job => () =>
+      agent(job.prompt, {
+        label: job.label,
         phase: 'Read-review',
-        model: 'opus',
+        model: levelConfig.reviewModel,
         schema: FINDINGS_SCHEMA,
       })
     )
   )
   const readFindings = reviewResults.filter(Boolean)
   const readFindingCount = readFindings.reduce((n, r) => n + (r.findings ? r.findings.length : 0), 0)
-  log(`Read-review: ${readFindings.length}/${reviewFiles.length} docs reviewed, ${readFindingCount} raw findings`)
+  log(`Read-review: ${useCases.length} use case(s) + ${residual.length} other file(s), ` +
+      `${readFindings.length}/${reviewJobs.length} returned, ${readFindingCount} raw findings (${levelConfig.reviewModel})`)
+
+  // ── History: did past sessions in this repo actually open the doc they were routed to?
+  //
+  // The synthetic probe below asks whether the docs *can* be used. This asks whether they
+  // *were* — real evidence, at the cost of being a lagging indicator, which is why every
+  // segment is filtered against how much its doc has changed since.
+
+  phase('History')
+
+  const historyDir = `${scratchDir}/history`
+  const prompts = await agent(
+    `Run this exact command and return ONLY its raw stdout — no prose, no markdown fences:\n\n` +
+    `python3 "${scriptsDir}/history.py" prompts "${repoRoot}" --out "${historyDir}" --limit ${levelConfig.sessionLimit}\n\n` +
+    `Return the JSON exactly as printed.`,
+    { label: 'history:extract', phase: 'History', model: 'haiku', effort: 'low' }
+  )
+
+  let promptIndex = null
+  try {
+    promptIndex = parseManifest(prompts)
+  } catch (e) {
+    log('History: could not parse the prompt index — skipping the stage. ' + String(e))
+  }
+
+  let historyEntries = []
+  let historySummary = null
+  const batches = (promptIndex && promptIndex.batches) || []
+
+  if (!promptIndex) {
+    // already logged
+  } else if (!batches.length) {
+    log(`History: no session transcripts for this repository (${promptIndex.projects_dir}) — stage skipped.`)
+  } else {
+    // Classify: one agent per batch, labelling user messages only. Intent is judgment,
+    // so no script decides it; the agent writes labels back for history.py to read.
+    const labelWrites = await parallel(batches.map((b, i) => () =>
+      agent(
+        `Read ${b.file}. It holds ${b.sessions} Claude Code session(s) from one repository, each with its user messages in order.\n\n` +
+        `Label EVERY message with the kind of work the user was asking for, using exactly one of:\n` +
+        Object.keys(USE_CASES).map(u => `  ${u} — ${USE_CASES[u].work}`).join('\n') + `\n  none — anything else (chat, planning, an unrelated topic)\n\n` +
+        `Judge intent from the text. A follow-up like "ok do that" or "now fix it" carries no topic of its own — read it in sequence and give it the label of the work it continues. Label "none" only when the message genuinely starts no work of these kinds.\n\n` +
+        `Write the result to ${b.labels_file} as JSON, exactly this shape:\n` +
+        `{"sessions":[{"session_id":"<id from the input>","labels":[{"turn":<the message's turn number>,"use_case":"<label>"}]}]}\n` +
+        `Include every session in the input and every message's turn number unchanged. Then return the file path and the counts.`,
+        { label: `history:label-${i + 1}`, phase: 'History', model: 'haiku', schema: LABEL_WRITE_SCHEMA }
+      )
+    ))
+    const labelled = labelWrites.filter(Boolean)
+    log(`History: ${labelled.length}/${batches.length} batch(es) classified, ` +
+        `${labelled.reduce((n, r) => n + (r.sessions_labelled || 0), 0)} session(s) labelled`)
+
+    // Filter, stratify, and project — all mechanical, so no agent judges any of it.
+    const evidenceText = await agent(
+      `Run this exact command and return ONLY its raw stdout — no prose, no markdown fences:\n\n` +
+      `python3 "${scriptsDir}/history.py" evidence "${repoRoot}" --scratch "${historyDir}" --per-use-case ${levelConfig.perUseCase}\n\n` +
+      `Return the JSON exactly as printed.`,
+      { label: 'history:evidence', phase: 'History', model: 'haiku', effort: 'low' }
+    )
+    try {
+      historySummary = parseManifest(evidenceText)
+    } catch (e) {
+      log('History: could not parse the evidence summary — no history findings this run. ' + String(e))
+    }
+
+    if (historySummary) {
+      const coverage = historySummary.coverage || {}
+      // Guard on USE_CASES: the judge prompt dereferences USE_CASES[u].doc, so a key the
+      // script emitted but this table does not know would throw mid-stage.
+      const judgeable = Object.keys(coverage).filter(u => USE_CASES[u] && (coverage[u].valid || 0) > 0)
+      log(`History: ${judgeable.length}/${Object.keys(coverage).length} use case(s) have valid evidence` +
+          ` (floor for a finding is ${MIN_SEGMENTS_FOR_FINDING} segments)`)
+
+      historyEntries = (await parallel(judgeable.map(useCase => () => {
+        const doc = USE_CASES[useCase].doc
+        const bar = historyFindingBar({ coverage: coverage[useCase] }, levelConfig)
+        return agent(
+          `Read ${historySummary.evidence_file} and work ONLY on the entry whose use_case is "${useCase}" (doc: ${doc}).\n\n` +
+          `Each segment is one stretch of a past session doing that kind of work. It carries:\n` +
+          `  first_doc_read_turn — when ${doc} was opened, or null if it never was\n` +
+          `  first_work_turn — the first write or command in that segment\n` +
+          `  writes / commands / other_reads — what the agent actually did\n\n` +
+          `Classify every segment: routed (doc opened before first_work_turn), late (opened after it — the standard says loading afterwards does not count as routing), missed (never opened though real work happened), not-applicable (no real work of this kind actually took place; the label was wrong).\n\n` +
+          `AGENTS.md is always in an agent's context and is never Read, so its absence from the reads means nothing. The destination doc is the whole signal.\n\n` +
+          `The route's wording in AGENTS.md is:\n  ${routeText[doc] ? JSON.stringify(routeText[doc]) : '(no route to this doc found)'}\n` +
+          `Classify it as: obligation (a MUST naming the action that triggers it), advisory ("see X", "load X to understand Y", or anything an agent reads as skippable), or absent.\n\n` +
+          `ATTRIBUTION — this is the judgment that decides whether the finding is worth anything:\n` +
+          `- advisory (or absent) route + misses => attribution "doc", a real finding: the Advisory-route failure mode, now measured rather than guessed. Severity major.\n` +
+          `- obligation route + misses => attribution "agent". The route is written correctly and was skipped anyway; report it at minor as an observation about agent behaviour, NOT as a defect in the doc.\n` +
+          `- everything routed => attribution "none", severity none.\n\n` +
+          `EVIDENCE BAR: ${bar.canFind ? `${bar.reason} — a finding is allowed.` : `${bar.reason} — report the counts and set severity "none" and attribution "insufficient-evidence". Do not raise a finding from this sample.`}\n\n` +
+          `Never treat "no sessions" or "few sessions" as a defect in the doc. Return the counts, the route classification, and the finding if one is warranted.`,
+          { label: `history:${useCase}`, phase: 'History', model: 'sonnet', schema: HISTORY_SCHEMA }
+        )
+      }))).filter(Boolean)
+
+      const real = historyEntries.filter(h => h.attribution === 'doc' && h.severity !== 'none')
+      log(`History: ${historyEntries.length} use case(s) judged, ${real.length} doc finding(s)`)
+    }
+  }
 
   // ── Execution test: does an agent with a task actually succeed via the docs?
 
   phase('Execution')
 
-  const { routes: fileRoutes, total: totalRoutes } = selectFileRoutes(manifest.agents_routes, maxExec)
+  // Probe the use cases history could not settle first, so a capped run spends its
+  // budget where there is no behavioural evidence at all.
+  const historyByDoc = {}
+  for (const h of historyEntries) {
+    historyByDoc[h.doc] = { evaluated: (h.segments_judged || 0) > 0, missed: (h.missed || 0) > 0 }
+  }
+  const orderedRoutes = orderRoutesByHistoryGap(manifest.agents_routes, historyByDoc)
+  const { routes: fileRoutes, total: totalRoutes } = selectFileRoutes(orderedRoutes, maxExec)
   if (maxExec === 0) {
     log(`Execution: skipped (level=${level}).`)
   } else if (fileRoutes.length < totalRoutes) {
@@ -449,35 +701,6 @@ if (typeof agent === 'function') {
   const execGraded = execResults.filter(Boolean)
   log(`Execution: ${execGraded.length} route(s) graded` + (totalRoutes > fileRoutes.length ? ` (${totalRoutes - fileRoutes.length} not run this pass)` : ''))
 
-  // ── Verify (level=ultra) — adversarially refute each read-review finding.
-
-  let verifiedFindings = readFindings
-  let refutedFindings = []
-  if (level === 'ultra') {
-    phase('Verify')
-    const flat = []
-    for (const r of readFindings) for (const f of (r.findings || [])) flat.push({ file: r.file, ...f })
-    const verdicts = (await parallel(flat.map(f => () =>
-      agent(
-        `Adversarially verify this documentation finding: re-check it against the repo (read-only) and try to REFUTE it. ` +
-        `Default refuted=true if the cited evidence does not clearly hold up on inspection.\n\n` +
-        `File: ${f.file}\nCategory: ${f.category}\nSeverity: ${f.severity}\nClaim: ${f.observation}\nEvidence cited: ${f.evidence}\n\n` +
-        `Return {refuted, reason}.`,
-        { label: `verify:${f.file}`, phase: 'Verify', model: 'opus', schema: VERIFY_SCHEMA }
-      ).then(v => ({ f, refuted: !!(v && v.refuted), reason: v ? (v.reason || '') : 'no verdict' }))
-    ))).filter(Boolean)
-    const survivors = verdicts.filter(v => !v.refuted).map(v => v.f)
-    refutedFindings = verdicts.filter(v => v.refuted).map(v => ({ file: v.f.file, observation: v.f.observation, reason: v.reason }))
-    log(`Verify: ${survivors.length}/${flat.length} findings survived refutation (${refutedFindings.length} dropped)`)
-    const byFile = {}
-    for (const f of survivors) {
-      const { file, ...rest } = f
-      if (!byFile[file]) byFile[file] = { file, findings: [] }
-      byFile[file].findings.push(rest)
-    }
-    verifiedFindings = Object.values(byFile)
-  }
-
   // ── Synthesis
 
   phase('Synthesis')
@@ -493,15 +716,18 @@ if (typeof agent === 'function') {
     // a broken CLAUDE.md arrives as `claude_md_ok: false` inside a JSON blob with nothing
     // telling this stage to raise it — the manifest detects it and the report never says so.
     `Injected tool-blocks in steering docs: ${JSON.stringify(manifest.injected_blocks)}\n\n` +
-    `PER-FILE READ-REVIEW FINDINGS${level === 'ultra' ? ' (survived adversarial verification)' : ''}:\n${JSON.stringify(verifiedFindings, null, 2)}\n\n` +
-    `EXECUTION-TEST VERDICTS (behavioral: could an agent use the docs?):\n${JSON.stringify(execGraded, null, 2)}\n\n` +
+    `READ-REVIEW FINDINGS (one agent per use case, plus the files that are not use cases):\n${JSON.stringify(readFindings, null, 2)}\n\n` +
+    `HISTORY VERDICTS (behavioural: did past sessions in this repo actually open the doc their route points at?):\n${JSON.stringify(historyEntries, null, 2)}\n` +
+    `History coverage: ${JSON.stringify((historySummary && historySummary.coverage) || {})}\n\n` +
+    `EXECUTION-TEST VERDICTS (synthetic: could a cold agent use the docs?):\n${JSON.stringify(execGraded, null, 2)}\n\n` +
     `Do all of the following:\n` +
-    `1. Merge and DEDUPE findings (the same defect surfaced by read-review and execution is ONE finding — cite the strongest evidence).\n` +
+    `1. Merge and DEDUPE findings (the same defect surfaced by two stages is ONE finding — cite the strongest evidence).\n` +
     `   When merging, PRESERVE what each recommended_action says it replaces, cuts, or supersedes — the lines it names are the fix, not decoration. A recommended_action that only adds text must say why nothing existing is superseded. Never compress a specific replacement into a general instruction to improve the section.\n` +
     `2. Cross-file reconciliation the per-file agents could not see: sibling contradictions on shared facts; and match any missing canonical doc to a non-standard doc whose content actually IS that topic (rename/link).\n` +
     `3. Raise the mechanical facts no read-review agent covered. CLAUDE.md is excluded from the read-review because the manifest checks it, so a false claude_md_ok is yours to report: CLAUDE.md must be exactly the one-line @AGENTS.md import, and the fix names a destination for each displaced piece — routing to AGENTS.md, topic procedures to docs/<TOPIC>.md, personal or transient notes to .claude.local.md. Every injected tool-block listed above is a finding against the doc holding it, under the same destination rule.\n` +
-    `4. Fold execution findings in: a 'found-but-insufficient' or 'couldnt-route' verdict is a real doc finding; discard 'inconclusive' (non-doc attribution).\n` +
-    `5. Assign an overall verdict: accurate / minor gaps / significant gaps / misleading. A clean 'accurate' requires no blocker/major AND positive coverage — not merely absence of findings.\n\n` +
+    `4. Fold the behavioural and synthetic evidence in. From execution: 'found-but-insufficient' or 'couldnt-route' is a real doc finding; discard 'inconclusive'. From history: only entries with attribution "doc" are doc findings — an "agent" attribution means the route was written correctly and skipped anyway, which belongs in execution_summary as an observation, never as a defect in the file. An "insufficient-evidence" attribution is not a finding of any kind.\n` +
+    `5. State the evidence per use case in execution_summary: how many valid segments history had, which use cases had none, and which were probed by execution. A use case with no evidence is a gap in THIS AUDIT, never a defect in the doc — say so in those words rather than implying the doc is unused.\n` +
+    `6. Assign an overall verdict: accurate / minor gaps / significant gaps / misleading. A clean 'accurate' requires no blocker/major AND positive coverage — not merely absence of findings.\n\n` +
     `Return the structured object with fields verdict, headline, findings[], cross_file_notes, execution_summary. ` +
     `Each finding's why_it_matters states the concrete cost, risk, or trap the defect creates for someone relying on the doc — not a restatement of the observation. ` +
     `cross_file_notes and execution_summary are separate PLAIN-TEXT prose fields — never write XML/HTML tags, angle-bracket markers, or field names inside their values. ` +
@@ -516,8 +742,9 @@ if (typeof agent === 'function') {
     raw: {
       level,
       read_findings: readFindings,
-      verified_findings: verifiedFindings,
-      refuted: refutedFindings,
+      use_cases_reviewed: useCases.map(u => u.useCase),
+      history: historyEntries,
+      history_coverage: (historySummary && historySummary.coverage) || null,
       execution: execGraded,
       routes_total: totalRoutes,
       routes_run: fileRoutes.length,

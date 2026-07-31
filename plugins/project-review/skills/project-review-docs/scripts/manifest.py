@@ -278,15 +278,21 @@ def agents_routes(vr, repo_root):
     if content is None:
         return []
     routes = []
+    lines = content.splitlines()
     # resolvable file/dir links
     for ref in vr.extract_references(abs_path, content):
         ok, reason = vr.resolve_reference(ref, repo_root, allow_dir_links=True)
         target_abs = os.path.normpath(os.path.join(os.path.dirname(abs_path), ref["raw_path"]))
+        idx = ref["line"] - 1
         routes.append({
             "line": ref["line"],
             "target": os.path.relpath(target_abs, repo_root),
             "kind": ref["kind"],
             "resolved": ok,
+            # The route's own wording. A fact (it is just the line), but the one the
+            # history stage needs: a miss on an advisory route accuses the doc, while
+            # a miss on a hard obligation accuses the agent that skipped it.
+            "text": lines[idx].strip()[:300] if 0 <= idx < len(lines) else "",
         })
     # skill references (plugin:skill) — opaque, not filesystem paths
     in_fence = False
