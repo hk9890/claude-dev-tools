@@ -358,7 +358,8 @@ the URL to the user as a markdown link with the message:
 >
 > Open that link in your browser to view it. You can optionally type a message in
 > the footer and click **Send** to share feedback or a follow-up request — or click
-> **Save** to download a copy of the page.
+> **Save** to download a copy of the page. Anyone who can reach this port can open
+> it, so mind the network you are on.
 
 ---
 
@@ -405,10 +406,12 @@ button disabled. This is intentional: a saved copy opened as a `file://` URL can
 reach the server, so Send cannot work. Save is the intended "keep this page offline"
 path; Send requires the live server.
 
-> **Degraded-environment fallback only**: the server binds all interfaces and
-> prints its URL under the machine's own hostname, so a remote SSH session is
-> normally fine — the user's browser reaches the box by DNS name, no port
-> forwarding needed. If that name does not resolve from the user's machine, or a
-> firewall blocks the port, the URL is unreachable: offer to save the HTML file to
-> a user-specified path so they can open it directly. This is a last-resort
+> **Degraded-environment fallback only**: the server binds every interface and
+> prints its URL under the machine's own hostname, so a remote box is reachable
+> by DNS name without port forwarding. That name does not always resolve for the
+> user's browser, and an SSH tunnel reaches the server over loopback instead —
+> both cases are handled in "When the printed hostname does not resolve" in
+> `references/serve.md`, whose first move is `http://localhost:PORT/` on the same
+> port. Only when no address is reachable, offer to save the HTML file to a
+> user-specified path so they can open it directly. This is a last-resort
 > accommodation — the normal path is always to serve via the server.

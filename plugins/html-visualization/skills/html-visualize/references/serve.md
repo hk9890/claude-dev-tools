@@ -257,16 +257,42 @@ This makes it clickable in the terminal. Include a brief instruction for what th
 user should do after opening it and what happens after they act (you continue,
 the page loops, or it is just to view) — never leave the user guessing.
 
-**Use the URL the server printed, verbatim.** The server binds all interfaces and
-names itself in that line by the machine's own hostname, so the same link works
-from the user's browser whether Claude is running locally or on a remote box the
-user reaches by DNS name. Never substitute `127.0.0.1` or `localhost` for the
-printed host — that link is dead on any machine but the one serving it.
+**Surface the URL the server printed, verbatim.** The server binds every
+interface and names itself in that line by the machine's own hostname, so the
+same link works from the user's browser whether Claude is running locally or on a
+remote box the user reaches by DNS name. Do not rewrite the host as `127.0.0.1`
+or `localhost` on your own initiative — on a remote box that link is dead
+everywhere but the serving machine.
 
-> **Exposure**: an all-interfaces bind means anyone who can reach the port can
-> open the page and submit through it. `GET /` hands out the CSRF token, so that
-> token proves a request came from the page, not that it came from the user. On
-> an untrusted network, treat the served content as readable by others.
+**Also tell the user the page is reachable from the network**, in the same
+message as the link — one clause is enough ("anyone who can reach this port can
+open it"). The all-interfaces bind means anyone who can reach the port can read
+the page and submit through it: `GET /` hands out the CSRF token, so that token
+proves a request came from the page, not that it came from the user. The user is
+the only one who knows whether they are on a trusted network, and they cannot
+weigh that if the link arrives without the fact.
+
+### When the printed hostname does not resolve
+
+The hostname is advertised as-is; whether it resolves for the user's browser
+depends on their environment. It does not resolve when Claude runs in a container
+or devcontainer (`os.hostname()` is a container ID), under WSL2, or on a host with
+no DNS record. And a user on an SSH tunnel (`ssh -L PORT:localhost:PORT box`)
+reaches the server over loopback, which is the one address that link never names.
+
+If the user reports the link does not open, or tells you they are on a forwarded
+port, offer `http://localhost:PORT/` with the **same port** — the server is
+listening on every interface, so loopback serves the identical page and the submit
+round-trip works normally. This is a response to how the user actually reaches
+the machine, not a substitution to make pre-emptively.
+
+If neither address is reachable, fall back per the active mode:
+
+| Mode | Fallback |
+|---|---|
+| ask (Cycle A) | Do not leave the user staring at a dead link while the server blocks for the full timeout. Kill the server, then ask the questions in chat. |
+| feedback (Cycle C) | Kill the server and take the feedback in chat, or write `review.html` to a path the user names so they can open it directly (comments still need the server, so chat is usually the better half). |
+| visualize (Cycle B) | Offer to save the HTML to a user-specified path — the page is self-contained and opens as a `file://` URL; only **Send** needs the server. |
 
 ---
 
@@ -296,8 +322,24 @@ Do NOT delete on an Apply round — the directory holds the `.port` file and the
 
 ### visualize mode (Cycle B)
 
-The server self-terminates on timeout (or after a non-empty submit). No cleanup
-step is needed unless you want to proactively remove the HTML file:
+The server self-terminates on timeout (or after a non-empty submit), but that
+default is 1800 s and nothing is sent when the user closes the tab. Since the
+bind is all-interfaces, waiting it out means the page — and the CSRF token
+`GET /` hands out — stays served to the network long after the user is done.
+
+So when the user tells you they are finished with the page, or the conversation
+has clearly moved on, kill the server rather than letting it idle:
+
+```bash
+kill "$SERVER_PID" 2>/dev/null   # the background process from Step 3
+rm -rf "$HTML_DIR"
+```
+
+If you already know the page is short-lived — a quick look at a chart mid-task —
+pass a shorter `--timeout-sec` when you start it instead of relying on the
+default.
+
+Once the server has exited on its own, only the directory remains:
 
 ```bash
 rm -rf "$HTML_DIR"   # optional; the server has already exited after timeout or submit

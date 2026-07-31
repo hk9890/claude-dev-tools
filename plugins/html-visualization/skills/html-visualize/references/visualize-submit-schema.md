@@ -53,8 +53,9 @@ feedback file and exit 0, re-invoking Claude.
 
 ## CSRF protection
 
-The server is bound to `0.0.0.0` and accepts POST requests from any browser tab
-that can reach the port — local or on the network. The bind is NOT a CSRF
+The server is bound to every interface (dual-stack where the OS supports it) and
+accepts POST requests from any browser tab that can reach the port — local or on
+the network. The bind is NOT a CSRF
 boundary and NOT an access boundary. Real protection is a per-invocation
 unguessable startup token, and it proves only that a request came from the
 served page: `GET /` hands the token to whoever asks.
@@ -81,9 +82,13 @@ remains functional.
 
 - If `Sec-Fetch-Site` is present, its value MUST be `"same-origin"` or `"none"`.
   Any other value → `403`.
-- If `Origin` is present, it MUST match `http://<Host header of the same
-  request>` — the server answers to every name that resolves to it, so there is
-  no single origin string to compare against. Mismatch → `403`.
+- If `Origin` is present, its **host** MUST equal the `Host` header of the same
+  request — the server answers to every name that resolves to it, so there is no
+  single origin string to compare against. Compare hosts, not whole origins: a
+  TLS-terminating forwarder gives the browser an `https://` page while the server
+  speaks `http`, and matching the scheme too would reject every submit made
+  through one. Mismatch, or an unparseable `Origin` (including the literal
+  `null`) → `403`.
 
 These checks are secondary; the startup-token check is the primary defence.
 
