@@ -6,35 +6,36 @@ Plugin marketplace for Claude Code. Each subdirectory under `plugins/` is a self
 
 ## Use-case routing
 
-### Research, planning, understanding the repo
+Every route below is **mandatory, not advisory**. Load the document BEFORE the first action of that kind — loading it afterwards does not count, and no route becomes skippable because the task looks small.
 
-Load [docs/OVERVIEW.md](docs/OVERVIEW.md) to understand the architecture and how plugins are structured.
+### Research, planning, analysis
 
-### Making changes, commits, PRs
+**MUST read [docs/OVERVIEW.md](docs/OVERVIEW.md) before searching this repository.** It is the map — repo and plugin layout, where things live, and how to find them fast.
 
-Load [docs/CHANGE-WORKFLOW.md](docs/CHANGE-WORKFLOW.md) before making commits or opening a PR.
+### Coding and file changes
 
-### Reviewing changes
-
-Load [docs/REVIEWING.md](docs/REVIEWING.md) before reviewing a PR or change — follow the project-specific review rules there.
-
-### Developing or contributing a new plugin
-
-Load [docs/CODING.md](docs/CODING.md) for step-by-step plugin creation and scaffolding guidance.
-Load [docs/OVERVIEW.md](docs/OVERVIEW.md) for directory layout and architecture reference.
+**MUST read [docs/CODING.md](docs/CODING.md) before creating or editing ANY file under `plugins/`, `scripts/`, or `tests/`.** It owns plugin scaffolding, dependency declarations, runtime path resolution, and the SKILL.md conventions.
 
 ### Testing a plugin
 
-Load [docs/TESTING.md](docs/TESTING.md) for structural validation and the in-repo script tests.
+**MUST read [docs/TESTING.md](docs/TESTING.md) before running or writing tests** or judging whether a change is verified. It owns the mise tasks, the script-test layout, and the CI gates.
 
-### Running a plugin to reproduce a bug or verify a change
+### Run a plugin to reproduce a bug or verify a change
 
-Load [docs/RUNNING.md](docs/RUNNING.md) to launch the plugins locally with `scripts/claude-dev` and drive them by hand — reproduce a reported bug, or smoke-test that a skill, command, or hook works after a change.
+**MUST read [docs/RUNNING.md](docs/RUNNING.md) before launching a plugin locally** or driving a skill, command, or hook by hand.
+
+### Commit, branch, PR workflow
+
+**MUST read [docs/CHANGE-WORKFLOW.md](docs/CHANGE-WORKFLOW.md) before ANY git operation** — commit, branch, push, or opening a PR.
+
+### Reviewing changes
+
+**MUST read [docs/REVIEWING.md](docs/REVIEWING.md) before reviewing a PR or a diff.** It carries the local review priorities and out-of-scope conventions the generic review skills cannot know.
 
 ### Releasing plugins
 
-Load [docs/RELEASING.md](docs/RELEASING.md) for the version bump, quality gates, and release process.
+**MUST read [docs/RELEASING.md](docs/RELEASING.md) before cutting a release** or bumping plugin versions.
 
-### Monitoring plugin usage
+### Analyze plugin usage
 
-Load [docs/MONITORING.md](docs/MONITORING.md) for session-analysis scripts, output schema, and how to interpret usage data.
+**MUST read [docs/MONITORING.md](docs/MONITORING.md) before interpreting session transcripts or usage data.** It owns the session-analysis workflow and its output schema.
