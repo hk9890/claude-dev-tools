@@ -357,6 +357,171 @@ button, input, textarea { font-family: var(--pv-sans); }
 .note-input { border-style: dashed; }
 .note-input:not(:placeholder-shown) { border-style: solid; border-color: var(--pv-pencil); }
 
+/* ── Explain disclosure ───────────────────────────────────────────────── */
+details.q-explain {
+  margin: 0 0 .9rem;
+  border: 1px solid var(--pv-border-soft);
+  border-radius: 8px;
+  background: var(--pv-paper-2);
+}
+details.q-explain summary {
+  list-style: none; cursor: pointer; user-select: none;
+  padding: .45rem .75rem;
+  font-size: .8rem; font-weight: 600;
+  color: var(--pv-pencil-deep);
+}
+details.q-explain summary::-webkit-details-marker { display: none; }
+details.q-explain summary::before { content: "▸ "; }
+details.q-explain[open] summary::before { content: "▾ "; }
+details.q-explain[open] summary { border-bottom: 1px solid var(--pv-border-soft); }
+.q-explain-body { padding: .65rem .85rem .75rem; font-size: .87rem; line-height: 1.6; }
+.q-explain-body p { margin: 0 0 .6rem; }
+.q-explain-body p:last-child { margin-bottom: 0; }
+.q-explain-body strong { color: var(--pv-pencil-deep); }
+
+/* ── Architecture diagrams ────────────────────────────────────────────── */
+.diagram-compare {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: .8rem;
+  margin-bottom: .8rem;
+}
+.mermaid-block {
+  position: relative;
+  background: var(--pv-paper-2);
+  border: 1px solid var(--pv-border);
+  border-radius: 8px;
+  padding: .8rem;
+  overflow-x: auto;
+}
+.diagram-label {
+  display: block; margin-bottom: .4rem;
+  font-size: .66rem; font-weight: 650;
+  letter-spacing: .08em; text-transform: uppercase;
+  color: var(--pv-muted);
+}
+.mermaid-block pre.mermaid { margin: 0; text-align: center; font-family: var(--pv-mono); min-width: 280px; }
+.mermaid-block pre.mermaid:not([data-processed]) { visibility: hidden; }
+.mermaid-block svg .node { cursor: pointer; }
+.diagram-hint { font-size: .74rem; color: var(--pv-faint); margin: 0 0 .8rem; }
+svg g.node.pv-hover rect, svg g.node.pv-hover polygon, svg g.node.pv-hover circle,
+svg g.node.pv-hover path { stroke: var(--pv-pencil) !important; stroke-width: 2.5px !important; }
+svg g.node.pv-noded rect, svg g.node.pv-noded polygon,
+svg g.node.pv-noded path { stroke: var(--pv-pencil) !important; stroke-width: 2px !important; }
+
+/* ── Anchored comments (blue-pencil layer, as in the feedback prototype) ── */
+mark.pv-mark {
+  background: rgba(var(--pv-pencil-rgb), .14);
+  border-bottom: 2px solid var(--pv-pencil);
+  color: inherit; padding: 0 1px; border-radius: 2px;
+}
+.pv-pin {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 1.15rem; height: 1.15rem;
+  padding: 0 .25rem; margin-left: .3rem;
+  background: var(--pv-pencil); color: var(--pv-paper);
+  font-size: .66rem; font-weight: 650; font-variant-numeric: tabular-nums;
+  border-radius: 999px;
+  vertical-align: super; line-height: 1;
+  cursor: default; user-select: none;
+  animation: pin-pop .18s ease;
+}
+@keyframes pin-pop { from { transform: scale(.4); opacity: 0; } }
+.pv-node-pin { position: absolute; z-index: 5; margin: 0; }
+.opt-row { position: relative; }
+.opt-comment-btn {
+  position: absolute; top: .35rem; right: .45rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.5rem; height: 1.5rem;
+  border: 1px solid var(--pv-border); border-radius: 999px;
+  background: var(--pv-paper); color: var(--pv-muted);
+  font-size: .72rem; line-height: 1;
+  cursor: pointer;
+  opacity: 0; transition: opacity .12s;
+}
+.opt-row:hover .opt-comment-btn, .opt-comment-btn:focus-visible { opacity: 1; }
+.opt-comment-btn:hover { border-color: var(--pv-pencil); color: var(--pv-pencil-deep); }
+.q-comments { margin-top: .7rem; }
+.q-comment {
+  display: flex; gap: .55rem; align-items: baseline; flex-wrap: wrap;
+  border: 1px solid var(--pv-border);
+  border-left: 3px solid var(--pv-pencil);
+  border-radius: 8px;
+  background: var(--pv-paper);
+  padding: .45rem .7rem;
+  margin-bottom: .4rem;
+  font-size: .84rem;
+}
+.q-comment .qc-ctx { color: var(--pv-muted); font-size: .78rem; }
+.q-comment .qc-ctx.is-quote { font-family: var(--pv-serif); font-style: italic; }
+.q-comment .qc-text { flex: 1; min-width: 12rem; }
+.q-comment button {
+  background: none; border: none; padding: 0;
+  font-size: .72rem; font-weight: 550;
+  color: var(--pv-faint); cursor: pointer;
+}
+.q-comment button:hover { color: var(--pv-bad); }
+.pv-pill {
+  position: absolute; z-index: 60;
+  display: inline-flex; align-items: center; gap: .35rem;
+  padding: .32rem .75rem;
+  background: var(--pv-pencil); color: var(--pv-paper);
+  font-size: .8rem; font-weight: 600;
+  border: none; border-radius: 999px;
+  box-shadow: var(--pv-shadow-lg);
+  cursor: pointer;
+}
+.pv-pill:hover { background: var(--pv-pencil-deep); }
+.pv-pill[hidden] { display: none; }
+.pv-editor {
+  position: absolute; z-index: 70;
+  width: min(400px, calc(100vw - 2rem));
+  background: var(--pv-paper);
+  border: 1px solid var(--pv-border);
+  border-left: 3px solid var(--pv-pencil);
+  border-radius: 10px;
+  box-shadow: var(--pv-shadow-lg);
+  padding: .8rem .9rem;
+}
+.pv-editor-ctx {
+  display: flex; align-items: baseline; gap: .5rem;
+  margin-bottom: .55rem; font-size: .78rem;
+  overflow: hidden;
+}
+.pv-kind {
+  flex: none;
+  font-size: .64rem; font-weight: 650;
+  letter-spacing: .07em; text-transform: uppercase;
+  color: var(--pv-pencil-deep);
+  background: var(--pv-pencil-tint);
+  padding: .12rem .45rem; border-radius: 4px;
+}
+.pv-ctx-text {
+  color: var(--pv-muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.pv-ta {
+  width: 100%; min-height: 64px;
+  padding: .5rem .6rem;
+  background: var(--pv-paper-2); color: var(--pv-ink);
+  border: 1px solid var(--pv-border); border-radius: 7px;
+  font-size: .88rem; line-height: 1.5;
+  resize: vertical;
+}
+.pv-ta:focus { outline: none; border-color: var(--pv-pencil);
+  box-shadow: 0 0 0 2px rgba(var(--pv-pencil-rgb), .18); }
+.pv-editor-actions { display: flex; justify-content: flex-end; gap: .5rem; margin-top: .55rem; }
+.pv-btn {
+  padding: .34rem .9rem;
+  font-size: .82rem; font-weight: 550;
+  border-radius: 7px; cursor: pointer;
+  border: 1px solid transparent;
+}
+.pv-btn-primary { background: var(--pv-pencil); color: var(--pv-paper); }
+.pv-btn-primary:hover { background: var(--pv-pencil-deep); }
+.pv-btn-ghost { background: transparent; color: var(--pv-muted); border-color: var(--pv-border); }
+.pv-btn-ghost:hover { color: var(--pv-ink); border-color: var(--pv-muted); }
+
 /* ── Verdict ──────────────────────────────────────────────────────────── */
 .verdict-section { margin-top: 1.6rem; }
 .verdict-section h2, .freeform-section h2 {
@@ -499,6 +664,22 @@ button, input, textarea { font-family: var(--pv-sans); }
         <p class="q-eyebrow">Q1 · choose one <span class="q-answered">✓ answered</span></p>
         <p class="q-label">Comment rail placement</p>
         <p class="q-hint">Where feedback-mode comments live on wide screens.</p>
+        <details class="q-explain">
+          <summary>Explain this decision</summary>
+          <div class="q-explain-body">
+            <p>When you review a document in the browser, your comments have to be shown somewhere.
+              Today they appear directly under the paragraph they belong to, which pushes the text
+              apart. The redesign moves them out of the text — the question is where.</p>
+            <p><strong>Margin-aligned cards</strong> means each comment floats in the right margin at
+              the same height as the sentence or element it refers to — like handwritten notes on a
+              printed draft. You always see note and text together, but with only one or two comments
+              the margin looks mostly empty.</p>
+            <p><strong>Compact top-right list</strong> means all comments stack in one tidy list in
+              the corner, like an inbox. Nothing is ever sparse, but to see what a comment refers to
+              you must click it and the page jumps there.</p>
+            <p>This is purely about reading comfort — both options carry exactly the same data.</p>
+          </div>
+        </details>
         <div class="cards-grid">
           <label class="opt-card">
             <h3>Margin-aligned cards <span class="opt-badge">Recommended</span></h3>
@@ -533,6 +714,22 @@ button, input, textarea { font-family: var(--pv-sans); }
         <p class="q-eyebrow">Q2 · single choice <span class="q-answered">✓ answered</span></p>
         <p class="q-label">Feedback schema migration</p>
         <p class="q-hint">The new target model changes the comment shape. The only consumer is Claude reading the feedback file.</p>
+        <details class="q-explain">
+          <summary>Explain this decision</summary>
+          <div class="q-explain-body">
+            <p>When you submit comments from the browser, they are saved in a small file with a fixed
+              format ("schema") that Claude then reads. The new element-level commenting changes what
+              a saved comment looks like inside that file.</p>
+            <p>Normally, changing a saved format is risky because other programs that read the old
+              format break. Here there is exactly <strong>one reader</strong> — Claude, in the same
+              session — so nothing outside this plugin can break.</p>
+            <p><strong>Change in place</strong>: switch to the new format cleanly, no leftovers.
+              <strong>One release</strong>: write both old and new formats side by side for a while,
+              then delete the old one — extra safety, extra cleanup work.
+              <strong>Keep indefinitely</strong>: both formats forever, and every future reader must
+              understand both.</p>
+          </div>
+        </details>
         <label class="opt-row"><input type="radio" name="q-legacy" value="in-place">
           <span class="opt-text">Change the schema in place <span class="opt-badge">Recommended</span>
             <span class="opt-sub">No third party to migrate; schema doc and app.js move together.</span></span></label>
@@ -548,10 +745,71 @@ button, input, textarea { font-family: var(--pv-sans); }
         </div>
       </div>
 
+      <div class="widget" data-qid="q-arch" data-qtype="diagram" id="q-arch">
+        <p class="q-eyebrow">Q3 · architecture change <span class="q-answered">✓ answered</span></p>
+        <p class="q-label">Split the browser selection layer into a shared asset</p>
+        <p class="q-hint">Anchored commenting (select text, click an option or a diagram node) is one behaviour needed by two pages. Should it move into a shared file both modes load?</p>
+        <details class="q-explain">
+          <summary>Explain this decision</summary>
+          <div class="q-explain-body">
+            <p>The feedback page and the ask page are driven by two separate JavaScript files. The
+              new "comment on exactly this thing" behaviour is the same job on both pages. If each
+              file grows its own copy, the two copies drift apart and every fix must be made twice.</p>
+            <p><strong>Agree</strong> means: create one shared file (<code>shared/selection.js</code>)
+              that both pages load — one implementation, fixed once, behaves identically everywhere.
+              The cost is a small refactor of both existing files now.</p>
+            <p><strong>Disagree</strong> means: keep each page self-contained and accept the
+              duplication — no refactor now, more maintenance later.</p>
+            <p>The diagrams show the files before and after; click any node to comment on it.</p>
+          </div>
+        </details>
+        <div class="diagram-compare">
+          <div class="mermaid-block" data-diagram="before">
+            <span class="diagram-label">Before</span>
+            <pre class="mermaid">
+flowchart TD
+  FA[feedback/app.js — selection + comments + submit] --> SUB[shared/submit.js]
+  AA[ask/app.js — widgets + submit] --> SUB
+            </pre>
+          </div>
+          <div class="mermaid-block" data-diagram="after">
+            <span class="diagram-label">After</span>
+            <pre class="mermaid">
+flowchart TD
+  FA2[feedback/app.js — slim] --> SEL[shared/selection.js — anchored comments]
+  AA2[ask/app.js — slim] --> SEL
+  FA2 --> SUB2[shared/submit.js]
+  AA2 --> SUB2
+            </pre>
+          </div>
+        </div>
+        <p class="diagram-hint">Click any node to attach a comment to it — the comment carries the node id from the diagram source.</p>
+        <label class="opt-row"><input type="radio" name="q-arch" value="agree">
+          <span class="opt-text">Agree — make this change in the implementation PR <span class="opt-badge">Recommended</span></span></label>
+        <label class="opt-row"><input type="radio" name="q-arch" value="disagree">
+          <span class="opt-text">Disagree — keep each page self-contained for now</span></label>
+        <div class="widget-note">
+          <label for="note-q-arch">Optional note</label>
+          <input id="note-q-arch" class="note-input" data-note-for="q-arch" type="text" placeholder="Anything to add on this question…">
+        </div>
+      </div>
+
       <div class="widget" data-qid="q-priority" data-qtype="rank" id="q-priority">
-        <p class="q-eyebrow">Q3 · rank — use the arrows <span class="q-answered">✓ answered</span></p>
+        <p class="q-eyebrow">Q4 · rank — use the arrows <span class="q-answered">✓ answered</span></p>
         <p class="q-label">Implementation order inside the PR</p>
         <p class="q-hint">All four ship in the one PR you asked for; this orders the commits and the review story.</p>
+        <details class="q-explain">
+          <summary>Explain this decision</summary>
+          <div class="q-explain-body">
+            <p>Everything on this list ships in the same PR, so nothing is dropped by ranking it
+              last. The order decides which commits come first, and therefore what a reviewer sees
+              as the core of the change versus the finishing touches.</p>
+            <p>Put first what you most want reviewed carefully and what other parts build on. The
+              target model is the natural foundation — the theme and the ask upgrades sit on top of
+              it — but if, say, the visual change matters most to you, ranking it first makes the
+              review lead with it.</p>
+          </div>
+        </details>
         <ol class="rank-list" id="rank-q-priority">
           <li class="rank-item" data-opt="target-model">
             <span class="rank-pos">1</span>
@@ -585,9 +843,23 @@ button, input, textarea { font-family: var(--pv-sans); }
       </div>
 
       <div class="widget" data-qid="q-render" data-qtype="checkbox" id="q-render">
-        <p class="q-eyebrow">Q4 · select all that apply <span class="q-answered">✓ answered</span></p>
+        <p class="q-eyebrow">Q5 · select all that apply <span class="q-answered">✓ answered</span></p>
         <p class="q-label">Rendering upgrades to include</p>
         <p class="q-hint">Each is independent; unchecked items become follow-up tasks.</p>
+        <details class="q-explain">
+          <summary>Explain this decision</summary>
+          <div class="q-explain-body">
+            <p>These are the "make pages nicer to read" upgrades, and each can ship or wait
+              independently. <strong>Code highlighting</strong>: code samples get colours and line
+              numbers instead of plain grey text. <strong>Table of contents</strong>: long pages get
+              a small navigation bar that tracks where you are. <strong>Collapsible sections</strong>:
+              long detail sections can fold away. <strong>Chart guidance</strong>: charts follow a
+              tested rulebook for colours and labels so they stay readable for everyone, including
+              colour-blind readers.</p>
+            <p>Ticking fewer boxes makes the implementation PR smaller; unticked items become
+              tracked follow-up tasks, not lost ideas.</p>
+          </div>
+        </details>
         <label class="opt-row"><input type="checkbox" name="q-render" value="code-highlight">
           <span class="opt-text">Syntax-highlighted, line-numbered code blocks</span></label>
         <label class="opt-row"><input type="checkbox" name="q-render" value="toc">
@@ -603,9 +875,24 @@ button, input, textarea { font-family: var(--pv-sans); }
       </div>
 
       <div class="widget" data-qid="q-theme" data-qtype="scale" id="q-theme">
-        <p class="q-eyebrow">Q5 · scale <span class="q-answered">✓ answered</span></p>
+        <p class="q-eyebrow">Q6 · scale <span class="q-answered">✓ answered</span></p>
         <p class="q-label">How far should the visual redesign go?</p>
         <p class="q-hint">1 keeps the current Editorial theme with small fixes; 5 adopts Proof everywhere including the ask and feedback assets.</p>
+        <details class="q-explain">
+          <summary>Explain this decision</summary>
+          <div class="q-explain-body">
+            <p>The plugin's pages currently use a warm cream look ("Editorial"). The prototypes use a
+              cooler look ("Proof") where everything you add is drawn in pencil blue. This slider
+              says how much of that new look should actually ship.</p>
+            <p><strong>1–2</strong>: keep the current look, only fix real problems (contrast, spacing,
+              wasted screen space). <strong>3</strong>: new look for the visualize pages only, forms
+              stay as they are. <strong>4</strong>: new look everywhere except deliberately kept
+              details. <strong>5</strong>: full adoption — every page, form, and template moves to
+              Proof in this PR.</p>
+            <p>Higher numbers mean a bigger, riskier PR but one consistent look; lower numbers mean
+              less churn now and a mixed look for a while.</p>
+          </div>
+        </details>
         <div class="scale-row">
           <span class="scale-end">Keep Editorial</span>
           <span class="scale-opts" id="scale-q-theme">
@@ -624,14 +911,35 @@ button, input, textarea { font-family: var(--pv-sans); }
       </div>
 
       <div class="widget" data-qid="q-misc" data-qtype="text" id="q-misc">
-        <p class="q-eyebrow">Q6 · free text <span class="q-answered">✓ answered</span></p>
+        <p class="q-eyebrow">Q7 · free text <span class="q-answered">✓ answered</span></p>
         <p class="q-label">What did the prototypes get wrong?</p>
         <p class="q-hint">Anything that felt off while clicking through — interaction, wording, layout.</p>
+        <details class="q-explain">
+          <summary>Explain this decision</summary>
+          <div class="q-explain-body">
+            <p>Free space for anything the structured questions above did not cover. Whatever you
+              write here is read as feedback on the prototypes themselves and turned into concrete
+              changes or follow-up tasks — nothing is required, and leaving it empty simply means
+              "no complaints beyond my answers".</p>
+          </div>
+        </details>
         <textarea class="q-textarea" data-text-for="q-misc" placeholder="Type here…"></textarea>
       </div>
 
       <div class="verdict-section" id="q-verdict">
         <h2>Overall verdict</h2>
+        <details class="q-explain">
+          <summary>Explain this decision</summary>
+          <div class="q-explain-body">
+            <p>This is the one answer that decides what happens next. <strong>Approve</strong>:
+              implementation starts exactly as prototyped, using your answers above.
+              <strong>Approve with changes</strong>: implementation starts, but every note and
+              comment you left is incorporated first and called out explicitly.
+              <strong>Reject</strong>: nothing is implemented; the discussion reopens in chat.
+              Submitting without a verdict is allowed — it means "here are my answers, but do not
+              proceed yet".</p>
+          </div>
+        </details>
         <div class="verdict-opts">
           <label class="verdict-opt v-approve"><input type="radio" name="verdict" value="approve">
             <span><strong>Approve</strong><span>Proceed to the implementation PR as prototyped.</span></span></label>
@@ -671,12 +979,49 @@ button, input, textarea { font-family: var(--pv-sans); }
     <button class="drawer-close" id="drawer-close" type="button" aria-label="Close">✕</button>
   </div>
   <p class="drawer-note">Prototype — no server behind this page. This JSON is exactly what would
-    <code>POST /submit</code>. New widget kinds extend <code>answers</code>: scale → number,
-    rank → ordered array, cards → chosen id.</p>
+    <code>POST /submit</code>. New widget kinds extend <code>answers</code> (scale → number,
+    rank → ordered array, cards → chosen id); anchored comments carry a <code>target</code>
+    (quote, option, or diagram-node) alongside plain per-question notes.</p>
   <pre id="drawer-json"></pre>
 </aside>
 
 <div class="toast" id="toast" role="status"></div>
+
+<script type="module">
+  /* Mermaid with the theme bridge (adapted from the plugin template). */
+  const pv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const blocks = [...document.querySelectorAll("pre.mermaid")];
+  blocks.forEach(b => { b.dataset.src = b.textContent; });
+  const reveal = () => blocks.forEach(b => { b.style.visibility = "visible"; });
+
+  let mermaid;
+  try {
+    mermaid = (await import("https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs")).default;
+  } catch (e) { reveal(); throw e; }
+
+  async function render() {
+    mermaid.initialize({
+      startOnLoad: false,
+      securityLevel: "strict",
+      theme: "base",
+      themeVariables: {
+        background:         pv("--pv-paper-2"),
+        primaryColor:       pv("--pv-paper"),
+        primaryTextColor:   pv("--pv-ink"),
+        primaryBorderColor: pv("--pv-border"),
+        lineColor:          pv("--pv-muted"),
+        secondaryColor:     pv("--pv-pencil-tint"),
+        tertiaryColor:      pv("--pv-paper-2"),
+        fontFamily:         pv("--pv-sans"),
+      },
+    });
+    blocks.forEach(b => { b.textContent = b.dataset.src; b.removeAttribute("data-processed"); });
+    await mermaid.run({ nodes: blocks });
+    if (window.__pvAfterMermaid) window.__pvAfterMermaid();
+  }
+  render().catch(reveal);
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render);
+</script>
 
 <script>
 (function () {
@@ -700,16 +1045,19 @@ var QUESTIONS = [
   { id: 'q-legacy',   label: 'Q2 Feedback schema migration',
     value: function () { var c = $('input[name="q-legacy"]:checked'); return c ? c.value : null; },
     answered: function () { return !!$('input[name="q-legacy"]:checked'); } },
-  { id: 'q-priority', label: 'Q3 Implementation order',
+  { id: 'q-arch',     label: 'Q3 Split the selection layer',
+    value: function () { var c = $('input[name="q-arch"]:checked'); return c ? c.value : null; },
+    answered: function () { return !!$('input[name="q-arch"]:checked'); } },
+  { id: 'q-priority', label: 'Q4 Implementation order',
     value: function () { return $$('#rank-q-priority .rank-item').map(function (li) { return li.getAttribute('data-opt'); }); },
     answered: function () { return rankTouched; } },
-  { id: 'q-render',   label: 'Q4 Rendering upgrades',
+  { id: 'q-render',   label: 'Q5 Rendering upgrades',
     value: function () { return $$('input[name="q-render"]:checked').map(function (c) { return c.value; }); },
     answered: function () { return $$('input[name="q-render"]:checked').length > 0; } },
-  { id: 'q-theme',    label: 'Q5 Redesign depth',
+  { id: 'q-theme',    label: 'Q6 Redesign depth',
     value: function () { var c = $('input[name="q-theme"]:checked'); return c ? parseInt(c.value, 10) : null; },
     answered: function () { return !!$('input[name="q-theme"]:checked'); } },
-  { id: 'q-misc',     label: 'Q6 What the prototypes got wrong',
+  { id: 'q-misc',     label: 'Q7 What the prototypes got wrong',
     value: function () { return $('[data-text-for="q-misc"]').value; },
     answered: function () { return $('[data-text-for="q-misc"]').value.trim().length > 0; } },
   { id: 'q-verdict',  label: 'Overall verdict',
@@ -799,6 +1147,268 @@ function renumberRank(list) {
 }
 renumberRank($('#rank-q-priority'));
 
+/* ── Anchored comments: quote / option / diagram-node ── */
+var anchored = [];      // { id, n, target, text, anchorEl, block, qid, context, markEl?, nodePin? }
+var nextPin = 1;
+
+function truncate(s, n) { s = s.trim(); return s.length > n ? s.slice(0, n - 1) + '…' : s; }
+function plainQuote(s) { return s.replace(/\s+/g, ' ').trim(); }
+function widgetOf(node) {
+  var e = node && node.nodeType === 1 ? node : node && node.parentElement;
+  return e && e.closest ? e.closest('.widget') : null;
+}
+
+function makePin(c) {
+  var p = el('sup', 'pv-pin', String(c.n));
+  p.setAttribute('data-cid', c.id);
+  return p;
+}
+function positionNodePin(c) {
+  if (!c.nodePin || !c.anchorEl || !c.anchorEl.isConnected) return;
+  var wr = c.block.getBoundingClientRect();
+  var nr = c.anchorEl.getBoundingClientRect();
+  c.nodePin.style.left = (nr.right - wr.left - 8 + c.block.scrollLeft) + 'px';
+  c.nodePin.style.top  = (nr.top - wr.top - 8) + 'px';
+}
+function placePin(c, range) {
+  if (c.target.kind === 'quote' && range) {
+    try {
+      var mark = el('mark', 'pv-mark');
+      mark.setAttribute('data-cid', c.id);
+      range.surroundContents(mark);
+      c.markEl = mark;
+      mark.insertAdjacentElement('afterend', makePin(c));
+      return;
+    } catch (e) { /* selection crossed elements — card still carries the quote */ }
+  }
+  if (c.target.kind === 'diagram-node') {
+    c.anchorEl.classList.add('pv-noded');
+    var pin = makePin(c);
+    pin.classList.add('pv-node-pin');
+    c.block.appendChild(pin);
+    c.nodePin = pin;
+    positionNodePin(c);
+    return;
+  }
+  var host = c.anchorEl.querySelector('.opt-text') || c.anchorEl;
+  host.appendChild(makePin(c));
+}
+function removePin(c) {
+  var pin = document.querySelector('.pv-pin[data-cid="' + c.id + '"]');
+  if (pin && pin.parentNode) pin.parentNode.removeChild(pin);
+  if (c.markEl && c.markEl.parentNode) {
+    var parent = c.markEl.parentNode;
+    while (c.markEl.firstChild) parent.insertBefore(c.markEl.firstChild, c.markEl);
+    parent.removeChild(c.markEl);
+    if (parent.normalize) parent.normalize();
+  }
+  if (c.target.kind === 'diagram-node' && c.anchorEl && c.anchorEl.isConnected) {
+    var others = anchored.some(function (o) {
+      return o !== c && o.target.kind === 'diagram-node' &&
+             o.target.nodeId === c.target.nodeId && o.target.diagram === c.target.diagram;
+    });
+    if (!others) c.anchorEl.classList.remove('pv-noded');
+  }
+}
+function commentsHost(widget) {
+  var host = widget.querySelector('.q-comments');
+  if (!host) {
+    host = el('div', 'q-comments');
+    var note = widget.querySelector('.widget-note');
+    if (note) widget.insertBefore(host, note);
+    else widget.appendChild(host);
+  }
+  return host;
+}
+function renderComments() {
+  $$('.q-comment').forEach(function (n) { n.parentNode.removeChild(n); });
+  anchored.forEach(function (c) {
+    var widget = document.getElementById(c.qid);
+    if (!widget) return;
+    var card = el('div', 'q-comment');
+    card.setAttribute('data-cid', c.id);
+    var badge = el('span', 'pv-pin', String(c.n));
+    badge.style.verticalAlign = 'baseline';
+    badge.style.marginLeft = '0';
+    card.appendChild(badge);
+    card.appendChild(el('span', 'qc-ctx' + (c.target.kind === 'quote' ? ' is-quote' : ''), c.context));
+    card.appendChild(el('span', 'qc-text', c.text));
+    var del = el('button', null, 'Delete');
+    del.type = 'button';
+    del.addEventListener('click', function () {
+      removePin(c);
+      anchored = anchored.filter(function (x) { return x !== c; });
+      renderComments();
+    });
+    card.appendChild(del);
+    commentsHost(widget).appendChild(card);
+  });
+}
+function addAnchored(t, text) {
+  var c = { id: 'ac' + nextPin, n: nextPin, target: t.target, text: text,
+            anchorEl: t.anchorEl, block: t.block || null, qid: t.qid, context: t.context };
+  nextPin++;
+  anchored.push(c);
+  placePin(c, t.range || null);
+  renderComments();
+}
+
+/* editor popover */
+var editor = null;
+function closeEditor() {
+  if (editor && editor.parentNode) editor.parentNode.removeChild(editor);
+  editor = null;
+}
+function openCommentEditor(t, nearRect) {
+  closeEditor();
+  editor = el('div', 'pv-editor');
+  var ctx = el('div', 'pv-editor-ctx');
+  ctx.appendChild(el('span', 'pv-kind', t.kindLabel));
+  ctx.appendChild(el('span', 'pv-ctx-text', t.context));
+  editor.appendChild(ctx);
+  var ta = el('textarea', 'pv-ta');
+  ta.placeholder = 'Your comment on exactly this…';
+  editor.appendChild(ta);
+  var row = el('div', 'pv-editor-actions');
+  var cancel = el('button', 'pv-btn pv-btn-ghost', 'Cancel');
+  cancel.type = 'button';
+  var save = el('button', 'pv-btn pv-btn-primary', 'Save comment');
+  save.type = 'button';
+  row.appendChild(cancel); row.appendChild(save);
+  editor.appendChild(row);
+  document.body.appendChild(editor);
+  var r = nearRect || t.anchorEl.getBoundingClientRect();
+  editor.style.top = (r.bottom + window.scrollY + 8) + 'px';
+  var left = r.left + window.scrollX;
+  var maxLeft = window.scrollX + document.documentElement.clientWidth - editor.offsetWidth - 12;
+  editor.style.left = Math.max(12, Math.min(left, maxLeft)) + 'px';
+  ta.focus();
+  save.addEventListener('click', function () {
+    var text = ta.value.trim();
+    if (!text) { closeEditor(); return; }
+    addAnchored(t, text);
+    closeEditor();
+  });
+  cancel.addEventListener('click', closeEditor);
+}
+
+/* selection pill */
+var pill = el('button', 'pv-pill', '✎ Comment');
+pill.type = 'button';
+pill.hidden = true;
+document.body.appendChild(pill);
+var pendingSel = null;
+function refreshPill() {
+  var sel = window.getSelection();
+  if (!sel || sel.isCollapsed || sel.rangeCount === 0) { pill.hidden = true; pendingSel = null; return; }
+  var text = plainQuote(sel.toString());
+  var range = sel.getRangeAt(0);
+  var widget = widgetOf(range.startContainer);
+  if (!text || !widget || (editor && editor.contains(range.startContainer))) {
+    pill.hidden = true; pendingSel = null; return;
+  }
+  pendingSel = { widget: widget, qid: widget.getAttribute('data-qid'), text: text, range: range.cloneRange() };
+  pill.hidden = false;
+  try {
+    var r = range.getBoundingClientRect();
+    pill.style.top = (r.top + window.scrollY - pill.offsetHeight - 8) + 'px';
+    var l = r.right + window.scrollX - pill.offsetWidth;
+    pill.style.left = Math.max(8, Math.min(l,
+      window.scrollX + document.documentElement.clientWidth - pill.offsetWidth - 8)) + 'px';
+  } catch (e) { /* leave default position */ }
+}
+document.addEventListener('mouseup', function () { setTimeout(refreshPill, 10); });
+document.addEventListener('keyup', function (ev) {
+  if (ev.shiftKey || ev.key === 'Shift') setTimeout(refreshPill, 10);
+});
+pill.addEventListener('mousedown', function (ev) { ev.preventDefault(); });
+pill.addEventListener('click', function () {
+  if (!pendingSel) return;
+  var t = {
+    target: { kind: 'quote', qid: pendingSel.qid, quote: pendingSel.text },
+    qid: pendingSel.qid, anchorEl: pendingSel.widget, range: pendingSel.range,
+    kindLabel: 'quote', context: '“' + truncate(pendingSel.text, 80) + '”'
+  };
+  pill.hidden = true;
+  var rect = null;
+  try { rect = t.range.getBoundingClientRect(); } catch (e) {}
+  openCommentEditor(t, rect);
+});
+
+/* per-option comment buttons */
+$$('.opt-row').forEach(function (row) {
+  var input = row.querySelector('input');
+  var btn = el('button', 'opt-comment-btn', '💬');
+  btn.type = 'button';
+  btn.title = 'Comment on this option';
+  btn.setAttribute('aria-label', 'Comment on this option');
+  btn.addEventListener('mousedown', function (ev) { ev.preventDefault(); });
+  btn.addEventListener('click', function (ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    var widget = widgetOf(row);
+    var qid = widget.getAttribute('data-qid');
+    var optText = row.querySelector('.opt-text');
+    var label = truncate(plainQuote((optText || row).textContent), 60);
+    openCommentEditor({
+      target: { kind: 'option', qid: qid, option: input ? input.value : '', label: label },
+      qid: qid, anchorEl: row,
+      kindLabel: 'option', context: label
+    });
+  });
+  row.appendChild(btn);
+});
+
+/* diagram nodes: hover ring + click to comment */
+$$('.mermaid-block').forEach(function (wrap) {
+  var hovered = null;
+  wrap.addEventListener('mousemove', function (ev) {
+    var g = ev.target.closest ? ev.target.closest('g.node') : null;
+    if (hovered === g) return;
+    if (hovered) hovered.classList.remove('pv-hover');
+    hovered = g;
+    if (hovered) hovered.classList.add('pv-hover');
+  });
+  wrap.addEventListener('mouseleave', function () {
+    if (hovered) { hovered.classList.remove('pv-hover'); hovered = null; }
+  });
+  wrap.addEventListener('click', function (ev) {
+    var g = ev.target.closest ? ev.target.closest('g.node') : null;
+    if (!g) return;
+    var widget = widgetOf(wrap);
+    var qid = widget.getAttribute('data-qid');
+    var labelEl = g.querySelector('.nodeLabel');
+    var label = plainQuote(labelEl ? labelEl.textContent : g.textContent);
+    var m = /flowchart-(.+)-\d+$/.exec(g.id || '');
+    openCommentEditor({
+      target: { kind: 'diagram-node', qid: qid, diagram: wrap.getAttribute('data-diagram'),
+                nodeId: m ? m[1] : label, label: label },
+      qid: qid, anchorEl: g, block: wrap,
+      kindLabel: 'diagram node', context: truncate(label, 60)
+    });
+  });
+});
+
+/* after a Mermaid (re-)render the node <g> elements are new — re-resolve */
+window.__pvAfterMermaid = function () {
+  anchored.forEach(function (c) {
+    if (c.target.kind !== 'diagram-node') return;
+    var wrap = document.querySelector('.mermaid-block[data-diagram="' + c.target.diagram + '"]');
+    var svg = wrap && wrap.querySelector('svg');
+    if (!svg) return;
+    $$('g.node', svg).forEach(function (node) {
+      var m = /flowchart-(.+)-\d+$/.exec(node.id || '');
+      if (m && m[1] === c.target.nodeId) {
+        c.anchorEl = node;
+        c.block = wrap;
+        node.classList.add('pv-noded');
+        positionNodePin(c);
+      }
+    });
+  });
+};
+window.addEventListener('resize', function () { anchored.forEach(positionNodePin); });
+
 /* ── Payload ── */
 function buildPayload() {
   var answers = {};
@@ -810,6 +1420,9 @@ function buildPayload() {
   $$('.note-input').forEach(function (inp) {
     var text = inp.value.trim();
     if (text) comments.push({ anchor: '#' + inp.getAttribute('data-note-for'), text: text });
+  });
+  anchored.forEach(function (c) {
+    comments.push({ anchor: '#' + c.qid, target: c.target, text: c.text });
   });
   return {
     verdict: QUESTIONS[QUESTIONS.length - 1].value(),
@@ -884,6 +1497,7 @@ $('#copy-btn').addEventListener('click', function () {
 
 document.addEventListener('keydown', function (ev) {
   if (ev.key !== 'Escape') return;
+  if (editor) { closeEditor(); return; }
   if (drawer.classList.contains('open')) { closeDrawer(); return; }
   if (panel.classList.contains('show')) panel.classList.remove('show');
 });
@@ -892,10 +1506,18 @@ document.addEventListener('keydown', function (ev) {
 if (/[?&]demo/.test(location.search)) {
   $('input[name="q-rail"][value="margin"]').checked = true;
   $('input[name="q-legacy"][value="in-place"]').checked = true;
+  $('input[name="q-arch"][value="agree"]').checked = true;
   $('input[name="q-render"][value="code-highlight"]').checked = true;
   $('input[name="q-render"][value="toc"]').checked = true;
   $('input[name="q-theme"][value="4"]').checked = true;
   $('[data-note-for="q-rail"]').value = 'Margin cards, but collapse to a list when there are more than ~6 comments.';
+  var demoOptRow = $('input[name="q-render"][value="dataviz"]').closest('.opt-row');
+  addAnchored({
+    target: { kind: 'option', qid: 'q-render', option: 'dataviz',
+              label: 'Chart guidance per the dataviz mark specs' },
+    qid: 'q-render', anchorEl: demoOptRow,
+    kindLabel: 'option', context: 'Chart guidance per the dataviz mark specs'
+  }, 'Only if the palette validator is vendored — no network fetch at render time.');
 }
 
 refresh();

@@ -29,12 +29,18 @@ Diagrams need the Mermaid CDN once; everything else is self-contained.
   code, and a "Point at" footer that turns bars / rows / tiles / diagram
   nodes into structured reference chips sent with the message.
 - `ask.html` — improved ask mode: progress dots and a wide-screen question
-  index with answered state, three new widget kinds (comparison cards with
-  pros/cons, 1–5 scale, arrow-button ranking) alongside radio/checkbox/text,
-  compact per-question notes, and a submit flow that flags unanswered
-  questions with jump links instead of blocking. `answers` schema extends
-  per kind: cards → chosen id, scale → number, rank → ordered array.
-  The form content is the real decision batch for the implementation PR.
+  index with answered state, a plain-English "Explain this decision"
+  disclosure on every question, three new widget kinds (comparison cards
+  with pros/cons, 1–5 scale, arrow-button ranking) alongside
+  radio/checkbox/text, an architecture-change widget with Before/After
+  Mermaid diagrams and an agree/disagree answer, anchored comments beyond
+  the plain note (select text → quote, 💬 on an option row → option,
+  click a diagram node → diagram-node), compact per-question notes, and a
+  submit flow that flags unanswered questions with jump links instead of
+  blocking. `answers` extends per kind (cards → chosen id, scale → number,
+  rank → ordered array); anchored comments carry a `target` alongside the
+  `anchor`. The form content is the real decision batch for the
+  implementation PR.
 - `index.html` — links all pages with a summary of what to try.
 
 Theme sketch "Proof": chrome is a sans-serif instrument, content a serif
