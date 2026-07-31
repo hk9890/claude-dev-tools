@@ -1,0 +1,1256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Feedback prototype — element-level targets</title>
+<style>
+/* ── "Proof" theme — blue pencil on a cool proof sheet ─────────────────────
+   Chrome (top bar, rail, footer) is the instrument: cool sans, quiet.
+   The document under review is the artifact: a paper card set in serif.
+   Everything the USER adds — pins, marks, rail cards — is pencil blue.   */
+:root {
+  color-scheme: light dark;
+  --pv-desk:     #eceee9;
+  --pv-paper:    #fbfbf8;
+  --pv-paper-2:  #f2f3ee;
+  --pv-ink:      #1d2024;
+  --pv-muted:    #5c636b;
+  --pv-faint:    #8b9199;
+  --pv-border:   #d9dcd3;
+  --pv-border-soft: #e5e7e0;
+  --pv-pencil:      #2451c8;
+  --pv-pencil-deep: #1a3ea3;
+  --pv-pencil-tint: #e4eafb;
+  --pv-pencil-rgb:  36, 81, 200;
+  --pv-ok:   #2e7d43;
+  --pv-bad:  #c03a2e;
+  --pv-shadow:    0 1px 2px rgba(29,32,36,.05), 0 8px 24px -12px rgba(29,32,36,.14);
+  --pv-shadow-lg: 0 2px 6px rgba(29,32,36,.07), 0 18px 44px -16px rgba(29,32,36,.22);
+  --pv-radius: 12px;
+  --pv-sans:  ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --pv-serif: "Charter", "Bitstream Charter", "Sitka Text", "Iowan Old Style", Cambria, Georgia, serif;
+  --pv-mono:  ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --pv-desk:     #131519;
+    --pv-paper:    #1e2126;
+    --pv-paper-2:  #181b1f;
+    --pv-ink:      #e8eaed;
+    --pv-muted:    #9aa2ad;
+    --pv-faint:    #6d7480;
+    --pv-border:   #31363e;
+    --pv-border-soft: #262b32;
+    --pv-pencil:      #8fb1ff;
+    --pv-pencil-deep: #adc6ff;
+    --pv-pencil-tint: #223250;
+    --pv-pencil-rgb:  143, 177, 255;
+    --pv-ok:   #7fbe8f;
+    --pv-bad:  #e08578;
+    --pv-shadow:    0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+    --pv-shadow-lg: 0 2px 6px rgba(0,0,0,.5), 0 18px 44px -16px rgba(0,0,0,.75);
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--pv-desk);
+  color: var(--pv-ink);
+  font-family: var(--pv-sans);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+::selection { background: rgba(var(--pv-pencil-rgb), .22); }
+button { font-family: var(--pv-sans); }
+:focus-visible { outline: 2px solid var(--pv-pencil); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: .001ms !important;
+  }
+  html { scroll-behavior: auto; }
+}
+
+/* ── Top bar (instrument) ─────────────────────────────────────────────── */
+.topbar {
+  position: sticky; top: 0; z-index: 50;
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: .4rem 1rem;
+  padding: .6rem 1.25rem;
+  background: color-mix(in srgb, var(--pv-desk) 88%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--pv-border);
+}
+.topbar .eyebrow {
+  font-size: .68rem; font-weight: 600;
+  letter-spacing: .1em; text-transform: uppercase;
+  color: var(--pv-faint);
+}
+.topbar .bar-title { font-size: .92rem; font-weight: 600; }
+.topbar .spacer { flex: 1; }
+.count-chip {
+  font-size: .78rem; font-variant-numeric: tabular-nums;
+  color: var(--pv-muted);
+  padding: .2rem .6rem;
+  border: 1px solid var(--pv-border);
+  border-radius: 999px;
+  background: var(--pv-paper);
+}
+.tool-btn {
+  display: inline-flex; align-items: center; gap: .4rem;
+  padding: .34rem .8rem;
+  font-size: .82rem; font-weight: 550;
+  color: var(--pv-ink);
+  background: var(--pv-paper);
+  border: 1px solid var(--pv-border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: border-color .12s, background .12s, color .12s;
+}
+.tool-btn:hover { border-color: var(--pv-pencil); }
+.tool-btn.on {
+  background: var(--pv-pencil); border-color: var(--pv-pencil);
+  color: var(--pv-paper);
+}
+
+/* ── Layout: document + margin rail ───────────────────────────────────── */
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 2rem;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 2.25rem 1.5rem 9rem;
+}
+
+/* ── The document (artifact) ──────────────────────────────────────────── */
+.doc {
+  background: var(--pv-paper);
+  border: 1px solid var(--pv-border);
+  border-radius: var(--pv-radius);
+  box-shadow: var(--pv-shadow);
+  padding: 2.6rem 3rem 2.8rem;
+  font-family: var(--pv-serif);
+  font-size: 1.02rem;
+}
+.doc-hint {
+  font-family: var(--pv-sans);
+  font-size: .8rem;
+  color: var(--pv-muted);
+  background: var(--pv-pencil-tint);
+  border: 1px solid color-mix(in srgb, var(--pv-pencil) 25%, transparent);
+  border-radius: 8px;
+  padding: .5rem .8rem;
+  margin: 0 0 1.8rem;
+}
+.doc-hint b { color: var(--pv-pencil-deep); font-weight: 600; }
+.doc h1 {
+  margin: 0 0 .4rem;
+  font-size: 1.85rem; font-weight: 600;
+  line-height: 1.18; letter-spacing: -.015em;
+}
+.doc .subtitle {
+  margin: 0 0 2rem;
+  font-style: italic; font-size: 1.06rem;
+  color: var(--pv-muted);
+}
+.doc h2 {
+  margin: 2.1rem 0 .6rem;
+  font-size: 1.22rem; font-weight: 600; letter-spacing: -.01em;
+  scroll-margin-top: 4.2rem;
+}
+.doc p { margin: 0 0 1rem; }
+.doc ul { margin: 0 0 1rem; padding-left: 1.3rem; }
+.doc li { margin-bottom: .45rem; padding-right: .3rem; border-radius: 4px; }
+
+/* Tables and code inside the document are utility surfaces → sans/mono */
+[data-block-id="table-targets"] { overflow-x: auto; }
+.doc-table {
+  width: 100%;
+  margin: 0 0 1rem;
+  border-collapse: collapse;
+  font-family: var(--pv-sans); font-size: .86rem;
+  border: 1px solid var(--pv-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.doc-table th, .doc-table td {
+  text-align: left; padding: .5rem .8rem;
+  border-bottom: 1px solid var(--pv-border-soft);
+}
+.doc-table th {
+  font-size: .7rem; font-weight: 600;
+  letter-spacing: .06em; text-transform: uppercase;
+  color: var(--pv-muted);
+  background: var(--pv-paper-2);
+}
+.doc-table tbody tr:last-child td { border-bottom: none; }
+.doc-table code { font-family: var(--pv-mono); font-size: .82rem; }
+
+.code-block {
+  margin: 0 0 1rem;
+  background: var(--pv-paper-2);
+  border: 1px solid var(--pv-border);
+  border-radius: 8px;
+  padding: .7rem 0;
+  overflow-x: auto;
+  font-family: var(--pv-mono);
+  font-size: .8rem; line-height: 1.55;
+}
+.code-line {
+  display: block;
+  padding: 0 1rem 0 .4rem;
+  white-space: pre;
+  border-radius: 0;
+}
+.code-line::before {
+  content: attr(data-line);
+  display: inline-block;
+  width: 2em; margin-right: 1em;
+  text-align: right;
+  color: var(--pv-faint);
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}
+.tok-kw  { color: var(--pv-pencil-deep); font-weight: 600; }
+.tok-str { color: var(--pv-ok); }
+.tok-com { color: var(--pv-faint); font-style: italic; }
+
+.mermaid-block {
+  position: relative;
+  margin: 0 0 1rem;
+  background: var(--pv-paper-2);
+  border: 1px solid var(--pv-border);
+  border-radius: 8px;
+  padding: 1rem;
+  overflow-x: auto;
+}
+.mermaid-block pre.mermaid { margin: 0; text-align: center; font-family: var(--pv-mono); min-width: 560px; }
+.mermaid-block pre.mermaid:not([data-processed]) { visibility: hidden; }
+.mermaid-block svg .node { cursor: pointer; }
+.diagram-caption {
+  font-family: var(--pv-sans); font-size: .74rem;
+  color: var(--pv-faint); text-align: center; margin-top: .5rem;
+}
+
+/* ── The annotation layer: everything the user adds is pencil blue ────── */
+mark.pv-mark {
+  background: rgba(var(--pv-pencil-rgb), .14);
+  border-bottom: 2px solid var(--pv-pencil);
+  color: inherit;
+  padding: 0 1px;
+  border-radius: 2px;
+}
+.pv-pin {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 1.15rem; height: 1.15rem;
+  padding: 0 .25rem;
+  margin-left: .3rem;
+  background: var(--pv-pencil); color: var(--pv-paper);
+  font-family: var(--pv-sans); font-size: .66rem; font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  border-radius: 999px;
+  vertical-align: super; line-height: 1;
+  cursor: pointer; user-select: none;
+  animation: pin-pop .18s ease;
+}
+@keyframes pin-pop { from { transform: scale(.4); opacity: 0; } }
+.pv-node-pin { position: absolute; z-index: 5; margin: 0; }
+
+/* Hover/pick affordances */
+body.picking #doc { cursor: crosshair; }
+.pv-hover {
+  outline: 2px solid var(--pv-pencil) !important;
+  outline-offset: 3px;
+  border-radius: 4px;
+  background: rgba(var(--pv-pencil-rgb), .07);
+}
+.pv-hot { background: rgba(var(--pv-pencil-rgb), .16) !important; border-radius: 4px; }
+svg g.node.pv-hover rect, svg g.node.pv-hover polygon, svg g.node.pv-hover circle,
+svg g.node.pv-hover path {
+  stroke: var(--pv-pencil) !important; stroke-width: 2.5px !important;
+}
+svg g.node.pv-noded rect, svg g.node.pv-noded polygon, svg g.node.pv-noded circle,
+svg g.node.pv-noded path {
+  stroke: var(--pv-pencil) !important; stroke-width: 2px !important;
+}
+svg g.node.pv-hot rect, svg g.node.pv-hot polygon,
+svg g.node.pv-hot path { stroke: var(--pv-pencil-deep) !important; stroke-width: 3px !important; }
+
+/* ── Selection pill ───────────────────────────────────────────────────── */
+.pv-pill {
+  position: absolute; z-index: 60;
+  display: inline-flex; align-items: center; gap: .35rem;
+  padding: .32rem .75rem;
+  background: var(--pv-pencil); color: var(--pv-paper);
+  font-size: .8rem; font-weight: 600;
+  border: none; border-radius: 999px;
+  box-shadow: var(--pv-shadow-lg);
+  cursor: pointer;
+}
+.pv-pill:hover { background: var(--pv-pencil-deep); }
+.pv-pill[hidden] { display: none; }
+
+/* ── Comment editor popover ───────────────────────────────────────────── */
+.pv-editor {
+  position: absolute; z-index: 70;
+  width: min(400px, calc(100vw - 2rem));
+  background: var(--pv-paper);
+  border: 1px solid var(--pv-border);
+  border-left: 3px solid var(--pv-pencil);
+  border-radius: 10px;
+  box-shadow: var(--pv-shadow-lg);
+  padding: .8rem .9rem;
+  font-family: var(--pv-sans);
+}
+.pv-editor-ctx {
+  display: flex; align-items: baseline; gap: .5rem;
+  margin-bottom: .55rem; font-size: .78rem;
+  overflow: hidden;
+}
+.pv-kind {
+  flex: none;
+  font-size: .64rem; font-weight: 650;
+  letter-spacing: .07em; text-transform: uppercase;
+  color: var(--pv-pencil-deep);
+  background: var(--pv-pencil-tint);
+  padding: .12rem .45rem; border-radius: 4px;
+}
+.pv-ctx-text {
+  color: var(--pv-muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.pv-ta {
+  width: 100%; min-height: 64px;
+  padding: .5rem .6rem;
+  background: var(--pv-paper-2); color: var(--pv-ink);
+  border: 1px solid var(--pv-border); border-radius: 7px;
+  font-family: var(--pv-sans); font-size: .88rem; line-height: 1.5;
+  resize: vertical;
+}
+.pv-ta:focus { outline: none; border-color: var(--pv-pencil);
+  box-shadow: 0 0 0 2px rgba(var(--pv-pencil-rgb), .18); }
+.pv-editor-actions {
+  display: flex; justify-content: flex-end; gap: .5rem; margin-top: .55rem;
+}
+.pv-btn {
+  padding: .34rem .9rem;
+  font-size: .82rem; font-weight: 550;
+  border-radius: 7px; cursor: pointer;
+  border: 1px solid transparent;
+}
+.pv-btn-primary { background: var(--pv-pencil); color: var(--pv-paper); }
+.pv-btn-primary:hover { background: var(--pv-pencil-deep); }
+.pv-btn-ghost {
+  background: transparent; color: var(--pv-muted);
+  border-color: var(--pv-border);
+}
+.pv-btn-ghost:hover { color: var(--pv-ink); border-color: var(--pv-muted); }
+
+/* ── Margin rail (galley-proof notes) ─────────────────────────────────── */
+.rail { position: relative; font-family: var(--pv-sans); }
+.rail-head {
+  font-size: .68rem; font-weight: 650;
+  letter-spacing: .1em; text-transform: uppercase;
+  color: var(--pv-faint);
+  margin: 0 0 .8rem;
+}
+#rail-cards { position: relative; }
+.rail-empty {
+  font-size: .8rem; color: var(--pv-faint);
+  border: 1px dashed var(--pv-border);
+  border-radius: 10px; padding: .8rem .9rem;
+}
+.rail-card {
+  position: absolute; left: 0; right: 0;
+  background: var(--pv-paper);
+  border: 1px solid var(--pv-border);
+  border-left: 3px solid var(--pv-pencil);
+  border-radius: 10px;
+  box-shadow: var(--pv-shadow);
+  padding: .6rem .75rem;
+  font-size: .82rem;
+  transition: top .18s ease;
+}
+.rail-card.flash { animation: card-flash 1.2s ease; }
+@keyframes card-flash {
+  0%, 60% { border-color: var(--pv-pencil); box-shadow: 0 0 0 3px rgba(var(--pv-pencil-rgb), .25); }
+}
+.rail-card-head {
+  display: flex; align-items: center; gap: .45rem; margin-bottom: .3rem;
+}
+.rail-n {
+  flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 1.15rem; height: 1.15rem;
+  background: var(--pv-pencil); color: var(--pv-paper);
+  font-size: .66rem; font-weight: 650; font-variant-numeric: tabular-nums;
+  border-radius: 999px;
+}
+.rail-kind {
+  font-size: .62rem; font-weight: 650;
+  letter-spacing: .07em; text-transform: uppercase;
+  color: var(--pv-faint);
+}
+.rail-ctx {
+  font-size: .76rem; color: var(--pv-muted);
+  margin-bottom: .3rem;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.rail-ctx.is-quote { font-family: var(--pv-serif); font-style: italic; }
+.rail-text { color: var(--pv-ink); }
+.rail-actions { display: flex; gap: .7rem; margin-top: .4rem; }
+.rail-actions button {
+  background: none; border: none; padding: 0;
+  font-size: .72rem; font-weight: 550; color: var(--pv-faint);
+  cursor: pointer;
+}
+.rail-actions button:hover { color: var(--pv-pencil); }
+.rail-actions .rail-del:hover { color: var(--pv-bad); }
+
+/* ── Footer action bar ────────────────────────────────────────────────── */
+.actionbar {
+  position: fixed; left: 50%; bottom: 1.1rem; z-index: 55;
+  transform: translateX(-50%);
+  display: flex; align-items: center; gap: .6rem;
+  width: min(880px, calc(100vw - 2rem));
+  padding: .6rem .7rem;
+  background: var(--pv-paper);
+  border: 1px solid var(--pv-border);
+  border-radius: 14px;
+  box-shadow: var(--pv-shadow-lg);
+}
+.actionbar input {
+  flex: 1; min-width: 0;
+  padding: .48rem .7rem;
+  background: var(--pv-paper-2); color: var(--pv-ink);
+  border: 1px solid var(--pv-border); border-radius: 8px;
+  font-family: var(--pv-sans); font-size: .88rem;
+}
+.actionbar input:focus { outline: none; border-color: var(--pv-pencil); }
+.ab-btn {
+  flex: none;
+  padding: .48rem 1rem;
+  font-size: .85rem; font-weight: 600;
+  border-radius: 8px; cursor: pointer;
+}
+.ab-apply {
+  background: transparent; color: var(--pv-pencil-deep);
+  border: 1px solid var(--pv-pencil);
+}
+.ab-apply:hover { background: var(--pv-pencil-tint); }
+.ab-submit { background: var(--pv-pencil); color: var(--pv-paper); border: 1px solid var(--pv-pencil); }
+.ab-submit:hover { background: var(--pv-pencil-deep); }
+
+/* ── Payload drawer ───────────────────────────────────────────────────── */
+.drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 80;
+  width: min(460px, 94vw);
+  background: var(--pv-paper);
+  border-left: 1px solid var(--pv-border);
+  box-shadow: var(--pv-shadow-lg);
+  transform: translateX(105%);
+  transition: transform .22s ease;
+  display: flex; flex-direction: column;
+  font-family: var(--pv-sans);
+}
+.drawer.open { transform: none; }
+.drawer-head {
+  display: flex; align-items: center; gap: .6rem;
+  padding: .9rem 1.1rem;
+  border-bottom: 1px solid var(--pv-border);
+}
+.drawer-head h2 { margin: 0; font-size: .95rem; flex: 1; }
+.drawer-close {
+  background: none; border: 1px solid var(--pv-border); border-radius: 7px;
+  width: 1.7rem; height: 1.7rem; cursor: pointer; color: var(--pv-muted);
+}
+.drawer-note {
+  margin: 0; padding: .7rem 1.1rem;
+  font-size: .76rem; color: var(--pv-muted);
+  background: var(--pv-pencil-tint);
+  border-bottom: 1px solid var(--pv-border);
+}
+.drawer pre {
+  flex: 1; margin: 0; padding: 1rem 1.1rem;
+  overflow: auto;
+  font-family: var(--pv-mono); font-size: .74rem; line-height: 1.5;
+}
+
+/* ── Toast ────────────────────────────────────────────────────────────── */
+.toast {
+  position: fixed; left: 50%; bottom: 5.2rem; z-index: 90;
+  transform: translateX(-50%);
+  max-width: min(560px, calc(100vw - 2rem));
+  padding: .55rem 1rem;
+  background: var(--pv-ink); color: var(--pv-paper);
+  font-size: .82rem; border-radius: 9px;
+  box-shadow: var(--pv-shadow-lg);
+  opacity: 0; pointer-events: none;
+  transition: opacity .2s ease;
+}
+.toast.show { opacity: 1; }
+
+/* ── Wide screens: sticky outline left, wider measure, bigger type ────── */
+.outline { display: none; }
+@media (min-width: 1400px) {
+  .layout {
+    grid-template-columns: 210px minmax(0, 1fr) 330px;
+    max-width: 1800px;
+    gap: 2.5rem;
+  }
+  .doc { max-width: 950px; width: 100%; margin: 0 auto; }
+  .outline { display: block; }
+  .outline-inner { position: sticky; top: 4.4rem; }
+  .outline-head {
+    font-size: .68rem; font-weight: 650;
+    letter-spacing: .1em; text-transform: uppercase;
+    color: var(--pv-faint);
+    margin: 0 0 .8rem;
+  }
+  .outline a {
+    display: block;
+    padding: .32rem .7rem;
+    font-family: var(--pv-sans);
+    font-size: .84rem; font-weight: 500;
+    color: var(--pv-muted); text-decoration: none;
+    border-left: 2px solid var(--pv-border);
+    border-radius: 0 7px 7px 0;
+  }
+  .outline a:hover { color: var(--pv-ink); background: var(--pv-paper); }
+  .outline a.active {
+    color: var(--pv-pencil-deep);
+    border-left-color: var(--pv-pencil);
+    background: var(--pv-pencil-tint);
+  }
+  .actionbar { width: min(1000px, calc(100vw - 2rem)); }
+}
+@media (min-width: 1700px) {
+  body { font-size: 17px; }
+}
+
+/* ── Narrow screens: rail flows under the document ────────────────────── */
+@media (max-width: 1080px) {
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .doc { padding: 1.8rem 1.4rem 2rem; }
+  #rail-cards { position: static; }
+  .rail-card { position: static; margin-bottom: .7rem; }
+}
+@media (max-width: 640px) {
+  .actionbar { flex-wrap: wrap; }
+  .actionbar input { flex: 1 1 100%; order: -1; }
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <span class="eyebrow">html-visualize · feedback — prototype</span>
+  <span class="bar-title">Element-level feedback</span>
+  <span class="spacer"></span>
+  <span id="count" class="count-chip" aria-live="polite">0 comments</span>
+  <button id="pick-btn" class="tool-btn" type="button" aria-pressed="false">⊹ Pick element</button>
+  <button id="payload-btn" class="tool-btn" type="button">View payload</button>
+</header>
+
+<div class="layout">
+  <aside class="outline">
+    <nav class="outline-inner" id="outline" aria-label="On this page">
+      <p class="outline-head">On this page</p>
+      <a href="#sec-why">Why</a>
+      <a href="#sec-model">The target model</a>
+      <a href="#sec-changes">What changes, what stays</a>
+      <a href="#sec-read">Reading it back</a>
+      <a href="#sec-round">The round trip</a>
+      <a href="#sec-open">Open question</a>
+    </nav>
+  </aside>
+
+  <main class="doc" id="doc">
+    <p class="doc-hint">This page is a working prototype — everything below is commentable.
+      Try: <b>select a single word</b> · <b>⊹ Pick element</b>, then click a list item, table row, or code line ·
+      <b>click a node in the diagram</b>.</p>
+
+    <h1>Proposal: element-level feedback for html-visualize</h1>
+    <p class="subtitle">Anchor a comment to anything on the page — a word, a table row, a line of code, a diagram node — not just a run of text.</p>
+
+    <h2 id="sec-why">Why</h2>
+    <p data-block-id="p-why">Today a comment can anchor to a run of selected text, or to a whole
+      block — nothing in between, and nothing visual. The moment the reviewed content contains a
+      table, a code listing, or a diagram, precision falls off a cliff: you can select the text
+      <em>of</em> a table row, but not say <em>the row</em>; you can say “the diagram”, but never
+      <em>the node</em>.</p>
+
+    <h2 id="sec-model">The target model</h2>
+    <p data-block-id="p-model">The fix is one small, uniform idea: every comment carries a
+      <strong>target</strong>, and a target has a <strong>kind</strong>. Four kinds cover the page:</p>
+
+    <div data-block-id="table-targets">
+      <table class="doc-table">
+        <thead>
+          <tr><th>kind</th><th>anchors to</th><th>carried fields</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>quote</code></td><td>a selected phrase — one word is enough</td><td><code>blockId · quote · quoteStart</code></td></tr>
+          <tr><td><code>block</code></td><td>a whole paragraph, list, table, or code block</td><td><code>blockId</code></td></tr>
+          <tr><td><code>element</code></td><td>one item inside a block — list item, table row, code line</td><td><code>blockId · selector · label</code></td></tr>
+          <tr><td><code>diagram-node</code></td><td>one node in a rendered Mermaid diagram</td><td><code>blockId · nodeId · label</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="sec-changes">What changes, what stays</h2>
+    <ul data-block-id="list-goals">
+      <li>Selecting text keeps working exactly as it does now — <code>quote</code> targets are unchanged, down to a single word.</li>
+      <li>Anything with its own identity becomes clickable: list items, table rows, code lines.</li>
+      <li>Mermaid nodes resolve to their source node id, so a comment on a node maps straight back to the diagram source text.</li>
+      <li>One payload shape for all four kinds — the server stays a dumb pipe; only the schema doc and <code>app.js</code> learn the new field.</li>
+    </ul>
+
+    <h2 id="sec-read">Reading it back (app.js side)</h2>
+    <div data-block-id="code-normalize">
+      <div class="code-block"><span class="code-line" data-line="1"><span class="tok-com">// Normalise every incoming comment to one target shape.</span></span><span class="code-line" data-line="2"><span class="tok-kw">function</span> normalizeTarget(c) {</span><span class="code-line" data-line="3">  <span class="tok-kw">const</span> t = c.target;</span><span class="code-line" data-line="4">  <span class="tok-kw">if</span> (t &amp;&amp; t.kind === <span class="tok-str">'diagram-node'</span>) {</span><span class="code-line" data-line="5">    <span class="tok-kw">return</span> { kind: <span class="tok-str">'diagram-node'</span>, blockId: t.blockId,</span><span class="code-line" data-line="6">             nodeId: t.nodeId, label: t.label };</span><span class="code-line" data-line="7">  }</span><span class="code-line" data-line="8">  <span class="tok-kw">if</span> (t &amp;&amp; t.kind === <span class="tok-str">'element'</span>) {</span><span class="code-line" data-line="9">    <span class="tok-kw">return</span> { kind: <span class="tok-str">'element'</span>, blockId: t.blockId,</span><span class="code-line" data-line="10">             selector: t.selector, label: t.label };</span><span class="code-line" data-line="11">  }</span><span class="code-line" data-line="12">  <span class="tok-com">// Legacy shape: quote/quoteStart live on the comment itself.</span></span><span class="code-line" data-line="13">  <span class="tok-kw">if</span> (c.quote) <span class="tok-kw">return</span> { kind: <span class="tok-str">'quote'</span>, blockId: c.blockId,</span><span class="code-line" data-line="14">                        quote: c.quote, quoteStart: c.quoteStart };</span><span class="code-line" data-line="15">  <span class="tok-kw">return</span> { kind: <span class="tok-str">'block'</span>, blockId: c.blockId };</span><span class="code-line" data-line="16">}</span></div>
+    </div>
+
+    <h2 id="sec-round">The round trip</h2>
+    <div class="mermaid-block" data-block-id="diagram-flow">
+      <pre class="mermaid">
+flowchart LR
+  B[browser page] -->|POST /submit| S[bin/server.js]
+  S -->|feedback file| C[Claude]
+  C -->|applies edits| D[(source document)]
+  C -->|re-serve| S
+  S -->|fb-generation poll| B
+      </pre>
+      <div class="diagram-caption">Click any node to comment on it — a node comment carries the source node id, not pixels.</div>
+    </div>
+
+    <h2 id="sec-open">Open question</h2>
+    <p data-block-id="p-open">Whether the legacy comment shape (<code>quote</code> and
+      <code>quoteStart</code> directly on the comment) should still be emitted for one release, or
+      whether the schema can change in place — the only consumer is Claude reading the feedback
+      file, so there is no third party to migrate.</p>
+  </main>
+
+  <aside class="rail" id="rail">
+    <p class="rail-head">Comments</p>
+    <div id="rail-cards">
+      <div class="rail-empty" id="rail-empty">No comments yet.<br>Select text, pick an element, or click a diagram node.</div>
+    </div>
+  </aside>
+</div>
+
+<div class="actionbar">
+  <input id="freeform" type="text" placeholder="Overall note to Claude (optional)…">
+  <button id="apply-btn" class="ab-btn ab-apply" type="button">Apply &amp; preview</button>
+  <button id="submit-btn" class="ab-btn ab-submit" type="button">Submit &amp; finish</button>
+</div>
+
+<aside class="drawer" id="drawer" aria-hidden="true">
+  <div class="drawer-head">
+    <h2 id="drawer-title">Payload</h2>
+    <button class="drawer-close" id="drawer-close" type="button" aria-label="Close">✕</button>
+  </div>
+  <p class="drawer-note">Prototype — no server behind this page. This JSON is exactly what would
+    <code>POST /submit</code>.</p>
+  <pre id="drawer-json"></pre>
+</aside>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script type="module">
+  /* Mermaid with the theme bridge (adapted from the plugin template). */
+  const pv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const blocks = [...document.querySelectorAll("pre.mermaid")];
+  blocks.forEach(b => { b.dataset.src = b.textContent; });
+  const reveal = () => blocks.forEach(b => { b.style.visibility = "visible"; });
+
+  let mermaid;
+  try {
+    mermaid = (await import("https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs")).default;
+  } catch (e) { reveal(); throw e; }
+
+  async function render() {
+    mermaid.initialize({
+      startOnLoad: false,
+      securityLevel: "strict",
+      theme: "base",
+      themeVariables: {
+        background:         pv("--pv-paper-2"),
+        primaryColor:       pv("--pv-paper"),
+        primaryTextColor:   pv("--pv-ink"),
+        primaryBorderColor: pv("--pv-border"),
+        lineColor:          pv("--pv-muted"),
+        secondaryColor:     pv("--pv-pencil-tint"),
+        tertiaryColor:      pv("--pv-paper-2"),
+        fontFamily:         pv("--pv-sans"),
+      },
+    });
+    blocks.forEach(b => { b.textContent = b.dataset.src; b.removeAttribute("data-processed"); });
+    await mermaid.run({ nodes: blocks });
+    if (window.__pvAfterMermaid) window.__pvAfterMermaid();
+  }
+  render().catch(reveal);
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render);
+</script>
+
+<script>
+(function () {
+'use strict';
+
+var $  = function (s, r) { return (r || document).querySelector(s); };
+var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+
+function el(tag, cls, text) {
+  var n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;
+  return n;
+}
+function truncate(s, n) { s = s.trim(); return s.length > n ? s.slice(0, n - 1) + '…' : s; }
+function plainText(node) {
+  var t = (node.textContent || '').replace(/\s+/g, ' ').trim();
+  return t.length > 2000 ? t.slice(0, 2000) + '…' : t;
+}
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+var doc  = $('#doc');
+var railCards = $('#rail-cards');
+var railEmpty = $('#rail-empty');
+var toastEl = $('#toast');
+var state = { comments: [], nextN: 1, picking: false };
+var wideQuery = matchMedia('(min-width: 1081px)');
+
+function blockOf(node) {
+  var e = node && node.nodeType === 1 ? node : node && node.parentElement;
+  return e && e.closest ? e.closest('[data-block-id]') : null;
+}
+
+/* ── Toast ── */
+var toastTimer = null;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function () { toastEl.classList.remove('show'); }, 3200);
+}
+
+/* ── Quote offset (same strategy as the shipped app.js) ── */
+function computeQuoteStart(block, range, quote, blockText) {
+  if (!block || !range || !quote) return -1;
+  try {
+    var prefixRange = document.createRange();
+    prefixRange.setStart(block, 0);
+    prefixRange.setEnd(range.startContainer, range.startOffset);
+    var prefix = (prefixRange.toString() || '').replace(/\s+/g, ' ').replace(/^\s+/, '');
+    var searchFrom = Math.max(0, prefix.length - quote.length);
+    var idx = blockText.indexOf(quote, searchFrom);
+    if (idx < 0) idx = blockText.indexOf(quote);
+    return idx;
+  } catch (e) { return -1; }
+}
+
+/* ── Target builders ── */
+function targetFromSelection(ps) {
+  var blockText = plainText(ps.block);
+  return {
+    target: { kind: 'quote', blockId: ps.blockId, quote: ps.text,
+              quoteStart: computeQuoteStart(ps.block, ps.range, ps.text, blockText) },
+    anchorEl: ps.block, range: ps.range, block: ps.block,
+    context: '“' + truncate(ps.text, 90) + '”', kindLabel: 'quote', isQuote: true
+  };
+}
+
+function targetFromElement(node) {
+  var g = node.closest ? node.closest('g.node') : null;
+  if (g) {
+    var wrap = g.closest('.mermaid-block');
+    if (!wrap) return null;
+    var labelEl = g.querySelector('.nodeLabel');
+    var label = (labelEl ? labelEl.textContent : g.textContent).trim();
+    var m = /flowchart-(.+)-\d+$/.exec(g.id || '');
+    return {
+      target: { kind: 'diagram-node', blockId: wrap.getAttribute('data-block-id'),
+                nodeId: m ? m[1] : label, label: label },
+      anchorEl: g, block: wrap, context: label, kindLabel: 'diagram node'
+    };
+  }
+  var line = node.closest ? node.closest('.code-line') : null;
+  if (line) {
+    var block = blockOf(line);
+    var ln = line.getAttribute('data-line');
+    return {
+      target: { kind: 'element', blockId: block.getAttribute('data-block-id'),
+                selector: 'line:' + ln, label: 'line ' + ln },
+      anchorEl: line, block: block,
+      context: 'line ' + ln + ' · ' + truncate(line.textContent, 60), kindLabel: 'code line'
+    };
+  }
+  var tr = node.closest ? node.closest('tbody tr') : null;
+  if (tr && blockOf(tr)) {
+    var block2 = blockOf(tr);
+    var rowIdx = Array.prototype.indexOf.call(tr.parentNode.children, tr) + 1;
+    var first = tr.cells[0] ? tr.cells[0].textContent.trim() : '';
+    return {
+      target: { kind: 'element', blockId: block2.getAttribute('data-block-id'),
+                selector: 'row:' + rowIdx, label: first },
+      anchorEl: tr, block: block2,
+      context: 'row ' + rowIdx + ' · ' + truncate(first, 50), kindLabel: 'table row'
+    };
+  }
+  var li = node.closest ? node.closest('li') : null;
+  if (li && blockOf(li)) {
+    var block3 = blockOf(li);
+    var itemIdx = Array.prototype.indexOf.call(li.parentNode.children, li) + 1;
+    return {
+      target: { kind: 'element', blockId: block3.getAttribute('data-block-id'),
+                selector: 'item:' + itemIdx, label: truncate(plainText(li), 60) },
+      anchorEl: li, block: block3,
+      context: 'item ' + itemIdx + ' · ' + truncate(plainText(li), 60), kindLabel: 'list item'
+    };
+  }
+  var blk = blockOf(node);
+  if (blk) {
+    return {
+      target: { kind: 'block', blockId: blk.getAttribute('data-block-id') },
+      anchorEl: blk, block: blk,
+      context: truncate(plainText(blk), 90), kindLabel: 'whole block'
+    };
+  }
+  return null;
+}
+
+/* ── Selection pill ── */
+var pill = el('button', 'pv-pill', '✎ Comment');
+pill.type = 'button';
+pill.hidden = true;
+document.body.appendChild(pill);
+var pendingSel = null;
+
+function refreshPill() {
+  var sel = window.getSelection();
+  if (!sel || sel.isCollapsed || sel.rangeCount === 0) { pill.hidden = true; pendingSel = null; return; }
+  var text = sel.toString().replace(/\s+/g, ' ').trim();
+  var range = sel.getRangeAt(0);
+  var block = blockOf(range.startContainer);
+  if (!text || !block || !doc.contains(block)) { pill.hidden = true; pendingSel = null; return; }
+  pendingSel = { block: block, blockId: block.getAttribute('data-block-id'),
+                 text: text, range: range.cloneRange() };
+  pill.hidden = false;
+  try {
+    var r = range.getBoundingClientRect();
+    pill.style.top = (r.top + window.scrollY - pill.offsetHeight - 8) + 'px';
+    pill.style.left = clamp(r.right + window.scrollX - pill.offsetWidth,
+                            8, window.scrollX + document.documentElement.clientWidth - pill.offsetWidth - 8) + 'px';
+  } catch (e) { /* leave default position */ }
+}
+document.addEventListener('mouseup', function () { setTimeout(refreshPill, 10); });
+document.addEventListener('keyup', function (ev) {
+  if (ev.shiftKey || ev.key === 'Shift') setTimeout(refreshPill, 10);
+});
+pill.addEventListener('mousedown', function (ev) { ev.preventDefault(); });
+pill.addEventListener('click', function () {
+  if (!pendingSel) return;
+  var t = targetFromSelection(pendingSel);
+  pill.hidden = true;
+  var rect = null;
+  try { rect = t.range.getBoundingClientRect(); } catch (e) {}
+  openEditor(t, rect);
+});
+
+/* ── Editor popover ── */
+var editor = null;
+function closeEditor() {
+  if (editor && editor.parentNode) editor.parentNode.removeChild(editor);
+  editor = null;
+}
+function openEditor(t, nearRect, existing) {
+  closeEditor();
+  editor = el('div', 'pv-editor');
+  var ctx = el('div', 'pv-editor-ctx');
+  ctx.appendChild(el('span', 'pv-kind', t.kindLabel));
+  ctx.appendChild(el('span', 'pv-ctx-text', t.context));
+  editor.appendChild(ctx);
+  var ta = el('textarea', 'pv-ta');
+  ta.placeholder = 'What should change here?';
+  if (existing) ta.value = existing.text;
+  editor.appendChild(ta);
+  var row = el('div', 'pv-editor-actions');
+  var cancel = el('button', 'pv-btn pv-btn-ghost', 'Cancel');
+  cancel.type = 'button';
+  var save = el('button', 'pv-btn pv-btn-primary', existing ? 'Update' : 'Save comment');
+  save.type = 'button';
+  row.appendChild(cancel); row.appendChild(save);
+  editor.appendChild(row);
+  document.body.appendChild(editor);
+
+  var r = nearRect || t.anchorEl.getBoundingClientRect();
+  editor.style.top = (r.bottom + window.scrollY + 8) + 'px';
+  editor.style.left = clamp(r.left + window.scrollX, 12,
+    window.scrollX + document.documentElement.clientWidth - editor.offsetWidth - 12) + 'px';
+  ta.focus();
+
+  save.addEventListener('click', function () {
+    var text = ta.value.trim();
+    if (!text) { closeEditor(); return; }
+    if (existing) { existing.text = text; } else { addComment(t, text); }
+    closeEditor();
+    renderRail();
+  });
+  cancel.addEventListener('click', closeEditor);
+}
+
+/* ── Pins ── */
+function makePin(c) {
+  var p = el('sup', 'pv-pin', String(c.n));
+  p.setAttribute('data-cid', c.id);
+  p.title = 'Go to comment ' + c.n;
+  p.addEventListener('click', function (ev) { ev.stopPropagation(); focusCard(c.id); });
+  return p;
+}
+
+function positionNodePin(c) {
+  if (!c.nodePin || !c.anchorEl || !c.anchorEl.isConnected) return;
+  var wrap = c.block;
+  var wr = wrap.getBoundingClientRect();
+  var nr = c.anchorEl.getBoundingClientRect();
+  c.nodePin.style.left = (nr.right - wr.left - 8 + wrap.scrollLeft) + 'px';
+  c.nodePin.style.top  = (nr.top - wr.top - 8) + 'px';
+}
+
+function placePin(c, range) {
+  var kind = c.target.kind;
+  if (kind === 'quote' && range) {
+    try {
+      var mark = el('mark', 'pv-mark');
+      mark.setAttribute('data-cid', c.id);
+      range.surroundContents(mark);
+      c.markEl = mark;
+      mark.insertAdjacentElement('afterend', makePin(c));
+      return;
+    } catch (e) { /* selection crossed elements — fall through to block pin */ }
+  }
+  if (kind === 'diagram-node') {
+    c.anchorEl.classList.add('pv-noded');
+    var pin = makePin(c);
+    pin.classList.add('pv-node-pin');
+    c.block.appendChild(pin);
+    c.nodePin = pin;
+    positionNodePin(c);
+    return;
+  }
+  var host = c.anchorEl;
+  if (host.tagName === 'TR') host = host.cells[host.cells.length - 1];
+  host.appendChild(makePin(c));
+}
+
+function removePin(c) {
+  var pin = document.querySelector('.pv-pin[data-cid="' + c.id + '"]');
+  if (pin && pin.parentNode) pin.parentNode.removeChild(pin);
+  if (c.markEl && c.markEl.parentNode) {
+    var parent = c.markEl.parentNode;
+    while (c.markEl.firstChild) parent.insertBefore(c.markEl.firstChild, c.markEl);
+    parent.removeChild(c.markEl);
+    if (parent.normalize) parent.normalize();
+  }
+  if (c.target.kind === 'diagram-node' && c.anchorEl && c.anchorEl.isConnected) {
+    var others = state.comments.some(function (o) {
+      return o !== c && o.target.kind === 'diagram-node' && o.target.nodeId === c.target.nodeId;
+    });
+    if (!others) c.anchorEl.classList.remove('pv-noded');
+  }
+}
+
+/* ── Add / delete ── */
+function addComment(t, text) {
+  var c = {
+    id: 'c' + state.nextN, n: state.nextN, target: t.target, text: text,
+    anchorEl: t.anchorEl, block: t.block, blockText: plainText(t.block),
+    context: t.context, kindLabel: t.kindLabel, isQuote: !!t.isQuote
+  };
+  state.nextN++;
+  state.comments.push(c);
+  placePin(c, t.range || null);
+  renderRail();
+}
+
+function deleteComment(id) {
+  var c = state.comments.filter(function (x) { return x.id === id; })[0];
+  if (!c) return;
+  removePin(c);
+  state.comments = state.comments.filter(function (x) { return x.id !== id; });
+  renderRail();
+}
+
+/* ── Anchor highlight (rail card hover ⇄ document) ── */
+function setAnchorHot(c, on) {
+  var elx = c.markEl && c.markEl.isConnected ? c.markEl : c.anchorEl;
+  if (!elx || !elx.isConnected) return;
+  if (elx.namespaceURI === 'http://www.w3.org/2000/svg' || c.target.kind === 'diagram-node') {
+    c.anchorEl.classList.toggle('pv-hot', on);
+  } else {
+    elx.classList.toggle('pv-hot', on);
+  }
+}
+
+/* ── Rail ── */
+function anchorTopOf(c) {
+  var elx = c.markEl && c.markEl.isConnected ? c.markEl : c.anchorEl;
+  if (!elx || !elx.isConnected) elx = c.block;
+  return elx.getBoundingClientRect().top + window.scrollY;
+}
+
+function focusCard(id) {
+  var card = railCards.querySelector('.rail-card[data-cid="' + id + '"]');
+  if (!card) return;
+  card.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  card.classList.remove('flash');
+  void card.offsetWidth;
+  card.classList.add('flash');
+}
+
+function buildCard(c) {
+  var card = el('div', 'rail-card');
+  card.setAttribute('data-cid', c.id);
+  var head = el('div', 'rail-card-head');
+  head.appendChild(el('span', 'rail-n', String(c.n)));
+  head.appendChild(el('span', 'rail-kind', c.kindLabel));
+  card.appendChild(head);
+  var ctx = el('div', 'rail-ctx' + (c.isQuote ? ' is-quote' : ''), c.context);
+  card.appendChild(ctx);
+  card.appendChild(el('div', 'rail-text', c.text));
+  var actions = el('div', 'rail-actions');
+  var edit = el('button', 'rail-edit', 'Edit');
+  edit.type = 'button';
+  var del = el('button', 'rail-del', 'Delete');
+  del.type = 'button';
+  actions.appendChild(edit); actions.appendChild(del);
+  card.appendChild(actions);
+
+  edit.addEventListener('click', function () {
+    openEditor({ kindLabel: c.kindLabel, context: c.context, anchorEl: c.anchorEl.isConnected ? c.anchorEl : c.block },
+               null, c);
+  });
+  del.addEventListener('click', function () { deleteComment(c.id); });
+  card.addEventListener('mouseenter', function () { setAnchorHot(c, true); });
+  card.addEventListener('mouseleave', function () { setAnchorHot(c, false); });
+  return card;
+}
+
+function renderRail() {
+  $$('.rail-card', railCards).forEach(function (x) { x.parentNode.removeChild(x); });
+  railEmpty.style.display = state.comments.length ? 'none' : '';
+  var wide = wideQuery.matches;
+  var sorted = state.comments.slice().sort(function (a, b) { return anchorTopOf(a) - anchorTopOf(b); });
+  var railTop = railCards.getBoundingClientRect().top + window.scrollY;
+  var prevBottom = -10;
+  sorted.forEach(function (c) {
+    var card = buildCard(c);
+    railCards.appendChild(card);
+    if (wide) {
+      var top = Math.max(anchorTopOf(c) - railTop, prevBottom + 10);
+      card.style.top = top + 'px';
+      prevBottom = top + card.offsetHeight;
+    }
+  });
+  if (wide) railCards.style.minHeight = (prevBottom + 20) + 'px';
+  updateCount();
+}
+
+var countEl = $('#count');
+function updateCount() {
+  var n = state.comments.length;
+  countEl.textContent = n === 0 ? '0 comments' : n + (n === 1 ? ' comment' : ' comments');
+}
+
+/* ── Pick mode ── */
+var pickBtn = $('#pick-btn');
+var hoverEl = null;
+function setHover(elx) {
+  if (hoverEl === elx) return;
+  if (hoverEl) hoverEl.classList.remove('pv-hover');
+  hoverEl = elx;
+  if (hoverEl) hoverEl.classList.add('pv-hover');
+}
+function setPicking(on) {
+  state.picking = on;
+  document.body.classList.toggle('picking', on);
+  pickBtn.classList.toggle('on', on);
+  pickBtn.setAttribute('aria-pressed', String(on));
+  setHover(null);
+  if (on) toast('Click a paragraph, list item, table row, code line, or diagram node. Esc cancels.');
+}
+pickBtn.addEventListener('click', function () { setPicking(!state.picking); });
+
+document.addEventListener('mouseover', function (ev) {
+  if (!state.picking) return;
+  if (!doc.contains(ev.target)) { setHover(null); return; }
+  var t = targetFromElement(ev.target);
+  setHover(t ? t.anchorEl : null);
+});
+document.addEventListener('click', function (ev) {
+  if (!state.picking) return;
+  if (!doc.contains(ev.target)) return;
+  var t = targetFromElement(ev.target);
+  if (!t) return;
+  ev.preventDefault();
+  ev.stopPropagation();
+  setPicking(false);
+  openEditor(t);
+}, true);
+
+/* Diagram nodes are always clickable, even outside pick mode. */
+$$('.mermaid-block').forEach(function (wrap) {
+  wrap.addEventListener('click', function (ev) {
+    if (state.picking) return;
+    var g = ev.target.closest ? ev.target.closest('g.node') : null;
+    if (!g) return;
+    var t = targetFromElement(g);
+    if (t) openEditor(t);
+  });
+});
+
+/* After a Mermaid (re-)render the node <g> elements are new — re-resolve. */
+window.__pvAfterMermaid = function () {
+  state.comments.forEach(function (c) {
+    if (c.target.kind !== 'diagram-node') return;
+    var svg = c.block.querySelector('svg');
+    if (!svg) return;
+    var g = null;
+    $$('g.node', svg).forEach(function (node) {
+      var m = /flowchart-(.+)-\d+$/.exec(node.id || '');
+      if (m && m[1] === c.target.nodeId) g = node;
+    });
+    if (g) {
+      c.anchorEl = g;
+      g.classList.add('pv-noded');
+      positionNodePin(c);
+    }
+  });
+  if (demoMode && !demoNodeSeeded) {
+    demoNodeSeeded = true;
+    var dsvg = doc.querySelector('[data-block-id="diagram-flow"] svg');
+    if (dsvg) {
+      var dg = null;
+      $$('g.node', dsvg).forEach(function (node) {
+        var m = /flowchart-(.+)-\d+$/.exec(node.id || '');
+        if (m && m[1] === 'S') dg = node;
+      });
+      if (dg) {
+        var dt = targetFromElement(dg);
+        if (dt) addComment(dt, 'Should the server validate target kinds, or stay a dumb pipe?');
+      }
+    }
+  }
+  renderRail();
+};
+
+/* ── Payload ── */
+function buildPayload(action) {
+  return {
+    action: action,
+    comments: state.comments.map(function (c) {
+      return { target: c.target, blockText: c.blockText, text: c.text };
+    }),
+    freeform: $('#freeform').value.trim()
+  };
+}
+
+var drawer = $('#drawer');
+function openDrawer(title, payload) {
+  $('#drawer-title').textContent = title;
+  $('#drawer-json').textContent = JSON.stringify(payload, null, 2);
+  drawer.classList.add('open');
+  drawer.setAttribute('aria-hidden', 'false');
+}
+function closeDrawer() {
+  drawer.classList.remove('open');
+  drawer.setAttribute('aria-hidden', 'true');
+}
+$('#drawer-close').addEventListener('click', closeDrawer);
+$('#payload-btn').addEventListener('click', function () {
+  openDrawer('Payload preview', buildPayload('submit'));
+});
+$('#apply-btn').addEventListener('click', function () {
+  openDrawer('POST /submit — action: "apply"', buildPayload('apply'));
+});
+$('#submit-btn').addEventListener('click', function () {
+  openDrawer('POST /submit — action: "submit"', buildPayload('submit'));
+});
+
+/* ── Global keys / resize ── */
+document.addEventListener('keydown', function (ev) {
+  if (ev.key !== 'Escape') return;
+  if (editor) { closeEditor(); return; }
+  if (drawer.classList.contains('open')) { closeDrawer(); return; }
+  if (state.picking) setPicking(false);
+});
+var resizeTimer = null;
+window.addEventListener('resize', function () {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(function () {
+    state.comments.forEach(positionNodePin);
+    renderRail();
+  }, 120);
+});
+
+/* ── Outline scrollspy (wide screens) ── */
+var outlineLinks = $$('#outline a');
+if (outlineLinks.length && 'IntersectionObserver' in window) {
+  var outlineSpy = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      if (!entry.isIntersecting) return;
+      var id = '#' + entry.target.id;
+      outlineLinks.forEach(function (a) {
+        a.classList.toggle('active', a.getAttribute('href') === id);
+      });
+    });
+  }, { rootMargin: '-10% 0px -65% 0px' });
+  outlineLinks.forEach(function (a) {
+    var h = document.querySelector(a.getAttribute('href'));
+    if (h) outlineSpy.observe(h);
+  });
+}
+
+/* ── Demo seed (?demo) — populate the annotation layer for a first look ── */
+var demoMode = /[?&]demo/.test(location.search);
+var demoNodeSeeded = false;
+if (demoMode) {
+  (function () {
+    var block = doc.querySelector('[data-block-id="p-why"]');
+    var phrase = 'precision falls off a cliff';
+    var walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+    var node, idx = -1;
+    while ((node = walker.nextNode())) {
+      idx = node.textContent.indexOf(phrase);
+      if (idx !== -1) break;
+    }
+    if (node && idx !== -1) {
+      var range = document.createRange();
+      range.setStart(node, idx);
+      range.setEnd(node, idx + phrase.length);
+      addComment(targetFromSelection({ block: block, blockId: 'p-why', text: phrase, range: range }),
+                 'This is the whole pitch — consider promoting it into the subtitle.');
+    }
+    var line = doc.querySelector('[data-block-id="code-normalize"] .code-line[data-line="13"]');
+    if (line) addComment(targetFromElement(line),
+                         'If the open question lands on “change in place”, this branch disappears.');
+    var row = doc.querySelector('[data-block-id="table-targets"] tbody tr:nth-child(3)');
+    if (row) addComment(targetFromElement(row),
+                        'selector needs a stability note — what happens when an Apply round renumbers items?');
+  }());
+}
+
+renderRail();
+}());
+</script>
+
+</body>
+</html>
