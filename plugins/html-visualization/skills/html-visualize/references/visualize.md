@@ -39,7 +39,7 @@ fails, display the content as text in chat and tell the user Node is unavailable
 ## Step 1 — Decide what to render
 
 **If the intent is a path to a file that exists, read it — its contents are what you
-render.** A path is a hand-off, not a subject: `/html-visualize-demo /tmp/report.md`
+render.** A path is a hand-off, not a subject: `/html-visualize-page /tmp/report.md`
 means "render this document", never "draw a picture of this filename". Markdown maps
 onto the page directly — headings become sections, tables become tables, and fenced
 ` ```mermaid ` blocks become `<pre class="mermaid">` inside a `.vis-mermaid-wrap`, with

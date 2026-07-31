@@ -1,6 +1,6 @@
 ---
 name: html-visualize
-description: "Shared reference library for the html-visualize browser-HTML workflow — loaded by html-visualize-ask, html-visualize-feedback, and html-visualize-demo; not invoked directly."
+description: "Shared reference library for the html-visualize browser-HTML workflow — loaded by html-visualize-ask, html-visualize-feedback, and html-visualize-page; not invoked directly."
 user-invocable: false
 ---
 
@@ -21,7 +21,7 @@ visualize — is the content to render. Carry it into the mode reference's
 |---|---|---|
 | `ask` — question/decision form with a blocking submit round-trip | `html-visualize-ask` | [references/ask.md](references/ask.md) |
 | `feedback` — content (document, plan, or brainstormed options) for inline commenting, with an Apply loop | `html-visualize-feedback` | [references/feedback.md](references/feedback.md) |
-| `visualize` — non-blocking `--no-wait` serve with always-on footer; user may optionally send a message back | `html-visualize-demo` | [references/visualize.md](references/visualize.md) |
+| `visualize` — non-blocking `--no-wait` serve with always-on footer; user may optionally send a message back | `html-visualize-page` | [references/visualize.md](references/visualize.md) |
 
 ## Authoring guidelines — all modes
 
