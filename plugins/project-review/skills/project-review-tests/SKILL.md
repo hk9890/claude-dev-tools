@@ -155,17 +155,12 @@ The skill-specific pieces below slot into that skeleton:
 - **Per-finding `Observation`** — open with the failing question number
   from the interrogation above, e.g. `Question 5: …`.
 - **Per-finding `Location`** — cite exact test file paths and line numbers.
-
----
-
-## Presenting results
-
-Whoever relays this report to the user may offer `/html-visualize-ask` built
-from the findings — a browser HTML question/decision form to approve/reject
-each one instead of doing it turn by turn in chat. Only offer this if that
-skill exists; it ships in the separate `html-visualization` plugin. This is a
-follow-up offered after the report is complete, not a pause during the
-interrogation above.
+- **Closing suggestion** — after the mandatory `Recommended actions`, if
+  `html-visualization:html-visualize-ask` is available in the session, close
+  by suggesting the user run `/html-visualize-ask` built from the findings to
+  approve/reject each one instead of doing it turn by turn in chat. Phrase it
+  as a suggestion, never as an action you take, and omit it if the skill isn't
+  present.
 
 ## Not covered
 
