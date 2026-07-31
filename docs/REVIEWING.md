@@ -37,8 +37,9 @@ with a skill's default, this file wins.
 
 ## Out of scope / non-blocking
 
-- There is no configured linter (`mise run lint` is a no-op); do not raise style-only
-  findings a formatter would own.
+- Style-only findings are out of scope. Shell style is owned by ShellCheck
+  (`mise run lint`, mirrored by the CI `shellcheck` job — see [TESTING.md](TESTING.md));
+  markdown and JSON have no configured formatter, and reviews do not fill that gap by hand.
 - Cross-references and version lockstep are checked by `mise run check-consistency`
   (`scripts/check-internal-consistency.py`). Route resolution, the
   `CLAUDE.md` = `@AGENTS.md` contract, and canonical inventory are reported by the docs
