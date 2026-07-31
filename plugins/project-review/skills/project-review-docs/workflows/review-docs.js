@@ -323,7 +323,15 @@ if (typeof agent === 'function') {
       `Metrics (from the deterministic manifest — do NOT recompute): ${m.lines} lines, ${m.words} words, ${m.non_heading_lines} content lines.\n` +
       `Links were already resolved by the manifest. Unresolved links in this file:\n${dead}\n\n` +
       `Read the FULL file now, then judge it. You see only THIS file and its contract — there is no doc set to satisfice against.\n` +
-      `\nApply the authoring rules — read ${guidelinesFile} once, all of it: the six named rules (Ownership, Local delta, Anchors, Command register, Economy, Obligation), the failure modes, and the closing bar a change must clear before it lands. The rules define the accuracy, belonging, and form bar for the file; the closing bar is what every fix you recommend must itself clear. Apply them alongside this file's contract.\n`
+      `\nApply the authoring rules — read ${guidelinesFile} once, all of it: the six named rules (Ownership, Local delta, Anchors, Command register, Economy, Obligation), the failure modes, and the closing bar a change must clear before it lands. The rules define the accuracy, belonging, and form bar for the file; the closing bar is what every fix you recommend must itself clear. Apply them alongside this file's contract.\n` +
+      // Severity is a required enum on every finding, so leaving the bar unstated does not
+      // produce fewer severities — it produces severities assigned from the model's priors,
+      // which vary run to run. This is the whole rubric; it has no other home the agent reads.
+      `\nSEVERITY — assign every finding against this bar, not by feel:\n` +
+      `  blocker: a documented fact or procedure that is wrong, or a doc largely in the wrong genre for its owner — it misleads confidently.\n` +
+      `  major:   a real scope, actionability, or belonging gap (a localized out-of-boundary spill, a stale command, a routing gap), or bloat heavy enough to obscure the procedure the file exists to document.\n` +
+      `  minor:   clarity, scanability, and economy defects a reader absorbs without being misled.\n` +
+      `Raise one level when the defect directly breaks a real workflow — a stale command in RELEASING.md is a blocker, not a minor. Judge Economy by what the bloat costs a reader rather than by line count, and treat minor as its floor, not its ceiling.\n`
 
     if (f.contract) {
       const c = f.contract
@@ -334,7 +342,7 @@ if (typeof agent === 'function') {
         `  Not inside: ${c.not_inside || '(unspecified)'}\n\n` +
         `For EVERY unit of content — each claim, command, path, table, and section — ask two questions before moving on:\n` +
         `1. TRUE? Verify it against the repo with read-only grep/read (the referenced file/script/flag/command actually exists and matches). A false claim is an accuracy finding.\n` +
-        `2. BELONGS HERE? Is it inside this file's Inside boundary? Content that matches Not-inside is a BELONGING finding EVEN IF perfectly accurate (the Ownership rule). Its fix routes the content to the owning file — never "keep it as a subsection here". A file that is largely the wrong genre is a blocker; a localized spill is major.\n\n` +
+        `2. BELONGS HERE? Is it inside this file's Inside boundary? Content that matches Not-inside is a BELONGING finding EVEN IF perfectly accurate (the Ownership rule). Its fix routes the content to the owning file — never "keep it as a subsection here".\n\n` +
         `Then judge the file as a whole against the Economy rule — it spends ${m.lines} lines on what it says. That rule defines the bar; apply it from the rules file rather than from memory, and raise what fails it as a form finding naming the spans you would cut.\n\n` +
         `Do not run commands. Read-only. Return findings with concrete evidence (quote the offending lines / cite the repo fact). Empty findings array if the file is genuinely clean — do not invent problems.`
     }
@@ -480,15 +488,20 @@ if (typeof agent === 'function') {
     `Missing canonical docs: ${JSON.stringify(manifest.missing_canonical)}\n` +
     `Non-standard docs: ${JSON.stringify(manifest.files.filter(f => f.classification === 'non-standard').map(f => f.path))}\n` +
     `Orphans (unreachable from AGENTS.md): ${JSON.stringify(manifest.orphans)}\n` +
-    `Location violations: ${JSON.stringify(manifest.location_violations)}\n\n` +
+    `Location violations: ${JSON.stringify(manifest.location_violations)}\n` +
+    // The summary carries these as bare counts. Without the detail and instruction 3 below,
+    // a broken CLAUDE.md arrives as `claude_md_ok: false` inside a JSON blob with nothing
+    // telling this stage to raise it — the manifest detects it and the report never says so.
+    `Injected tool-blocks in steering docs: ${JSON.stringify(manifest.injected_blocks)}\n\n` +
     `PER-FILE READ-REVIEW FINDINGS${level === 'ultra' ? ' (survived adversarial verification)' : ''}:\n${JSON.stringify(verifiedFindings, null, 2)}\n\n` +
     `EXECUTION-TEST VERDICTS (behavioral: could an agent use the docs?):\n${JSON.stringify(execGraded, null, 2)}\n\n` +
     `Do all of the following:\n` +
     `1. Merge and DEDUPE findings (the same defect surfaced by read-review and execution is ONE finding — cite the strongest evidence).\n` +
     `   When merging, PRESERVE what each recommended_action says it replaces, cuts, or supersedes — the lines it names are the fix, not decoration. A recommended_action that only adds text must say why nothing existing is superseded. Never compress a specific replacement into a general instruction to improve the section.\n` +
     `2. Cross-file reconciliation the per-file agents could not see: sibling contradictions on shared facts; and match any missing canonical doc to a non-standard doc whose content actually IS that topic (rename/link).\n` +
-    `3. Fold execution findings in: a 'found-but-insufficient' or 'couldnt-route' verdict is a real doc finding; discard 'inconclusive' (non-doc attribution).\n` +
-    `4. Assign an overall verdict: accurate / minor gaps / significant gaps / misleading. A clean 'accurate' requires no blocker/major AND positive coverage — not merely absence of findings.\n\n` +
+    `3. Raise the mechanical facts no read-review agent covered. CLAUDE.md is excluded from the read-review because the manifest checks it, so a false claude_md_ok is yours to report: CLAUDE.md must be exactly the one-line @AGENTS.md import, and the fix names a destination for each displaced piece — routing to AGENTS.md, topic procedures to docs/<TOPIC>.md, personal or transient notes to .claude.local.md. Every injected tool-block listed above is a finding against the doc holding it, under the same destination rule.\n` +
+    `4. Fold execution findings in: a 'found-but-insufficient' or 'couldnt-route' verdict is a real doc finding; discard 'inconclusive' (non-doc attribution).\n` +
+    `5. Assign an overall verdict: accurate / minor gaps / significant gaps / misleading. A clean 'accurate' requires no blocker/major AND positive coverage — not merely absence of findings.\n\n` +
     `Return the structured object with fields verdict, headline, findings[], cross_file_notes, execution_summary. ` +
     `Each finding's why_it_matters states the concrete cost, risk, or trap the defect creates for someone relying on the doc — not a restatement of the observation. ` +
     `cross_file_notes and execution_summary are separate PLAIN-TEXT prose fields — never write XML/HTML tags, angle-bracket markers, or field names inside their values. ` +

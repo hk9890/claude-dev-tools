@@ -52,7 +52,7 @@ CANONICAL_ROOT = ["README.md", "AGENTS.md", "CLAUDE.md"]  # required at repo roo
 OPTIONAL_CANONICAL_ROOT = ["CONTRIBUTING.md"]             # optional at repo root
 # Canonical topic docs under docs/. ALL OPTIONAL: create a doc only when there is
 # real local guidance; none is ever reported missing. The names are canonical —
-# use them if you document the topic (rule R11) — but presence is never required.
+# use them if you document the topic — but presence is never required.
 CANONICAL_DOCS = [
     "OVERVIEW.md", "CODING.md", "TESTING.md", "RELEASING.md",
     "MONITORING.md", "CHANGE-WORKFLOW.md", "REVIEWING.md", "RUNNING.md",
