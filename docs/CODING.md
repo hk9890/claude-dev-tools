@@ -143,8 +143,15 @@ argument-hint: "[what-to-review]"
 ```
 
 Keep the hint a short bracketed placeholder — it appears in the slash-command picker, where a
-long value is truncated. Enumerating the accepted values there also duplicates a list the body
-already owns, and goes stale independently of it; name the shape, not the options.
+long value is truncated. For a free-form argument, name the shape, not the options:
+enumerating a description there duplicates prose the body already owns, and goes stale
+independently of it.
+
+An **enum-valued** argument — a fixed, closed set of literal tokens, like a level — is the
+exception: spell out the values (`[low|medium|high|ultra]`), not a generic name like `[level]`.
+A generic name hides the one thing the hint exists to convey — what to actually type — where
+the values themselves are already short and, being a closed set, do not go stale the way a
+prose description would.
 
 State what happens when the argument is empty, since a user-invoked skill is frequently
 invoked bare. Either default it ("with no argument, review the whole test suite") or ask.
