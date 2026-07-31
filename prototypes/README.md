@@ -28,7 +28,14 @@ Diagrams need the Mermaid CDN once; everything else is self-contained.
   stat tiles, bar chart per the dataviz mark specs, collapsible line-numbered
   code, and a "Point at" footer that turns bars / rows / tiles / diagram
   nodes into structured reference chips sent with the message.
-- `index.html` — links both with a summary of what to try.
+- `ask.html` — improved ask mode: progress dots and a wide-screen question
+  index with answered state, three new widget kinds (comparison cards with
+  pros/cons, 1–5 scale, arrow-button ranking) alongside radio/checkbox/text,
+  compact per-question notes, and a submit flow that flags unanswered
+  questions with jump links instead of blocking. `answers` schema extends
+  per kind: cards → chosen id, scale → number, rank → ordered array.
+  The form content is the real decision batch for the implementation PR.
+- `index.html` — links all pages with a summary of what to try.
 
 Theme sketch "Proof": chrome is a sans-serif instrument, content a serif
 artifact, everything the user adds is pencil blue. Light + dark; responsive

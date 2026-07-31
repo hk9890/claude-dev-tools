@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ask prototype — decision form</title>
+<style>
+/* ── "Proof" theme (same token family as the other prototypes) ─────────── */
+:root {
+  color-scheme: light dark;
+  --pv-desk:     #eceee9;
+  --pv-paper:    #fbfbf8;
+  --pv-paper-2:  #f2f3ee;
+  --pv-ink:      #1d2024;
+  --pv-muted:    #5c636b;
+  --pv-faint:    #8b9199;
+  --pv-border:   #d9dcd3;
+  --pv-border-soft: #e5e7e0;
+  --pv-pencil:      #2451c8;
+  --pv-pencil-deep: #1a3ea3;
+  --pv-pencil-tint: #e4eafb;
+  --pv-pencil-rgb:  36, 81, 200;
+  --pv-ok:   #2e7d43;  --pv-ok-tint:   #e3efe6;
+  --pv-warn: #a97a12;  --pv-warn-tint: #f5edd8;
+  --pv-bad:  #c03a2e;  --pv-bad-tint:  #f6e4e1;
+  --pv-shadow:    0 1px 2px rgba(29,32,36,.05), 0 8px 24px -12px rgba(29,32,36,.14);
+  --pv-shadow-lg: 0 2px 6px rgba(29,32,36,.07), 0 18px 44px -16px rgba(29,32,36,.22);
+  --pv-radius: 12px;
+  --pv-sans:  ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --pv-serif: "Charter", "Bitstream Charter", "Sitka Text", "Iowan Old Style", Cambria, Georgia, serif;
+  --pv-mono:  ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --pv-desk:     #131519;
+    --pv-paper:    #1e2126;
+    --pv-paper-2:  #181b1f;
+    --pv-ink:      #e8eaed;
+    --pv-muted:    #9aa2ad;
+    --pv-faint:    #6d7480;
+    --pv-border:   #31363e;
+    --pv-border-soft: #262b32;
+    --pv-pencil:      #8fb1ff;
+    --pv-pencil-deep: #adc6ff;
+    --pv-pencil-tint: #223250;
+    --pv-pencil-rgb:  143, 177, 255;
+    --pv-ok:   #7fbe8f;  --pv-ok-tint:   #21301f;
+    --pv-warn: #d9a94e;  --pv-warn-tint: #322a17;
+    --pv-bad:  #e08578;  --pv-bad-tint:  #38211e;
+    --pv-shadow:    0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+    --pv-shadow-lg: 0 2px 6px rgba(0,0,0,.5), 0 18px 44px -16px rgba(0,0,0,.75);
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--pv-desk);
+  color: var(--pv-ink);
+  font-family: var(--pv-sans);
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+::selection { background: rgba(var(--pv-pencil-rgb), .22); }
+button, input, textarea { font-family: var(--pv-sans); }
+:focus-visible { outline: 2px solid var(--pv-pencil); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: .001ms !important;
+  }
+  html { scroll-behavior: auto; }
+}
+
+/* ── Top bar with progress ────────────────────────────────────────────── */
+.topbar {
+  position: sticky; top: 0; z-index: 50;
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: .4rem 1rem;
+  padding: .6rem 1.25rem;
+  background: color-mix(in srgb, var(--pv-desk) 88%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--pv-border);
+}
+.topbar .eyebrow {
+  font-size: .68rem; font-weight: 600;
+  letter-spacing: .1em; text-transform: uppercase;
+  color: var(--pv-faint);
+}
+.topbar .bar-title { font-size: .92rem; font-weight: 600; }
+.topbar .spacer { flex: 1; }
+.progress {
+  display: inline-flex; align-items: center; gap: .55rem;
+  padding: .25rem .7rem;
+  border: 1px solid var(--pv-border);
+  border-radius: 999px;
+  background: var(--pv-paper);
+}
+.progress-dots { display: inline-flex; gap: .3rem; }
+.p-dot {
+  width: .55rem; height: .55rem;
+  border-radius: 999px;
+  border: 1.5px solid var(--pv-faint);
+  background: transparent;
+  padding: 0; cursor: pointer;
+}
+.p-dot.done { background: var(--pv-pencil); border-color: var(--pv-pencil); }
+.progress-count {
+  font-size: .78rem; font-variant-numeric: tabular-nums;
+  color: var(--pv-muted);
+}
+.tool-btn {
+  display: inline-flex; align-items: center; gap: .4rem;
+  padding: .34rem .8rem;
+  font-size: .82rem; font-weight: 550;
+  color: var(--pv-ink);
+  background: var(--pv-paper);
+  border: 1px solid var(--pv-border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.tool-btn:hover { border-color: var(--pv-pencil); }
+
+/* ── Layout: optional question index + form ───────────────────────────── */
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2.5rem;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 2.25rem 1.5rem 7rem;
+}
+.qindex { display: none; }
+@media (min-width: 1400px) {
+  .layout { grid-template-columns: 250px minmax(0, 1fr); max-width: 1420px; }
+  .qindex { display: block; }
+  .qindex-inner { position: sticky; top: 4.4rem; }
+  .qindex-head {
+    font-size: .68rem; font-weight: 650;
+    letter-spacing: .1em; text-transform: uppercase;
+    color: var(--pv-faint);
+    margin: 0 0 .8rem;
+  }
+  .qindex a {
+    display: flex; align-items: center; gap: .55rem;
+    padding: .34rem .7rem;
+    font-size: .84rem; font-weight: 500;
+    color: var(--pv-muted); text-decoration: none;
+    border-left: 2px solid var(--pv-border);
+    border-radius: 0 7px 7px 0;
+  }
+  .qindex a:hover { color: var(--pv-ink); background: var(--pv-paper); }
+  .qindex .qi-dot {
+    flex: none;
+    width: .55rem; height: .55rem; border-radius: 999px;
+    border: 1.5px solid var(--pv-faint);
+  }
+  .qindex a.done { color: var(--pv-ink); }
+  .qindex a.done .qi-dot { background: var(--pv-pencil); border-color: var(--pv-pencil); }
+}
+@media (min-width: 1700px) { body { font-size: 17px; } }
+
+/* ── Header ───────────────────────────────────────────────────────────── */
+.form-header { margin-bottom: 1.8rem; }
+.form-header .kicker {
+  font-size: .7rem; font-weight: 650;
+  letter-spacing: .12em; text-transform: uppercase;
+  color: var(--pv-pencil-deep);
+  margin: 0 0 .5rem;
+}
+.form-header h1 {
+  margin: 0 0 .45rem;
+  font-family: var(--pv-serif);
+  font-size: 2rem; font-weight: 600;
+  line-height: 1.15; letter-spacing: -.018em;
+}
+.form-header .subtitle {
+  margin: 0;
+  font-family: var(--pv-serif); font-style: italic;
+  font-size: 1.06rem; color: var(--pv-muted);
+}
+
+/* ── Widget cards ─────────────────────────────────────────────────────── */
+.widget {
+  background: var(--pv-paper);
+  border: 1px solid var(--pv-border);
+  border-left: 3px solid var(--pv-border);
+  border-radius: var(--pv-radius);
+  box-shadow: var(--pv-shadow);
+  padding: 1.15rem 1.4rem 1.2rem;
+  margin-bottom: 1.1rem;
+  scroll-margin-top: 4.4rem;
+  transition: border-left-color .15s;
+}
+.widget.answered { border-left-color: var(--pv-pencil); }
+.q-eyebrow {
+  display: flex; align-items: baseline; gap: .6rem;
+  font-size: .64rem; font-weight: 650;
+  letter-spacing: .08em; text-transform: uppercase;
+  color: var(--pv-faint);
+  margin-bottom: .35rem;
+}
+.q-eyebrow .q-answered {
+  color: var(--pv-pencil-deep);
+  display: none;
+}
+.widget.answered .q-answered { display: inline; }
+.q-label { font-size: 1.02rem; font-weight: 600; margin: 0 0 .2rem; }
+.q-hint { font-size: .84rem; color: var(--pv-muted); margin: 0 0 .8rem; }
+
+/* option rows (radio / checkbox) */
+.opt-row {
+  display: flex; align-items: flex-start; gap: .6rem;
+  padding: .5rem .7rem;
+  border: 1px solid var(--pv-border-soft);
+  border-radius: 8px;
+  margin-bottom: .4rem;
+  cursor: pointer;
+  transition: border-color .12s, background .12s;
+}
+.opt-row:hover { border-color: var(--pv-pencil); }
+.opt-row:has(input:checked) {
+  border-color: var(--pv-pencil);
+  background: var(--pv-pencil-tint);
+}
+.opt-row input { accent-color: var(--pv-pencil); margin-top: .22rem; flex: none; }
+.opt-row .opt-text { font-size: .92rem; }
+.opt-row .opt-sub { display: block; font-size: .8rem; color: var(--pv-muted); }
+.opt-badge {
+  display: inline-block;
+  margin-left: .45rem;
+  padding: .06rem .45rem;
+  font-size: .62rem; font-weight: 650;
+  letter-spacing: .06em; text-transform: uppercase;
+  color: var(--pv-pencil-deep);
+  background: var(--pv-pencil-tint);
+  border: 1px solid color-mix(in srgb, var(--pv-pencil) 30%, transparent);
+  border-radius: 4px;
+  vertical-align: middle;
+}
+
+/* comparison cards */
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: .8rem;
+}
+.opt-card {
+  position: relative;
+  border: 1px solid var(--pv-border);
+  border-radius: 10px;
+  padding: .9rem 1rem;
+  cursor: pointer;
+  transition: border-color .12s, background .12s;
+}
+.opt-card:hover { border-color: var(--pv-pencil); }
+.opt-card:has(input:checked) {
+  border-color: var(--pv-pencil);
+  background: var(--pv-pencil-tint);
+  box-shadow: 0 0 0 1px var(--pv-pencil);
+}
+.opt-card h3 { margin: 0 0 .3rem; font-size: .95rem; }
+.opt-card .card-desc { font-size: .82rem; color: var(--pv-muted); margin: 0 0 .6rem; }
+.opt-card ul { margin: 0 0 .7rem; padding: 0; list-style: none; font-size: .8rem; }
+.opt-card li { padding-left: 1.1rem; position: relative; margin-bottom: .15rem; }
+.opt-card li.pro::before { content: "+"; position: absolute; left: .2rem; color: var(--pv-ok); font-weight: 700; }
+.opt-card li.con::before { content: "−"; position: absolute; left: .2rem; color: var(--pv-bad); font-weight: 700; }
+.card-choose {
+  display: flex; align-items: center; gap: .5rem;
+  font-size: .86rem; font-weight: 600;
+  color: var(--pv-pencil-deep);
+}
+.card-choose input { accent-color: var(--pv-pencil); }
+
+/* scale */
+.scale-row { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+.scale-end { font-size: .78rem; color: var(--pv-faint); }
+.scale-opts { display: inline-flex; border: 1px solid var(--pv-border); border-radius: 9px; overflow: hidden; }
+.scale-opt {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 2.6rem; height: 2.3rem;
+  font-size: .9rem; font-weight: 600;
+  color: var(--pv-muted);
+  cursor: pointer;
+  border-right: 1px solid var(--pv-border);
+}
+.scale-opt:last-child { border-right: none; }
+.scale-opt input { position: absolute; opacity: 0; pointer-events: none; }
+.scale-opt:hover { background: var(--pv-paper-2); }
+.scale-opt:has(input:checked) { background: var(--pv-pencil); color: var(--pv-paper); }
+
+/* ranking */
+.rank-list { list-style: none; margin: 0; padding: 0; }
+.rank-item {
+  display: flex; align-items: center; gap: .7rem;
+  padding: .5rem .7rem;
+  border: 1px solid var(--pv-border-soft);
+  border-radius: 8px;
+  margin-bottom: .4rem;
+  background: var(--pv-paper);
+}
+.rank-pos {
+  flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.5rem; height: 1.5rem;
+  background: var(--pv-paper-2);
+  border: 1px solid var(--pv-border);
+  border-radius: 999px;
+  font-size: .74rem; font-weight: 650; font-variant-numeric: tabular-nums;
+  color: var(--pv-muted);
+}
+.rank-item.touched .rank-pos {
+  background: var(--pv-pencil); border-color: var(--pv-pencil); color: var(--pv-paper);
+}
+.rank-text { flex: 1; font-size: .92rem; }
+.rank-text .opt-sub { display: block; font-size: .78rem; color: var(--pv-muted); }
+.rank-btns { display: inline-flex; gap: .3rem; }
+.rank-btns button {
+  width: 1.7rem; height: 1.7rem;
+  border: 1px solid var(--pv-border);
+  border-radius: 6px;
+  background: var(--pv-paper);
+  color: var(--pv-muted);
+  cursor: pointer;
+  font-size: .8rem; line-height: 1;
+}
+.rank-btns button:hover:not(:disabled) { border-color: var(--pv-pencil); color: var(--pv-pencil-deep); }
+.rank-btns button:disabled { opacity: .35; cursor: default; }
+
+/* text widget + notes */
+.q-textarea, .note-input, .freeform-textarea {
+  width: 100%;
+  padding: .55rem .7rem;
+  background: var(--pv-paper-2);
+  color: var(--pv-ink);
+  border: 1px solid var(--pv-border);
+  border-radius: 8px;
+  font-size: .9rem; line-height: 1.5;
+}
+.q-textarea { min-height: 84px; resize: vertical; }
+.freeform-textarea { min-height: 72px; resize: vertical; }
+.q-textarea:focus, .note-input:focus, .freeform-textarea:focus {
+  outline: none; border-color: var(--pv-pencil);
+  box-shadow: 0 0 0 2px rgba(var(--pv-pencil-rgb), .18);
+}
+.widget-note { margin-top: .7rem; }
+.widget-note label {
+  display: block;
+  font-size: .68rem; font-weight: 650;
+  letter-spacing: .07em; text-transform: uppercase;
+  color: var(--pv-faint);
+  margin-bottom: .3rem;
+}
+.note-input { border-style: dashed; }
+.note-input:not(:placeholder-shown) { border-style: solid; border-color: var(--pv-pencil); }
+
+/* ── Verdict ──────────────────────────────────────────────────────────── */
+.verdict-section { margin-top: 1.6rem; }
+.verdict-section h2, .freeform-section h2 {
+  font-family: var(--pv-serif);
+  font-size: 1.2rem; font-weight: 600;
+  margin: 0 0 .6rem;
+}
+.verdict-opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .6rem; }
+.verdict-opt {
+  display: flex; gap: .6rem; align-items: flex-start;
+  border: 1px solid var(--pv-border);
+  border-radius: 10px;
+  padding: .7rem .8rem;
+  cursor: pointer;
+  background: var(--pv-paper);
+  transition: border-color .12s, background .12s;
+}
+.verdict-opt input { accent-color: var(--pv-pencil); margin-top: .2rem; flex: none; }
+.verdict-opt strong { display: block; font-size: .9rem; }
+.verdict-opt span { font-size: .78rem; color: var(--pv-muted); }
+.verdict-opt.v-approve:has(input:checked) { border-color: var(--pv-ok); background: var(--pv-ok-tint); }
+.verdict-opt.v-changes:has(input:checked) { border-color: var(--pv-warn); background: var(--pv-warn-tint); }
+.verdict-opt.v-reject:has(input:checked) { border-color: var(--pv-bad); background: var(--pv-bad-tint); }
+
+.freeform-section { margin-top: 1.6rem; }
+
+/* ── Submit row + unanswered confirm ──────────────────────────────────── */
+.submit-row {
+  display: flex; align-items: center; gap: .7rem;
+  margin-top: 1.6rem;
+}
+.btn-primary {
+  padding: .55rem 1.3rem;
+  font-size: .92rem; font-weight: 600;
+  background: var(--pv-pencil); color: var(--pv-paper);
+  border: 1px solid var(--pv-pencil); border-radius: 9px;
+  cursor: pointer;
+}
+.btn-primary:hover { background: var(--pv-pencil-deep); }
+.btn-ghost {
+  padding: .55rem 1.1rem;
+  font-size: .88rem; font-weight: 550;
+  background: transparent; color: var(--pv-muted);
+  border: 1px solid var(--pv-border); border-radius: 9px;
+  cursor: pointer;
+}
+.btn-ghost:hover { color: var(--pv-ink); border-color: var(--pv-muted); }
+.unanswered-panel {
+  display: none;
+  margin-top: 1rem;
+  border: 1px solid color-mix(in srgb, var(--pv-warn) 45%, transparent);
+  background: var(--pv-warn-tint);
+  border-radius: 10px;
+  padding: .9rem 1.1rem;
+}
+.unanswered-panel.show { display: block; }
+.unanswered-panel p { margin: 0 0 .5rem; font-size: .88rem; font-weight: 600; }
+.unanswered-panel ul { margin: 0 0 .8rem; padding-left: 1.2rem; font-size: .86rem; }
+.unanswered-panel a { color: var(--pv-pencil-deep); }
+.unanswered-actions { display: flex; gap: .6rem; }
+
+/* ── Drawer & toast ───────────────────────────────────────────────────── */
+.drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 80;
+  width: min(460px, 94vw);
+  background: var(--pv-paper);
+  border-left: 1px solid var(--pv-border);
+  box-shadow: var(--pv-shadow-lg);
+  transform: translateX(105%);
+  transition: transform .22s ease;
+  display: flex; flex-direction: column;
+}
+.drawer.open { transform: none; }
+.drawer-head {
+  display: flex; align-items: center; gap: .6rem;
+  padding: .9rem 1.1rem;
+  border-bottom: 1px solid var(--pv-border);
+}
+.drawer-head h2 { margin: 0; font-size: .95rem; flex: 1; }
+.drawer-close {
+  background: none; border: 1px solid var(--pv-border); border-radius: 7px;
+  width: 1.7rem; height: 1.7rem; cursor: pointer; color: var(--pv-muted);
+}
+.drawer-note {
+  margin: 0; padding: .7rem 1.1rem;
+  font-size: .76rem; color: var(--pv-muted);
+  background: var(--pv-pencil-tint);
+  border-bottom: 1px solid var(--pv-border);
+}
+.drawer pre {
+  flex: 1; margin: 0; padding: 1rem 1.1rem;
+  overflow: auto;
+  font-family: var(--pv-mono); font-size: .74rem; line-height: 1.5;
+}
+.toast {
+  position: fixed; left: 50%; bottom: 2rem; z-index: 90;
+  transform: translateX(-50%);
+  max-width: min(560px, calc(100vw - 2rem));
+  padding: .55rem 1rem;
+  background: var(--pv-ink); color: var(--pv-desk);
+  font-size: .82rem; border-radius: 9px;
+  box-shadow: var(--pv-shadow-lg);
+  opacity: 0; pointer-events: none;
+  transition: opacity .2s ease;
+}
+.toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <span class="eyebrow">html-visualize · ask — prototype</span>
+  <span class="bar-title">Decision form</span>
+  <span class="spacer"></span>
+  <span class="progress" aria-live="polite">
+    <span class="progress-dots" id="progress-dots"></span>
+    <span class="progress-count" id="progress-count">0/7 answered</span>
+  </span>
+  <button id="payload-btn" class="tool-btn" type="button">View payload</button>
+</header>
+
+<div class="layout">
+  <aside class="qindex">
+    <nav class="qindex-inner" id="qindex" aria-label="Questions">
+      <p class="qindex-head">Questions</p>
+      <!-- links injected by script -->
+    </nav>
+  </aside>
+
+  <main>
+    <header class="form-header">
+      <p class="kicker">claude-dev-tools / html-visualization</p>
+      <h1>Decisions before the implementation PR</h1>
+      <p class="subtitle">Seven calls that shape how the prototype work lands in the plugin. Answer what you can — partial submissions are fine and flagged, never blocked.</p>
+    </header>
+
+    <div id="main-form">
+
+      <div class="widget" data-qid="q-rail" data-qtype="cards" id="q-rail">
+        <p class="q-eyebrow">Q1 · choose one <span class="q-answered">✓ answered</span></p>
+        <p class="q-label">Comment rail placement</p>
+        <p class="q-hint">Where feedback-mode comments live on wide screens.</p>
+        <div class="cards-grid">
+          <label class="opt-card">
+            <h3>Margin-aligned cards <span class="opt-badge">Recommended</span></h3>
+            <p class="card-desc">Cards sit in the right margin at the height of what they annotate, like a galley proof.</p>
+            <ul>
+              <li class="pro">Comment and target visible together</li>
+              <li class="pro">Matches the blue-pencil identity</li>
+              <li class="con">Sparse look with few comments</li>
+              <li class="con">Needs collision nudging</li>
+            </ul>
+            <span class="card-choose"><input type="radio" name="q-rail" value="margin"> Choose this</span>
+          </label>
+          <label class="opt-card">
+            <h3>Compact top-right list</h3>
+            <p class="card-desc">A dense, ordered list pinned top-right; clicking a card scrolls to its anchor.</p>
+            <ul>
+              <li class="pro">Dense — no empty rail space</li>
+              <li class="pro">Simpler layout code</li>
+              <li class="con">Comment separated from its target</li>
+              <li class="con">Extra click to see context</li>
+            </ul>
+            <span class="card-choose"><input type="radio" name="q-rail" value="list"> Choose this</span>
+          </label>
+        </div>
+        <div class="widget-note">
+          <label for="note-q-rail">Optional note</label>
+          <input id="note-q-rail" class="note-input" data-note-for="q-rail" type="text" placeholder="Anything to add on this question…">
+        </div>
+      </div>
+
+      <div class="widget" data-qid="q-legacy" data-qtype="radio" id="q-legacy">
+        <p class="q-eyebrow">Q2 · single choice <span class="q-answered">✓ answered</span></p>
+        <p class="q-label">Feedback schema migration</p>
+        <p class="q-hint">The new target model changes the comment shape. The only consumer is Claude reading the feedback file.</p>
+        <label class="opt-row"><input type="radio" name="q-legacy" value="in-place">
+          <span class="opt-text">Change the schema in place <span class="opt-badge">Recommended</span>
+            <span class="opt-sub">No third party to migrate; schema doc and app.js move together.</span></span></label>
+        <label class="opt-row"><input type="radio" name="q-legacy" value="one-release">
+          <span class="opt-text">Emit the legacy quote/quoteStart shape for one release
+            <span class="opt-sub">Belt-and-braces during the transition; more code to delete later.</span></span></label>
+        <label class="opt-row"><input type="radio" name="q-legacy" value="keep">
+          <span class="opt-text">Keep the legacy shape indefinitely alongside targets
+            <span class="opt-sub">Two shapes forever; every reader handles both.</span></span></label>
+        <div class="widget-note">
+          <label for="note-q-legacy">Optional note</label>
+          <input id="note-q-legacy" class="note-input" data-note-for="q-legacy" type="text" placeholder="Anything to add on this question…">
+        </div>
+      </div>
+
+      <div class="widget" data-qid="q-priority" data-qtype="rank" id="q-priority">
+        <p class="q-eyebrow">Q3 · rank — use the arrows <span class="q-answered">✓ answered</span></p>
+        <p class="q-label">Implementation order inside the PR</p>
+        <p class="q-hint">All four ship in the one PR you asked for; this orders the commits and the review story.</p>
+        <ol class="rank-list" id="rank-q-priority">
+          <li class="rank-item" data-opt="target-model">
+            <span class="rank-pos">1</span>
+            <span class="rank-text">Feedback target model
+              <span class="opt-sub">element / diagram-node targets, schema, app.js</span></span>
+            <span class="rank-btns"><button type="button" class="rank-up" aria-label="Move up">↑</button><button type="button" class="rank-down" aria-label="Move down">↓</button></span>
+          </li>
+          <li class="rank-item" data-opt="theme">
+            <span class="rank-pos">2</span>
+            <span class="rank-text">Proof theme + wide-screen layout
+              <span class="opt-sub">tokens.css, templates, chrome</span></span>
+            <span class="rank-btns"><button type="button" class="rank-up" aria-label="Move up">↑</button><button type="button" class="rank-down" aria-label="Move down">↓</button></span>
+          </li>
+          <li class="rank-item" data-opt="rendering">
+            <span class="rank-pos">3</span>
+            <span class="rank-text">Rendering upgrades
+              <span class="opt-sub">code highlight, TOC, collapsible sections</span></span>
+            <span class="rank-btns"><button type="button" class="rank-up" aria-label="Move up">↑</button><button type="button" class="rank-down" aria-label="Move down">↓</button></span>
+          </li>
+          <li class="rank-item" data-opt="ask">
+            <span class="rank-pos">4</span>
+            <span class="rank-text">Ask-mode improvements
+              <span class="opt-sub">progress, new widgets, unanswered flow</span></span>
+            <span class="rank-btns"><button type="button" class="rank-up" aria-label="Move up">↑</button><button type="button" class="rank-down" aria-label="Move down">↓</button></span>
+          </li>
+        </ol>
+        <div class="widget-note">
+          <label for="note-q-priority">Optional note</label>
+          <input id="note-q-priority" class="note-input" data-note-for="q-priority" type="text" placeholder="Anything to add on this question…">
+        </div>
+      </div>
+
+      <div class="widget" data-qid="q-render" data-qtype="checkbox" id="q-render">
+        <p class="q-eyebrow">Q4 · select all that apply <span class="q-answered">✓ answered</span></p>
+        <p class="q-label">Rendering upgrades to include</p>
+        <p class="q-hint">Each is independent; unchecked items become follow-up tasks.</p>
+        <label class="opt-row"><input type="checkbox" name="q-render" value="code-highlight">
+          <span class="opt-text">Syntax-highlighted, line-numbered code blocks</span></label>
+        <label class="opt-row"><input type="checkbox" name="q-render" value="toc">
+          <span class="opt-text">Table of contents with scrollspy for long pages</span></label>
+        <label class="opt-row"><input type="checkbox" name="q-render" value="collapsible">
+          <span class="opt-text">Collapsible sections (<code>&lt;details&gt;</code>)</span></label>
+        <label class="opt-row"><input type="checkbox" name="q-render" value="dataviz">
+          <span class="opt-text">Chart guidance per the dataviz mark specs</span></label>
+        <div class="widget-note">
+          <label for="note-q-render">Optional note</label>
+          <input id="note-q-render" class="note-input" data-note-for="q-render" type="text" placeholder="Anything to add on this question…">
+        </div>
+      </div>
+
+      <div class="widget" data-qid="q-theme" data-qtype="scale" id="q-theme">
+        <p class="q-eyebrow">Q5 · scale <span class="q-answered">✓ answered</span></p>
+        <p class="q-label">How far should the visual redesign go?</p>
+        <p class="q-hint">1 keeps the current Editorial theme with small fixes; 5 adopts Proof everywhere including the ask and feedback assets.</p>
+        <div class="scale-row">
+          <span class="scale-end">Keep Editorial</span>
+          <span class="scale-opts" id="scale-q-theme">
+            <label class="scale-opt"><input type="radio" name="q-theme" value="1">1</label>
+            <label class="scale-opt"><input type="radio" name="q-theme" value="2">2</label>
+            <label class="scale-opt"><input type="radio" name="q-theme" value="3">3</label>
+            <label class="scale-opt"><input type="radio" name="q-theme" value="4">4</label>
+            <label class="scale-opt"><input type="radio" name="q-theme" value="5">5</label>
+          </span>
+          <span class="scale-end">Full Proof adoption</span>
+        </div>
+        <div class="widget-note">
+          <label for="note-q-theme">Optional note</label>
+          <input id="note-q-theme" class="note-input" data-note-for="q-theme" type="text" placeholder="Anything to add on this question…">
+        </div>
+      </div>
+
+      <div class="widget" data-qid="q-misc" data-qtype="text" id="q-misc">
+        <p class="q-eyebrow">Q6 · free text <span class="q-answered">✓ answered</span></p>
+        <p class="q-label">What did the prototypes get wrong?</p>
+        <p class="q-hint">Anything that felt off while clicking through — interaction, wording, layout.</p>
+        <textarea class="q-textarea" data-text-for="q-misc" placeholder="Type here…"></textarea>
+      </div>
+
+      <div class="verdict-section" id="q-verdict">
+        <h2>Overall verdict</h2>
+        <div class="verdict-opts">
+          <label class="verdict-opt v-approve"><input type="radio" name="verdict" value="approve">
+            <span><strong>Approve</strong><span>Proceed to the implementation PR as prototyped.</span></span></label>
+          <label class="verdict-opt v-changes"><input type="radio" name="verdict" value="approve-with-changes">
+            <span><strong>Approve with changes</strong><span>Proceed after incorporating the notes above.</span></span></label>
+          <label class="verdict-opt v-reject"><input type="radio" name="verdict" value="reject">
+            <span><strong>Reject</strong><span>Rethink the direction before any implementation.</span></span></label>
+        </div>
+      </div>
+
+      <div class="freeform-section">
+        <h2>Anything else</h2>
+        <textarea id="freeform-input" class="freeform-textarea" placeholder="General feedback not tied to a question…"></textarea>
+      </div>
+
+      <div class="submit-row">
+        <button id="submit-btn" class="btn-primary" type="button">Submit feedback</button>
+        <button id="copy-btn" class="btn-ghost" type="button">Copy payload</button>
+      </div>
+
+      <div class="unanswered-panel" id="unanswered-panel">
+        <p id="unanswered-title">Some questions are still unanswered:</p>
+        <ul id="unanswered-list"></ul>
+        <div class="unanswered-actions">
+          <button id="submit-anyway" class="btn-ghost" type="button">Submit anyway</button>
+          <button id="keep-answering" class="btn-primary" type="button">Keep answering</button>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<aside class="drawer" id="drawer" aria-hidden="true">
+  <div class="drawer-head">
+    <h2 id="drawer-title">Payload</h2>
+    <button class="drawer-close" id="drawer-close" type="button" aria-label="Close">✕</button>
+  </div>
+  <p class="drawer-note">Prototype — no server behind this page. This JSON is exactly what would
+    <code>POST /submit</code>. New widget kinds extend <code>answers</code>: scale → number,
+    rank → ordered array, cards → chosen id.</p>
+  <pre id="drawer-json"></pre>
+</aside>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function () {
+'use strict';
+
+var $  = function (s, r) { return (r || document).querySelector(s); };
+var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+function el(tag, cls, text) {
+  var n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;
+  return n;
+}
+
+/* Question registry: id, short label, how to read the answer, what counts as answered. */
+var rankTouched = false;
+var QUESTIONS = [
+  { id: 'q-rail',     label: 'Q1 Comment rail placement',
+    value: function () { var c = $('input[name="q-rail"]:checked'); return c ? c.value : null; },
+    answered: function () { return !!$('input[name="q-rail"]:checked'); } },
+  { id: 'q-legacy',   label: 'Q2 Feedback schema migration',
+    value: function () { var c = $('input[name="q-legacy"]:checked'); return c ? c.value : null; },
+    answered: function () { return !!$('input[name="q-legacy"]:checked'); } },
+  { id: 'q-priority', label: 'Q3 Implementation order',
+    value: function () { return $$('#rank-q-priority .rank-item').map(function (li) { return li.getAttribute('data-opt'); }); },
+    answered: function () { return rankTouched; } },
+  { id: 'q-render',   label: 'Q4 Rendering upgrades',
+    value: function () { return $$('input[name="q-render"]:checked').map(function (c) { return c.value; }); },
+    answered: function () { return $$('input[name="q-render"]:checked').length > 0; } },
+  { id: 'q-theme',    label: 'Q5 Redesign depth',
+    value: function () { var c = $('input[name="q-theme"]:checked'); return c ? parseInt(c.value, 10) : null; },
+    answered: function () { return !!$('input[name="q-theme"]:checked'); } },
+  { id: 'q-misc',     label: 'Q6 What the prototypes got wrong',
+    value: function () { return $('[data-text-for="q-misc"]').value; },
+    answered: function () { return $('[data-text-for="q-misc"]').value.trim().length > 0; } },
+  { id: 'q-verdict',  label: 'Overall verdict',
+    value: function () { var c = $('input[name="verdict"]:checked'); return c ? c.value : ''; },
+    answered: function () { return !!$('input[name="verdict"]:checked'); } }
+];
+
+/* ── Toast ── */
+var toastEl = $('#toast');
+var toastTimer = null;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function () { toastEl.classList.remove('show'); }, 3200);
+}
+
+/* ── Progress dots + question index ── */
+var dotsEl = $('#progress-dots');
+var qindexEl = $('#qindex');
+QUESTIONS.forEach(function (q) {
+  var dot = el('button', 'p-dot');
+  dot.type = 'button';
+  dot.setAttribute('data-q', q.id);
+  dot.title = q.label;
+  dot.addEventListener('click', function () {
+    document.getElementById(q.id).scrollIntoView({ block: 'center', behavior: 'smooth' });
+  });
+  dotsEl.appendChild(dot);
+
+  var link = el('a', null);
+  link.href = '#' + q.id;
+  link.setAttribute('data-q', q.id);
+  link.appendChild(el('span', 'qi-dot'));
+  link.appendChild(document.createTextNode(q.label));
+  qindexEl.appendChild(link);
+});
+
+function refresh() {
+  var done = 0;
+  QUESTIONS.forEach(function (q) {
+    var a = q.answered();
+    if (a) done++;
+    var w = document.getElementById(q.id);
+    if (w && w.classList.contains('widget')) w.classList.toggle('answered', a);
+    var dot = dotsEl.querySelector('[data-q="' + q.id + '"]');
+    if (dot) dot.classList.toggle('done', a);
+    var link = qindexEl.querySelector('[data-q="' + q.id + '"]');
+    if (link) link.classList.toggle('done', a);
+  });
+  $('#progress-count').textContent = done + '/' + QUESTIONS.length + ' answered';
+  return done;
+}
+
+document.addEventListener('change', refresh);
+document.addEventListener('input', function (ev) {
+  if (ev.target.matches('.q-textarea, .freeform-textarea, .note-input')) refresh();
+});
+
+/* ── Ranking ── */
+$$('#rank-q-priority').forEach(function (list) {
+  list.addEventListener('click', function (ev) {
+    var btn = ev.target.closest('button');
+    if (!btn) return;
+    var li = btn.closest('.rank-item');
+    if (btn.classList.contains('rank-up') && li.previousElementSibling) {
+      li.parentNode.insertBefore(li, li.previousElementSibling);
+    } else if (btn.classList.contains('rank-down') && li.nextElementSibling) {
+      li.parentNode.insertBefore(li.nextElementSibling, li);
+    } else {
+      return;
+    }
+    rankTouched = true;
+    renumberRank(list);
+    refresh();
+  });
+});
+function renumberRank(list) {
+  $$('.rank-item', list).forEach(function (li, i) {
+    li.querySelector('.rank-pos').textContent = String(i + 1);
+    li.classList.toggle('touched', rankTouched);
+    var up = li.querySelector('.rank-up');
+    var down = li.querySelector('.rank-down');
+    up.disabled = i === 0;
+    down.disabled = i === list.children.length - 1;
+  });
+}
+renumberRank($('#rank-q-priority'));
+
+/* ── Payload ── */
+function buildPayload() {
+  var answers = {};
+  QUESTIONS.forEach(function (q) {
+    if (q.id === 'q-verdict') return;
+    answers[q.id] = q.value();
+  });
+  var comments = [];
+  $$('.note-input').forEach(function (inp) {
+    var text = inp.value.trim();
+    if (text) comments.push({ anchor: '#' + inp.getAttribute('data-note-for'), text: text });
+  });
+  return {
+    verdict: QUESTIONS[QUESTIONS.length - 1].value(),
+    answers: answers,
+    comments: comments,
+    freeform: $('#freeform-input').value.trim()
+  };
+}
+
+/* ── Drawer ── */
+var drawer = $('#drawer');
+function openDrawer(title, payload) {
+  $('#drawer-title').textContent = title;
+  $('#drawer-json').textContent = JSON.stringify(payload, null, 2);
+  drawer.classList.add('open');
+  drawer.setAttribute('aria-hidden', 'false');
+}
+function closeDrawer() {
+  drawer.classList.remove('open');
+  drawer.setAttribute('aria-hidden', 'true');
+}
+$('#drawer-close').addEventListener('click', closeDrawer);
+$('#payload-btn').addEventListener('click', function () {
+  openDrawer('Payload preview', buildPayload());
+});
+
+/* ── Submit flow: flag unanswered, never block ── */
+var panel = $('#unanswered-panel');
+function unansweredQuestions() {
+  return QUESTIONS.filter(function (q) { return !q.answered(); });
+}
+function doSubmit() {
+  panel.classList.remove('show');
+  openDrawer('POST /submit', buildPayload());
+}
+$('#submit-btn').addEventListener('click', function () {
+  var open = unansweredQuestions();
+  if (open.length === 0) { doSubmit(); return; }
+  var list = $('#unanswered-list');
+  list.innerHTML = '';
+  open.forEach(function (q) {
+    var li = el('li');
+    var a = el('a', null, q.label);
+    a.href = '#' + q.id;
+    li.appendChild(a);
+    list.appendChild(li);
+  });
+  panel.classList.add('show');
+  panel.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+});
+$('#submit-anyway').addEventListener('click', doSubmit);
+$('#keep-answering').addEventListener('click', function () {
+  panel.classList.remove('show');
+  var open = unansweredQuestions();
+  if (open.length) {
+    document.getElementById(open[0].id).scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
+});
+
+/* ── Copy payload ── */
+$('#copy-btn').addEventListener('click', function () {
+  var json = JSON.stringify(buildPayload(), null, 2);
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(json).then(
+      function () { toast('Payload copied to clipboard.'); },
+      function () { openDrawer('Payload (copy failed — select manually)', buildPayload()); }
+    );
+  } else {
+    openDrawer('Payload (clipboard unavailable)', buildPayload());
+  }
+});
+
+document.addEventListener('keydown', function (ev) {
+  if (ev.key !== 'Escape') return;
+  if (drawer.classList.contains('open')) { closeDrawer(); return; }
+  if (panel.classList.contains('show')) panel.classList.remove('show');
+});
+
+/* ── Demo seed (?demo) — a half-completed form ── */
+if (/[?&]demo/.test(location.search)) {
+  $('input[name="q-rail"][value="margin"]').checked = true;
+  $('input[name="q-legacy"][value="in-place"]').checked = true;
+  $('input[name="q-render"][value="code-highlight"]').checked = true;
+  $('input[name="q-render"][value="toc"]').checked = true;
+  $('input[name="q-theme"][value="4"]').checked = true;
+  $('[data-note-for="q-rail"]').value = 'Margin cards, but collapse to a list when there are more than ~6 comments.';
+}
+
+refresh();
+}());
+</script>
+
+</body>
+</html>
