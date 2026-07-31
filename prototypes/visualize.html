@@ -608,7 +608,10 @@ flowchart TD
   /* Mermaid with the theme bridge (adapted from the plugin template). */
   const pv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   const blocks = [...document.querySelectorAll("pre.mermaid")];
-  blocks.forEach(b => { b.dataset.src = b.textContent; });
+  // Diagram source kept in a Map, not a data- attribute: data-src is a
+  // lazy-loading convention that scanners treat as an HTML sink (CodeQL
+  // js/xss-through-dom), and the DOM never needs to carry it.
+  const sources = new Map(blocks.map(b => [b, b.textContent]));
   const reveal = () => blocks.forEach(b => { b.style.visibility = "visible"; });
 
   let mermaid;
@@ -632,7 +635,7 @@ flowchart TD
         fontFamily:         pv("--pv-sans"),
       },
     });
-    blocks.forEach(b => { b.textContent = b.dataset.src; b.removeAttribute("data-processed"); });
+    blocks.forEach(b => { b.textContent = sources.get(b); b.removeAttribute("data-processed"); });
     await mermaid.run({ nodes: blocks });
     if (window.__pvAfterMermaid) window.__pvAfterMermaid();
   }
