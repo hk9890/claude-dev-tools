@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>html-visualize — improvement prototypes</title>
+<style>
+:root {
+  color-scheme: light dark;
+  --pv-desk: #eceee9; --pv-paper: #fbfbf8; --pv-ink: #1d2024;
+  --pv-muted: #5c636b; --pv-faint: #8b9199;
+  --pv-border: #d9dcd3;
+  --pv-pencil: #2451c8; --pv-pencil-deep: #1a3ea3; --pv-pencil-tint: #e4eafb;
+  --pv-shadow: 0 1px 2px rgba(29,32,36,.05), 0 8px 24px -12px rgba(29,32,36,.14);
+  --pv-sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --pv-serif: "Charter", "Bitstream Charter", "Sitka Text", "Iowan Old Style", Cambria, Georgia, serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --pv-desk: #131519; --pv-paper: #1e2126; --pv-ink: #e8eaed;
+    --pv-muted: #9aa2ad; --pv-faint: #6d7480;
+    --pv-border: #31363e;
+    --pv-pencil: #8fb1ff; --pv-pencil-deep: #adc6ff; --pv-pencil-tint: #223250;
+    --pv-shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--pv-desk); color: var(--pv-ink);
+  font-family: var(--pv-sans); font-size: 16px; line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 760px; margin: 0 auto; padding: 3.5rem 1.5rem 4rem; }
+.kicker {
+  font-size: .7rem; font-weight: 650; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--pv-pencil-deep); margin: 0 0 .5rem;
+}
+h1 {
+  margin: 0 0 .4rem; font-family: var(--pv-serif);
+  font-size: 2rem; font-weight: 600; letter-spacing: -.018em; line-height: 1.15;
+}
+.sub { margin: 0 0 2.2rem; font-family: var(--pv-serif); font-style: italic;
+  font-size: 1.05rem; color: var(--pv-muted); }
+.card {
+  display: block; text-decoration: none; color: inherit;
+  background: var(--pv-paper);
+  border: 1px solid var(--pv-border);
+  border-left: 3px solid var(--pv-pencil);
+  border-radius: 12px;
+  box-shadow: var(--pv-shadow);
+  padding: 1.2rem 1.4rem;
+  margin-bottom: 1.1rem;
+  transition: border-color .12s;
+}
+.card:hover { border-color: var(--pv-pencil); }
+.card h2 { margin: 0 0 .35rem; font-size: 1.1rem; }
+.card h2 span { color: var(--pv-pencil-deep); }
+.card p { margin: 0 0 .5rem; font-size: .9rem; color: var(--pv-muted); }
+.card ul { margin: 0; padding-left: 1.2rem; font-size: .84rem; color: var(--pv-muted); }
+.card li { margin-bottom: .2rem; }
+.note {
+  margin-top: 2rem; padding-top: 1rem;
+  border-top: 1px solid var(--pv-border);
+  font-size: .8rem; color: var(--pv-faint);
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="kicker">claude-dev-tools · prototypes — not shipped code</p>
+  <h1>html-visualize improvement prototypes</h1>
+  <p class="sub">Two clickable pages exploring the proposed selection model, page chrome, and visual language. Both work in light and dark mode.</p>
+
+  <a class="card" href="feedback.html">
+    <h2><span>1 ·</span> Feedback mode — element-level targets</h2>
+    <p>The reviewed document is a real proposal for this feature; every improvement it describes is live on the page.</p>
+    <ul>
+      <li>Select any text — a single word is enough — and comment on it</li>
+      <li>⊹ Pick element: click a list item, table row, or code line</li>
+      <li>Click a node in the Mermaid diagram to comment on the node itself</li>
+      <li>Comments live in a margin rail with numbered blue-pencil pins</li>
+      <li>Apply / Submit / View payload show the exact JSON that would POST</li>
+    </ul>
+  </a>
+
+  <a class="card" href="visualize.html">
+    <h2><span>2 ·</span> Visualize mode — redesigned page &amp; footer</h2>
+    <p>Real numbers from the working tree: line counts, test suites, and the plugin's routing architecture.</p>
+    <ul>
+      <li>Sticky table of contents with scrollspy</li>
+      <li>Stat tiles and a bar chart built to the dataviz mark specs, with hover tooltips</li>
+      <li>Collapsible, line-numbered code section</li>
+      <li>✛ Point at… — reference a bar, row, tile, or diagram node as a chip in the message footer</li>
+      <li>Send shows the structured payload the references would produce</li>
+    </ul>
+  </a>
+
+  <a class="card" href="ask.html?demo">
+    <h2><span>3 ·</span> Ask mode — progress, new widgets, unanswered flow</h2>
+    <p>A real decision batch for this project: seven calls that shape the implementation PR. <code>?demo</code> pre-fills half the form.</p>
+    <ul>
+      <li>Progress dots in the top bar + a question index with answered state on wide screens</li>
+      <li>Every question has an “Explain this decision” disclosure in plain English</li>
+      <li>New widget kinds: comparison cards with pros/cons, a 1–5 scale, arrow-button ranking</li>
+      <li>Architecture question: Before/After Mermaid diagrams you agree or disagree to — nodes commentable</li>
+      <li>Anchored comments beyond the plain note: select text, 💬 an option row, or click a diagram node</li>
+      <li>Submit flags unanswered questions with jump links — partial submits allowed, never blocked</li>
+      <li>View payload shows the extended schema (scale → number, rank → array, comments with targets)</li>
+    </ul>
+  </a>
+
+  <p class="note">Theme sketch: “Proof” — blue pencil on a cool proof sheet. Chrome is a sans-serif
+    instrument; the content is a serif artifact; everything the user adds is pencil blue.
+    Diagrams need the Mermaid CDN once; everything else is self-contained.</p>
+</div>
+</body>
+</html>
