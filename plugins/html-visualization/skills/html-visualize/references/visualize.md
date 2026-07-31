@@ -39,7 +39,7 @@ fails, display the content as text in chat and tell the user Node is unavailable
 ## Step 1 — Decide what to render
 
 **If the intent is a path to a file that exists, read it — its contents are what you
-render.** A path is a hand-off, not a subject: `/html-visualize-demo /tmp/report.md`
+render.** A path is a hand-off, not a subject: `/html-visualize-page /tmp/report.md`
 means "render this document", never "draw a picture of this filename". Markdown maps
 onto the page directly — headings become sections, tables become tables, and fenced
 ` ```mermaid ` blocks become `<pre class="mermaid">` inside a `.vis-mermaid-wrap`, with
@@ -354,11 +354,12 @@ container (already in the template). For SVGs, set `width="100%"` plus a
 See `references/serve.md` — Cycle B (non-blocking serve-and-continue). Surface
 the URL to the user as a markdown link with the message:
 
-> Your visualization is ready → **[Open visualization](http://127.0.0.1:PORT/)**
+> Your visualization is ready → **[Open visualization](http://HOST:PORT/)**
 >
 > Open that link in your browser to view it. You can optionally type a message in
 > the footer and click **Send** to share feedback or a follow-up request — or click
-> **Save** to download a copy of the page.
+> **Save** to download a copy of the page. Anyone who can reach this port can open
+> it, so mind the network you are on.
 
 ---
 
@@ -405,8 +406,12 @@ button disabled. This is intentional: a saved copy opened as a `file://` URL can
 reach the server, so Send cannot work. Save is the intended "keep this page offline"
 path; Send requires the live server.
 
-> **Degraded-environment fallback only**: if the user's environment has Node but not
-> a browser that can reach localhost (e.g. a remote SSH session with no port
-> forwarding), the server URL is not reachable. In that case, offer to save the HTML
-> file to a user-specified path so they can open it directly. This is a last-resort
+> **Degraded-environment fallback only**: the server binds every interface and
+> prints its URL under the machine's own hostname, so a remote box is reachable
+> by DNS name without port forwarding. That name does not always resolve for the
+> user's browser, and an SSH tunnel reaches the server over loopback instead —
+> both cases are handled in "When the printed hostname does not resolve" in
+> `references/serve.md`, whose first move is `http://localhost:PORT/` on the same
+> port. Only when no address is reachable, offer to save the HTML file to a
+> user-specified path so they can open it directly. This is a last-resort
 > accommodation — the normal path is always to serve via the server.

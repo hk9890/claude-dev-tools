@@ -64,6 +64,9 @@ SKILL_RENAME_ALIASES = {
     "html-visualization:html-ask": "html-visualization:html-visualize",
     "html-visualization:html-feedback": "html-visualization:html-visualize",
     "html-visualization:visualize-html": "html-visualization:html-visualize",
+    # the visualize-mode command skill, renamed once the name "demo" proved to
+    # read as a showcase of the plugin rather than as "render me a page"
+    "html-visualization:html-visualize-demo": "html-visualization:html-visualize-page",
     # project-docs skills -> consolidated into the read-only docs audit
     "project-docs:coder-docs": "project-review:project-review-docs",
     "project-docs:create-docs": "project-review:project-review-docs",
