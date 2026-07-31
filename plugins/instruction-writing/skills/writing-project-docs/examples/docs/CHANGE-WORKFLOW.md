@@ -2,9 +2,10 @@
 
 ## Commits
 
-- One logical change per commit.
-- Message format: imperative present tense — `Add widget soft-delete`, `Fix pagination off-by-one`.
-- No `WIP` commits on branches targeting `main`.
+Use the `commit-commands:commit` skill for the standard flow.
+
+**Local delta:** one logical change per commit, imperative present tense (`Add widget soft-delete`,
+`Fix pagination off-by-one`), and no `WIP` commits on a branch targeting `main`.
 
 ## Branches
 
@@ -21,8 +22,6 @@
 
 ## CI — required checks
 
-- `make test`
-- `make lint`
-- Docker image build
-
-All checks must be green before merge is allowed.
+The check list and how to run it locally are in [TESTING.md](TESTING.md); CI adds the Docker image
+build. All of them must be green before merge is allowed — a red check blocks the merge button, it
+is not a warning to argue past.

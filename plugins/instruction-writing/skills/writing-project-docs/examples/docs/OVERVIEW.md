@@ -5,18 +5,15 @@ REST API for widget inventory. Exposes CRUD endpoints over HTTP/JSON backed by P
 ## Repository layout
 
 ```
-src/
-├── cmd/server/         entrypoint, dependency wiring
-├── internal/api/       HTTP handlers (Chi router)
-├── internal/store/     PostgreSQL repository layer
-├── internal/model/     shared domain types
-└── migrations/         schema migrations (goose)
-api/
-└── openapi.yaml        OpenAPI spec (rendered at https://api.acme.com/widget-service/docs)
-docs/
-├── adr/                architecture decision records (e.g. 0001-use-postgresql.md)
-├── user/               user-facing documentation (published to https://docs.acme.com/widget-service)
-└── runbooks/           operational runbooks for on-call
+cmd/server/             entrypoint, dependency wiring
+internal/api/           HTTP handlers (Chi router)
+internal/store/         PostgreSQL repository layer
+internal/model/         shared domain types
+migrations/             schema migrations (goose)
+api/openapi.yaml        OpenAPI spec (rendered at https://api.acme.com/widget-service/docs)
+docs/adr/               architecture decision records (e.g. 0001-use-postgresql.md)
+docs/user/              user-facing documentation (published to https://docs.acme.com/widget-service)
+docs/runbooks/          operational runbooks for on-call
 ```
 
 ## Key concepts
@@ -25,6 +22,15 @@ docs/
 - All mutations run inside a transaction; partial writes are not possible.
 - Schema migrations run automatically at startup via `store.Migrate()`.
 - The service is stateless — all state lives in PostgreSQL.
+
+## Finding things
+
+```bash
+rg -n 'r\.(Get|Post|Put|Delete)\(' internal/api/router.go   # every endpoint the service serves
+rg -n 'func \(s \*Store\)' internal/store/store.go          # every database operation
+rg -n 'type \w+ struct' internal/model/                     # the domain types
+rg -n '<column-name>' migrations/                           # when a column was added, and by which migration
+```
 
 ## External resources
 
