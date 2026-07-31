@@ -3,7 +3,7 @@ name: test-tests
 description: "Empirical test-suite strength audit — proves whether the tests detect injected bugs (mutation kill rate), stay quiet on non-bugs, are flake-free under reruns/shuffle/delays, and run fast. Reports findings and proposals; never keeps an edit."
 user-invocable: true
 disable-model-invocation: true
-argument-hint: "[level] [path]"
+argument-hint: "[low|medium|high|ultra] [path]"
 ---
 
 Empirical test-suite strength audit. Launch the audit workflow — do **not** probe the

@@ -3,7 +3,7 @@ name: project-review-codebase
 description: "Read-only codebase review across three dimensions — consistency, structure, architecture — via a multi-agent workflow that dedupes findings across dimensions and writes a standalone Markdown report with Mermaid diagrams; reports fixes, never edits."
 user-invocable: true
 disable-model-invocation: true
-argument-hint: "[level] [what-to-review]"
+argument-hint: "[low|medium|high|ultra] [what-to-review]"
 ---
 
 Read-only codebase review across three dimensions — consistency, structure, and
@@ -68,10 +68,14 @@ the artifact to a temp file.
 
    Then surface it in one line, e.g.
    `Full report with diagrams: /tmp/codebase-review-20260724-101500.md`
-   — and note the two things they can do with it:
+   — and note what they can do with it:
    - **View it rendered** — `/html-visualize-page <path>` renders the Markdown and
      its Mermaid diagrams in the browser. Only offer this if that skill exists;
      it ships in the separate `html-visualization` plugin.
+   - **Decide on it** — `/html-visualize-ask` built from the `recommended_actions`
+     and any `architecture_candidates` renders a browser HTML form so they can
+     approve/reject each one instead of doing it turn by turn in chat. Only offer
+     this if that skill exists; it ships in the separate `html-visualization` plugin.
    - **Keep it** — if they want it in the repo, they say where and you copy it.
      Do not pick a location or copy it unprompted.
 

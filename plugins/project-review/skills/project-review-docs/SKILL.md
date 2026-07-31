@@ -3,7 +3,7 @@ name: project-review-docs
 description: "Read-only audit of a project's docs for accuracy, staleness, gaps, misplaced content, and whether an agent can actually use them — runs a multi-agent workflow, reports fixes, never edits."
 user-invocable: true
 disable-model-invocation: true
-argument-hint: "[level] [path]"
+argument-hint: "[low|medium|high|ultra] [path]"
 ---
 
 Read-only documentation audit. Launch the review workflow — do **not** review the
@@ -66,6 +66,12 @@ docs inline. The workflow returns a structured report; relay it.
    carrying `got` means an argument was wrong before any agent was spawned, and
    `got.keys` lists the arguments that actually arrived — surface it, since that is
    what shows a misspelled key.
+
+   Once relayed, offer to decide on the findings via a form: `/html-visualize-ask`
+   built from `findings[]` renders a browser HTML question/decision form so they
+   can approve/reject each one instead of doing it turn by turn in chat. Only
+   offer this if that skill exists; it ships in the separate `html-visualization`
+   plugin.
 
 If `python3` is missing or the workflow cannot launch, read every doc in full by
 hand against both halves of the standard — `<STANDARD_DIR>/references/project-setup.md`
