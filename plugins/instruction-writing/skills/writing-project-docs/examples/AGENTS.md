@@ -6,36 +6,36 @@ REST API for widget inventory management. Go service backed by PostgreSQL.
 
 ## Use-case routing
 
-Depending on your goal, load the relevant document first.
-
-### Research, planning, analysis
-
-Load [docs/OVERVIEW.md](docs/OVERVIEW.md) to understand the high-level architecture and repository structure.
+Every route below is **mandatory, not advisory**. Load the document BEFORE the first action of that kind — loading it afterwards does not count, and no route becomes skippable because the task looks small.
 
 ### Coding and file changes
 
-Load [docs/CODING.md](docs/CODING.md) before making code or file changes; follow the constraints there.
+**MUST read [docs/CODING.md](docs/CODING.md) before creating or editing ANY file under `internal/` or `cmd/`.** It owns the package boundaries, the error-wrapping convention, and the rules no linter catches.
+
+### Research, planning, analysis
+
+**MUST read [docs/OVERVIEW.md](docs/OVERVIEW.md) before searching this repository.** It is the map — package layout, the storage boundary, and the expressions that locate things fast. Go there first instead of grepping blind.
 
 ### Testing and verification
 
-Load [docs/TESTING.md](docs/TESTING.md) to understand how to run tests and verify your work.
+**MUST read [docs/TESTING.md](docs/TESTING.md) before writing a test** or judging whether a change is verified. It owns the test layers, the fixtures, and the gates that must pass before you push.
 
 ### Run the service to reproduce a bug or verify a change
 
-Load [docs/RUNNING.md](docs/RUNNING.md) to launch the service locally and drive it by hand — reproduce a reported bug, or confirm a fix works in the running product. Pull supporting evidence from [docs/MONITORING.md](docs/MONITORING.md) when reproducing.
+**MUST read [docs/RUNNING.md](docs/RUNNING.md) before starting the service locally** or driving it by hand. Pull supporting evidence from [docs/MONITORING.md](docs/MONITORING.md) when reproducing.
 
 ### Commit, branch, PR workflow
 
-Load [docs/CHANGE-WORKFLOW.md](docs/CHANGE-WORKFLOW.md) before git operations or opening a PR.
+**MUST read [docs/CHANGE-WORKFLOW.md](docs/CHANGE-WORKFLOW.md) before ANY git operation** — commit, branch, push, or opening a PR.
 
 ### Reviewing changes
 
-Load [docs/REVIEWING.md](docs/REVIEWING.md) before reviewing a PR or change — follow the project-specific review rules there.
+**MUST read [docs/REVIEWING.md](docs/REVIEWING.md) before reviewing a PR or a diff.** It carries the local review priorities and out-of-scope conventions the generic review skills cannot know.
 
 ### Release
 
-Load [docs/RELEASING.md](docs/RELEASING.md) to create a new release or understand what this project ships.
+**MUST read [docs/RELEASING.md](docs/RELEASING.md) before cutting a release** or changing what this service ships.
 
 ### Analyze logs, spans, monitoring
 
-Load [docs/MONITORING.md](docs/MONITORING.md) to analyze logs, spans, or events — performance analysis, health checks, and the evidence trail that supports reproducing a bug (the reproduction itself is driven from RUNNING.md).
+**MUST read [docs/MONITORING.md](docs/MONITORING.md) before interpreting logs, spans, or events** — where they land, what a healthy trace looks like, and the health checks. Reproducing a bug is driven from RUNNING.md, which pulls this doc's evidence.

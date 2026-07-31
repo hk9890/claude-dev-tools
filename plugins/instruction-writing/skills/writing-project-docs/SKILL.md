@@ -25,9 +25,10 @@ under discussion.
    rather than getting softened to fit.
 2. **What does that file look like?** [`examples/`](examples/) holds a worked example of each one.
    Match its structure and register. `AGENTS.md` especially: `### <use case>` sections, each naming
-   the one doc to load and a one-line reason. It routes; it never carries the procedure itself.
+   the doc that **MUST** be read and the action that triggers it — there are no optional routes
+   (A12). It routes; it never carries the procedure itself.
 3. **How is it written?** [`references/project-doc-guidelines.md`](references/project-doc-guidelines.md)
-   — authoring rules A1–A11, the hard prohibitions, and the bar any change must clear.
+   — authoring rules A1–A12, the hard prohibitions, and the bar any change must clear.
 
 ## Sediment
 

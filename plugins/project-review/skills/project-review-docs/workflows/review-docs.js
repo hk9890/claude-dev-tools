@@ -323,7 +323,7 @@ if (typeof agent === 'function') {
       `Metrics (from the deterministic manifest — do NOT recompute): ${m.lines} lines, ${m.words} words, ${m.non_heading_lines} content lines.\n` +
       `Links were already resolved by the manifest. Unresolved links in this file:\n${dead}\n\n` +
       `Read the FULL file now, then judge it. You see only THIS file and its contract — there is no doc set to satisfice against.\n` +
-      `\nApply the authoring rules — read ${guidelinesFile} once, all of it: rules A1–A11, the hard prohibitions, and the closing "What a good fix looks like" bar. The rules define the accuracy, belonging, and form bar for the file; the closing bar is what every fix you recommend must itself clear. Apply them alongside this file's contract.\n`
+      `\nApply the authoring rules — read ${guidelinesFile} once, all of it: rules A1–A12, the hard prohibitions, and the closing "What a good fix looks like" bar. The rules define the accuracy, belonging, and form bar for the file; the closing bar is what every fix you recommend must itself clear. Apply them alongside this file's contract.\n`
 
     if (f.contract) {
       const c = f.contract

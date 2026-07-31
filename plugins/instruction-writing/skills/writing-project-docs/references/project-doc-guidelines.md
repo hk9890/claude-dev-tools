@@ -96,6 +96,24 @@ falsifiable rather than a verdict on the file's feel. Severity tracks what the b
 reader: a file whose length actively obscures the procedure it documents is `major`, not a
 housekeeping note.
 
+### A12 — Routes are obligations, not suggestions
+
+An `AGENTS.md` route exists because the doc behind it holds something the agent needs for that
+kind of work. State it that way: **`MUST read <doc> before <the action that triggers it>`** —
+cutting a release loads `RELEASING.md` first, touching a file in the source tree loads `CODING.md`
+first, searching the repository loads `OVERVIEW.md` first. There are no optional routes.
+
+Two things make the obligation fire:
+
+- **Name the triggering action, not the topic.** "before you create or edit ANY file under `src/`"
+  fires at a moment the agent can recognize; "for implementation guidance" does not.
+- **Say once, in a preamble, that loading afterwards does not count.** Otherwise a route is
+  satisfied retroactively by reading the doc after the work is done, which is not routing.
+
+Advisory phrasing is a finding: "load X to understand Y", "see X for details", "consider reading
+X", "X may help". An agent under load reads those as skippable and skips them — the measured
+result is that the routed doc goes unopened while the work proceeds from guesswork.
+
 ## Hard prohibitions
 
 Canonical docs should avoid:
