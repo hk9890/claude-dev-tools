@@ -2,7 +2,7 @@
 """manifest.py — the deterministic layer of the project-review docs review.
 
 Usage:
-    manifest.py <repo-root> [--format=json|text]
+    manifest.py <repo-root> [--format=json|text] [--setup-md=<path>]
 
 Emits ONE structured manifest describing every Markdown doc in <repo-root>. This
 is the entire hand-off from the deterministic layer to the review workflow: the
@@ -25,9 +25,12 @@ content is accurate, belongs where it sits, or is well-written. That is the
 workflow's per-file reading agents. Scripts do facts; agents do judgment.
 
 Each file entry also carries its ownership *contract* (audience / inside /
-not-inside), parsed from this skill's own references/project-setup.md so there is
+not-inside), parsed from the project-setup.md handed in via --setup-md so there is
 a single source of truth and the reading agent gets the boundary inline instead
-of having to go find it.
+of having to go find it. That file belongs to the authoring standard, which lives
+in another plugin (the `instruction-writing:writing-project-docs` skill) — hence a
+path in, never a path guessed from here. Without the flag the contracts are simply
+absent; the manifest is still emitted.
 
 Exits 0 on success, 1 on bad invocation. Never non-zero for doc problems — this
 is an inventory, not a gate.
@@ -40,7 +43,9 @@ import re
 import sys
 
 # ---------------------------------------------------------------------------
-# Canonical doc taxonomy (mirrors references/project-setup.md)
+# Canonical doc taxonomy — mirrors the authoring standard's project-setup.md
+# (instruction-writing:writing-project-docs). A new canonical doc has to be
+# registered in both; see docs/REVIEWING.md.
 # ---------------------------------------------------------------------------
 
 CANONICAL_ROOT = ["README.md", "AGENTS.md", "CLAUDE.md"]  # required at repo root
@@ -69,7 +74,6 @@ PURPOSE = {
 }
 
 _SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
-_SETUP_MD = os.path.join(_SCRIPT_DIR, "..", "references", "project-setup.md")
 
 
 # ---------------------------------------------------------------------------
@@ -88,16 +92,19 @@ def _load_validate_routes():
 
 
 # ---------------------------------------------------------------------------
-# Ownership-contract parse (single source of truth: project-setup.md)
+# Ownership-contract parse (single source of truth: the --setup-md file)
 # ---------------------------------------------------------------------------
 
-def parse_ownership(setup_path=_SETUP_MD):
+def parse_ownership(setup_path):
     """Parse the 'File ownership boundaries' blocks from project-setup.md.
 
-    Returns {canonical_name: {audience, inside, not_inside}}. Best-effort: if the
-    file is absent or restructured, returns {} and the manifest simply omits the
-    inline contract (the agent can still read project-setup.md itself).
+    Returns {canonical_name: {audience, inside, not_inside}}. Best-effort: if no
+    path is given, or the file is absent or restructured, returns {} and the
+    manifest simply omits the inline contract (the agent can still load the
+    authoring-standard skill and read project-setup.md itself).
     """
+    if not setup_path:
+        return {}
     try:
         with open(setup_path, encoding="utf-8", errors="replace") as fh:
             lines = fh.read().splitlines()
@@ -337,9 +344,9 @@ def injected_blocks(abs_path):
 # Build the manifest
 # ---------------------------------------------------------------------------
 
-def build(repo_root):
+def build(repo_root, setup_md=None):
     vr = _load_validate_routes()
-    ownership = parse_ownership()
+    ownership = parse_ownership(setup_md)
     rels = md_files(repo_root)
 
     # First pass: per-file records + link map for reachability.
@@ -480,10 +487,13 @@ def format_text(data):
 def main():
     args = sys.argv[1:]
     fmt = "json"
+    setup_md = None
     positional = []
     for a in args:
         if a.startswith("--format="):
             fmt = a.split("=", 1)[1]
+        elif a.startswith("--setup-md="):
+            setup_md = a.split("=", 1)[1]
         elif a in ("-h", "--help"):
             print(__doc__)
             return
@@ -493,13 +503,16 @@ def main():
         else:
             positional.append(a)
     if not positional:
-        print(f"Usage: {os.path.basename(sys.argv[0])} <repo-root> [--format=json|text]", file=sys.stderr)
+        print(
+            f"Usage: {os.path.basename(sys.argv[0])} <repo-root> [--format=json|text] [--setup-md=<path>]",
+            file=sys.stderr,
+        )
         sys.exit(1)
     repo_root = positional[0]
     if not os.path.isdir(repo_root):
         print(f"Error: {repo_root!r} is not a directory", file=sys.stderr)
         sys.exit(1)
-    data = build(repo_root)
+    data = build(repo_root, setup_md)
     print(format_text(data) if fmt == "text" else json.dumps(data, indent=2))
 
 

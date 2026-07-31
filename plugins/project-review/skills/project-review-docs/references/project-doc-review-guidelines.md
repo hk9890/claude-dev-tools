@@ -3,10 +3,12 @@
 The rubric for reviewing project docs: the rule codes to apply, the review
 contract, the stages, and the vocabulary the report uses.
 
-Use with:
+Use with the authoring standard this review measures against — the
+`instruction-writing:writing-project-docs` skill, which owns:
 
-- [project-setup.md](project-setup.md) — canonical doc set + file ownership (Inside / Not inside)
-- [project-doc-guidelines.md](project-doc-guidelines.md) — authoring rules A1–A11 + hard prohibitions
+- `references/project-setup.md` — canonical doc set + file ownership (Inside / Not inside)
+- `references/project-doc-guidelines.md` — authoring rules A1–A11 + hard prohibitions
+- `examples/` — a worked example of every canonical file
 
 ## Rule codes
 

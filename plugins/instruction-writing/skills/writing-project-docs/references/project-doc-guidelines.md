@@ -4,8 +4,9 @@ Authoring standard for canonical project docs.
 
 Use with:
 
-- [project-setup.md](project-setup.md)
-- [project-doc-review-guidelines.md](project-doc-review-guidelines.md)
+- [project-setup.md](project-setup.md) — the canonical file set and every file's ownership contract.
+- The review side of these rules — rule codes, stages, severities — is
+  `project-review:project-review-docs`, in its `references/project-doc-review-guidelines.md`.
 
 ## Authoring objectives
 
@@ -101,7 +102,7 @@ Canonical docs should avoid:
 
 - generic advice without local anchors
 - large pasted code blocks when a file pointer is enough
-- **auto-injected blocks** from external tools in `CLAUDE.md` or `AGENTS.md` — these files are hand-authored steering surfaces. Markers like `<!-- BEGIN <TOOL> -->` ... `<!-- END <TOOL> -->` belong in topic-specific docs under `docs/` (or, if the tool's content is truly transient/personal, in `.claude.local.md`). Detected by `scripts/manifest.py` (`injected_blocks`).
+- **auto-injected blocks** from external tools in `CLAUDE.md` or `AGENTS.md` — these files are hand-authored steering surfaces. Markers like `<!-- BEGIN <TOOL> -->` ... `<!-- END <TOOL> -->` belong in topic-specific docs under `docs/` (or, if the tool's content is truly transient/personal, in `.claude.local.md`). Detected by the reviewer's `manifest.py` (`injected_blocks`).
 - **stub / placeholder docs** — files whose only content is a header plus "No rules yet", "TBD", "Coming soon", or similar. Delete the file; create it lazily when there is real content to record. A hollow doc imposes a cognitive cost (readers load it, find nothing, and lose trust in the doc set) without any payoff.
 
 ## Concrete rewrites

@@ -86,29 +86,35 @@ async function main() {
   ok('review-docs.js exposes its pure helpers');
 
   // ── normalizeArgs ────────────────────────────────────────────────────────────
-  const good = normalizeArgs({ repoRoot: '/r', scriptsDir: '/s/scripts' });
+  const good = normalizeArgs({ repoRoot: '/r', scriptsDir: '/s/scripts', standardDir: '/std' });
   eq('normalizeArgs: a valid config carries no error', null, good.error);
   eq('normalizeArgs: level defaults to medium', 'medium', good.level);
-  eq('normalizeArgs: the authoring rules resolve next to the scripts',
-    '/s/references/project-doc-guidelines.md', good.guidelinesFile);
-  eq('normalizeArgs: a trailing slash on scriptsDir still resolves the rules',
-    '/s/references/project-doc-guidelines.md',
-    normalizeArgs({ repoRoot: '/r', scriptsDir: '/s/scripts/' }).guidelinesFile);
-  // Anchored on the separator, matching test-tests.js. Unanchored, a directory merely
-  // ENDING in "scripts" would have its name rewritten mid-word to "myreferences".
-  eq('normalizeArgs: a directory ending in "scripts" is not rewritten mid-word',
-    '/s/myscripts/project-doc-guidelines.md',
-    normalizeArgs({ repoRoot: '/r', scriptsDir: '/s/myscripts' }).guidelinesFile);
+  // The standard lives in another plugin, so both artifacts hang off standardDir — never
+  // off scriptsDir, whose sibling directories belong to the reviewer, not the standard.
+  eq('normalizeArgs: the authoring rules resolve under the standard directory',
+    '/std/references/project-doc-guidelines.md', good.guidelinesFile);
+  eq('normalizeArgs: the ownership contracts resolve under the standard directory',
+    '/std/references/project-setup.md', good.setupFile);
+  eq('normalizeArgs: a trailing slash on standardDir does not double the separator',
+    '/std/references/project-doc-guidelines.md',
+    normalizeArgs({ repoRoot: '/r', scriptsDir: '/s/scripts', standardDir: '/std/' }).guidelinesFile);
 
   // The regression the seam exists for: args arriving as a JSON STRING must be parsed,
   // or every field is undefined and the run dies at "undefined/manifest.py".
   eq('normalizeArgs: JSON-string payload is parsed (undefined-manifest regression guard)',
-    '/parsed/root', normalizeArgs('{"repoRoot":"/parsed/root","scriptsDir":"/s/scripts"}').repoRoot);
+    '/parsed/root',
+    normalizeArgs('{"repoRoot":"/parsed/root","scriptsDir":"/s/scripts","standardDir":"/std"}').repoRoot);
 
   truthy('normalizeArgs: a missing repoRoot is rejected and named',
-    /repoRoot/.test(normalizeArgs({ scriptsDir: '/s/scripts' }).error || ''));
+    /repoRoot/.test(normalizeArgs({ scriptsDir: '/s/scripts', standardDir: '/std' }).error || ''));
   truthy('normalizeArgs: a missing scriptsDir is rejected and named',
-    /scriptsDir/.test(normalizeArgs({ repoRoot: '/r' }).error || ''));
+    /scriptsDir/.test(normalizeArgs({ repoRoot: '/r', standardDir: '/std' }).error || ''));
+  // Without it the read-review agents lose the authoring rules and every file loses its
+  // ownership contract — the audit would still run and quietly grade against nothing.
+  truthy('normalizeArgs: a missing standardDir is rejected and named',
+    /standardDir/.test(normalizeArgs({ repoRoot: '/r', scriptsDir: '/s/scripts' }).error || ''));
+  truthy('normalizeArgs: a relative standardDir is rejected',
+    /absolute path/.test(normalizeArgs({ repoRoot: '/r', scriptsDir: '/s/scripts', standardDir: 'rel/std' }).error || ''));
   truthy('normalizeArgs: non-JSON string is rejected', normalizeArgs('not json').error);
   truthy('normalizeArgs: undefined is rejected', normalizeArgs(undefined).error);
 
@@ -122,16 +128,16 @@ async function main() {
   // `cost` was renamed to `level`. Silently ignoring it hands a caller who asked for an
   // ultra audit a medium one — 3 routes, no refutation — and reports raw.level 'medium'.
   truthy('normalizeArgs: the renamed `cost` argument is rejected, not silently dropped',
-    /level/.test(normalizeArgs({ repoRoot: '/r', scriptsDir: '/s/scripts', cost: 'ultra' }).error || ''));
+    /level/.test(normalizeArgs({ repoRoot: '/r', scriptsDir: '/s/scripts', standardDir: '/std', cost: 'ultra' }).error || ''));
   eq('normalizeArgs: the received keys are echoed for diagnosis',
     ['repoRoot', 'scriptDir'], normalizeArgs({ repoRoot: '/r', scriptDir: '/s' }).receivedKeys);
 
   // An unsubstituted "<SCRATCH>" placeholder is truthy and would slip past a bare falsy
   // check, then be created inside the repo the audit promised not to touch.
   truthy('normalizeArgs: a relative scratchDir is rejected',
-    /absolute path/.test(normalizeArgs({ repoRoot: '/r', scriptsDir: '/s/scripts', scratchDir: '<SCRATCH>' }).error || ''));
+    /absolute path/.test(normalizeArgs({ repoRoot: '/r', scriptsDir: '/s/scripts', standardDir: '/std', scratchDir: '<SCRATCH>' }).error || ''));
   eq('normalizeArgs: an absolute scratchDir is accepted', null,
-    normalizeArgs({ repoRoot: '/r', scriptsDir: '/s/scripts', scratchDir: '/tmp/x' }).error);
+    normalizeArgs({ repoRoot: '/r', scriptsDir: '/s/scripts', standardDir: '/std', scratchDir: '/tmp/x' }).error);
 
   // ── the shared level vocabulary and its route budget ─────────────────────────
   for (const lvl of ['low', 'medium', 'high', 'ultra']) {
@@ -167,7 +173,7 @@ async function main() {
   eq('maxExecutionRoutes: null falls back to the level budget, not to every route', 3,
     normalizeArgs({ repoRoot: '/r', scriptsDir: '/s', level: 'medium', maxExecutionRoutes: null }).maxExec);
   truthy('maxExecutionRoutes: a non-integer is rejected rather than silently ignored',
-    /integer/.test(normalizeArgs({ repoRoot: '/r', scriptsDir: '/s', maxExecutionRoutes: 'all' }).error || ''));
+    /integer/.test(normalizeArgs({ repoRoot: '/r', scriptsDir: '/s', standardDir: '/std', maxExecutionRoutes: 'all' }).error || ''));
 
   // ── parseManifest ────────────────────────────────────────────────────────────
   eq('parseManifest: raw JSON', { a: 1 }, parseManifest('{"a":1}'));
@@ -256,7 +262,7 @@ async function main() {
     };
     const { ret } = await load({
       agent,
-      args: { repoRoot: '/repo', scriptsDir: '/s/scripts', scratchDir: '/tmp/sc', ...over },
+      args: { repoRoot: '/repo', scriptsDir: '/s/scripts', standardDir: '/std', scratchDir: '/tmp/sc', ...over },
       log: () => {},
       phase: () => {},
       parallel: async (thunks) => Promise.all(thunks.map((t) => t())),
@@ -280,7 +286,7 @@ async function main() {
   truthy('orchestration: the repo root reaches the read-review prompts',
     deep.prompts.some((p) => p.includes('Repo root: /repo')));
   truthy('orchestration: the authoring rules path reaches the read-review prompts',
-    deep.prompts.some((p) => p.includes('/s/references/project-doc-guidelines.md')));
+    deep.prompts.some((p) => p.includes('/std/references/project-doc-guidelines.md')));
   truthy('orchestration: the scratch dir reaches the execution prompts',
     deep.prompts.some((p) => p.includes('/tmp/sc')));
 
@@ -299,7 +305,7 @@ async function main() {
   // An unparseable manifest must abort with its own error, not proceed on garbage.
   const { ret: badManifest } = await load({
     agent: async (_p, o) => (o.label === 'manifest' ? 'no json here' : null),
-    args: { repoRoot: '/repo', scriptsDir: '/s/scripts', scratchDir: '/tmp/sc' },
+    args: { repoRoot: '/repo', scriptsDir: '/s/scripts', standardDir: '/std', scratchDir: '/tmp/sc' },
     log: () => {},
     phase: () => {},
     parallel: async (thunks) => Promise.all(thunks.map((t) => t())),

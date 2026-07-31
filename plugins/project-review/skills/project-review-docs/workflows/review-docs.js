@@ -11,7 +11,7 @@ export const meta = {
   ],
 }
 
-// args: { repoRoot, scriptsDir, level?, maxExecutionRoutes?, scratchDir? }
+// args: { repoRoot, scriptsDir, standardDir, level?, maxExecutionRoutes?, scratchDir? }
 
 // ---------------------------------------------------------------------------
 // Pure helpers — no runtime globals, so they are reachable without launching a
@@ -42,6 +42,10 @@ function normalizeArgs(rawArgs) {
 
   const repoRoot = String(parsed.repoRoot || '')
   const scriptsDir = String(parsed.scriptsDir || '')
+  // The authoring standard lives in a different plugin, so its path cannot be derived
+  // from scriptsDir — SKILL.md loads that skill and passes the base directory the
+  // harness printed for it.
+  const standardDir = String(parsed.standardDir || '').replace(/\/$/, '')
   const raw = String(parsed.level || '').toLowerCase()
   const level = LEVELS.includes(raw) ? raw : 'medium'
 
@@ -84,9 +88,13 @@ function normalizeArgs(rawArgs) {
     // string, so a truthiness check passes it straight to `python3 manifest.py "<…>"`.
     error = `repoRoot must be an absolute path (got ${JSON.stringify(repoRoot)}) — an unsubstituted "<…>" placeholder would otherwise reach the manifest`
   } else if (!scriptsDir) {
-    error = 'scriptsDir is required — it locates manifest.py and the authoring rules'
+    error = 'scriptsDir is required — it locates manifest.py'
   } else if (!scriptsDir.startsWith('/')) {
     error = `scriptsDir must be an absolute path (got ${JSON.stringify(scriptsDir)}) — it is interpolated into the manifest command`
+  } else if (!standardDir) {
+    error = 'standardDir is required — it is the base directory of the instruction-writing:writing-project-docs skill, which owns the authoring rules and the ownership contracts'
+  } else if (!standardDir.startsWith('/')) {
+    error = `standardDir must be an absolute path (got ${JSON.stringify(standardDir)}) — load the instruction-writing:writing-project-docs skill and pass the base directory it prints`
   } else if (!scratchDir.startsWith('/')) {
     error = `scratchDir must be an absolute path (got ${JSON.stringify(scratchDir)}) — the execution agent creates it outside the repo`
   } else if (maxExecError) {
@@ -96,10 +104,11 @@ function normalizeArgs(rawArgs) {
   return {
     repoRoot,
     scriptsDir,
-    // The authoring rules the read-review agents apply live next to the scripts. Anchored
-    // on the path separator, matching test-tests.js: unanchored, a scriptsDir ending in
-    // e.g. "myscripts" would silently resolve to "myreferences".
-    guidelinesFile: scriptsDir.replace(/\/scripts\/?$/, '/references') + '/project-doc-guidelines.md',
+    standardDir,
+    // Both artifacts of the authoring standard: the rules every read-review agent applies,
+    // and the ownership contracts manifest.py parses to attach a boundary to each file.
+    guidelinesFile: standardDir + '/references/project-doc-guidelines.md',
+    setupFile: standardDir + '/references/project-setup.md',
     level,
     maxExec,
     scratchDir,
@@ -272,14 +281,14 @@ if (typeof agent === 'function') {
     return { error: cfg.error, got: { type: typeof args, keys: cfg.receivedKeys, repoRoot: cfg.repoRoot } }
   }
 
-  const { repoRoot, scriptsDir, guidelinesFile, level, maxExec, scratchDir } = cfg
+  const { repoRoot, scriptsDir, guidelinesFile, setupFile, level, maxExec, scratchDir } = cfg
 
   // ── Manifest (deterministic facts)
 
   phase('Manifest')
   const manifestText = await agent(
     `Run this exact command and return ONLY its raw stdout — no prose, no markdown fences:\n\n` +
-    `python3 "${scriptsDir}/manifest.py" "${repoRoot}" --format=json\n\n` +
+    `python3 "${scriptsDir}/manifest.py" "${repoRoot}" --format=json --setup-md="${setupFile}"\n\n` +
     `Do not summarize, do not edit the output. Return the JSON exactly as printed.`,
     { label: 'manifest', phase: 'Manifest', model: 'haiku', effort: 'low' }
   )
