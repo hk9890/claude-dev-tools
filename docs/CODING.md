@@ -92,7 +92,7 @@ disable-model-invocation: true
 ---
 ```
 
-This is the default schema — nearly every skill in the marketplace uses it. Examples: `tasks-work`, `project-explore`, `html-visualize-demo`, the `project-execute` exec skills (`project-exec-testing`, `project-exec-releasing`, `project-exec-monitoring`), `project-explain`, the `project-review-*` lenses, `challenge:grill`, `challenge:kiss`, `github-releases`, `keep-awake-inspect`, `test-tests`, and `test-app`.
+This is the default schema — nearly every skill in the marketplace uses it. Examples: `tasks-work`, `project-explore`, `html-visualize-page`, the `project-execute` exec skills (`project-exec-testing`, `project-exec-releasing`, `project-exec-monitoring`), `project-explain`, the `project-review-*` lenses, `challenge:grill`, `challenge:kiss`, `github-releases`, `keep-awake-inspect`, `test-tests`, and `test-app`.
 
 **Schema B — model-discoverable:**
 

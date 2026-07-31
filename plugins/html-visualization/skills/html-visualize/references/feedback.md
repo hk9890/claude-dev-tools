@@ -150,10 +150,16 @@ exactly; do not glob for it.
 See `references/serve.md` — Cycle C (Apply loop). Surface the URL as a markdown
 link with the message:
 
-> Your review page is ready → **[Open review page](http://127.0.0.1:PORT/)**
+> Your review page is ready → **[Open review page](http://HOST:PORT/)**
 >
 > Select any text and click 💬 to comment. Click **Apply & preview** to have me
 > apply your comments and refresh the page, or **Submit & finish** when you're done.
+> Anyone who can reach this port can open the page, so mind the network you are on.
+
+**If the user says the link does not open**, do not wait out the timeout — see
+"When the printed hostname does not resolve" in `references/serve.md`: offer
+`http://localhost:PORT/` on the same port when they are on an SSH tunnel, and
+otherwise kill the server and take the feedback in chat.
 
 **Capture the port and save it** to `$HTML_DIR/.port` immediately after seeing the
 startup lines — every Apply re-serve must use `--port "$(cat "$HTML_DIR/.port")"`.

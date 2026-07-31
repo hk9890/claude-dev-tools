@@ -69,7 +69,7 @@ the artifact to a temp file.
    Then surface it in one line, e.g.
    `Full report with diagrams: /tmp/codebase-review-20260724-101500.md`
    — and note the two things they can do with it:
-   - **View it rendered** — `/html-visualize-demo <path>` renders the Markdown and
+   - **View it rendered** — `/html-visualize-page <path>` renders the Markdown and
      its Mermaid diagrams in the browser. Only offer this if that skill exists;
      it ships in the separate `html-visualization` plugin.
    - **Keep it** — if they want it in the repo, they say where and you copy it.

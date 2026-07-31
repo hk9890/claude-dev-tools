@@ -16,6 +16,11 @@
 #   - --no-wait: empty/missing freeform submit → 200, exit 0, no feedback file (silent close)
 #   - --no-wait: non-empty freeform submit → 200, exit 0, feedback file written
 #   - --no-wait --timeout-sec N: server exits 0 on timeout
+#   - startup URL names the machine hostname; server answers on a non-loopback address
+#   - the printed URL is fetchable as printed (skipped where the hostname does not resolve)
+#   - Origin is validated against the request's Host header, not a fixed loopback origin
+#   - an https Origin matching the Host is accepted (TLS-terminating forwarders)
+#   - an Origin naming a different host is still rejected
 set -uo pipefail
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
@@ -25,6 +30,7 @@ ASSETS_DIR="$REPO_ROOT/plugins/html-visualization/assets"
 
 PASS=0
 FAIL=0
+SKIP=0
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -36,6 +42,14 @@ ok() {
 fail() {
   printf 'FAIL: %s\n' "$1"
   FAIL=$((FAIL + 1))
+}
+
+# A test that could not run here. Counted separately — booking it as a PASS
+# would let the assertion silently disappear on machines that cannot run it,
+# which is exactly where a regression would then slip through.
+skip() {
+  printf 'SKIP: %s\n' "$1"
+  SKIP=$((SKIP + 1))
 }
 
 # Start the server in the background; set SERVER_PID, BASE_URL, FEEDBACK_FILE.
@@ -54,22 +68,27 @@ start_server() {
 
   # Wait up to 5 seconds for the server to print its URL
   for _ in $(seq 1 100); do
-    if grep -q 'URL: http://127.0.0.1:' "$log_file" 2>/dev/null; then
+    if grep -qE 'URL: http://[^/]+:[0-9]+/' "$log_file" 2>/dev/null; then
       break
     fi
     sleep 0.05
   done
 
-  if ! grep -q 'URL: http://127.0.0.1:' "$log_file" 2>/dev/null; then
+  if ! grep -qE 'URL: http://[^/]+:[0-9]+/' "$log_file" 2>/dev/null; then
     printf 'ERROR: server did not start within 5s\n'
     printf 'Server log:\n%s\n' "$(cat "$log_file")"
     kill "$SERVER_PID" 2>/dev/null
     return 1
   fi
 
-  BASE_URL=$(grep 'URL: ' "$log_file" | sed 's/.*URL: //' | tr -d '[:space:]')
-  # strip trailing slash for easier concatenation
-  BASE_URL="${BASE_URL%/}"
+  PRINTED_URL=$(grep 'URL: ' "$log_file" | sed 's/.*URL: //' | tr -d '[:space:]')
+  SERVER_PORT="${PRINTED_URL##*:}"
+  SERVER_PORT="${SERVER_PORT%/}"
+  # The printed URL names the machine's own hostname, since the server binds all
+  # interfaces. Drive the requests over loopback anyway: whether that hostname
+  # resolves is a property of the environment running the tests, not of the
+  # server. Test 2 asserts the printed line separately.
+  BASE_URL="http://127.0.0.1:${SERVER_PORT}"
 
   FEEDBACK_FILE=$(grep 'Feedback file: ' "$log_file" | sed 's/.*Feedback file: //' | tr -d '[:space:]')
 }
@@ -116,6 +135,8 @@ SERVER_PID=""
 SERVER_LOG=""
 BASE_URL=""
 FEEDBACK_FILE=""
+PRINTED_URL=""
+SERVER_PORT=""
 
 # Always kill the server on exit
 cleanup() {
@@ -163,11 +184,19 @@ test_startup_output() {
   kill_server
   rm -f "$tmp_html"
 
-  if ! printf '%s' "$log_content" | grep -q 'URL: http://127.0.0.1:'; then
-    fail "startup: URL not printed to stdout"
+  # The URL must name the machine's own hostname, not loopback — that is the
+  # link the user clicks, and it has to work from another machine.
+  local expected_host
+  expected_host=$(node -e 'process.stdout.write(require("os").hostname())')
+
+  # -F, not -E: a hostname is not a regex. An ERE metacharacter in it (`runner+1`)
+  # would stop the pattern matching the line it was built from, and the dots in
+  # an FQDN would quietly match anything.
+  if ! printf '%s' "$log_content" | grep -qF "URL: http://${expected_host}:"; then
+    fail "startup: URL not printed with the machine hostname ($expected_host)"
     return
   fi
-  ok "startup: URL printed to stdout"
+  ok "startup: URL printed to stdout under the machine hostname"
 
   if ! printf '%s' "$log_content" | grep -q 'Feedback file:'; then
     fail "startup: Feedback file path not printed to stdout"
@@ -632,9 +661,8 @@ test_correct_origin_allowed() {
   html=$(curl -s "$BASE_URL/")
   token=$(extract_token_from_html "$html")
 
-  # Extract the exact origin from BASE_URL (http://127.0.0.1:<port>)
-  local server_origin
-  server_origin=$(printf '%s' "$BASE_URL" | grep -oP 'http://127\.0\.0\.1:\d+')
+  # The origin the browser would send when it addressed the server this way.
+  local server_origin="$BASE_URL"
 
   local status
   status=$(curl -s -o /dev/null -w '%{http_code}' \
@@ -671,7 +699,7 @@ test_no_wait_no_feedback_line() {
   kill_server
   rm -f "$tmp_html"
 
-  if ! printf '%s' "$log_content" | grep -q 'URL: http://127.0.0.1:'; then
+  if ! printf '%s' "$log_content" | grep -qE 'URL: http://[^/]+:[0-9]+/'; then
     fail "no-wait startup: URL not printed to stdout"
     return
   fi
@@ -849,6 +877,199 @@ test_no_wait_timeout_exits_zero() {
   ok "no-wait timeout: server exits 0 after timeout (exit $exit_code)"
 }
 
+# 18. The server is reachable on a non-loopback address (all-interfaces bind).
+#     This is what makes the page openable from another machine over SSH; a
+#     regression to a 127.0.0.1 bind would still pass every other test here.
+test_binds_all_interfaces() {
+  local lan_ip
+  lan_ip=$(node -e '
+    const nets = require("os").networkInterfaces();
+    for (const list of Object.values(nets)) {
+      for (const n of list || []) {
+        if (n.family === "IPv4" && !n.internal) { process.stdout.write(n.address); process.exit(0); }
+      }
+    }
+  ')
+
+  if [[ -z "$lan_ip" ]]; then
+    skip "bind: no non-loopback IPv4 interface on this machine"
+    return
+  fi
+
+  local tmp_html
+  tmp_html=$(mktemp --suffix=.html)
+  make_html "$tmp_html"
+
+  start_server "$tmp_html"
+
+  # --max-time: a host firewall that DROPs traffic to its own LAN address would
+  # otherwise stall on curl's full connect timeout before failing the gate.
+  local status
+  status=$(curl -s --max-time 10 -o /dev/null -w '%{http_code}' "http://${lan_ip}:${SERVER_PORT}/")
+
+  kill_server
+  rm -f "$tmp_html"
+
+  if [[ "$status" != "200" ]]; then
+    fail "bind: GET / on $lan_ip:$SERVER_PORT expected 200, got $status"
+    return
+  fi
+  ok "bind: server answers on non-loopback address $lan_ip"
+}
+
+# 19. Origin is validated against the request's own Host header, not a fixed
+#     loopback origin — otherwise every submit from a page opened by DNS name
+#     would 403.
+test_origin_matches_host_header() {
+  local tmp_html
+  tmp_html=$(mktemp --suffix=.html)
+  make_html "$tmp_html"
+
+  # Bounded lifetime: only a 200 makes the server exit on its own, so if this
+  # check ever regresses to a 403 the wait below must still terminate. Without
+  # it a failing assertion would hang run-all.sh for the 1800s default instead
+  # of reporting the regression this test exists to catch.
+  start_server "$tmp_html" --timeout-sec 10
+
+  local html token
+  html=$(curl -s --max-time 10 "$BASE_URL/")
+  token=$(extract_token_from_html "$html")
+
+  # Address the server under a name that is not loopback, as a remote browser
+  # would. Origin agrees with that Host, so this is same-origin and must pass.
+  local remote_host="devbox.example:${SERVER_PORT}"
+
+  local status
+  status=$(curl -s --max-time 10 -o /dev/null -w '%{http_code}' \
+    -X POST \
+    -H "Host: $remote_host" \
+    -H "Content-Type: application/json" \
+    -H "X-CSRF-Token: $token" \
+    -H "Origin: http://$remote_host" \
+    -d "$(valid_payload)" \
+    "$BASE_URL/submit")
+
+  wait "$SERVER_PID" 2>/dev/null || true
+  SERVER_PID=""
+
+  rm -f "$tmp_html" "${FEEDBACK_FILE:-}" 2>/dev/null
+
+  if [[ "$status" != "200" ]]; then
+    fail "host-relative origin: expected 200 for Origin matching Host, got $status"
+    return
+  fi
+  ok "host-relative origin: Origin matching a non-loopback Host returns 200"
+}
+
+# 20. The URL the server prints is fetchable as printed. Every other test drives
+#     loopback, so without this nothing ever exercises the one string the user
+#     is actually handed.
+test_printed_url_is_fetchable() {
+  local tmp_html
+  tmp_html=$(mktemp --suffix=.html)
+  make_html "$tmp_html"
+
+  start_server "$tmp_html"
+
+  local host="${PRINTED_URL#http://}"
+  host="${host%%:*}"
+
+  # Whether the machine's own hostname resolves is a property of this
+  # environment (a container ID resolves nowhere). Skip rather than fail — but
+  # skip visibly, so nobody reads a green run as proof the link works.
+  if ! node -e 'require("dns").lookup(process.argv[1], e => process.exit(e ? 1 : 0))' "$host" 2>/dev/null; then
+    kill_server
+    rm -f "$tmp_html"
+    skip "printed URL: hostname '$host' does not resolve in this environment"
+    return
+  fi
+
+  local status
+  status=$(curl -s --max-time 10 -o /dev/null -w '%{http_code}' "$PRINTED_URL")
+
+  kill_server
+  rm -f "$tmp_html"
+
+  if [[ "$status" != "200" ]]; then
+    fail "printed URL: GET $PRINTED_URL expected 200, got $status"
+    return
+  fi
+  ok "printed URL: the advertised link serves the page as printed"
+}
+
+# 21. An https Origin whose host matches the Host header is accepted. A
+#     TLS-terminating forwarder (Codespaces, VS Code forwarded ports, Tailscale
+#     Serve, ngrok) shows the browser an https page while this server speaks
+#     http; comparing whole origins instead of hosts would 403 every submit
+#     made through one.
+test_tls_forwarder_origin_allowed() {
+  local tmp_html
+  tmp_html=$(mktemp --suffix=.html)
+  make_html "$tmp_html"
+
+  start_server "$tmp_html" --timeout-sec 10
+
+  local html token
+  html=$(curl -s --max-time 10 "$BASE_URL/")
+  token=$(extract_token_from_html "$html")
+
+  local fwd_host="myrepo-8080.app.github.dev"
+
+  local status
+  status=$(curl -s --max-time 10 -o /dev/null -w '%{http_code}' \
+    -X POST \
+    -H "Host: $fwd_host" \
+    -H "Content-Type: application/json" \
+    -H "X-CSRF-Token: $token" \
+    -H "Origin: https://$fwd_host" \
+    -d "$(valid_payload)" \
+    "$BASE_URL/submit")
+
+  wait "$SERVER_PID" 2>/dev/null || true
+  SERVER_PID=""
+
+  rm -f "$tmp_html" "${FEEDBACK_FILE:-}" 2>/dev/null
+
+  if [[ "$status" != "200" ]]; then
+    fail "tls forwarder: expected 200 for https Origin matching Host, got $status"
+    return
+  fi
+  ok "tls forwarder: https Origin matching Host returns 200"
+}
+
+# 22. A foreign Origin is still rejected when the scheme matches the host's —
+#     the host comparison must not have widened into accepting anything.
+test_foreign_origin_still_rejected_with_host() {
+  local tmp_html
+  tmp_html=$(mktemp --suffix=.html)
+  make_html "$tmp_html"
+
+  start_server "$tmp_html"
+
+  local html token
+  html=$(curl -s --max-time 10 "$BASE_URL/")
+  token=$(extract_token_from_html "$html")
+
+  local status
+  status=$(curl -s --max-time 10 -o /dev/null -w '%{http_code}' \
+    -X POST \
+    -H "Host: devbox.example:${SERVER_PORT}" \
+    -H "Content-Type: application/json" \
+    -H "X-CSRF-Token: $token" \
+    -H "Origin: https://evil.example.com" \
+    -d "$(valid_payload)" \
+    "$BASE_URL/submit")
+
+  kill_server
+  rm -f "$tmp_html"
+
+  if [[ "$status" != "403" ]]; then
+    fail "foreign origin vs host: expected 403, got $status"
+    return
+  fi
+  ok "foreign origin vs host: Origin naming another host returns 403"
+}
+
 # ── Run all tests ─────────────────────────────────────────────────────────────
 
 SERVER_PID=""
@@ -872,8 +1093,13 @@ test_no_wait_no_feedback_line
 test_no_wait_empty_close_exits_zero_no_file
 test_no_wait_nonempty_submit_writes_feedback
 test_no_wait_timeout_exits_zero
+test_binds_all_interfaces
+test_origin_matches_host_header
+test_printed_url_is_fetchable
+test_tls_forwarder_origin_allowed
+test_foreign_origin_still_rejected_with_host
 
 printf '\n'
-printf 'Results: %d passed, %d failed\n' "$PASS" "$FAIL"
+printf 'Results: %d passed, %d failed, %d skipped\n' "$PASS" "$FAIL" "$SKIP"
 
 [[ "$FAIL" -eq 0 ]] || exit 1
