@@ -357,27 +357,66 @@ button, input, textarea { font-family: var(--pv-sans); }
 .note-input { border-style: dashed; }
 .note-input:not(:placeholder-shown) { border-style: solid; border-color: var(--pv-pencil); }
 
-/* ── Explain disclosure ───────────────────────────────────────────────── */
-details.q-explain {
-  margin: 0 0 .9rem;
-  border: 1px solid var(--pv-border-soft);
-  border-radius: 8px;
-  background: var(--pv-paper-2);
+/* ── Explain button + full-screen dialog ──────────────────────────────── */
+.q-head { display: flex; align-items: baseline; gap: .7rem; margin-bottom: .2rem; }
+.q-head .q-label, .q-head h2 { flex: 1; margin: 0; }
+.q-explain-btn {
+  flex: none;
+  display: inline-flex; align-items: center; gap: .35rem;
+  padding: .22rem .7rem;
+  font-size: .76rem; font-weight: 600;
+  color: var(--pv-pencil-deep);
+  background: var(--pv-pencil-tint);
+  border: 1px solid color-mix(in srgb, var(--pv-pencil) 30%, transparent);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background .12s, color .12s;
 }
-details.q-explain summary {
-  list-style: none; cursor: pointer; user-select: none;
-  padding: .45rem .75rem;
-  font-size: .8rem; font-weight: 600;
+.q-explain-btn:hover { background: var(--pv-pencil); color: var(--pv-paper); }
+
+dialog.explain-dialog {
+  width: min(1100px, 94vw);
+  max-height: 90vh;
+  min-height: min(60vh, 38rem);
+  padding: 0;
+  border: 1px solid var(--pv-border);
+  border-radius: 16px;
+  background: var(--pv-paper);
+  color: var(--pv-ink);
+  box-shadow: var(--pv-shadow-lg);
+}
+dialog.explain-dialog[open] { display: flex; flex-direction: column; }
+dialog.explain-dialog::backdrop {
+  background: rgba(10, 12, 16, .5);
+  backdrop-filter: blur(3px);
+}
+.explain-head {
+  display: flex; align-items: flex-start; gap: 1rem;
+  padding: 1.1rem 1.6rem .9rem;
+  border-bottom: 1px solid var(--pv-border);
+}
+.explain-head-text { flex: 1; }
+.explain-kicker {
+  margin: 0;
+  font-size: .68rem; font-weight: 650;
+  letter-spacing: .1em; text-transform: uppercase;
   color: var(--pv-pencil-deep);
 }
-details.q-explain summary::-webkit-details-marker { display: none; }
-details.q-explain summary::before { content: "▸ "; }
-details.q-explain[open] summary::before { content: "▾ "; }
-details.q-explain[open] summary { border-bottom: 1px solid var(--pv-border-soft); }
-.q-explain-body { padding: .65rem .85rem .75rem; font-size: .87rem; line-height: 1.6; }
-.q-explain-body p { margin: 0 0 .6rem; }
+.explain-head h2 {
+  margin: .2rem 0 0;
+  font-family: var(--pv-serif);
+  font-size: 1.55rem; font-weight: 600; letter-spacing: -.015em;
+}
+.explain-scroll { flex: 1; overflow-y: auto; padding: 1.3rem 1.6rem; }
+.q-explain-body { font-size: 1.02rem; line-height: 1.75; max-width: 75ch; }
+.q-explain-body p { margin: 0 0 .85rem; }
 .q-explain-body p:last-child { margin-bottom: 0; }
 .q-explain-body strong { color: var(--pv-pencil-deep); }
+.explain-foot {
+  display: flex; justify-content: flex-end;
+  padding: .9rem 1.6rem;
+  border-top: 1px solid var(--pv-border);
+}
 
 /* ── Architecture diagrams ────────────────────────────────────────────── */
 .diagram-compare {
@@ -662,10 +701,9 @@ mark.pv-mark {
 
       <div class="widget" data-qid="q-rail" data-qtype="cards" id="q-rail">
         <p class="q-eyebrow">Q1 · choose one <span class="q-answered">✓ answered</span></p>
-        <p class="q-label">Comment rail placement</p>
+        <div class="q-head"><p class="q-label">Comment rail placement</p><button class="q-explain-btn" type="button" aria-haspopup="dialog">ⓘ Explain</button></div>
         <p class="q-hint">Where feedback-mode comments live on wide screens.</p>
-        <details class="q-explain">
-          <summary>Explain this decision</summary>
+        <div class="q-explain-content" hidden>
           <div class="q-explain-body">
             <p>When you review a document in the browser, your comments have to be shown somewhere.
               Today they appear directly under the paragraph they belong to, which pushes the text
@@ -679,7 +717,7 @@ mark.pv-mark {
               you must click it and the page jumps there.</p>
             <p>This is purely about reading comfort — both options carry exactly the same data.</p>
           </div>
-        </details>
+        </div>
         <div class="cards-grid">
           <label class="opt-card">
             <h3>Margin-aligned cards <span class="opt-badge">Recommended</span></h3>
@@ -712,10 +750,9 @@ mark.pv-mark {
 
       <div class="widget" data-qid="q-legacy" data-qtype="radio" id="q-legacy">
         <p class="q-eyebrow">Q2 · single choice <span class="q-answered">✓ answered</span></p>
-        <p class="q-label">Feedback schema migration</p>
+        <div class="q-head"><p class="q-label">Feedback schema migration</p><button class="q-explain-btn" type="button" aria-haspopup="dialog">ⓘ Explain</button></div>
         <p class="q-hint">The new target model changes the comment shape. The only consumer is Claude reading the feedback file.</p>
-        <details class="q-explain">
-          <summary>Explain this decision</summary>
+        <div class="q-explain-content" hidden>
           <div class="q-explain-body">
             <p>When you submit comments from the browser, they are saved in a small file with a fixed
               format ("schema") that Claude then reads. The new element-level commenting changes what
@@ -729,7 +766,7 @@ mark.pv-mark {
               <strong>Keep indefinitely</strong>: both formats forever, and every future reader must
               understand both.</p>
           </div>
-        </details>
+        </div>
         <label class="opt-row"><input type="radio" name="q-legacy" value="in-place">
           <span class="opt-text">Change the schema in place <span class="opt-badge">Recommended</span>
             <span class="opt-sub">No third party to migrate; schema doc and app.js move together.</span></span></label>
@@ -747,10 +784,9 @@ mark.pv-mark {
 
       <div class="widget" data-qid="q-arch" data-qtype="diagram" id="q-arch">
         <p class="q-eyebrow">Q3 · architecture change <span class="q-answered">✓ answered</span></p>
-        <p class="q-label">Split the browser selection layer into a shared asset</p>
+        <div class="q-head"><p class="q-label">Split the browser selection layer into a shared asset</p><button class="q-explain-btn" type="button" aria-haspopup="dialog">ⓘ Explain</button></div>
         <p class="q-hint">Anchored commenting (select text, click an option or a diagram node) is one behaviour needed by two pages. Should it move into a shared file both modes load?</p>
-        <details class="q-explain">
-          <summary>Explain this decision</summary>
+        <div class="q-explain-content" hidden>
           <div class="q-explain-body">
             <p>The feedback page and the ask page are driven by two separate JavaScript files. The
               new "comment on exactly this thing" behaviour is the same job on both pages. If each
@@ -762,7 +798,7 @@ mark.pv-mark {
               duplication — no refactor now, more maintenance later.</p>
             <p>The diagrams show the files before and after; click any node to comment on it.</p>
           </div>
-        </details>
+        </div>
         <div class="diagram-compare">
           <div class="mermaid-block" data-diagram="before">
             <span class="diagram-label">Before</span>
@@ -796,10 +832,9 @@ flowchart TD
 
       <div class="widget" data-qid="q-priority" data-qtype="rank" id="q-priority">
         <p class="q-eyebrow">Q4 · rank — use the arrows <span class="q-answered">✓ answered</span></p>
-        <p class="q-label">Implementation order inside the PR</p>
+        <div class="q-head"><p class="q-label">Implementation order inside the PR</p><button class="q-explain-btn" type="button" aria-haspopup="dialog">ⓘ Explain</button></div>
         <p class="q-hint">All four ship in the one PR you asked for; this orders the commits and the review story.</p>
-        <details class="q-explain">
-          <summary>Explain this decision</summary>
+        <div class="q-explain-content" hidden>
           <div class="q-explain-body">
             <p>Everything on this list ships in the same PR, so nothing is dropped by ranking it
               last. The order decides which commits come first, and therefore what a reviewer sees
@@ -809,7 +844,7 @@ flowchart TD
               it — but if, say, the visual change matters most to you, ranking it first makes the
               review lead with it.</p>
           </div>
-        </details>
+        </div>
         <ol class="rank-list" id="rank-q-priority">
           <li class="rank-item" data-opt="target-model">
             <span class="rank-pos">1</span>
@@ -844,10 +879,9 @@ flowchart TD
 
       <div class="widget" data-qid="q-render" data-qtype="checkbox" id="q-render">
         <p class="q-eyebrow">Q5 · select all that apply <span class="q-answered">✓ answered</span></p>
-        <p class="q-label">Rendering upgrades to include</p>
+        <div class="q-head"><p class="q-label">Rendering upgrades to include</p><button class="q-explain-btn" type="button" aria-haspopup="dialog">ⓘ Explain</button></div>
         <p class="q-hint">Each is independent; unchecked items become follow-up tasks.</p>
-        <details class="q-explain">
-          <summary>Explain this decision</summary>
+        <div class="q-explain-content" hidden>
           <div class="q-explain-body">
             <p>These are the "make pages nicer to read" upgrades, and each can ship or wait
               independently. <strong>Code highlighting</strong>: code samples get colours and line
@@ -859,7 +893,7 @@ flowchart TD
             <p>Ticking fewer boxes makes the implementation PR smaller; unticked items become
               tracked follow-up tasks, not lost ideas.</p>
           </div>
-        </details>
+        </div>
         <label class="opt-row"><input type="checkbox" name="q-render" value="code-highlight">
           <span class="opt-text">Syntax-highlighted, line-numbered code blocks</span></label>
         <label class="opt-row"><input type="checkbox" name="q-render" value="toc">
@@ -876,10 +910,9 @@ flowchart TD
 
       <div class="widget" data-qid="q-theme" data-qtype="scale" id="q-theme">
         <p class="q-eyebrow">Q6 · scale <span class="q-answered">✓ answered</span></p>
-        <p class="q-label">How far should the visual redesign go?</p>
+        <div class="q-head"><p class="q-label">How far should the visual redesign go?</p><button class="q-explain-btn" type="button" aria-haspopup="dialog">ⓘ Explain</button></div>
         <p class="q-hint">1 keeps the current Editorial theme with small fixes; 5 adopts Proof everywhere including the ask and feedback assets.</p>
-        <details class="q-explain">
-          <summary>Explain this decision</summary>
+        <div class="q-explain-content" hidden>
           <div class="q-explain-body">
             <p>The plugin's pages currently use a warm cream look ("Editorial"). The prototypes use a
               cooler look ("Proof") where everything you add is drawn in pencil blue. This slider
@@ -892,7 +925,7 @@ flowchart TD
             <p>Higher numbers mean a bigger, riskier PR but one consistent look; lower numbers mean
               less churn now and a mixed look for a while.</p>
           </div>
-        </details>
+        </div>
         <div class="scale-row">
           <span class="scale-end">Keep Editorial</span>
           <span class="scale-opts" id="scale-q-theme">
@@ -912,24 +945,22 @@ flowchart TD
 
       <div class="widget" data-qid="q-misc" data-qtype="text" id="q-misc">
         <p class="q-eyebrow">Q7 · free text <span class="q-answered">✓ answered</span></p>
-        <p class="q-label">What did the prototypes get wrong?</p>
+        <div class="q-head"><p class="q-label">What did the prototypes get wrong?</p><button class="q-explain-btn" type="button" aria-haspopup="dialog">ⓘ Explain</button></div>
         <p class="q-hint">Anything that felt off while clicking through — interaction, wording, layout.</p>
-        <details class="q-explain">
-          <summary>Explain this decision</summary>
+        <div class="q-explain-content" hidden>
           <div class="q-explain-body">
             <p>Free space for anything the structured questions above did not cover. Whatever you
               write here is read as feedback on the prototypes themselves and turned into concrete
               changes or follow-up tasks — nothing is required, and leaving it empty simply means
               "no complaints beyond my answers".</p>
           </div>
-        </details>
+        </div>
         <textarea class="q-textarea" data-text-for="q-misc" placeholder="Type here…"></textarea>
       </div>
 
       <div class="verdict-section" id="q-verdict">
-        <h2>Overall verdict</h2>
-        <details class="q-explain">
-          <summary>Explain this decision</summary>
+        <div class="q-head"><h2>Overall verdict</h2><button class="q-explain-btn" type="button" aria-haspopup="dialog">ⓘ Explain</button></div>
+        <div class="q-explain-content" hidden>
           <div class="q-explain-body">
             <p>This is the one answer that decides what happens next. <strong>Approve</strong>:
               implementation starts exactly as prototyped, using your answers above.
@@ -939,7 +970,7 @@ flowchart TD
               Submitting without a verdict is allowed — it means "here are my answers, but do not
               proceed yet".</p>
           </div>
-        </details>
+        </div>
         <div class="verdict-opts">
           <label class="verdict-opt v-approve"><input type="radio" name="verdict" value="approve">
             <span><strong>Approve</strong><span>Proceed to the implementation PR as prototyped.</span></span></label>
@@ -972,6 +1003,22 @@ flowchart TD
     </div>
   </main>
 </div>
+
+<dialog class="explain-dialog" id="explain-dialog" aria-labelledby="explain-title">
+  <div class="explain-head">
+    <div class="explain-head-text">
+      <p class="explain-kicker">Explain this decision</p>
+      <h2 id="explain-title"></h2>
+    </div>
+    <button class="drawer-close" id="explain-close" type="button" aria-label="Close">✕</button>
+  </div>
+  <div class="explain-scroll">
+    <div class="q-explain-body" id="explain-body"></div>
+  </div>
+  <div class="explain-foot">
+    <button id="explain-ok" class="btn-primary" type="button">Got it</button>
+  </div>
+</dialog>
 
 <aside class="drawer" id="drawer" aria-hidden="true">
   <div class="drawer-head">
@@ -1146,6 +1193,24 @@ function renumberRank(list) {
   });
 }
 renumberRank($('#rank-q-priority'));
+
+/* ── Explain dialog ── */
+var explainDialog = $('#explain-dialog');
+$$('.q-explain-btn').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    var scope = btn.closest('.widget, .verdict-section');
+    var content = scope.querySelector('.q-explain-content');
+    var labelEl = scope.querySelector('.q-label') || scope.querySelector('h2');
+    $('#explain-title').textContent = labelEl ? labelEl.textContent.trim() : 'Explanation';
+    $('#explain-body').innerHTML = content ? content.innerHTML : '<p>No explanation available.</p>';
+    explainDialog.showModal();
+  });
+});
+$('#explain-close').addEventListener('click', function () { explainDialog.close(); });
+$('#explain-ok').addEventListener('click', function () { explainDialog.close(); });
+explainDialog.addEventListener('click', function (ev) {
+  if (ev.target === explainDialog) explainDialog.close();
+});
 
 /* ── Anchored comments: quote / option / diagram-node ── */
 var anchored = [];      // { id, n, target, text, anchorEl, block, qid, context, markEl?, nodePin? }
