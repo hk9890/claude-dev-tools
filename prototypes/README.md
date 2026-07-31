@@ -49,10 +49,18 @@ from 360px up to a 3-column wide-screen layout (>=1400px).
 
 ## Testing
 
-Verified with Playwright (resolved from the npm _npx cache, as in
-`tests/html-visualization/script-tests/test-browser.js`): 58 interaction
-assertions (selection, pick mode, diagram-node targeting, rail edit/delete,
-payload shape, Esc handling, dark-mode re-render survival) and 35 responsive
-checks (no horizontal overflow at 360-1440px, footer fit, rail breakpoint,
-chart track width). Test scripts lived in the session scratchpad; port them
-into `tests/` if these prototypes graduate into the plugin.
+Playwright suites live in `tests/` next to the pages (playwright resolved
+from the npm _npx cache, as in
+`tests/html-visualization/script-tests/test-browser.js`; they exit 77 /
+skip when it is absent). Serve the pages, then:
+
+```bash
+node prototypes/tests/proto-test.js   # feedback + visualize interactions (58 assertions)
+node prototypes/tests/ask-test.js     # ask interactions (54 assertions)
+node prototypes/tests/size-test.js    # responsive checks, 360-1440px, all pages (40)
+```
+
+`PROTO_BASE` overrides the default `http://127.0.0.1:8917`. These are
+prototype-scoped and invisible to `tests/run-all.sh` (which only discovers
+`test-*.sh` under the top-level `tests/`); graduate them into that harness
+alongside the implementation PR.
