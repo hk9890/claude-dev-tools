@@ -1,7 +1,7 @@
 export const meta = {
   name: 'project-review-codebase',
   description: 'Read-only codebase review: consistency + structure + architecture dimension agents → cross-dimension synthesis → Markdown artifact',
-  whenToUse: 'Launched by the /project-review-codebase skill. Reviews a codebase for internal consistency, physical layout, and module architecture; dedupes findings across dimensions and returns a standalone Markdown report with Mermaid diagrams.',
+  whenToUse: 'Launched by the /project-review-codebase skill. Reviews a codebase — production and test code alike — for internal consistency, physical layout, and module architecture, including whether failure modes are tested; dedupes findings across dimensions and returns a standalone Markdown report with Mermaid diagrams.',
   phases: [
     { title: 'Review', detail: 'one adversarial agent per dimension' },
     { title: 'Verify', detail: 'adversarially refute each finding (level=ultra only)' },
@@ -260,7 +260,10 @@ const CONSISTENCY_PROCEDURE =
   `6. DOCUMENTED-BUT-IGNORED STANDARD — read AGENTS.md, CODING.md, and any RULES.md for explicit standards; find code ` +
   `that demonstrably ignores them. Cite the documented rule and the code that ignores it. Whether to fix the code or ` +
   `change the standard is the user's policy decision — surface the conflict, do not presume either. If the standard ` +
-  `itself looks stale (describes a convention the project clearly moved past), say the finding belongs to the docs review.\n\n` +
+  `itself looks stale (describes a convention the project clearly moved past), say the finding belongs to the docs review.\n` +
+  `7. TEST-CODE CONVENTION DRIFT — test code is code, and every check above applies to it. Look for competing setup or fixture idioms doing the same job, ` +
+  `assertion styles that differ between sibling test files, and helper functions that duplicate one another because nobody found the existing one. ` +
+  `Name the variants with their files and say which is the template. A suite where each file arranges its setup differently charges every future contributor the same re-reading before they can add one test.\n\n` +
   `BASELINE RULE: a documented convention (AGENTS.md, CODING.md, RULES.md) is authoritative — deviations from it are ` +
   `violations regardless of how many files deviate. With no documented convention, the dominant pattern is the de facto ` +
   `standard; flag minority deviations. Never recommend "fixing" the majority to match a documented-but-ignored standard ` +
@@ -286,8 +289,14 @@ const STRUCTURE_PROCEDURE =
   `outside docs/. A reader must be able to predict any artifact's location from directory names alone.\n` +
   `3. DEAD OR ORPHANED FILES — files nothing imports, executes, or references; tests covering modules that no longer ` +
   `exist; configuration for build steps that were deleted; documentation for removed features; backup or experimental ` +
-  `leftovers (foo.bak, foo_old.py).\n\n` +
-  `Recommended action per finding: exactly one of move, delete, rename, or document.\n\n` +
+  `leftovers (foo.bak, foo_old.py); fixture data kept long after the test that read it was deleted.\n` +
+  `4. TEST SUPPORT THAT OUTGREW ITS PLACE — shared setup a newcomer must read in full before adding one test, helper ` +
+  `modules that accumulated responsibilities unrelated to each other, fixture files that grew and were never pruned, ` +
+  `and tests whose BEHAVIOUR contradicts where they live: a file under a unit-test directory that starts a server, ` +
+  `opens a socket, or reaches a real database. For that last one name the test, the resource it reaches for, and the ` +
+  `suite it belongs in — its own directory is making a promise about speed and isolation that it does not keep.\n\n` +
+  `Recommended action per finding: exactly one of move, delete, rename, or document — an entangled helper is a move ` +
+  `(lift the unrelated responsibility out), stale fixture data is a delete, a mislabelled test is a move.\n\n` +
   `ALSO PRODUCE tree_mermaid: an annotated Mermaid diagram of the layout, because the shape of a tree is the one ` +
   `thing a list of findings cannot show. Use \`graph TD\` with directories as nodes. Include the directories that ` +
   `carry findings plus enough of their surroundings to orient a reader — NOT every file in the repo; past roughly ` +
@@ -329,7 +338,21 @@ function architectureProcedure(vocabFile) {
     `cross-layer imports in the wrong direction. Map the intended layers from the docs and tree first, then find violations.\n` +
     `5. MODULE GRANULARITY — god-files owning far more responsibility than their directory implies ("utils" ` +
     `accumulators, entry points that do everything), or one logical unit fragmented across many tiny files that are ` +
-    `always imported together and have no assembly point. Recommended action: split or merge.\n\n` +
+    `always imported together and have no assembly point. Recommended action: split or merge.\n` +
+    `6. TESTED FAILURE MODES — for the modules you judged above, name what can actually fail: the error paths, the ` +
+    `boundary conditions, the ways an external dependency breaks, concurrent or interleaved access. Then check whether ` +
+    `any test reaches them. The evidence is usually a mock: a dependency stubbed to succeed every time, with nothing ` +
+    `exercising what the module does when it fails, means the code that runs during an incident is the code nobody has ` +
+    `ever run. A coverage percentage does not answer this — a module can be fully covered by tests that only ever walk ` +
+    `the happy path. Where check 3 asks whether a module CAN be tested, this asks whether its failure behaviour IS ` +
+    `tested; keep the two findings separate.\n` +
+    `Two judgments about what tests cost belong here, and both are reading questions no tool answers:\n` +
+    `  - an EXPENSIVE test — one that starts a container, seeds a real database, or sleeps — must cover a risk a fast ` +
+    `test cannot. Name that risk concretely. Where you cannot name one, the test is paying its runtime for coverage a ` +
+    `unit test already provides, and that is the finding.\n` +
+    `  - an edge case with NO code footprint — a function with no empty-input guard, a limit never checked — is ` +
+    `invisible to coverage and mutation tools alike, because there is no line to measure or mutate. Only reading finds ` +
+    `it: name the input that has neither a guard nor a test.\n\n` +
     `ALSO PRODUCE candidates: DEEPENING PROPOSALS, which are a different deliverable from findings. A finding says ` +
     `what is wrong; a candidate says what to build instead. Derive them from the findings above — the strongest ` +
     `findings usually collapse into a smaller number of candidates, and one candidate often subsumes several ` +
