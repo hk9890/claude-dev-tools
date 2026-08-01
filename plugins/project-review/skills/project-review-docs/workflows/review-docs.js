@@ -6,7 +6,7 @@ export const meta = {
     { title: 'Manifest', detail: 'deterministic facts: files, metrics, links, routes' },
     { title: 'Read-review', detail: 'one agent per use case, plus the files that are not use cases' },
     { title: 'History', detail: 'did past sessions open the doc their route points at?' },
-    { title: 'Execution', detail: 'per AGENTS route: cold agent does a task, driver grades (level=ultra)' },
+    { title: 'Execution', detail: 'per AGENTS route: cold agent does a task, driver grades (high = 3 routes, ultra = all)' },
     { title: 'Synthesis', detail: 'dedupe + cross-file reconciliation + report' },
   ],
 }
@@ -38,15 +38,22 @@ const USE_CASES = {
   'monitoring': { doc: 'docs/MONITORING.md', work: 'read logs, traces, or usage data' },
 }
 
-// What each level buys. Read-review always runs — only its model changes, because a
-// rung that costs the same as the one above it is a lie the skill then has to explain.
-// History always runs; at low the sample is below the finding floor, so it reports
-// coverage only. Execution is ultra alone: it is roughly 3x everything else combined.
+// What each level buys, as an execution-route budget (0 none, -1 every route).
+//
+// Read-review always runs — only its model changes, because a rung that costs the same as
+// the one above it is a lie the skill then has to explain. History always runs; at low the
+// sample is below the finding floor, so it reports coverage only.
+//
+// Execution is what separates the top two rungs, because it is the only stage expensive
+// enough to be worth a rung: measured against three repos, read-review is ~84% of a
+// no-execution run, so raising the history sample alone moved high about 4% off medium —
+// a rung nobody could feel. A capped probe at high and full coverage at ultra makes each
+// step roughly a doubling.
 const LEVEL_CONFIG = {
-  low: { reviewModel: 'sonnet', sessionLimit: 15, perUseCase: 1, historyFindings: false, execution: false },
-  medium: { reviewModel: 'opus', sessionLimit: 40, perUseCase: 3, historyFindings: true, execution: false },
-  high: { reviewModel: 'opus', sessionLimit: 0, perUseCase: 5, historyFindings: true, execution: false },
-  ultra: { reviewModel: 'opus', sessionLimit: 0, perUseCase: 5, historyFindings: true, execution: true },
+  low: { reviewModel: 'sonnet', sessionLimit: 15, perUseCase: 1, historyFindings: false, executionRoutes: 0 },
+  medium: { reviewModel: 'opus', sessionLimit: 40, perUseCase: 3, historyFindings: true, executionRoutes: 0 },
+  high: { reviewModel: 'opus', sessionLimit: 0, perUseCase: 5, historyFindings: true, executionRoutes: 3 },
+  ultra: { reviewModel: 'opus', sessionLimit: 0, perUseCase: 5, historyFindings: true, executionRoutes: -1 },
 }
 
 // A single miss is not a pattern. Below this many valid segments a use case reports
@@ -80,9 +87,7 @@ function normalizeArgs(rawArgs) {
   // emit — would satisfy neither test and fall through to "run every route": the caller
   // asks for zero execution routes and instead gets one cold action agent per AGENTS.md
   // route running commands in the live repository.
-  // Execution is a level switch now, not a route budget: ultra runs every route, every
-  // other rung runs none. maxExecutionRoutes stays as the manual override.
-  let maxExec = LEVEL_CONFIG[level].execution ? -1 : 0
+  let maxExec = LEVEL_CONFIG[level].executionRoutes
   let maxExecError = null
   if (parsed.maxExecutionRoutes !== undefined && parsed.maxExecutionRoutes !== null) {
     const n = Number(parsed.maxExecutionRoutes)

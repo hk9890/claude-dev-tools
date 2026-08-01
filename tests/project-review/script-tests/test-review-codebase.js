@@ -95,9 +95,19 @@ async function main() {
   eq('normalizeArgs: parsed object passes through',
     {
       repoRoot: '/r', scope: 'the api layer', vocabFile: '/v.md', level: 'medium', ultra: false,
-      receivedKeys: ['repoRoot', 'scope', 'vocabFile'], error: null,
+      reviewModel: 'opus', receivedKeys: ['repoRoot', 'scope', 'vocabFile'], error: null,
     },
     normalizeArgs({ repoRoot: '/r', scope: 'the api layer', vocabFile: '/v.md' }));
+
+  // The depth vocabulary is shared with project-review-docs, and it used to be shared in
+  // name only: low/medium/high ran identically here, so `low` cost the same as `high` and
+  // the skill had to warn users about its own argument. `low` now means what it means
+  // there — the reviewing agents drop to sonnet.
+  const modelFor = (level) => normalizeArgs({ repoRoot: '/r', level }).reviewModel;
+  eq('level: low reviews on sonnet, the cheap rung users expect', 'sonnet', modelFor('low'));
+  for (const lvl of ['medium', 'high', 'ultra']) {
+    eq(`level: ${lvl} reviews on opus`, 'opus', modelFor(lvl));
+  }
 
   // The regression the seam exists for: args arriving as a JSON STRING must be parsed.
   // A naive `.repoRoot` read would be undefined, and the dimension prompts would ship the
