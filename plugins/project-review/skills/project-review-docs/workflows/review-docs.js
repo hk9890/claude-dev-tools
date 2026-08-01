@@ -500,12 +500,17 @@ if (typeof agent === 'function') {
       return frame + contractBlock(f) +
         `\nDo not run commands. Read-only. Return findings with concrete evidence (quote the offending lines / cite the repo fact). Empty findings array if the file is genuinely clean — do not invent problems.`
     }
+    // A non-standard doc has no ownership contract, but it makes claims about this repo
+    // like any other. Asking only "is it filed correctly?" was leaving the accuracy pass
+    // to luck: agents did it anyway and it produced a third of the blockers across three
+    // trial repos — including a spec that contradicted the coding guide it cited. A more
+    // literal run would have obeyed the placement-only brief and dropped them.
     return frame +
-      `\nThis is a NON-STANDARD doc (not one of the canonical files). Judge placement, not an ownership boundary:\n` +
-      `- Does its content actually BELONG to a canonical topic (OVERVIEW / CODING / TESTING / RELEASING / MONITORING / CHANGE-WORKFLOW / RUNNING / REVIEWING / README / CONTRIBUTING)? If so, it is a placement finding: recommend RENAME to docs/<TOPIC>.md when that canonical slot is empty (missing canonical: ${JSON.stringify(manifest.missing_canonical)}), or LINK it from the canonical doc when that slot is filled.\n` +
-      `- If it maps to no canonical topic, it is legitimately project-specific — no finding.\n` +
-      `- Still flag it if it is hollow (a stub) or duplicates AGENTS.md routing.\n\n` +
-      `Read the full file, decide which case applies, and return findings (category 'placement' or 'hollow' or 'other') with evidence. Empty array if it is fine as-is. Read-only.`
+      `\nThis is a NON-STANDARD doc — not one of the canonical files, so it has no ownership contract. Judge it on two axes.\n\n` +
+      `1. TRUE? This is the main job. For every claim, command, path, flag, and code reference, verify it against the repo with read-only grep/read. A false claim is an accuracy finding at the same severity bar as any canonical doc — and a doc that contradicts a canonical doc, or describes behaviour the code does not implement, is a blocker. Specs and design documents are the highest-risk case: they are written once, read as authoritative, and drift silently as the code moves.\n` +
+      `2. FILED CORRECTLY? Does its content belong to a canonical topic (OVERVIEW / CODING / TESTING / RELEASING / MONITORING / CHANGE-WORKFLOW / RUNNING / REVIEWING / README / CONTRIBUTING)? If so, that is a placement finding: recommend RENAME to docs/<TOPIC>.md when that canonical slot is empty (missing canonical: ${JSON.stringify(manifest.missing_canonical)}), or LINK it from the canonical doc when the slot is filled. If it maps to no canonical topic it is legitimately project-specific — no placement finding, which says nothing about whether it is accurate.\n\n` +
+      `Also flag it if it is hollow (a stub) or duplicates AGENTS.md routing.\n\n` +
+      `Read the full file, then return findings (category 'accuracy', 'placement', 'hollow', or 'other') with concrete evidence — quote the offending line and cite the repo fact that contradicts it. Empty array only if the file is genuinely both accurate and correctly filed. Read-only; do not run commands that change anything.`
   }
 
   const reviewJobs = [
