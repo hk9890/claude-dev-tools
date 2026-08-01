@@ -137,11 +137,19 @@ environment is gone is an integration test wearing a unit-test label — CI time
 a name that promises speed.
 
 Which tests are unit tests is the repository's own claim: the baseline discovers the
-declaration from the same sources as the test command, and builds the denial recipe from
-the environment values the repo documents as required. Environment is the whole mechanism,
-and that is what makes the probe portable — any OS, no privileges, nothing installed. A
-repo that declares no split gets an `auditability` finding, and the probe is skipped rather
-than guessed at from file names.
+declaration from the same sources as the test command, then greps the production code for
+the environment variables it actually reads that name a host, URL, port, DSN or credential.
+The denial recipe is built from that list and nothing else. Environment is the whole
+mechanism, and that is what makes the probe portable — any OS, no privileges, nothing
+installed.
+
+The probe reports **not run**, with the reason, in two cases: the repo declares no split,
+or its production code reads no such variable and there is therefore nothing to take away.
+The second matters more than it looks. A repo that reaches the outside world through
+hardcoded hosts or in-process fakes would pass a denied run while nothing was denied, and
+an empty failure list would read as proven isolation — so it lands in `not_checked`
+instead. Both cases also raise an `auditability` finding, and neither is guessed at from
+file names.
 
 ## Verdicts
 
@@ -159,9 +167,10 @@ measured on sites drawn from data the run just proved incomplete. A *surviving*
 coverage-truth mutant restates what the coverage summary already said and is never
 reported as a finding.
 
-The report also carries `untested_churn`: uncovered code in the most-churned production
-files, joined from data already on disk. It costs no suite run, carries no severity, and
-changes no score — it is churn-ranked, not risk-ranked. Relay it as the pointer list it is.
+The report also carries `untested_churn`: uncovered production code ranked by
+churn × uncovered lines, joined from data already on disk. It costs no suite run, carries
+no severity, and changes no score — it is churn-weighted, not risk-ranked. Relay it as the
+pointer list it is.
 
 ## Not covered
 

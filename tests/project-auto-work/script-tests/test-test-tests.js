@@ -397,7 +397,10 @@ async function main() {
   // ── the audit-wide probes ────────────────────────────────────────────────────
   const declaredSplit = {
     ...healthyBaseline(),
-    unit_split: { declared: true, unit_selector: 'make test-unit', deny_recipe: 'DATABASE_URL=postgres://127.0.0.1:1', source: 'CONTRIBUTING.md' },
+    unit_split: {
+      declared: true, unit_selector: 'make test-unit', source: 'CONTRIBUTING.md',
+      external_env: ['DATABASE_URL'], deny_recipe: 'DATABASE_URL=postgres://127.0.0.1:1',
+    },
   };
   const probed = await runAudit({ level: 'medium' }, { baseline: declaredSplit });
   eq('probes: the coverage-truth probe runs once for the whole audit, not once per component',
@@ -423,6 +426,26 @@ async function main() {
     0, noSplit.labels.filter((l) => l === 'denial').length);
   truthy('probes: the skipped denial probe carries its reason into the synthesis prompt',
     noSplit.prompts.some((p) => /declares no unit\/integration split/.test(p)));
+
+  // The vacuous-probe regression, found by running this against two real repositories:
+  // both declare a unit/integration split, and NEITHER routes an external dependency
+  // through the environment (one reads only USER/PATH, the other runs entirely on
+  // in-process fakes). A denied run there passes while denying nothing, and an empty
+  // failures list would be reported as proven isolation. It must report NOT RUN instead.
+  const nothingToDeny = await runAudit({ level: 'medium' }, {
+    baseline: {
+      ...healthyBaseline(),
+      unit_split: { declared: true, unit_selector: 'go test ./...', source: 'docs/TESTING.md', external_env: [], deny_recipe: '' },
+    },
+  });
+  eq('probes: a declared split with nothing to deny spawns no denial agent',
+    0, nothingToDeny.labels.filter((l) => l === 'denial').length);
+  truthy('probes: "nothing to deny" reaches the report as not-checked, not as clean isolation',
+    nothingToDeny.prompts.some((p) => /nothing external to deny/.test(p)));
+  // The distinction the report must preserve: no isolation finding may be inferred from
+  // the absence of failures when the probe never ran.
+  truthy('probes: the not-run reason states that a denied run would prove nothing',
+    nothingToDeny.prompts.some((p) => /would prove nothing about isolation/.test(p)));
 
   // Each abort gate must produce a remediation report through the real pipeline, not crash.
   const redRun = await runAudit({ level: 'low' }, { baseline: { ...healthyBaseline(), green: false, red_details: 'test_x failed' } });

@@ -233,11 +233,17 @@ const BASELINE_SCHEMA = {
     // The repository's own declaration of which tests are unit tests, discovered the same
     // way as the test command. The denial probe runs against unit_selector; deny_recipe is
     // how this repo's external dependencies are taken away.
+    // external_env is what makes the probe honest: it lists the environment variables the
+    // PRODUCTION CODE actually reads that name an external dependency. A repo whose code
+    // reads none has nothing to deny, and a denied run there would pass while proving
+    // nothing — so the probe reports that it did not run rather than returning a clean
+    // isolation result. Verified against two real repos where exactly this happens.
     unit_split: {
       type: 'object',
       properties: {
         declared: { type: 'boolean' },
         unit_selector: { type: 'string' },
+        external_env: { type: 'array', items: { type: 'string' } },
         deny_recipe: { type: 'string' },
         source: { type: 'string' },
         why_not: { type: 'string' },
@@ -284,6 +290,7 @@ const COMPONENTS_SCHEMA = {
         properties: {
           path: { type: 'string' },
           uncovered_ranges: { type: 'string' },
+          uncovered_lines: { type: 'integer' },
           churn_commits: { type: 'integer' },
         },
         required: ['path', 'uncovered_ranges'],
@@ -510,6 +517,7 @@ const REPORT_SCHEMA = {
         properties: {
           path: { type: 'string' },
           uncovered_ranges: { type: 'string' },
+          uncovered_lines: { type: 'integer' },
           churn_commits: { type: 'integer' },
         },
         required: ['path', 'uncovered_ranges'],
@@ -605,10 +613,13 @@ if (typeof agent === 'function') {
     `Set can_slice=true only after PROVING it by actually running one small subset.\n\n` +
     `5. UNIT/INTEGRATION SPLIT: discover whether this repo DECLARES which of its tests are unit tests, from the same kind of sources as the test command — ` +
     `testing/contributor docs, task files, CI workflows, runner markers or tags, a test-directory convention the docs actually state. ` +
-    `If it does: set declared=true, put the exact selector that runs ONLY the unit tests in unit_selector, and record where the declaration lives in source. ` +
-    `Then build deny_recipe: the command prefix that takes this repo's external dependencies away for one run, using ONLY environment values the repo itself documents as required — ` +
-    `point them at something unroutable or unset them (e.g. \`DATABASE_URL=postgres://127.0.0.1:1 REDIS_URL=redis://127.0.0.1:1 <selector>\`). ` +
+    `If it does: set declared=true, put the exact selector that runs ONLY the unit tests in unit_selector, and record where the declaration lives in source.\n` +
+    `Then find what there is to deny. Grep the PRODUCTION code for the environment variables it reads (the language's env accessor — \`os.Getenv\`, \`process.env\`, \`ENV[\`, \`getenv\`), and keep only those naming an EXTERNAL dependency: a host, URL, port, DSN, endpoint, or credential. ` +
+    `List them in external_env. Variables like PATH, HOME, USER, LANG or a debug flag are not external dependencies — leave them out.\n` +
+    `Build deny_recipe from that list and nothing else: point each variable at something unroutable, or unset it (e.g. \`DATABASE_URL=postgres://127.0.0.1:1 REDIS_URL=redis://127.0.0.1:1 <selector>\`). ` +
     `Environment is the whole mechanism here: it is what makes the probe work the same on any operating system, with no privileges and nothing installed.\n` +
+    `WHEN external_env IS EMPTY, leave deny_recipe empty too. That is a real and common answer — a repo whose code reaches the outside world through hardcoded hosts or in-process fakes has nothing an environment can take away — and the audit reports the probe as not run. ` +
+    `A recipe naming variables the code never reads would run green while denying nothing, and that reads as proof of isolation when none was obtained.\n` +
     `If the repo declares no split, set declared=false and record in why_not what is missing — a split inferred from file names alone is a guess, and the audit reports the absent declaration instead.\n\n` +
     `6. WORKSPACE PROBE: create a throwaway worktree and check the suite runs there:\n` +
     `   git -C ${repoRoot} worktree add ${scratchDir}/probe-wt HEAD\n` +
@@ -658,9 +669,11 @@ if (typeof agent === 'function') {
     `- coverage_pct: the component's aggregate line coverage computed from the per-file summary entries of its prod_paths — ` +
     `never totals.pct (the totals may include test helpers/fixtures and would skew the figure).\n` +
     `- churn_rank: 1 = most-churned. Compute from \`git -C ${repoRoot} log --since="6 months ago" --name-only --pretty=format:\` file-change counts aggregated per component.\n\n` +
-    `ALSO PRODUCE untested_churn: up to 10 production files that carry uncovered lines, ordered by that file's own churn count (most-churned first), each with its uncovered_ranges from the summary and its churn_commits. ` +
-    `Both inputs are already in your hands — the per-file coverage summary and the churn counts you just computed — so this is a join, not new work. ` +
-    `Report it as exactly that: CHURN-ranked, never risk-ranked. Churn says how often a file changed, which is a different claim from how dangerous its untested lines are, and the report labels it that way. ` +
+    `ALSO PRODUCE untested_churn: up to 10 production files that carry uncovered lines, each with its uncovered_ranges from the summary, uncovered_lines (the total those ranges span), and churn_commits. ` +
+    `Both inputs are already in your hands — the per-file coverage summary and the churn counts you just computed — so this is a join, not new work.\n` +
+    `ORDER BY churn_commits × uncovered_lines, largest first. Ordering on churn alone puts a hot file with ONE uncovered line above a rarely-touched file with five hundred, and the top of a ten-item list is the part anyone reads. ` +
+    `The product keeps a file that changes constantly ahead of a dormant one while still ranking by how much is actually untested.\n` +
+    `Report it as exactly what it is: CHURN-WEIGHTED, never risk-ranked. How often a file changes and how much of it is untested are both counts; neither says how dangerous the gap is, and the report labels it that way. ` +
     `Empty array when every file carrying churn is fully covered.\n\n` +
     `Return the components list ordered by churn_rank (most-churned first), untested_churn, plus a short rationale.`,
     { label: 'grouping', phase: 'Grouping', schema: COMPONENTS_SCHEMA }
@@ -815,6 +828,11 @@ if (typeof agent === 'function') {
 
   const unitSplit = baseline.unit_split || { declared: false }
 
+  // Two ways the probe has no question to ask, and each must report itself as NOT RUN.
+  // The second is the subtle one: with nothing to deny, the denied run is just the suite
+  // again — it passes, and an empty failures list would read as proven isolation.
+  const nothingToDeny = !(unitSplit.external_env && unitSplit.external_env.length) && !unitSplit.deny_recipe
+
   if (dial.denial) {
     if (!unitSplit.declared || !unitSplit.unit_selector) {
       denial = {
@@ -822,17 +840,26 @@ if (typeof agent === 'function') {
         skipped_reason: `the repository declares no unit/integration split${unitSplit.why_not ? ` — ${unitSplit.why_not}` : ''}`,
       }
       log(`Denial probe: skipped — ${denial.skipped_reason}`)
+    } else if (nothingToDeny) {
+      denial = {
+        ran: false,
+        skipped_reason: 'nothing external to deny — the production code reads no environment variable naming a host, URL, port, DSN or credential, so a denied run would prove nothing about isolation',
+      }
+      log(`Denial probe: skipped — ${denial.skipped_reason}`)
     } else {
       denial = await agent(
         `You are the unit-isolation probe of a test-suite audit of ${repoRoot}. Read-only with respect to FILES: change nothing in the repository, and change git state not at all. Your only lever is the environment of one command.\n\n` +
         `This repo declares its unit tests here: ${unitSplit.source || '(source not recorded)'}\n` +
         `Unit selector: ${unitSplit.unit_selector}\n` +
-        `Deny recipe (from the baseline): ${unitSplit.deny_recipe || '(none derived — work one out from what the repo documents as required environment)'}\n\n` +
+        `External environment the production code actually reads: ${(unitSplit.external_env || []).join(', ') || '(none recorded)'}\n` +
+        `Deny recipe (from the baseline): ${unitSplit.deny_recipe}\n\n` +
         `Run the unit selector ONCE with that environment denied, wrapped in \`timeout 590\`, from ${repoRoot}.\n` +
         `A unit test does not need a database, a socket, a broker, or any other external process. So every test that fails ONLY because the environment was taken away is an integration test wearing a unit-test label: it costs CI time under a name that promises speed, and it hides the true cost of the integration coverage. ` +
         `Record each one in failures with its name, the error line proving what it reached for, and the resource it wanted (database, network, broker, filesystem path outside tmp).\n` +
         `A test that fails for an unrelated reason is not a finding — leave it out and note it.\n` +
-        `Set ran=true when the denied run completed and you could read its results; if the recipe could not deny anything (nothing to unset, or the selector would not run), set ran=false with skipped_reason.`,
+        `BEFORE reporting a clean result, confirm the run was capable of failing: at least one variable in the recipe must be one the production code reads, and the denied value must be one that cannot resolve. ` +
+        `If neither holds — the recipe touched nothing the code consults, or the selector would not run — set ran=false with skipped_reason saying so. ` +
+        `An empty failures list means "every unit test survived losing its external environment"; it must never mean "there was nothing to take away", because the report cannot tell those apart.`,
         { label: 'denial', phase: 'Probes', schema: DENIAL_SCHEMA }
       )
       log(`Denial probe: ${denial && denial.ran ? `${((denial.failures) || []).length} mislabelled unit test(s)` : 'did not run'}`)
@@ -1015,7 +1042,7 @@ if (typeof agent === 'function') {
     `${coverageTruth ? JSON.stringify(coverageTruth, null, 2) : '(not run at this level)'}\n\n` +
     `UNIT-ISOLATION DENIAL PROBE (the declared unit slice run with its external environment taken away):\n` +
     `${denial ? JSON.stringify(denial, null, 2) : '(not run at this level)'}\n\n` +
-    `UNTESTED CODE IN THE MOST-CHURNED FILES (derived from the coverage summary and git churn — nothing was probed to produce it):\n` +
+    `UNTESTED CODE, CHURN-WEIGHTED (derived from the coverage summary and git churn — nothing was probed to produce it):\n` +
     `${JSON.stringify(untestedChurn, null, 2)}\n\n` +
     `PER-COMPONENT WORKER RECORDS${dial.verify ? ' (survivors already adversarially verified; refuted findings dropped, see notes)' : ''}:\n${JSON.stringify(workers, null, 2)}\n\n` +
     `NOT-CHECKED LIST (include verbatim, plus anything you notice is missing):\n${JSON.stringify(notChecked, null, 2)}\n\n` +
@@ -1036,7 +1063,7 @@ if (typeof agent === 'function') {
     `3. proposals: concrete next actions — "add a test that kills this survivor in <file>:<line> (assert <behavior>)", "quarantine flaky test X", "split/exclude slow test Y", ` +
     `"move test Z into the integration suite, or give it a double for <resource>", "fix the coverage command so it sees <file>". Each tied to its finding. No code, just the actions.\n` +
     `4. components table: per component kill_rate, flakes, brittle, slice_wall_s, audited.\n` +
-    `5. untested_churn: copy the derived list above through unchanged. Present it as what it is — churn-ranked, not risk-ranked: it says which untested code changes often, which is a different claim from which untested code is dangerous. No severity, no findings built from it, and it changes no score.\n` +
+    `5. untested_churn: copy the derived list above through unchanged, in the order given. Present it as what it is — churn-weighted, not risk-ranked: it ranks by how often a file changes and how much of it is untested, neither of which says how dangerous the gap is. No severity, no findings built from it, and it changes no score.\n` +
     `6. checked: one compact prose line — components audited, mutants applied and which operator classes they covered, no-ops, delays, reruns, coverage pct, probes run, mode.\n` +
     `7. verdict: untrustworthy = baseline flaky enough to distrust results; strong = kill_rate >= 0.75 across audited components AND zero flakes AND zero brittle breaks AND suite < ~120 s — must be EARNED; weak = kill_rate low or vacuous tests proven; else adequate.\n` +
     `${truthKills.length
