@@ -77,6 +77,12 @@ READ_TOOLS = {"Read"}
 # ones that turn out not to be that kind of work; this is the slack that leaves.
 COLLECT_FACTOR = 2
 
+# Segments whose route has since been reworded are not evidence about today's route,
+# but they are evidence about the old one — and "agents skipped this doc 35 of 36 times
+# under the previous wording" is exactly what justifies having rewritten it. Summarize
+# that many per use case rather than discarding it silently.
+HISTORICAL_CAP = 25
+
 
 # ---------------------------------------------------------------------------
 # Locating this repository's transcripts
@@ -438,10 +444,12 @@ def cmd_evidence(args):
         now_route = route_for(agents_md_at(args.repo_root, None), doc)
         entry["route_today"] = (now_route or "")[:300]
         stab_cache = {}
+        historical = {}
+        hist_examined = 0
         for seg in segments:
-            # Stop as soon as there are enough candidates. Walking the rest only
-            # inflated the exclusion count and spent a git call per segment.
-            if len(entry["segments"]) >= target:
+            # Stop once BOTH budgets are met. Walking further only inflated the exclusion
+            # count and spent a git call per segment.
+            if len(entry["segments"]) >= target and hist_examined >= HISTORICAL_CAP:
                 break
             entry["coverage"]["examined"] += 1
             stab = stab_cache.get(seg["ts"])
@@ -450,6 +458,23 @@ def cmd_evidence(args):
                 stab_cache[seg["ts"]] = stab
             if not stab["stable"]:
                 entry["coverage"]["excluded_route_changed"] += 1
+                if hist_examined < HISTORICAL_CAP:
+                    hist_examined += 1
+                    then = stab.get("then") or "(no route to this doc at the time)"
+                    bucket = historical.setdefault(then, {
+                        "route_then": then, "segments": 0, "opened_doc": 0,
+                        "did_work": 0, "first_ts": seg["ts"], "last_ts": seg["ts"]})
+                    proj = segment_projection(
+                        seg["file"], seg["start_turn"], seg["end_turn"], doc)
+                    bucket["segments"] += 1
+                    if proj["first_doc_read_turn"] is not None:
+                        bucket["opened_doc"] += 1
+                    if proj["first_work_turn"] is not None:
+                        bucket["did_work"] += 1
+                    bucket["first_ts"] = min(bucket["first_ts"], seg["ts"] or "")
+                    bucket["last_ts"] = max(bucket["last_ts"], seg["ts"] or "")
+                continue
+            if len(entry["segments"]) >= target:
                 continue
             entry["coverage"]["valid"] += 1
             entry["segments"].append({
@@ -460,6 +485,13 @@ def cmd_evidence(args):
                 "activity": segment_projection(
                     seg["file"], seg["start_turn"], seg["end_turn"], doc),
             })
+        # Superseded-route evidence: reported, never a finding about current text.
+        entry["historical"] = sorted(
+            historical.values(), key=lambda b: b["segments"], reverse=True)
+        entry["coverage"]["historical_examined"] = hist_examined
+        if entry["coverage"]["excluded_route_changed"] > hist_examined:
+            entry["coverage"]["historical_truncated"] = (
+                entry["coverage"]["excluded_route_changed"] - hist_examined)
         result["use_cases"].append(entry)
 
     out = os.path.join(args.scratch, "evidence.json")
@@ -472,6 +504,10 @@ def cmd_evidence(args):
         "per_use_case": args.per_use_case,
         "candidates_per_use_case": target,
         "coverage": {e["use_case"]: e["coverage"] for e in result["use_cases"]},
+        # Superseded-route evidence travels in the summary too: synthesis never opens
+        # evidence.json, and dropping it here is how it would go quiet again.
+        "historical": {e["use_case"]: e["historical"]
+                       for e in result["use_cases"] if e.get("historical")},
     }
     json.dump(summary, sys.stdout, indent=1)
     print()

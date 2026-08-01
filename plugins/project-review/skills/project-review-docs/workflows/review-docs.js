@@ -361,6 +361,10 @@ const HISTORY_SCHEMA = {
     severity: { type: 'string', enum: ['none', 'minor', 'major', 'blocker'] },
     finding: { type: 'string' },
     evidence: { type: 'string' },
+    // Evidence about a route that has since been reworded. Never a finding about the
+    // current text, but it is what tells you whether a rewrite was warranted — and
+    // dropping it is how the stage would quietly discard its most useful signal.
+    historical_note: { type: 'string' },
   },
   required: ['use_case', 'doc', 'segments_judged', 'routed', 'late', 'missed',
              'route_wording', 'attribution', 'severity'],
@@ -621,13 +625,18 @@ if (typeof agent === 'function') {
           `- obligation route WITH a recognizable edge + misses => attribution "agent". The route is written correctly and was skipped anyway; report it at minor as an observation about agent behaviour, NOT as a defect in the doc. A miss here is never evidence the doc is redundant — the agent could not know what the doc contained before opening it.\n` +
           `- everything routed => attribution "none", severity none.\n\n` +
           `EVIDENCE BAR: ${bar.canFind ? `${bar.reason} — a finding is allowed.` : `${bar.reason} — report the counts and set severity "none" and attribution "insufficient-evidence". Do not raise a finding from this sample.`}\n\n` +
+          `SUPERSEDED ROUTES — the entry's "historical" array holds segments that ran under an EARLIER wording of this route, summarised as: the old route text, how many segments did real work, and how many opened the doc. These are excluded from every count above because they are not evidence about today's route.\n` +
+          `Report them in historical_note anyway, in one or two sentences: quote the old wording and give the ratio, e.g. 'under the previous advisory wording "Load X for guidance", 25 of 25 segments did the work and 4 opened the doc'. This is what shows whether a rewrite was warranted, so state it plainly. If coverage carries historical_truncated, say how many were not examined.\n` +
+          `It is NEVER a finding about the current text and must not move severity or attribution. Leave historical_note empty when the array is empty.\n\n` +
           `Never treat "no sessions" or "few sessions" as a defect in the doc. Return the counts, the route classification, and the finding if one is warranted.`,
           { label: `history:${useCase}`, phase: 'History', model: 'sonnet', schema: HISTORY_SCHEMA }
         )
       }))).filter(Boolean)
 
       const real = historyEntries.filter(h => h.attribution === 'doc' && h.severity !== 'none')
-      log(`History: ${historyEntries.length} use case(s) judged, ${real.length} doc finding(s)`)
+      const superseded = Object.keys((historySummary && historySummary.historical) || {})
+      log(`History: ${historyEntries.length} use case(s) judged, ${real.length} doc finding(s)` +
+          (superseded.length ? `; superseded-route evidence for ${superseded.length} use case(s) (reported, never a finding)` : ''))
     }
   }
 
@@ -735,7 +744,8 @@ if (typeof agent === 'function') {
     `Injected tool-blocks in steering docs: ${JSON.stringify(manifest.injected_blocks)}\n\n` +
     `READ-REVIEW FINDINGS (one agent per use case, plus the files that are not use cases):\n${JSON.stringify(readFindings, null, 2)}\n\n` +
     `HISTORY VERDICTS (behavioural: did past sessions in this repo actually open the doc their route points at?):\n${JSON.stringify(historyEntries, null, 2)}\n` +
-    `History coverage: ${JSON.stringify((historySummary && historySummary.coverage) || {})}\n\n` +
+    `History coverage: ${JSON.stringify((historySummary && historySummary.coverage) || {})}\n` +
+    `Superseded-route evidence (sessions that ran under an EARLIER wording of a route — not evidence about today's text):\n${JSON.stringify((historySummary && historySummary.historical) || {}, null, 2)}\n\n` +
     `EXECUTION-TEST VERDICTS (synthetic: could a cold agent use the docs?):\n${JSON.stringify(execGraded, null, 2)}\n\n` +
     `Do all of the following:\n` +
     `1. Merge and DEDUPE findings (the same defect surfaced by two stages is ONE finding — cite the strongest evidence).\n` +
@@ -744,6 +754,7 @@ if (typeof agent === 'function') {
     `3. Raise the mechanical facts no read-review agent covered. CLAUDE.md is excluded from the read-review because the manifest checks it, so a false claude_md_ok is yours to report: CLAUDE.md must be exactly the one-line @AGENTS.md import, and the fix names a destination for each displaced piece — routing to AGENTS.md, topic procedures to docs/<TOPIC>.md, personal or transient notes to .claude.local.md. Every injected tool-block listed above is a finding against the doc holding it, under the same destination rule.\n` +
     `4. Fold the behavioural and synthetic evidence in. From execution: 'found-but-insufficient' or 'couldnt-route' is a real doc finding; discard 'inconclusive'. From history: only entries with attribution "doc" are doc findings — an "agent" attribution means the route was written correctly and skipped anyway, which belongs in execution_summary as an observation, never as a defect in the file. An "insufficient-evidence" attribution is not a finding of any kind.\n` +
     `5. State the evidence per use case in execution_summary: how many valid segments history had, which use cases had none, and which were probed by execution. A use case with no evidence is a gap in THIS AUDIT, never a defect in the doc — say so in those words rather than implying the doc is unused.\n` +
+    `   Report the superseded-route evidence too, in its own short paragraph, and label it as being about wording that no longer exists. Quote the old route and give the ratio of segments that did the work to segments that opened the doc. Where a route has since been rewritten, say whether that evidence supports the rewrite. Never let it change a verdict or a finding about current text — but never drop it either: a route that was ignored under its old wording is the reason the new wording exists.\n` +
     `6. Assign an overall verdict: accurate / minor gaps / significant gaps / misleading. A clean 'accurate' requires no blocker/major AND positive coverage — not merely absence of findings.\n\n` +
     `Return the structured object with fields verdict, headline, findings[], cross_file_notes, execution_summary. ` +
     `Each finding's why_it_matters states the concrete cost, risk, or trap the defect creates for someone relying on the doc — not a restatement of the observation. ` +

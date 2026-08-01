@@ -146,6 +146,23 @@ assert_contains "evidence: today's route is recorded for the judge" "before you 
 import json; d=json.load(open('$EV'))
 print([u for u in d['use_cases'] if u['use_case']=='coding'][0].get('route_today',''))")"
 
+# A segment excluded for a reworded route is still evidence about the OLD route, and
+# "agents ignored it under the previous wording" is what justifies a rewrite. Dropping
+# it silently would discard the stage's most useful signal.
+HIST=$(python3 -c "
+import json; d=json.load(open('$EV'))
+u=[x for x in d['use_cases'] if x['use_case']=='coding'][0]
+print(json.dumps(u.get('historical',[])))")
+assert_eq "historical: the superseded-route segment is kept, not dropped" "1" \
+  "$(json_val "len(d)" <<< "$HIST")"
+assert_contains "historical: it records the wording that was in force then" \
+  "before creating or editing ANY file" "$HIST"
+assert_eq "historical: it counts how many did work under that wording" "1" \
+  "$(json_val "d[0]['did_work']" <<< "$HIST")"
+assert_eq "historical: and how many opened the doc" "1" "$(json_val "d[0]['opened_doc']" <<< "$HIST")"
+assert_contains "historical: it reaches the stdout summary synthesis reads" '"coding"' \
+  "$(json_val "json.dumps(d.get('historical',{}))" <<< "$E3")"
+
 # Over-collection: the judge discards segments that turn out not to be that kind of
 # work, so the script hands it more candidates than the caller asked for.
 assert_eq "evidence: candidates are over-collected past the requested count" "6" \

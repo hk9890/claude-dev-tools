@@ -66,10 +66,12 @@ docs inline. The workflow returns a structured report; relay it.
      the doc each route points at was actually opened, and opened *before* the work. It
      writes only to the scratch dir. Findings need at least 3 comparable sessions, and a
      session is dropped when the `AGENTS.md` route it ran under has since been reworded —
-     that session is evidence about the old route, not the current one. Rewrite your routes
-     and history goes quiet until new sessions accumulate, which is correct rather than
-     broken. A repo with no sessions skips the phase: no evidence is a gap in the audit,
-     never a finding about the docs.
+     that session is evidence about the old route, not the current one. Those dropped
+     sessions are still summarised per old wording and reported as superseded-route
+     evidence: it never affects a finding or the verdict, but "agents ignored this doc
+     under its previous wording" is what shows a rewrite was warranted. A repo with no
+     sessions skips the phase: no evidence is a gap in the audit, never a finding about
+     the docs.
    - The execution phase (`ultra`) runs a cold agent **in the live working tree** — so it
      audits your uncommitted doc edits, not `HEAD` — under a hard read-only contract.
      Tier-C (destructive) tasks are never executed.

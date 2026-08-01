@@ -333,8 +333,12 @@ async function main() {
   const evidence = {
     evidence_file: '/tmp/sc/history/evidence.json', sessions_scanned: 2, sessions_labelled: 2,
     coverage: {
-      coding: { labelled: 6, valid: 4, partial: 1, excluded_churn: 2 },
-      testing: { labelled: 0, valid: 0, partial: 0, excluded_churn: 0 },
+      coding: { labelled: 6, valid: 4, examined: 6, excluded_route_changed: 2, historical_examined: 2 },
+      testing: { labelled: 0, valid: 0, examined: 0, excluded_route_changed: 0 },
+    },
+    historical: {
+      coding: [{ route_then: 'Load [docs/CODING.md](docs/CODING.md) for guidance.',
+                 segments: 25, opened_doc: 4, did_work: 25 }],
     },
   };
 
@@ -438,6 +442,17 @@ async function main() {
     deep.prompts.some((p) => p.includes('TRIGGER EDGE') && p.includes('is there a single, recognizable instant')));
   truthy('read-review: the AGENTS.md agent is given both a sharp and an edgeless example',
     deep.prompts.some((p) => p.includes('before ANY git operation') && p.includes('before searching this repository')));
+
+  // Evidence about a superseded route is not evidence about today's text — but it is
+  // what shows whether a rewrite was warranted, so it is reported rather than dropped.
+  truthy('history: the judge is told to report superseded-route evidence',
+    deep.prompts.some((p) => p.includes('SUPERSEDED ROUTES') && p.includes('historical_note')));
+  truthy('history: superseded evidence may never move severity or attribution',
+    deep.prompts.some((p) => p.includes('NEVER a finding about the current text and must not move severity')));
+  truthy('synthesis: superseded-route evidence reaches the report',
+    deep.prompts.some((p) => p.includes('Superseded-route evidence') && p.includes('Load [docs/CODING.md]')));
+  truthy('synthesis: is told to report it without letting it change a verdict',
+    deep.prompts.some((p) => p.includes('never drop it either')));
 
   const medium = await runAudit({ level: 'medium' });
   eq('orchestration: medium runs no execution route', 0, medium.labels.filter((l) => l.startsWith('gen:')).length);

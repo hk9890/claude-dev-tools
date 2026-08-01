@@ -89,6 +89,15 @@ advisory route were attributed to the agent because the route reads as an obliga
 Rewrite your routes and history goes quiet until new sessions accumulate; that silence is
 the honest answer.
 
+Silence is not the same as deletion. Segments whose route has since been reworded are
+summarised per old wording — how many did the work, how many opened the doc — and reported
+as **superseded-route evidence**. It never touches a severity, an attribution, or the
+verdict, because it says nothing about the text that exists now. It is reported because it
+is the thing that shows whether a rewrite was warranted: "under `Load docs/CODING.md for
+step-by-step guidance`, 25 of 25 segments did the work and 4 opened the doc" is the argument
+for the obligation wording that replaced it. Capped at `HISTORICAL_CAP` per use case, and
+the coverage record says how many were left unexamined rather than truncating silently.
+
 Two rules keep it honest:
 
 - **Attribution is by route wording.** A doc that gets skipped when its route is advisory is
