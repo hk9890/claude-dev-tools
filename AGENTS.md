@@ -3,8 +3,6 @@
 ## Repository purpose
 
 Plugin marketplace for Claude Code. Each subdirectory under `plugins/` is a self-contained plugin.
-**IMPORTANT skills, agents, workflows and other plugin artifacts will be used in different projects** They must not 
-contain or depend on specific technology but they must work in all softwarey projects
 
 ## Use-case routing
 

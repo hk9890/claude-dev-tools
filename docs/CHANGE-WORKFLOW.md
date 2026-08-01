@@ -17,14 +17,14 @@
   `<id>` is the taskmgr short ID when one exists (e.g. `docs/claudedevt-2xdmn0-feature-branch-policy`).
 - External contributors fork the repo and PR from their fork; no direct branch push to origin.
 
-Note: earlier merges in history carry a `hk9890/` user-namespace prefix (e.g. `hk9890/fix/wq6-...`). Branches created going forward follow the bare `fix/<id>-<slug>` form without a user prefix.
+Merge subjects read `Merge pull request #N from hk9890/<branch>` — `hk9890/` is the GitHub owner namespace, not part of the branch name.
 
 ## Pre-push checklist
 
 These gates apply at PR-open time; re-run at merge time only if new commits were pushed since the last green run.
 
 1. **Script tests** — `bash tests/run-all.sh` must pass.
-2. **Structural validation** (plugin changes only) — Run `plugin-dev:plugin-validator` on every changed plugin. This agent ships in the external `plugin-dev` plugin; see [TESTING.md](TESTING.md) for install instructions. After it passes, post a `gate2:passed` comment on the linked taskmgr task with the validator's summary line. If the change does not touch validator-checked surface (`.claude-plugin/plugin.json`, `agents/`, `skills/`, `commands/`, or `hooks/`), post a `gate2:n/a` comment with a one-line reason instead. This comment is the audit-trail evidence that gate 2 ran. **Important:** this is a process-enforcement gate, not a hard PR-merge block. The gate is enforced at release time (see [RELEASING.md](RELEASING.md)) by `scripts/check-gate2-evidence.sh`, which fails loudly if any PR merged since the previous release is missing its gate2 comment. A PR that skips this step will block the next release.
+2. **Structural validation** (plugin changes only) — Run `plugin-dev:plugin-validator` on every changed plugin. This agent ships in the external `plugin-dev` plugin; see [TESTING.md](TESTING.md) for install instructions. After it passes, record the evidence with `taskmgr comment add <task-id> "gate2:passed — <validator summary line>"` on the task the PR body's `Closes` line names. If the change does not touch validator-checked surface (`.claude-plugin/plugin.json`, `agents/`, `skills/`, `commands/`, or `hooks/`), post a `gate2:n/a` comment with a one-line reason instead. This comment is the audit-trail evidence that gate 2 ran. **Important:** this is a process-enforcement gate, not a hard PR-merge block. The gate is enforced at release time (see [RELEASING.md](RELEASING.md)) by `scripts/check-gate2-evidence.sh`, which fails loudly if any PR merged since the previous release is missing its gate2 comment. A PR that skips this step will block the next release.
 3. **Docs validation** (doc changes only) — If you touched canonical docs under `docs/`, run:
    ```bash
    SCR=plugins/project-review/skills/project-review-docs/scripts
@@ -41,7 +41,7 @@ Internal changes (maintainer or agent-orchestrated) use feature-branch PRs as th
 
 1. Branch off `master` using the naming convention above.
 2. Push the branch to `origin`.
-3. Open a PR — all three pre-push gates must be green before opening.
+3. Open a PR — all three pre-push gates must be green before opening. When a taskmgr task exists, the PR body must carry `Closes <task-id>`: `scripts/check-gate2-evidence.sh` parses that line to find the task holding the gate-2 evidence, and fails the release for any validator-surface PR it cannot link.
 4. Merge after review. Merges use GitHub's default merge-commit style (produces `Merge pull request #N from ...` commits).
 
 External contributors fork the repo, branch off their fork's `master`, and open a PR from their fork branch. The same pre-push checklist applies before opening the PR.
