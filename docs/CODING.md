@@ -87,6 +87,10 @@ dev checkout — so there is no relative path to write and `find` is worse than 
 `instruction-writing:writing-project-docs` for the authoring standard, passes the result as
 `standardDir`, and its workflow rejects a missing or relative value before spawning an agent.
 
+## Shell scripts
+
+Every tracked `*.sh` — under `scripts/`, `tests/`, or bundled in a plugin's `bin/` — must pass `mise run lint` (ShellCheck `--severity=warning`). The CI `shellcheck` job enforces it; see [TESTING.md](TESTING.md) for the full job list.
+
 ## SKILL.md conventions
 
 These apply to every `SKILL.md` under `plugins/<plugin-name>/skills/<skill-name>/`.

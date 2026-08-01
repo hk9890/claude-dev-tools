@@ -2,7 +2,7 @@
 
 ## Repository purpose
 
-Plugin marketplace for Claude Code. Each subdirectory under `plugins/` is a self-contained plugin.
+Plugin marketplace for Claude Code. Each subdirectory under `plugins/` is one independently installable plugin.
 
 ## Use-case routing
 
@@ -10,15 +10,19 @@ Every route below is **mandatory, not advisory**. Load the document BEFORE the f
 
 ### Research, planning, analysis
 
-**MUST read [docs/OVERVIEW.md](docs/OVERVIEW.md) before searching this repository.** It is the map — repo and plugin layout, where things live, and how to find them fast.
+**MUST read [docs/OVERVIEW.md](docs/OVERVIEW.md) before your first `grep`, `rg`, `Glob`, or `ls` in this repo.** It is the map — repo and plugin layout, where things live, and how to find them fast.
 
 ### Coding and file changes
 
-**MUST read [docs/CODING.md](docs/CODING.md) before creating or editing ANY file under `plugins/`, `scripts/`, or `tests/`.** It owns plugin scaffolding, dependency declarations, runtime path resolution, and the SKILL.md conventions.
+**MUST read [docs/CODING.md](docs/CODING.md) before creating or editing ANY file under `plugins/` or `scripts/`, or `.claude-plugin/marketplace.json`.** It owns plugin scaffolding, marketplace registration, dependency declarations, runtime path resolution, the SKILL.md conventions, and the lint rule binding every tracked shell script.
+
+### Writing project docs
+
+**MUST load the `instruction-writing:writing-project-docs` skill before creating or editing `AGENTS.md`, `README.md`, or ANY file under `docs/`.** It owns which file may carry what, and the authoring rules the pre-push docs gate checks against.
 
 ### Testing a plugin
 
-**MUST read [docs/TESTING.md](docs/TESTING.md) before running or writing tests** or judging whether a change is verified. It owns the mise tasks, the script-test layout, and the CI gates.
+**MUST read [docs/TESTING.md](docs/TESTING.md) before running or writing tests**, or editing ANY file under `tests/` or `.github/workflows/`. It owns the mise tasks, the script-test layout, and the CI gates.
 
 ### Run a plugin to reproduce a bug or verify a change
 
@@ -38,4 +42,4 @@ Every route below is **mandatory, not advisory**. Load the document BEFORE the f
 
 ### Analyze plugin usage
 
-**MUST read [docs/MONITORING.md](docs/MONITORING.md) before interpreting session transcripts or usage data.** It owns the session-analysis workflow and its output schema.
+**MUST read [docs/MONITORING.md](docs/MONITORING.md) before your first read of a `~/.claude/projects/**/*.jsonl` transcript or run of `scripts/analyze-sessions.py`.** It owns the session-analysis workflow and its output schema.
