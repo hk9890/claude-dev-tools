@@ -1153,7 +1153,11 @@ test_default_hosts_allowed() {
     }
   ')
 
-  local hosts=(localhost 127.0.0.1)
+  # '[::1]' is bracketed because that is the only form a Host header carries an
+  # IPv6 literal in — and the only form the allow-list can be seeded with. Sent
+  # as a header over the loopback IPv4 connection, so it asserts the allow-list
+  # entry without requiring IPv6 connectivity here.
+  local hosts=(localhost 127.0.0.1 '[::1]')
   hosts+=("$(node -e 'process.stdout.write(require("os").hostname())')")
   if [[ -n "$lan_ip" ]]; then
     hosts+=("$lan_ip")

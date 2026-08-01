@@ -231,6 +231,9 @@ After each `action: "apply"` response:
    node "$(cat "$HTML_DIR/.plugin-root")/bin/server.js" "$HTML_DIR/review.html" --port "$(cat "$HTML_DIR/.port")"
    ```
    If the port is momentarily unavailable, wait ~1 s and retry once.
+   **Carry every flag the first round used** — in particular `--host NAME` if the
+   first round needed one. Flags do not persist across rounds; dropping `--host`
+   here gives the user a 403 on round two after round one worked.
 4. Tell the user the comments have been applied; the URL is unchanged and the
    open tab reloads itself automatically.
 5. The loop continues until an `action: "submit"` response.
@@ -240,6 +243,8 @@ After each `action: "apply"` response:
 - **`.port` file** (`$HTML_DIR/.port`): written on the first serve round (Cycle C
   first round), never overwritten. Contains only the port number as a plain string.
   Used by every Apply re-serve via `--port "$(cat "$HTML_DIR/.port")"`.
+- **`--host NAME`**: not persisted anywhere — if the first round needed one, every
+  Apply re-serve must repeat it. See [Host allow-list](#host-allow-list).
 - **`fb-generation` meta**: `<meta name="fb-generation" content="...">` in the
   served HTML. MUST be set to a **new, unique value on every regeneration** (e.g.
   the output of `date +%s%N`). `app.js` polls `GET /` and auto-reloads the open

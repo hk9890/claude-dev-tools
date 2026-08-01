@@ -143,7 +143,10 @@ function normalizeHost(value) {
 // anyone who can reach the port still reads the page.
 const allowedHosts = new Set();
 
-for (const name of ['localhost', '127.0.0.1', '::1', os.hostname()]) {
+// '[::1]' is bracketed because that is the only form a URL — and therefore a
+// Host header — carries an IPv6 literal in. A bare '::1' does not parse and
+// would seed nothing.
+for (const name of ['localhost', '127.0.0.1', '[::1]', os.hostname()]) {
   const normalized = normalizeHost(name);
   if (normalized) allowedHosts.add(normalized);
 }
