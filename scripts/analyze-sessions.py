@@ -52,6 +52,10 @@ RENAME_ALIASES = {
     #   "project-review" — it is a live plugin directory again. discover_plugins() writes
     #     identity mappings after this dict, so an entry here would be silently overwritten;
     #     listing it would only mislead a future reader.
+    #   "project-explore" — DELETED, not renamed or folded: it has no successor to point at.
+    #     Its historical episodes land in the unmatched bucket by design. Its skill-level
+    #     alias was dropped for the same reason — an alias whose value is also a dead name
+    #     changes nothing, since unmatched episodes never reach per-skill aggregation.
 }
 
 # Skill-level rename aliases.  Keys are the raw attribution_skill strings that
@@ -124,8 +128,6 @@ SKILL_RENAME_ALIASES = {
     # unlike the removed project-review-all umbrella, which kept a retired name).
     "project-review:project-review-consistency": "project-review:project-review-codebase",
     "project-review:project-review-structure": "project-review:project-review-codebase",
-    # project-explore skill renamed (explore-project -> project-explore)
-    "project-explore:explore-project": "project-explore:project-explore",
     # grill extracted from project-quality into its own standalone plugin, which was
     # then renamed grill -> challenge. Values are the current canonical name, not a
     # chain: the map is applied once, never transitively.

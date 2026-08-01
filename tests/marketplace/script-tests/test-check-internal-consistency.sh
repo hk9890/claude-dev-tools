@@ -167,7 +167,7 @@ test_good_version_passes() {
 
 # 9. Negative / uniformity: an entry out of version lockstep exits non-zero.
 #    Each plugin entry could still mirror its own plugin.json (Check B green),
-#    but one entry diverges from metadata.version — the project-explore-at-1.17
+#    but one entry diverges from metadata.version — the one-plugin-left-behind
 #    case Check B alone cannot catch. Isolate Check D via the skip flags.
 test_version_uniformity_fails() {
   local tmp_dir
