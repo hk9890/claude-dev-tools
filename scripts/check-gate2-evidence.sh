@@ -12,8 +12,8 @@
 #
 # Arguments:
 #   <base-ref>   Git ref to use as the start of the range (exclusive).
-#                Defaults to the most recent annotated tag; falls back to HEAD~50
-#                if no annotated tag exists.
+#                Defaults to the most recent tag (annotated or lightweight);
+#                falls back to HEAD~50 if no tag exists.
 #
 # Exit codes:
 #   0  All checked PRs have gate2 evidence (or no PRs needed checking).
@@ -126,11 +126,11 @@ main() {
   if [[ $# -ge 1 ]]; then
     base_ref="$1"
   else
-    # Try most recent annotated tag
+    # Try most recent tag (--tags includes lightweight ones, which gh release create creates)
     base_ref=$(git -C "$REPO_ROOT" describe --abbrev=0 --tags 2>/dev/null || true)
     if [[ -z "$base_ref" ]]; then
       base_ref="HEAD~50"
-      printf 'INFO: No annotated tag found; using HEAD~50 as base ref.\n'
+      printf 'INFO: No tag found; using HEAD~50 as base ref.\n'
     else
       printf 'INFO: Using most recent tag as base ref: %s\n' "$base_ref"
     fi

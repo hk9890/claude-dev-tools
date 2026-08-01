@@ -7,17 +7,16 @@ This repo is a collection of Claude Code plugins. Each plugin lives under `plugi
 ```
 claude-dev-tools/
   .claude/               # repo-committed Claude Code settings shared by contributors
-  .tasks/                # taskmgr task store for this repo (file-based issue store)
+  .tasks/                # taskmgr task store (local-only — gitignored, absent from a fresh clone)
   .claude-plugin/        # repo-level marketplace manifest
     marketplace.json     # lists all plugins, their versions, and descriptions
   .github/               # CI workflows and Dependabot config — see TESTING.md for the jobs
   docs/                  # developer topic guides — see AGENTS.md for task->doc routing
   plugins/               # one subdirectory per plugin
+  prototypes/            # non-shipped HTML reference prototypes — not served or loaded by any plugin
   scripts/               # repo maintenance scripts
   tests/                 # structural validation and smoke tests
 ```
-
-`.claude-plugin/marketplace.json` is the **repo-level manifest** — it lists every plugin in the marketplace with its name, version, description, and source path. It is distinct from the per-plugin `.claude-plugin/plugin.json`, which carries only that plugin's own metadata.
 
 For the full list of plugins, see the [plugin table in README.md](../README.md#plugins).
 
@@ -38,8 +37,6 @@ plugins/<plugin-name>/
   workflows/             # Workflow-tool orchestration scripts (.js) — at plugin root, or inside the one skill that owns them
 ```
 
-Not all component types are required — a plugin may have only commands, only skills, or a mix.
-
 ## Finding things
 
 ```bash
@@ -47,6 +44,7 @@ ls plugins/*/skills/*/SKILL.md                                 # every skill in 
 git grep -ln 'name: <skill>' -- 'plugins/*/skills/*/SKILL.md'  # which plugin ships a skill
 git grep -n '<plugin>:<skill>' -- plugins                      # where a skill is referenced by its qualified name
 ls -d plugins/*/hooks                                          # which plugins define hooks
+ls plugins/*/agents/*.md plugins/*/workflows/*.js plugins/*/skills/*/workflows/*.js   # agents, and workflows in both layouts
 ```
 
 ## External references

@@ -1,6 +1,6 @@
 # Monitoring Plugin Usage
 
-How to run the session-analysis workflow: index session transcripts into episode records, score friction, and use Claude Code's built-in judge to review sampled episodes.
+How to run the session-analysis workflow: index session transcripts into episode records, score friction, and judge sampled episodes with Claude Code itself.
 
 ## Data source
 
@@ -25,7 +25,7 @@ Claude Code writes session transcripts to `~/.claude/projects/<slug>/<uuid>.json
 
 ### Running the script
 
-From the repo root:
+`mise run analyze-sessions` (equivalently `python3 scripts/analyze-sessions.py` from the repo root; the mise task pins cwd, which decides where `output/` lands). Options are appended either way:
 
 ```bash
 # Full scan (reads ~/.claude/projects by default)
@@ -67,16 +67,11 @@ An **episode** is a contiguous run of assistant messages that share the same `at
 
 ### Resumed sessions and record dedup
 
-When a session is continued in another directory (e.g. work moving between a worktree and the main checkout), Claude Code copies the conversation history into a new transcript file, and each copied record keeps its original per-record `uuid`. The indexer deduplicates records by `uuid` across all files of one scan, so a copied history is counted once: the first file in the sorted walk order keeps the shared records, and a forked continuation contributes only its own new records. Records without a `uuid` field are never deduplicated.
+Records are deduped by `uuid` across the scan, so a resumed or copied history is counted once; records with no `uuid` are never deduped.
 
 ### Rename-alias maps
 
-Plugin renames are handled via `RENAME_ALIASES` and skill-level renames via `SKILL_RENAME_ALIASES`, both defined in [`scripts/analyze-sessions.py`](../scripts/analyze-sessions.py). The script is the single source of truth — the maps are deliberately not reproduced here. Illustrative entries only:
-
-```python
-RENAME_ALIASES = {"grill": "challenge", ...}                          # old plugin dir -> current
-SKILL_RENAME_ALIASES = {"github-releases:release": "github-releases:github-releases", ...}
-```
+Plugin renames are handled via `RENAME_ALIASES` and skill-level renames via `SKILL_RENAME_ALIASES`, both defined in [`scripts/analyze-sessions.py`](../scripts/analyze-sessions.py), which is the single source of truth.
 
 `RENAME_ALIASES` maps old plugin directory names to the canonical current name, so historical transcript data does not fall into the unmatched bucket after a plugin is renamed. `SKILL_RENAME_ALIASES` handles renames where a skill was renamed within a plugin or its plugin prefix changed; it is applied before the per-skill summary aggregation so renamed skills merge into a single row rather than fragmenting (`dataset.json` keeps the raw attributed name). When a plugin or skill is renamed, add an entry to the corresponding map in the script — the merge is pinned by the fixture test.
 
@@ -91,7 +86,7 @@ The friction score is a **per-turn normalized weighted sum** of friction signals
 | `tool_errors` | `tool_result.is_error == true` inside a user message | +1 per erroring result, **except** results whose text matches `"Cancelled: parallel tool call"` — those are the un-run siblings of an interrupted parallel batch (user-initiated cancellations, not tool failures) and are not counted. |
 | `interruptions` | `record.toolUseResult.interrupted == true` on the user record | +1 per interrupted turn |
 | `permission_denials` | `tool_result.content` contains `"doesn't want to proceed"` or `"tool use was rejected"`, **guarded by `is_error == true`** | +1 per denial. The `is_error` guard prevents false positives when file content read by the model happens to contain the phrase (e.g. this file describes the detector strings) — a normal Read result has `is_error == false`. |
-| `user_corrections` | First sentence of user prose matches `\b(no|wrong|stop|don'?t|actually|revert)\b` | +1 per matching turn. Harness-generated blocks inside the user message (`<command-name>`, `<command-args>`, `<local-command-stdout>`, `<bash-stdout>`, `<system-reminder>`, `<attachment>`, etc.) are stripped before the regex runs — slash-command bodies are not user prose. |
+| `user_corrections` | First sentence of user prose matches `\b(no|wrong|stop|don'?t|actually|revert)\b` | +1 per matching turn. Harness-generated blocks inside the user message (`<command-name>`, `<command-args>`, `<local-command-stdout>`, `<bash-stdout>`, `<system-reminder>`, `<attachment>`, etc.) are stripped before the regex runs — slash-command bodies are not user prose. Fuzzy in both directions: **Phase 2 is the authority** on whether a correction actually occurred. |
 | `retries` | Same `(tool_name, input_repr[:200])` pair seen a second time | +1 on the first repeat only |
 | `ask_user_questions` | `AskUserQuestion` tool call in the assistant turn | +1 per call |
 | `duration_ms` | `system` record with `subtype: "turn_duration"`, field `durationMs` | summed across all system events in the episode |
@@ -109,7 +104,7 @@ Alongside friction, each episode carries four boolean outcome signals:
 | `tests_run` | A `tool_result` string matches `TEST_RUN_RE` (`pytest`, `npm test`, `go test`, `cargo test`, `make test`, `bun test`, `mise run test`, `./test`) | Tests were run during the episode |
 | `tests_passed` | A `tool_result` string matches `TEST_PASS_RE` (e.g. `all tests passed`, `PASSED`), **and** `tests_run` is true for the episode | A test run reported success. Gated on `tests_run` so incidental "pass" text in unrelated output cannot report a pass with no detected run. |
 
-These are heuristic pattern matches (see the `*_RE` constants in the script), not verified outcomes — treat them as coarse signals. They appear per-episode in `dataset.json` and as per-skill aggregate counts (the **Commits** and **PRs** columns) in `summary.md`.
+These are heuristic pattern matches (see the `*_RE` constants in the script), not verified outcomes — treat them as coarse signals. All four appear per-episode in `dataset.json`; only `ended_in_commit` and `ended_in_pr` are aggregated into `summary.md` (the **Commits** / **PRs** columns) — read the test signals from `dataset.json`.
 
 ### dataset.json record fields
 
@@ -122,19 +117,23 @@ Each `dataset.json` entry is one episode:
 
 ### Invocation modes (read this before interpreting the Model-invoked column)
 
-Each skill belongs to one of three modes, derived from its `SKILL.md` frontmatter (`user-invocable` and `disable-model-invocation`). The `summary.md` table carries a **Mode** column alongside **Model-invoked**, because the two only make sense together:
+`summary.md`'s per-skill table carries these columns: **Skill**, **Mode**, **Episodes**, **Avg Turns**, **Avg Duration (s)**, **Avg Friction**, **Errors**, **Interrupts**, **Model-invoked**, **Commits**, **PRs**. Every one after Mode is an absolute count or an average over the skill's episodes — none is a percentage.
 
-| Mode | Frontmatter | What it means | Expected Model-invoked rate |
+**Model-invoked** counts episodes whose `trigger_type` is `explicit` (not a percentage) — divide by **Episodes** for the rate.
+
+Each skill belongs to one of three modes, derived from its `SKILL.md` frontmatter (`user-invocable` and `disable-model-invocation`). Mode sits beside Model-invoked because the two only make sense together:
+
+| Mode | Frontmatter | What it means | Expected Model-invoked count |
 |------|-------------|----------------|-----------------------------|
 | `user-only` | `user-invocable: true` + `disable-model-invocation: true` | Reachable only via slash command. The `Skill` tool cannot invoke it. | **Always 0** — by design, not a measurement gap. |
-| `library` | `user-invocable: false` | Loaded by other skills via the `Skill` tool; not user-invocable. | Should be near 100%; lower values mean some loads happen through a non-`Skill` path (Read, file include) and are worth investigating. |
-| `both` | Neither flag set | User can slash-invoke **and** the model can invoke via the `Skill` tool. | Tells you how often the model proactively reached for the skill versus the user picking it. |
+| `library` | `user-invocable: false` | Loaded by other skills via the `Skill` tool; not user-invocable. | Should equal **Episodes**; a shortfall means some loads happen through a non-`Skill` path (Read, file include) and is worth investigating. |
+| `both` | Neither flag set | User can slash-invoke **and** the model can invoke via the `Skill` tool. | Any value between 0 and **Episodes**; the ratio tells you how often the model proactively reached for the skill versus the user picking it. |
 
-A 0 in **Model-invoked** is informative for `library` and `both` skills, structurally meaningless for `user-only` skills. Do not write commentary about "the classifier missed user invocations" without first reading the Mode column — for `user-only` skills, the user *is* the only invoker and the column is correct.
+Do not write commentary about "the classifier missed user invocations" without first reading the Mode column — for `user-only` skills, the user *is* the only invoker and a 0 is correct.
 
 ### Trigger classification
 
-Each episode is also classified as `explicit` or `ambient`. This is a narrower signal than Mode and lives on the per-episode record in `dataset.json`:
+Each episode is also classified as `explicit` or `ambient` — a narrower signal than Mode, carried per-episode in `dataset.json` and aggregated into the **Model-invoked** column:
 
 - **explicit** — the assistant invoked the `Skill` tool targeting this skill in the immediately-preceding assistant turn, or in the first turn of the episode itself.
 - **ambient** — attribution changed without an explicit `Skill` invocation (the skill was already running, loaded through another path, or the user invoked it via slash command — the classifier cannot distinguish slash from already-running).
@@ -152,7 +151,7 @@ Each slice file carries the episode's summary fields plus an `events` array reco
 
 ### Fixture tests
 
-The analyze-sessions regression suite (a synthetic fixture and expected output under `scripts/fixtures/`) is a test suite, run under `bash tests/run-all.sh` — see [TESTING.md](TESTING.md) for how to run it by hand.
+The analyze-sessions regression suite lives under `scripts/fixtures/` — see [TESTING.md](TESTING.md).
 
 ## Phase 2 — Claude-in-the-loop judging
 
@@ -160,11 +159,11 @@ Phase 2 uses Claude Code itself (your subscription — no API key required) to j
 
 ### Workflow
 
-1. Run the Phase 1 script to produce `output/session-analysis/episodes/` slice files.
-2. Open a Claude Code session in this repo.
-3. Ask Claude to judge the episode slices using the rubric below.
+1. Run Phase 1 to produce the `output/session-analysis/episodes/` slice files.
+2. Read each slice in `output/session-analysis/episodes/`.
+3. Score it against the rubric below and write one verdict file per slice to `output/session-analysis/verdicts/`, named to match the slice file.
 
-Example prompt:
+To delegate the judging to a fresh session instead of doing it inline:
 
 ```
 Judge the episode slices in output/session-analysis/episodes/ using the
@@ -181,14 +180,6 @@ For each slice, Claude assigns scores on a 1–5 scale with a rationale:
 | `followed-instructions` | Did Claude follow the skill's instructions faithfully? |
 | `task-completed` | Was the user's underlying task completed? |
 | `user-accepted` | Did the user accept the outcome without correction or retry? |
-
-Claude writes one verdict file per episode to `output/session-analysis/verdicts/`, named to match the slice file.
-
-### Heuristic correction signal vs. Phase 2 authority
-
-The friction signal `user_corrections` is a **heuristic**: it detects correction-like words (`no`, `wrong`, `stop`, `actually`, `revert`) in the first sentence of user messages. This signal is fuzzy — it will produce false positives (ordinary conversational use of those words) and false negatives (corrections phrased differently).
-
-**Phase 2 is the authority.** When in doubt about whether a correction actually occurred or whether friction was meaningful, let the Phase 2 judge decide based on full episode context.
 
 ## False-negative pass
 

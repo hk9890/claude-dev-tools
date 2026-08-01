@@ -1,23 +1,25 @@
 # claude-dev-tools
 
-A plugin marketplace for [Claude Code](https://claude.ai/code). Each plugin is a self-contained unit — commands, skills, and agents — that extends Claude Code's capabilities in a specific domain.
+A plugin marketplace for [Claude Code](https://claude.ai/code). Each plugin is a self-contained unit — skills, agents, hooks, or themes — that extends Claude Code's capabilities in a specific domain.
 
 For the repo layout and architecture, see [docs/OVERVIEW.md](docs/OVERVIEW.md).
 
 ## Plugins
 
+Row order matches `.claude-plugin/marketplace.json`, which carries the long-form description the installer shows.
+
 | Plugin | Description |
 |---|---|
-| [`tasks`](plugins/tasks/) | Use the `taskmgr` file-based task tracker — data model and commands, a skill to turn review findings into well-formed tasks, generic implementer/verifier agents, and a tasks-work workflow that runs ready work through implement, verify, and record |
-| [`claude-catppuccin`](plugins/claude-catppuccin/) | Visual style for Claude Code: Catppuccin color themes (Latte, Frappe, Macchiato, Mocha) |
-| [`project-review`](plugins/project-review/) | Read-only adversarial project reviews — codebase (consistency, structure, architecture, over production and test code alike) and docs — each a standalone lens that challenges the artifact against the project's own standards and returns a prioritized action list; the codebase lens also writes a standalone Markdown report with Mermaid diagrams and numbered deepening proposals |
-| [`project-execute`](plugins/project-execute/) | Thin human-triggered skills that execute a project's own defined flows — run its tests, cut a release, analyze its monitoring data — plus an explainer that digests how the project handles a given topic from its own docs; every skill follows what the project documents and invents nothing |
-| [`challenge`](plugins/challenge/) | On-demand adversarial passes over whatever is in front of you — `grill` stress-tests a plan or decision with pointed questions, `kiss` challenges accidental complexity and simplifies, and `are-you-sure` re-checks finished work against what was actually asked; project-agnostic, applies to anything |
-| [`github-releases`](plugins/github-releases/) | Language-agnostic GitHub release workflow with quality gates, semver, and release notes |
-| [`html-visualization`](plugins/html-visualization/) | Interactive HTML the user opens in a browser — a shared `html-visualize` core skill plus three user-invoked command skills: `html-visualize-ask` (question and decision forms), `html-visualize-feedback` (comment on rendered content), and `html-visualize-page` (rich static page with an always-on footer for optional follow-up messages); a shared one-shot Node server captures the response and re-invokes Claude |
-| [`keep-awake-linux`](plugins/keep-awake-linux/) | Prevents Linux system sleep while Claude Code is actively working — releases automatically when idle or on session exit |
-| [`project-auto-work`](plugins/project-auto-work/) | Unattended adversarial audits that work the project on their own and report back — `test-tests`, an empirical, language-independent test-suite strength audit that injects mutants, no-op edits, and delays to prove whether the tests actually detect bugs, and `test-app`, exploratory testing that launches the application, uses it for real, and judges what happened against the project's own user-facing docs and monitoring data; both report findings and proposals, neither writes code |
-| [`instruction-writing`](plugins/instruction-writing/) | Guidance for writing the artifacts an agent harness reads — project docs, skills, agents, workflow prompts — so they stay token-efficient and predictable; includes `writing-project-docs`: the canonical project-doc set, each file's ownership boundary, and a worked example of every file, and `writing-skills`: the vocabulary and principles for authoring and editing Claude Code skills |
+| [`tasks`](plugins/tasks/) | Drive the `taskmgr` file-based tracker — `tasks` (data model and commands), `tasks-create`, and the `tasks-work` implement/verify/record workflow. |
+| [`project-review`](plugins/project-review/) | Read-only adversarial audits that return a prioritized action list — `project-review-codebase` and `project-review-docs`. |
+| [`project-execute`](plugins/project-execute/) | Run a project's own documented flows from its docs — `project-exec-testing`, `project-exec-releasing`, `project-exec-monitoring`, and `project-explain`. |
+| [`challenge`](plugins/challenge/) | Project-agnostic adversarial passes — `grill` (stress-test a plan), `kiss` (cut accidental complexity), `are-you-sure` (re-check finished work). |
+| [`github-releases`](plugins/github-releases/) | Language-agnostic GitHub release workflow with quality gates, semver, and release notes. |
+| [`claude-catppuccin`](plugins/claude-catppuccin/) | Catppuccin color themes for Claude Code: Latte, Frappe, Macchiato, Mocha. |
+| [`keep-awake-linux`](plugins/keep-awake-linux/) | Hooks that block Linux system sleep while Claude Code works, releasing on idle or session exit — `keep-awake-inspect` reads the state. |
+| [`html-visualization`](plugins/html-visualization/) | Browser HTML that sends the user's response back to Claude — `html-visualize-ask`, `html-visualize-feedback`, `html-visualize-page`. |
+| [`project-auto-work`](plugins/project-auto-work/) | Unattended audits that report but never write code — `test-tests` (mutation-based test-suite strength) and `test-app` (exploratory app testing). |
+| [`instruction-writing`](plugins/instruction-writing/) | Standards for the artifacts a harness reads — `writing-project-docs` (the canonical doc set) and `writing-skills` (skill authoring). |
 
 ## Installation
 
@@ -28,19 +30,20 @@ This repo is a Claude Code marketplace. Inside Claude Code, add the marketplace 
 /plugin install <plugin-name>@claude-dev-tools
 ```
 
-After installing, the plugin is recorded in your `.claude/settings.json`:
+`/plugin install` records the plugin as `"<plugin-name>@claude-dev-tools": true` under `enabledPlugins` in `.claude/settings.json`.
 
-```json
-{
-  "enabledPlugins": {
-    "<plugin-name>@claude-dev-tools": true
-  }
-}
+## Usage
+
+Most plugins ship skills. Describe the task and Claude loads the matching skill on its own; invoke one by name to force it:
+
+```
+/grill
+/project-review-docs
 ```
 
 ## Contributing
 
-See [docs/CODING.md](docs/CODING.md) for how to add a new plugin, [docs/OVERVIEW.md](docs/OVERVIEW.md) for the repo layout, [docs/TESTING.md](docs/TESTING.md) for running the test suites, and [docs/CHANGE-WORKFLOW.md](docs/CHANGE-WORKFLOW.md) for the commit and task-tracking workflow used in this repo.
+See [AGENTS.md](AGENTS.md) for the doc map and the workflow each task loads.
 
 ## License
 
