@@ -17,7 +17,7 @@ The `plugin.json` `dependencies` field is honored by the Claude Code marketplace
 Use the right pattern for each dependency kind:
 
 - **Plugin depends on another plugin** (e.g. a workflow plugin that reuses another plugin's skills): declare the dependency in `plugin.json` under `dependencies`. The harness handles install, scope, and chained enable/disable.
-- **Plugin depends on a CLI tool** (e.g. `project-explore` → `taskmgr`, `html-visualization` → `node`): the harness cannot install CLI binaries. Add a runtime check at skill load time (Phase 0) that tests whether the CLI is present and stops with guidance if it is missing. Do not add CLI tools to the `dependencies` field.
+- **Plugin depends on a CLI tool** (e.g. `tasks` → `taskmgr`, `html-visualization` → `node`): the harness cannot install CLI binaries. Add a runtime check at skill load time (Phase 0) that tests whether the CLI is present and stops with guidance if it is missing. Do not add CLI tools to the `dependencies` field.
 
 ## Locating a plugin's own files at runtime
 
@@ -90,7 +90,7 @@ Within a plugin, sibling skills share the same domain prefix so they sort and re
 
 Two exceptions allow a name that isn't domain-prefixed:
 
-- A "main" skill may take the plugin's own name (e.g. `project-explore:project-explore`, `github-releases:github-releases`).
+- A "main" skill may take the plugin's own name (e.g. `tasks:tasks`, `github-releases:github-releases`).
 - When a plugin's skills are each named for a distinct, self-sufficient concept that does the triggering on its own — a leading word, not a generic operation like `inspect` — the bare name is preferred, because a shared prefix would only dilute it (e.g. `challenge:grill`, `challenge:kiss`, `challenge:are-you-sure`).
 
 Either way, the qualified `<plugin>:<skill>` reference still carries the domain in its plugin segment.
@@ -110,7 +110,7 @@ disable-model-invocation: true
 ---
 ```
 
-This is the default schema — nearly every skill in the marketplace uses it. Examples: `tasks-work`, `project-explore`, `html-visualize-page`, the `project-execute` exec skills (`project-exec-testing`, `project-exec-releasing`, `project-exec-monitoring`), `project-explain`, the `project-review-*` lenses, `challenge:kiss`, `github-releases`, `keep-awake-inspect`, `test-tests`, and `test-app`.
+This is the default schema — nearly every skill in the marketplace uses it. Examples: `tasks-work`, `html-visualize-page`, the `project-execute` exec skills (`project-exec-testing`, `project-exec-releasing`, `project-exec-monitoring`), `project-explain`, the `project-review-*` lenses, `challenge:kiss`, `github-releases`, `keep-awake-inspect`, `test-tests`, and `test-app`.
 
 **Schema B — model-discoverable:**
 
