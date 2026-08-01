@@ -1,6 +1,6 @@
 ---
 name: project-review-codebase
-description: "Read-only codebase review across three dimensions — consistency, structure, architecture — via a multi-agent workflow that dedupes findings across dimensions and writes a standalone Markdown report with Mermaid diagrams; reports fixes, never edits."
+description: "Read-only review of production and test code across three dimensions — consistency, structure, architecture — via a multi-agent workflow that dedupes findings across dimensions and writes a standalone Markdown report with Mermaid diagrams; reports fixes, never edits."
 user-invocable: true
 disable-model-invocation: true
 argument-hint: "[low|medium|high|ultra] [what-to-review]"
@@ -10,6 +10,10 @@ Read-only codebase review across three dimensions — consistency, structure, an
 architecture. Launch the review workflow — do **not** review inline. The workflow
 returns a structured report plus a Markdown artifact; relay the report and write
 the artifact to a temp file.
+
+Test code is a subject here, not a backdrop: the dimensions cover test conventions and
+setup idioms, test-support layout and misplaced tests, and whether each module's failure
+modes are actually exercised.
 
 ## Run the workflow
 
@@ -86,9 +90,11 @@ there, produce the same Markdown file, and state that the workflow did not run.
 
 ## Not covered
 
-Documentation accuracy and staleness → `project-review-docs`; test quality →
-`project-review-tests`; pure formatting → linters. Challenging a single design
-decision interactively is `challenge:kiss` — the architecture dimension here is
+Documentation accuracy and staleness → `project-review-docs`; empirical test-suite
+strength — mutation kill rate, flakiness, unit-test isolation, whether the coverage
+report is honest → `project-auto-work:test-tests`, which proves what this skill can
+only read; pure formatting → linters. Challenging a single design decision
+interactively is `challenge:kiss` — the architecture dimension here is
 its audit-mode counterpart, not a replacement.
 
 **Implementing a candidate is not part of this skill.** Deepening candidates are

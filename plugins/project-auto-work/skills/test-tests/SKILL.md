@@ -1,6 +1,6 @@
 ---
 name: test-tests
-description: "Empirical test-suite strength audit — proves whether the tests detect injected bugs (mutation kill rate), stay quiet on non-bugs, are flake-free under reruns/shuffle/delays, and run fast. Reports findings and proposals; never keeps an edit."
+description: "Empirical test-suite strength audit — proves whether the tests detect injected bugs (mutation kill rate), stay quiet on non-bugs, are flake-free under reruns/shuffle/delays, run fast, are really isolated from external services, and whether the repo's own coverage report tells the truth. Reports findings and proposals; never keeps an edit."
 user-invocable: true
 disable-model-invocation: true
 argument-hint: "[low|medium|high|ultra] [path]"
@@ -23,8 +23,8 @@ Nothing is ever committed, no test is written, nothing is installed.
 
    If no level token is given, ask with `AskUserQuestion` (header "Level"):
    - `low` — the highest-churn components, a few mutants each. Quick signal.
-   - `medium` (recommended) — all components (capped), plus no-op and delay probes.
-     The standard audit.
+   - `medium` (recommended) — all components (capped), plus no-op and delay probes and
+     the two audit-wide probes (coverage-truth, unit isolation). The standard audit.
    - `high` — the deepest dials, plus an adversarial pass that refutes equivalent
      mutants. The trustworthy-numbers audit.
 
@@ -60,10 +60,11 @@ Nothing is ever committed, no test is written, nothing is installed.
    - `scriptPath`: `<SKILL_DIR>/workflows/test-tests.js`
    - `args`: `{ "repoRoot": "<path>", "scriptsDir": "<SKILL_DIR>/scripts", "level": "<level>", "scratchDir": "<the absolute path printed above>" }`
 
-   The workflow measures four axes — sensitivity (mutants must be killed),
+   The workflow measures six axes — sensitivity (mutants must be killed),
    specificity (no-op edits must not break tests), reliability (reruns, shuffle,
-   delay injection), speed — and aborts *with a remediation report* rather than
-   guessing. It aborts when:
+   delay injection), speed, isolation (unit tests must survive losing their external
+   environment), auditability (the repo's coverage report must tell the truth) — and
+   aborts *with a remediation report* rather than guessing. It aborts when:
 
    - the suite is too slow to finish inside the cap
    - the suite is red
@@ -118,9 +119,29 @@ its own docs like the test command, that emits a coverage summary as JSON on std
 conforming to [`references/coverage-summary-schema.md`](references/coverage-summary-schema.md)
 (a `files` array of repo-relative path + covered/uncovered line ranges). The workflow
 runs it, validates the output with `scripts/validate-coverage-summary.py`, and mutates
-only covered lines. No conforming command → the audit aborts with a remediation report
+covered lines. No conforming command → the audit aborts with a remediation report
 telling the user what command to add and how to document it. All format-specific work
 lives in the repo, never here.
+
+That command is also the one thing the audit would otherwise take entirely on trust, so
+from `medium` up it gets probed: a few mutants land on lines the summary calls *uncovered*,
+chosen where the summary is most likely wrong — code driven by subprocess or real-service
+tests, uncovered ranges inside otherwise-covered functions. A mutant killed there proves
+the command under-reports, and every mutation site in the run was drawn from that data.
+
+## The unit/integration split comes from the repository too
+
+A unit test needs no database, socket, or other external process. So the audit runs the
+unit slice once with that environment denied, and each test that fails only because the
+environment is gone is an integration test wearing a unit-test label — CI time spent under
+a name that promises speed.
+
+Which tests are unit tests is the repository's own claim: the baseline discovers the
+declaration from the same sources as the test command, and builds the denial recipe from
+the environment values the repo documents as required. Environment is the whole mechanism,
+and that is what makes the probe portable — any OS, no privileges, nothing installed. A
+repo that declares no split gets an `auditability` finding, and the probe is skipped rather
+than guessed at from file names.
 
 ## Verdicts
 
@@ -132,8 +153,20 @@ never as proof. Delay-injection findings are always candidates: a test failing u
 an added delay may be brittle or may encode a legitimate latency contract — the user
 decides.
 
+One cap sits outside that scoring: a killed coverage-truth mutant makes `strong`
+unreachable and the headline must say the coverage source is unreliable — `kill_rate` was
+measured on sites drawn from data the run just proved incomplete. A *surviving*
+coverage-truth mutant restates what the coverage summary already said and is never
+reported as a finding.
+
+The report also carries `untested_churn`: uncovered code in the most-churned production
+files, joined from data already on disk. It costs no suite run, carries no severity, and
+changes no score — it is churn-ranked, not risk-ranked. Relay it as the pointer list it is.
+
 ## Not covered
 
-Reading-based test-quality judgment (mock discipline, readability, what-matters
-reasoning) → `project-review-tests`. Writing or fixing tests → out of scope by
-design; the report's proposals name the missing tests, the user decides what to do.
+Reading-based judgment about tests — whether a mock hides the failure path nobody tests,
+whether an expensive test covers a risk a fast one cannot, whether the test code is
+maintainable → `project-review:project-review-codebase`, which reviews test code across
+its consistency, structure and architecture dimensions. Writing or fixing tests → out of
+scope by design; the report's proposals name the missing tests, the user decides what to do.

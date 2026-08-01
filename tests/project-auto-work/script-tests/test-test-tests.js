@@ -19,7 +19,10 @@
 //     the speed gate must win over the red gate
 //   - scoreabilityAbort distinguishes "nobody finished" from "finished with nothing to
 //     score", and abstains when any axis carries a measurement
-//   - notCheckedList names every axis that did not run
+//   - notCheckedList names every axis that did not run, including a probe that was
+//     budgeted but could not run — silence there would read as a passing measurement
+//   - the two audit-wide probes (coverage-truth, unit-isolation denial) are spawned once
+//     per audit, are level-gated, and a killed coverage-truth mutant caps the verdict
 //   - the bad-args bailout returns the diagnostic error object without spawning agents
 //   - a broken runtime (no agent hook) fails loudly instead of no-op
 
@@ -158,6 +161,13 @@ async function main() {
     normalizeArgs({ repoRoot: '/r', scriptsDir: '/s', level: 'HIGH' }).level);
 
   eq('dials: low skips no-op and delay probes', [0, 0], [dialFor('low').M, dialFor('low').D]);
+  // The two audit-wide probes are per AUDIT, not per component — their budget must not
+  // scale with the component count, or one repo-level question costs a suite run each time.
+  eq('dials: low skips both audit-wide probes', [0, false], [dialFor('low').T, dialFor('low').denial]);
+  eq('dials: the coverage-truth budget deepens with the level',
+    [0, 3, 5], ['low', 'medium', 'high'].map((l) => dialFor(l).T));
+  eq('dials: the denial probe runs at medium and above',
+    [false, true, true], ['low', 'medium', 'high'].map((l) => dialFor(l).denial));
   eq('dials: low serializes workers rather than probing hermeticity', false, dialFor('low').hermeticity);
   eq('dials: the verify pass runs at high, not below',
     [false, false, true], ['low', 'medium', 'high'].map((l) => dialFor(l).verify));
@@ -273,8 +283,25 @@ async function main() {
   truthy('notCheckedList: names the skipped hermeticity probe', has('hermeticity probe'));
   truthy('notCheckedList: names the skipped no-op probes', has('specificity'));
   truthy('notCheckedList: names the skipped delay injection', has('delay injection'));
+  truthy('notCheckedList: names the skipped coverage-truth probe', has('coverage-truth probe'));
+  truthy('notCheckedList: says the coverage report was taken on trust when unprobed',
+    lowList.some((s) => /taken on trust/.test(s)));
+  truthy('notCheckedList: names the skipped denial probe', has('unit-isolation denial probe'));
   truthy('notCheckedList: warns that worktree mode audits HEAD, not the dirty tree',
     has('uncommitted working-tree changes'));
+
+  // A probe that was BUDGETED but could not run is the dangerous case: with nothing said,
+  // its absence from the findings reads as a clean measurement.
+  const probeSkipped = notCheckedList({
+    ...baseNotChecked,
+    level: 'high',
+    dial: DIALS.high,
+    baseline: healthyBaseline(),
+    skippedComponents: [],
+    probes: { denial_skipped: 'the repository declares no unit/integration split' },
+  });
+  truthy('notCheckedList: a budgeted probe that could not run names its reason',
+    probeSkipped.some((s) => /declares no unit\/integration split/.test(s)));
 
   const highList = notCheckedList({
     ...baseNotChecked,
@@ -320,6 +347,13 @@ async function main() {
           noops: [], delays: [], flakes: [],
         };
       }
+      if (opts.label === 'coverage-truth') {
+        return {
+          ran: true, integrity_ok: true,
+          mutants: [{ file: 'src/a.js', line: 9, diff: 'd', why_suspected: 'driven by a subprocess test', outcome: 'KILLED', killed_by: 'test_x' }],
+        };
+      }
+      if (opts.label === 'denial') return { ran: true, failures: [{ test: 'test_db', error: 'connection refused' }] };
       if (opts.label.startsWith('verify-mutant:')) return { refuted: false };
       return { verdict: 'adequate', headline: 'h', findings: [], proposals: [], checked: 'c', not_checked: [] };
     };
@@ -359,6 +393,36 @@ async function main() {
     0, shallow.labels.filter((l) => l.startsWith('verify-mutant:')).length);
   eq('orchestration: the shallow run still reports', 'adequate',
     shallow.ret && shallow.ret.report && shallow.ret.report.verdict);
+
+  // ── the audit-wide probes ────────────────────────────────────────────────────
+  const declaredSplit = {
+    ...healthyBaseline(),
+    unit_split: { declared: true, unit_selector: 'make test-unit', deny_recipe: 'DATABASE_URL=postgres://127.0.0.1:1', source: 'CONTRIBUTING.md' },
+  };
+  const probed = await runAudit({ level: 'medium' }, { baseline: declaredSplit });
+  eq('probes: the coverage-truth probe runs once for the whole audit, not once per component',
+    1, probed.labels.filter((l) => l === 'coverage-truth').length);
+  eq('probes: the denial probe runs once when the repo declares a unit split',
+    1, probed.labels.filter((l) => l === 'denial').length);
+  truthy('probes: the declared unit selector reaches the denial agent',
+    probed.prompts.some((p) => p.includes('make test-unit')));
+  // The cap is the whole point of the probe: kill_rate was measured on sites drawn from
+  // coverage data this run just proved incomplete, so the top label is off the table.
+  truthy('probes: a killed coverage-truth mutant caps the verdict below strong',
+    probed.prompts.some((p) => /COVERAGE CAP \(binding\)/.test(p)));
+  truthy('probes: the cap tells the headline to say the coverage source is unreliable',
+    probed.prompts.some((p) => /coverage source is unreliable/.test(p)));
+
+  eq('probes: level=low spawns neither audit-wide probe',
+    0, (await runAudit({ level: 'low' })).labels.filter((l) => l === 'coverage-truth' || l === 'denial').length);
+
+  // With no declared split the probe is skipped with a reason rather than guessed at from
+  // file names — and the reason has to reach the report.
+  const noSplit = await runAudit({ level: 'medium' });
+  eq('probes: an undeclared unit split spawns no denial agent',
+    0, noSplit.labels.filter((l) => l === 'denial').length);
+  truthy('probes: the skipped denial probe carries its reason into the synthesis prompt',
+    noSplit.prompts.some((p) => /declares no unit\/integration split/.test(p)));
 
   // Each abort gate must produce a remediation report through the real pipeline, not crash.
   const redRun = await runAudit({ level: 'low' }, { baseline: { ...healthyBaseline(), green: false, red_details: 'test_x failed' } });

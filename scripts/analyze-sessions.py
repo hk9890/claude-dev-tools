@@ -110,6 +110,11 @@ SKILL_RENAME_ALIASES = {
     "project-quality:project-review-complexity": "challenge:kiss",
     "project-quality:project-review-consistency": "project-review:project-review-codebase",
     "project-quality:project-review-structure": "project-review:project-review-codebase",
+    # project-review-tests was removed and its lenses split two ways — reading-based test
+    # judgment into project-review-codebase, the empirical audit into
+    # project-auto-work:test-tests. A split has no single live successor to name, so its
+    # episodes keep the retired name and group together, exactly as project-review-all does
+    # above; a merge (one live target) points at the successor instead.
     "project-quality:project-review-tests": "project-review:project-review-tests",
     "project-quality:project-review-docs": "project-review:project-review-docs",
     # complexity-review plugin era (plugin later renamed; the skill now lives in challenge)
@@ -121,6 +126,7 @@ SKILL_RENAME_ALIASES = {
     "project-review:complexity-review": "challenge:kiss",
     "project-review:consistency-review": "project-review:project-review-codebase",
     "project-review:structure-review": "project-review:project-review-codebase",
+    # Both resolve to the retired project-review-tests name — see the note above it.
     "project-review:test-review": "project-review:project-review-tests",
     "project-review:project-review-test": "project-review:project-review-tests",
     # consistency + structure merged into the single codebase review skill; their
