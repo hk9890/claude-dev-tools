@@ -72,11 +72,22 @@ Change them at the authoritative site. This table is the index, not the source.
 ## The history stage
 
 The only stage that measures use rather than inferring it, and the only one that can be
-wrong in a way the others cannot: it is a **lagging indicator**. A session used the docs as
-they were that day, so every segment is filtered against how much its doc has changed since
-(`git log --numstat`, summed, over the doc's current length). Summing over-counts a line
-edited twice, which errs toward excluding — the safe direction for a filter that only has to
-be conservative. Rewrite a doc and its history goes quiet; that is correct.
+wrong in a way the others cannot: it is a **lagging indicator**.
+
+The filter is on the **route, not the doc**. What the stage concludes — routed / late /
+missed — is a claim about whether a file was *opened*, and that behaviour was driven by the
+`AGENTS.md` route, which is always in the agent's context, never by the doc's contents,
+which the agent had not seen. So a segment counts only when the route line for that doc
+reads exactly as it does today (whitespace-normalized; there is no threshold). Doc churn is
+deliberately ignored: filtering on it would discard evidence for a change that could not
+have affected the behaviour being measured.
+
+Getting this backwards is not a tuning error, it is a correctness error. An earlier build
+filtered on doc churn, which let sessions from before a route rewrite through — and then
+judged that old behaviour against the *new* route wording. Skips that happened under an
+advisory route were attributed to the agent because the route reads as an obligation today.
+Rewrite your routes and history goes quiet until new sessions accumulate; that silence is
+the honest answer.
 
 Two rules keep it honest:
 

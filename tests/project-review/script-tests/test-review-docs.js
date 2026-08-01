@@ -421,10 +421,23 @@ async function main() {
   eq('history: coverage reaches raw', 4, deep.ret && deep.ret.raw.history_coverage.coding.valid);
   truthy('history: the judge is told AGENTS.md is never Read, so its absence proves nothing',
     deep.prompts.some((p) => p.includes('AGENTS.md is always in an agent') && p.includes('never Read')));
-  truthy('history: an obligation route that is skipped accuses the agent, not the doc',
-    deep.prompts.some((p) => p.includes('obligation route + misses => attribution "agent"')));
-  truthy('history: an advisory route that is skipped accuses the doc',
-    deep.prompts.some((p) => p.includes('advisory (or absent) route + misses => attribution "doc"')));
+  truthy('history: a well-edged obligation route that is skipped accuses the agent, not the doc',
+    deep.prompts.some((p) => p.includes('obligation route WITH a recognizable edge + misses => attribution "agent"')));
+  truthy('history: an advisory or edgeless route that is skipped accuses the doc',
+    deep.prompts.some((p) => p.includes('advisory, edgeless, or absent route + misses => attribution "doc"')));
+  // A route can satisfy every written rule and still be unfollowable, because naming an
+  // action is not the same as there being a moment the agent notices crossing it. Without
+  // this the case is indistinguishable from laziness and is blamed on the agent forever.
+  truthy('history: the judge must locate the turn the trigger fired',
+    deep.prompts.some((p) => p.includes('TRIGGER EDGE') && p.includes('find the exact turn at which the route')));
+  truthy('history: an edgeless MUST is treated as advisory, not as a correct route',
+    deep.prompts.some((p) => p.includes('Set route_wording to "advisory" for an edgeless trigger even when it is phrased as a MUST')));
+  truthy('history: the judge is told a miss never proves the doc redundant',
+    deep.prompts.some((p) => p.includes('could not know what the doc contained before opening it')));
+  truthy('read-review: AGENTS.md is judged for trigger edge without needing transcripts',
+    deep.prompts.some((p) => p.includes('TRIGGER EDGE') && p.includes('is there a single, recognizable instant')));
+  truthy('read-review: the AGENTS.md agent is given both a sharp and an edgeless example',
+    deep.prompts.some((p) => p.includes('before ANY git operation') && p.includes('before searching this repository')));
 
   const medium = await runAudit({ level: 'medium' });
   eq('orchestration: medium runs no execution route', 0, medium.labels.filter((l) => l.startsWith('gen:')).length);

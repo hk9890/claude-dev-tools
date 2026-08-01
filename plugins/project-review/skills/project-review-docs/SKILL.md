@@ -65,9 +65,11 @@ docs inline. The workflow returns a structured report; relay it.
    - The history phase reads this repository's past Claude Code sessions and asks whether
      the doc each route points at was actually opened, and opened *before* the work. It
      writes only to the scratch dir. Findings need at least 3 comparable sessions, and a
-     session whose doc has changed much since is dropped — so a freshly rewritten doc set
-     yields little history, which is correct rather than broken. A repo with no sessions
-     skips the phase: no evidence is a gap in the audit, never a finding about the docs.
+     session is dropped when the `AGENTS.md` route it ran under has since been reworded —
+     that session is evidence about the old route, not the current one. Rewrite your routes
+     and history goes quiet until new sessions accumulate, which is correct rather than
+     broken. A repo with no sessions skips the phase: no evidence is a gap in the audit,
+     never a finding about the docs.
    - The execution phase (`ultra`) runs a cold agent **in the live working tree** — so it
      audits your uncommitted doc edits, not `HEAD` — under a hard read-only contract.
      Tier-C (destructive) tasks are never executed.

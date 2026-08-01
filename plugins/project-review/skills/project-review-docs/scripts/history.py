@@ -3,7 +3,7 @@
 
 Usage:
     history.py prompts  <repo-root> --out <dir> [--limit N] [--batch-size B]
-    history.py evidence <repo-root> --scratch <dir> [--per-use-case K] [--churn-max R]
+    history.py evidence <repo-root> --scratch <dir> [--per-use-case K]
 
 The history stage asks one question: for each documented use case, did past sessions
 in this repository open the doc `AGENTS.md` routes them to, and did they open it
@@ -15,9 +15,9 @@ What is a *fact* here (and therefore lives in this script, never in an agent):
   - which session transcripts belong to this repository (including its worktrees)
   - the ordered user messages of each session, harness scaffolding stripped
   - which files each assistant turn read or wrote, and which commands it ran
-  - how much a doc has changed since a segment ran, and therefore whether that
-    segment is still evidence about the doc's *current* text
-  - which segments survive that filter, and the K most recent per use case
+  - whether the AGENTS.md route to a doc still reads exactly as it did when a segment
+    ran, and therefore whether that segment is evidence about today's route
+  - which segments survive that filter, newest first
 
 What is NOT a fact and is deliberately absent: what a user message was *about*.
 Intent is judgment. A model labels the messages between the two subcommands — this
@@ -72,6 +72,10 @@ _STRIP_RE = re.compile(
 
 WRITE_TOOLS = {"Edit", "Write", "NotebookEdit"}
 READ_TOOLS = {"Read"}
+
+# How many candidate segments to collect per requested one. The judge discards the
+# ones that turn out not to be that kind of work; this is the slack that leaves.
+COLLECT_FACTOR = 2
 
 
 # ---------------------------------------------------------------------------
@@ -308,37 +312,61 @@ def build_segments(session, per_turn):
     return segments
 
 
-def doc_churn(repo_root, doc, since_ts):
-    """Lines changed in `doc` since `since_ts`, over its current length.
+_AGENTS_CACHE = {}
 
-    Summing --numstat double-counts a line edited twice, which overstates churn and
-    therefore excludes borderline segments. That is the safe direction: the filter
-    only has to be conservative, not exact.
+
+def agents_md_at(repo_root, commit):
+    """AGENTS.md as of `commit`, or the working tree when commit is None."""
+    key = (repo_root, commit)
+    if key in _AGENTS_CACHE:
+        return _AGENTS_CACHE[key]
+    if commit is None:
+        try:
+            with open(os.path.join(repo_root, "AGENTS.md"), "r", errors="replace") as fh:
+                content = fh.read()
+        except OSError:
+            content = None
+    else:
+        content = git(repo_root, "show", "%s:AGENTS.md" % commit) or None
+    _AGENTS_CACHE[key] = content
+    return content
+
+
+def route_for(content, doc):
+    """The AGENTS.md line(s) routing to `doc`. '' when there is no route, None if no file."""
+    if content is None:
+        return None
+    hits = [ln.strip() for ln in content.splitlines() if doc in ln]
+    return "\n".join(hits)
+
+
+def route_stability(repo_root, doc, since_ts, now_route):
+    """Is this segment still evidence about the route that exists today?
+
+    The stage concludes routed / late / missed — a claim about whether a file was
+    *opened*, never about what was inside it. That behaviour was driven by the
+    AGENTS.md route, which is always in the agent's context, and not by the doc's
+    contents, which it had not seen. So the route is the thing that has to have held
+    still; how much the doc itself churned is irrelevant to the question being asked,
+    and filtering on it discards evidence for no reason. Route text is compared
+    exactly (whitespace-normalized) — there is no threshold to tune.
     """
-    abs_doc = os.path.join(repo_root, doc)
-    if not os.path.isfile(abs_doc):
-        return {"exists": False}
-    try:
-        with open(abs_doc, "r", errors="replace") as fh:
-            current = sum(1 for _ in fh)
-    except OSError:
-        current = 0
-    changed = 0
-    if since_ts:
-        out = git(repo_root, "log", "--since=" + since_ts, "--numstat",
-                  "--format=", "--", doc)
-        for line in out.splitlines():
-            parts = line.split("\t")
-            if len(parts) >= 2:
-                for cell in parts[:2]:
-                    if cell.isdigit():
-                        changed += int(cell)
-    return {
-        "exists": True,
-        "current_lines": current,
-        "changed_since": changed,
-        "ratio": (changed / current) if current else 0.0,
-    }
+    if not since_ts:
+        return {"stable": False, "reason": "segment has no timestamp"}
+    commit = git(repo_root, "rev-list", "-1", "--before=" + since_ts, "HEAD")
+    if not commit:
+        return {"stable": False, "reason": "repository has no commit at segment time"}
+    then_route = route_for(agents_md_at(repo_root, commit), doc)
+    if then_route is None:
+        return {"stable": False, "reason": "AGENTS.md did not exist yet"}
+    if not then_route:
+        return {"stable": False, "reason": "no route to this doc at the time"}
+    if not now_route:
+        return {"stable": False, "reason": "no route to this doc today"}
+    if " ".join(then_route.split()) != " ".join(now_route.split()):
+        return {"stable": False, "reason": "route reworded since",
+                "then": then_route[:200], "now": now_route[:200]}
+    return {"stable": True, "reason": "route unchanged", "route": now_route[:300]}
 
 
 def segment_projection(path, start_turn, end_turn, doc):
@@ -386,41 +414,49 @@ def cmd_evidence(args):
         for seg in build_segments(session, per_turn):
             by_use_case[seg["use_case"]].append(seg)
 
-    result = {"repo_root": root, "churn_max": args.churn_max,
-              "per_use_case": args.per_use_case, "use_cases": []}
+    # Over-collect. The classifier labels from user prose alone, so some segments turn
+    # out not to be that kind of work at all; the judge discards those, but only after
+    # they have taken a slot. Handing it COLLECT_FACTOR x the target means discarding
+    # two still leaves a verdict. Costs rows in a JSON file, not agents.
+    target = max(1, args.per_use_case) * COLLECT_FACTOR
+
+    result = {"repo_root": root, "per_use_case": args.per_use_case,
+              "candidates_per_use_case": target, "use_cases": []}
 
     for use_case, doc in sorted(USE_CASE_DOCS.items()):
         segments = sorted(by_use_case[use_case],
                           key=lambda s: s["ts"] or "", reverse=True)
         entry = {"use_case": use_case, "doc": doc, "segments": [],
-                 "coverage": {"labelled": len(segments), "valid": 0,
-                              "partial": 0, "excluded_churn": 0}}
+                 "coverage": {"labelled": len(segments), "examined": 0, "valid": 0,
+                              "excluded_route_changed": 0}}
         # A use case with no doc is not reviewed at all — the standard makes topic
         # docs optional, so an absent one is a choice, never a finding.
         if not os.path.isfile(os.path.join(args.repo_root, doc)):
             entry["coverage"]["doc_missing"] = True
             result["use_cases"].append(entry)
             continue
-        churn_cache = {}
+        now_route = route_for(agents_md_at(args.repo_root, None), doc)
+        entry["route_today"] = (now_route or "")[:300]
+        stab_cache = {}
         for seg in segments:
-            churn = churn_cache.get(seg["ts"])
-            if churn is None:
-                churn = doc_churn(args.repo_root, doc, seg["ts"])
-                churn_cache[seg["ts"]] = churn
-            if churn["ratio"] > args.churn_max:
-                entry["coverage"]["excluded_churn"] += 1
+            # Stop as soon as there are enough candidates. Walking the rest only
+            # inflated the exclusion count and spent a git call per segment.
+            if len(entry["segments"]) >= target:
+                break
+            entry["coverage"]["examined"] += 1
+            stab = stab_cache.get(seg["ts"])
+            if stab is None:
+                stab = route_stability(args.repo_root, doc, seg["ts"], now_route)
+                stab_cache[seg["ts"]] = stab
+            if not stab["stable"]:
+                entry["coverage"]["excluded_route_changed"] += 1
                 continue
-            if len(entry["segments"]) >= args.per_use_case:
-                continue
-            partial = churn["changed_since"] > 0
             entry["coverage"]["valid"] += 1
-            entry["coverage"]["partial"] += 1 if partial else 0
             entry["segments"].append({
                 "session_id": seg["session_id"],
                 "ts": seg["ts"],
                 "prompt": seg["prompt"],
-                "partial_evidence": partial,
-                "churn": churn,
+                "route_stability": stab,
                 "activity": segment_projection(
                     seg["file"], seg["start_turn"], seg["end_turn"], doc),
             })
@@ -433,6 +469,8 @@ def cmd_evidence(args):
         "evidence_file": out,
         "sessions_scanned": len(files),
         "sessions_labelled": len(labels),
+        "per_use_case": args.per_use_case,
+        "candidates_per_use_case": target,
         "coverage": {e["use_case"]: e["coverage"] for e in result["use_cases"]},
     }
     json.dump(summary, sys.stdout, indent=1)
@@ -460,7 +498,6 @@ def main():
     e.add_argument("repo_root")
     e.add_argument("--scratch", required=True)
     e.add_argument("--per-use-case", type=int, default=3)
-    e.add_argument("--churn-max", type=float, default=0.25)
     e.add_argument("--projects-dir", default=default_projects)
     e.set_defaults(func=cmd_evidence)
 

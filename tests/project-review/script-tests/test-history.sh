@@ -50,6 +50,14 @@ git -C "$REPO" config user.email t@t.t
 git -C "$REPO" config user.name t
 printf '# Coding\n\nRules go here.\nMore rules.\n' > "$REPO/docs/CODING.md"
 printf '# Testing\n\nRun the suite.\n' > "$REPO/docs/TESTING.md"
+# The route is what the filter compares, so the fixture needs a real AGENTS.md.
+cat > "$REPO/AGENTS.md" <<'EOF'
+# AGENTS.md — fixture routing
+
+**MUST read [docs/CODING.md](docs/CODING.md) before creating or editing ANY file under `src/`.**
+
+**MUST read [docs/TESTING.md](docs/TESTING.md) before writing a test.**
+EOF
 git -C "$REPO" add -A >/dev/null 2>&1
 # Date the first commit BEFORE the fixture session below. A doc created after a session
 # ran cannot be evidence about that session, and the churn filter correctly excludes it —
@@ -107,7 +115,7 @@ EOF
 
 E=$(python3 "$SCRIPT" evidence "$REPO" --scratch "$OUT" --projects-dir "$PROJECTS" --per-use-case 3 2>&1)
 assert_eq "evidence: the labelled segment is picked up" "1" "$(json_val "d['coverage']['coding']['labelled']" <<< "$E")"
-assert_eq "evidence: an unchanged doc keeps its segment valid" "1" "$(json_val "d['coverage']['coding']['valid']" <<< "$E")"
+assert_eq "evidence: an unchanged route keeps its segment valid" "1" "$(json_val "d['coverage']['coding']['valid']" <<< "$E")"
 assert_eq "evidence: an unlabelled use case stays empty" "0" "$(json_val "d['coverage']['testing']['labelled']" <<< "$E")"
 
 EV="$OUT/evidence.json"
@@ -116,20 +124,32 @@ assert_eq "evidence: the doc read is located" "5" "$(seg "['activity']['first_do
 assert_eq "evidence: the first action of that kind is located" "4" "$(seg "['activity']['first_work_turn']")"
 assert_eq "evidence: writes are counted" "1" "$(seg "['activity']['counts']['writes']")"
 assert_eq "evidence: commands are counted" "1" "$(seg "['activity']['counts']['commands']")"
-assert_eq "evidence: an untouched doc is not partial evidence" "False" "$(seg "['partial_evidence']")"
+assert_eq "evidence: a stable route is recorded as such" "True" "$(seg "['route_stability']['stable']")"
 
-# Churn filter: rewrite the doc now, and the old segment stops being evidence about the
-# text that exists today. This is the lagging-indicator guard.
-printf '# Coding\n\nCompletely rewritten.\nAnd again.\nAnd more.\n' > "$REPO/docs/CODING.md"
+# The stage concludes "was the doc opened", which the route drives and the doc's own
+# contents do not. Rewriting the doc must therefore NOT discard the evidence.
+printf '# Coding\n\nCompletely rewritten.\nAnd again.\nAnd more.\nAnd more still.\n' > "$REPO/docs/CODING.md"
 git -C "$REPO" commit -qam rewrite >/dev/null 2>&1
-E2=$(python3 "$SCRIPT" evidence "$REPO" --scratch "$OUT" --projects-dir "$PROJECTS" --churn-max 0.25 2>&1)
-assert_eq "evidence: a rewritten doc excludes its stale segments" "1" \
-  "$(json_val "d['coverage']['coding']['excluded_churn']" <<< "$E2")"
-assert_eq "evidence: and leaves none standing" "0" "$(json_val "d['coverage']['coding']['valid']" <<< "$E2")"
-# A generous threshold keeps the segment, flagged rather than silently trusted.
-E3=$(python3 "$SCRIPT" evidence "$REPO" --scratch "$OUT" --projects-dir "$PROJECTS" --churn-max 9 2>&1)
-assert_eq "evidence: a tolerated change keeps the segment" "1" "$(json_val "d['coverage']['coding']['valid']" <<< "$E3")"
-assert_eq "evidence: but marks it partial rather than clean" "1" "$(json_val "d['coverage']['coding']['partial']" <<< "$E3")"
+E2=$(python3 "$SCRIPT" evidence "$REPO" --scratch "$OUT" --projects-dir "$PROJECTS" 2>&1)
+assert_eq "evidence: rewriting the doc does not discard the segment" "1" \
+  "$(json_val "d['coverage']['coding']['valid']" <<< "$E2")"
+
+# Reword the ROUTE, and the segment stops being evidence about today's route.
+sed -i 's|before creating or editing ANY file|before you think about code|' "$REPO/AGENTS.md"
+git -C "$REPO" commit -qam reroute >/dev/null 2>&1
+E3=$(python3 "$SCRIPT" evidence "$REPO" --scratch "$OUT" --projects-dir "$PROJECTS" 2>&1)
+assert_eq "evidence: rewording the route excludes the stale segment" "1" \
+  "$(json_val "d['coverage']['coding']['excluded_route_changed']" <<< "$E3")"
+assert_eq "evidence: and leaves none standing" "0" "$(json_val "d['coverage']['coding']['valid']" <<< "$E3")"
+assert_contains "evidence: today's route is recorded for the judge" "before you think about code" \
+  "$(python3 -c "
+import json; d=json.load(open('$EV'))
+print([u for u in d['use_cases'] if u['use_case']=='coding'][0].get('route_today',''))")"
+
+# Over-collection: the judge discards segments that turn out not to be that kind of
+# work, so the script hands it more candidates than the caller asked for.
+assert_eq "evidence: candidates are over-collected past the requested count" "6" \
+  "$(json_val "d['candidates_per_use_case']" <<< "$E2")"
 
 # A use case whose doc does not exist is never reviewed and never reported missing.
 rm "$REPO/docs/TESTING.md"

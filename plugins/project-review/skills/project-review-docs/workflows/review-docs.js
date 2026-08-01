@@ -480,6 +480,15 @@ if (typeof agent === 'function') {
     if (f.path === 'AGENTS.md') {
       return frame +
         `\nThis is the routing layer. Judge it as a router: every route an obligation naming the triggering action (the Obligation rule), no procedure that belongs in a destination, and short enough to scan in the first seconds of a task.\n` +
+        // Naming an action is necessary but not sufficient. A route can satisfy every
+        // written rule and still be unfollowable because the action it names has no first
+        // instant. Reading the route is the only way to catch this — the history stage can
+        // confirm it, but only where transcripts exist.
+        `\nTRIGGER EDGE — apply this to EVERY route, and it is separate from whether the route says MUST:\n` +
+        `Ask: is there a single, recognizable instant at which an agent knows it is about to do this? Then decide.\n` +
+        `- Has an edge: "before creating or editing ANY file under \`src/\`" (the first Edit on that path), "before ANY git operation" (the first git command), "before cutting a release".\n` +
+        `- Has NO edge: "before searching this repository" — searching is not an act with a beginning; an agent greps within seconds of starting and never has a moment where "I am now beginning to search" occurs. Likewise "before judging whether a change is verified", or any trigger phrased as a symptom the agent must first diagnose ("when X will not connect"), which by construction fires only after the work is underway.\n` +
+        `An edgeless trigger is an Obligation finding even when the route is a correctly worded MUST: a diligent agent cannot obey it. Severity major. The fix names an action with a detectable first instant — e.g. replace "before searching this repository" with "before your first grep, rg, or Glob in this repo" — and it replaces the existing trigger rather than being added beside it.\n` +
         contractBlock(f) +
         `\nDo not run commands. Read-only. Return findings with concrete evidence. Empty array if it is genuinely clean.`
     }
@@ -599,9 +608,17 @@ if (typeof agent === 'function') {
           `AGENTS.md is always in an agent's context and is never Read, so its absence from the reads means nothing. The destination doc is the whole signal.\n\n` +
           `The route's wording in AGENTS.md is:\n  ${routeText[doc] ? JSON.stringify(routeText[doc]) : '(no route to this doc found)'}\n` +
           `Classify it as: obligation (a MUST naming the action that triggers it), advisory ("see X", "load X to understand Y", or anything an agent reads as skippable), or absent.\n\n` +
+          // A route can be a flawless obligation and still be unfollowable, because naming
+          // an action is not the same as there being a moment the agent notices crossing it.
+          // Without this test that case is indistinguishable from laziness and gets blamed
+          // on the agent forever, so the one defect reading AGENTS.md cannot reveal stays hidden.
+          `TRIGGER EDGE — apply this before attributing any miss. For each segment, find the exact turn at which the route's named trigger fired.\n` +
+          `- If you can point at one ("turn 213, the first git command" for a route reading "before ANY git operation"), the trigger has a recognizable edge and the agent simply crossed it.\n` +
+          `- If no single unambiguous moment exists — the route names something diffuse that has no starting instant, like "before searching this repository" or "before judging whether a change is verified", which an agent is doing continuously and never begins — then the trigger has NO edge. A diligent agent would miss it too.\n` +
+          `Set route_wording to "advisory" for an edgeless trigger even when it is phrased as a MUST: it fails the Obligation rule for the same reason an advisory route does, and its fix is the same kind of edit — name an action with a detectable first instant (e.g. "before your first grep/rg/Glob in this repo"). Say so in the finding, and route it to AGENTS.md.\n\n` +
           `ATTRIBUTION — this is the judgment that decides whether the finding is worth anything:\n` +
-          `- advisory (or absent) route + misses => attribution "doc", a real finding: the Advisory-route failure mode, now measured rather than guessed. Severity major.\n` +
-          `- obligation route + misses => attribution "agent". The route is written correctly and was skipped anyway; report it at minor as an observation about agent behaviour, NOT as a defect in the doc.\n` +
+          `- advisory, edgeless, or absent route + misses => attribution "doc", a real finding against AGENTS.md: the Advisory-route failure mode, now measured rather than guessed. Severity major.\n` +
+          `- obligation route WITH a recognizable edge + misses => attribution "agent". The route is written correctly and was skipped anyway; report it at minor as an observation about agent behaviour, NOT as a defect in the doc. A miss here is never evidence the doc is redundant — the agent could not know what the doc contained before opening it.\n` +
           `- everything routed => attribution "none", severity none.\n\n` +
           `EVIDENCE BAR: ${bar.canFind ? `${bar.reason} — a finding is allowed.` : `${bar.reason} — report the counts and set severity "none" and attribution "insufficient-evidence". Do not raise a finding from this sample.`}\n\n` +
           `Never treat "no sessions" or "few sessions" as a defect in the doc. Return the counts, the route classification, and the finding if one is warranted.`,
