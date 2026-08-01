@@ -21,6 +21,9 @@
 #   - Origin is validated against the request's Host header, not a fixed loopback origin
 #   - an https Origin matching the Host is accepted (TLS-terminating forwarders)
 #   - an Origin naming a different host is still rejected
+#   - a submit whose Host is not a name this machine answers as is refused (DNS rebinding)
+#   - localhost, 127.0.0.1, the machine hostname and its interface addresses are allow-listed
+#   - --host adds a name to the allow-list; an unparseable value fails at startup
 set -uo pipefail
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
@@ -929,7 +932,11 @@ test_origin_matches_host_header() {
   # check ever regresses to a 403 the wait below must still terminate. Without
   # it a failing assertion would hang run-all.sh for the 1800s default instead
   # of reporting the regression this test exists to catch.
-  start_server "$tmp_html" --timeout-sec 10
+  #
+  # --host: devbox.example is not a name this machine answers as, so the Host
+  # allow-list refuses it by default. Allow-listing it is what puts this test
+  # back on the Origin check it exists to exercise.
+  start_server "$tmp_html" --timeout-sec 10 --host devbox.example
 
   local html token
   html=$(curl -s --max-time 10 "$BASE_URL/")
@@ -1007,13 +1014,15 @@ test_tls_forwarder_origin_allowed() {
   tmp_html=$(mktemp --suffix=.html)
   make_html "$tmp_html"
 
-  start_server "$tmp_html" --timeout-sec 10
+  local fwd_host="myrepo-8080.app.github.dev"
+
+  # A forwarder's public host is not derivable from this machine, so it reaches
+  # the allow-list only via --host. That is the documented cost of the pin.
+  start_server "$tmp_html" --timeout-sec 10 --host "$fwd_host"
 
   local html token
   html=$(curl -s --max-time 10 "$BASE_URL/")
   token=$(extract_token_from_html "$html")
-
-  local fwd_host="myrepo-8080.app.github.dev"
 
   local status
   status=$(curl -s --max-time 10 -o /dev/null -w '%{http_code}' \
@@ -1044,7 +1053,10 @@ test_foreign_origin_still_rejected_with_host() {
   tmp_html=$(mktemp --suffix=.html)
   make_html "$tmp_html"
 
-  start_server "$tmp_html"
+  # Allow-list the Host so the 403 this asserts can only come from the Origin
+  # comparison. Without it the Host pin would reject first and the test would
+  # pass without ever reaching the check it names.
+  start_server "$tmp_html" --host devbox.example
 
   local html token
   html=$(curl -s --max-time 10 "$BASE_URL/")
@@ -1068,6 +1080,144 @@ test_foreign_origin_still_rejected_with_host() {
     return
   fi
   ok "foreign origin vs host: Origin naming another host returns 403"
+}
+
+# 23. A submit addressed to a host this machine does not answer as is refused,
+#     even though every other check passes. This is the DNS-rebinding shape: the
+#     browser believes it is same-origin, so Origin agrees with Host and
+#     Sec-Fetch-Site says same-origin. Only the Host pin can tell them apart.
+test_rebound_host_rejected() {
+  local tmp_html
+  tmp_html=$(mktemp --suffix=.html)
+  make_html "$tmp_html"
+
+  start_server "$tmp_html"
+
+  local html token
+  html=$(curl -s --max-time 10 "$BASE_URL/")
+  token=$(extract_token_from_html "$html")
+
+  local rebound_host="attacker.example:${SERVER_PORT}"
+
+  local status
+  status=$(curl -s --max-time 10 -o /dev/null -w '%{http_code}' \
+    -X POST \
+    -H "Host: $rebound_host" \
+    -H "Content-Type: application/json" \
+    -H "X-CSRF-Token: $token" \
+    -H "Origin: http://$rebound_host" \
+    -H "Sec-Fetch-Site: same-origin" \
+    -d "$(valid_payload)" \
+    "$BASE_URL/submit")
+
+  if [[ "$status" != "403" ]]; then
+    fail "rebound host: expected 403 for an unlisted Host, got $status"
+    kill_server
+    rm -f "$tmp_html" "${FEEDBACK_FILE:-}" 2>/dev/null
+    return
+  fi
+  ok "rebound host: unlisted Host returns 403 despite a matching Origin"
+
+  # A refused submit must not consume the one-shot: the real user still has to
+  # be able to submit afterwards.
+  if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+    fail "rebound host: server exited after a refused submit (should keep running)"
+    SERVER_PID=""
+    rm -f "$tmp_html"
+    return
+  fi
+  ok "rebound host: server keeps running after a refused submit"
+
+  if [[ -f "$FEEDBACK_FILE" ]]; then
+    fail "rebound host: feedback file written for a refused submit"
+    rm -f "$FEEDBACK_FILE"
+  else
+    ok "rebound host: no feedback file written for a refused submit"
+  fi
+
+  kill_server
+  rm -f "$tmp_html"
+}
+
+# 24. The default allow-list carries the names a local browser actually uses.
+#     Each is asserted on its own server so a single accepted submit does not
+#     end the run for the others.
+test_default_hosts_allowed() {
+  local lan_ip
+  lan_ip=$(node -e '
+    const nets = require("os").networkInterfaces();
+    for (const list of Object.values(nets)) {
+      for (const n of list || []) {
+        if (n.family === "IPv4" && !n.internal) { process.stdout.write(n.address); process.exit(0); }
+      }
+    }
+  ')
+
+  local hosts=(localhost 127.0.0.1)
+  hosts+=("$(node -e 'process.stdout.write(require("os").hostname())')")
+  if [[ -n "$lan_ip" ]]; then
+    hosts+=("$lan_ip")
+  else
+    skip "default hosts: no non-loopback IPv4 interface to check"
+  fi
+
+  local host_name
+  for host_name in "${hosts[@]}"; do
+    local tmp_html
+    tmp_html=$(mktemp --suffix=.html)
+    make_html "$tmp_html"
+
+    start_server "$tmp_html" --timeout-sec 10
+
+    local html token
+    html=$(curl -s --max-time 10 "$BASE_URL/")
+    token=$(extract_token_from_html "$html")
+
+    local status
+    status=$(curl -s --max-time 10 -o /dev/null -w '%{http_code}' \
+      -X POST \
+      -H "Host: ${host_name}:${SERVER_PORT}" \
+      -H "Content-Type: application/json" \
+      -H "X-CSRF-Token: $token" \
+      -H "Origin: http://${host_name}:${SERVER_PORT}" \
+      -d "$(valid_payload)" \
+      "$BASE_URL/submit")
+
+    wait "$SERVER_PID" 2>/dev/null || true
+    SERVER_PID=""
+    rm -f "$tmp_html" "${FEEDBACK_FILE:-}" 2>/dev/null
+
+    if [[ "$status" != "200" ]]; then
+      fail "default hosts: Host '$host_name' expected 200, got $status"
+      continue
+    fi
+    ok "default hosts: '$host_name' is on the allow-list"
+  done
+}
+
+# 25. A --host value that is not a hostname is a typo the user must see now, not
+#     as a 403 at submit time.
+test_invalid_host_flag_exits_nonzero() {
+  local tmp_html
+  tmp_html=$(mktemp --suffix=.html)
+  make_html "$tmp_html"
+
+  local output exit_code=0
+  output=$(node "$SERVER" "$tmp_html" --host 'not a host' 2>&1) || exit_code=$?
+
+  rm -f "$tmp_html"
+
+  if [[ "$exit_code" -eq 0 ]]; then
+    fail "invalid --host: expected non-zero exit, got 0"
+    return
+  fi
+  ok "invalid --host: server exits non-zero at startup"
+
+  if ! printf '%s' "$output" | grep -q -- '--host'; then
+    fail "invalid --host: error message does not name --host (got: $output)"
+    return
+  fi
+  ok "invalid --host: error message names the offending flag"
 }
 
 # ── Run all tests ─────────────────────────────────────────────────────────────
@@ -1098,6 +1248,9 @@ test_origin_matches_host_header
 test_printed_url_is_fetchable
 test_tls_forwarder_origin_allowed
 test_foreign_origin_still_rejected_with_host
+test_rebound_host_rejected
+test_default_hosts_allowed
+test_invalid_host_flag_exits_nonzero
 
 printf '\n'
 printf 'Results: %d passed, %d failed, %d skipped\n' "$PASS" "$FAIL" "$SKIP"

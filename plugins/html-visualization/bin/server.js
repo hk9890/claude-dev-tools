@@ -5,10 +5,10 @@
  * Shared by every mode of the html-visualize skill (ask, feedback, visualize, …).
  *
  * Usage:
- *   node server.js <html-file> [--port N] [--timeout-sec N] [--no-wait]
+ *   node server.js <html-file> [--port N] [--timeout-sec N] [--no-wait] [--host NAME]...
  *
- * Binds every interface on port 0 (or --port N), serves the HTML document at
- * GET /, shared assets at GET /assets/*, accepts authenticated feedback at
+ * Binds every interface on a random port (or --port N), serves the HTML document
+ * at GET /, shared assets at GET /assets/*, accepts authenticated feedback at
  * POST /submit, writes feedback JSON and exits 0 on first successful submit.
  *
  * The bind is all-interfaces so the page is reachable from another machine —
@@ -17,6 +17,11 @@
  * Consequence: anyone who can reach the port can read the page and submit
  * through it. GET / hands out the CSRF token, so that token authenticates the
  * page, not the person — reachability is the whole access boundary.
+ *
+ * POST /submit narrows that boundary on one axis: the request must address this
+ * machine by a name it actually answers as (see "Host allow-list" below). Pass
+ * --host NAME, repeatable, to add a name the allow-list cannot derive — an alias,
+ * an mDNS/VPN name, or the public host of a TLS-terminating forwarder.
  *
  * os.hostname() is advertised as-is; whether it resolves for the client is the
  * environment's business, not this server's. When it does not (a container ID,
@@ -55,7 +60,7 @@ const crypto = require('node:crypto');
 const args = process.argv.slice(2);
 
 if (args.length === 0 || args[0] === '--help') {
-  console.error('Usage: node server.js <html-file> [--port N] [--timeout-sec N] [--no-wait]');
+  console.error('Usage: node server.js <html-file> [--port N] [--timeout-sec N] [--no-wait] [--host NAME]...');
   process.exit(1);
 }
 
@@ -63,6 +68,7 @@ let htmlFile = null;
 let listenPort = 0;
 let timeoutSec = 1800;
 let noWait = false;
+const extraHosts = [];
 
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '--port' && args[i + 1]) {
@@ -71,6 +77,8 @@ for (let i = 0; i < args.length; i++) {
     timeoutSec = parseInt(args[++i], 10);
   } else if (args[i] === '--no-wait') {
     noWait = true;
+  } else if (args[i] === '--host' && args[i + 1]) {
+    extraHosts.push(args[++i]);
   } else if (!args[i].startsWith('--')) {
     htmlFile = args[i];
   }
@@ -101,6 +109,62 @@ const feedbackFile = path.join(path.dirname(htmlFile), `${htmlBasename}.feedback
 // ── CSRF token ─────────────────────────────────────────────────────────────
 
 const csrfToken = crypto.randomBytes(32).toString('base64url');
+
+// ── Host allow-list ────────────────────────────────────────────────────────
+
+/**
+ * Canonicalize a Host-header-shaped value to a bare hostname: drops the port,
+ * lowercases, unwraps [..] around an IPv6 literal and compresses it, and strips
+ * an IPv6 zone id. Returns null for anything that will not parse.
+ */
+function normalizeHost(value) {
+  const withoutZone = String(value).replace(/%[^\]\s:]+/, '');
+  let hostname;
+  try {
+    hostname = new URL(`http://${withoutZone}`).hostname;
+  } catch (_) {
+    return null;
+  }
+  if (hostname.startsWith('[') && hostname.endsWith(']')) {
+    hostname = hostname.slice(1, -1);
+  }
+  return hostname || null;
+}
+
+// The names this machine answers as. A submit must address one of them.
+//
+// Why: the bind is all-interfaces, so the server answers to *every* name that
+// resolves here — including one an attacker owns. A page at attacker.com whose
+// DNS re-resolves to this host reaches us with Host: attacker.com and an Origin
+// that agrees with it, and the browser calls it same-origin, so the Origin check
+// below — which is deliberately host-relative — passes on its own. Pinning Host
+// to this list is what that check cannot do for itself: the attacker's name is
+// not on it. This is the DNS-rebinding defence, not a general access control;
+// anyone who can reach the port still reads the page.
+const allowedHosts = new Set();
+
+for (const name of ['localhost', '127.0.0.1', '::1', os.hostname()]) {
+  const normalized = normalizeHost(name);
+  if (normalized) allowedHosts.add(normalized);
+}
+
+for (const addresses of Object.values(os.networkInterfaces())) {
+  for (const iface of addresses || []) {
+    const normalized = normalizeHost(iface.family === 'IPv6' ? `[${iface.address}]` : iface.address);
+    if (normalized) allowedHosts.add(normalized);
+  }
+}
+
+// A --host typo would otherwise surface as a 403 at submit time, long after the
+// user could connect it to what they typed. Fail at startup instead.
+for (const name of extraHosts) {
+  const normalized = normalizeHost(name);
+  if (!normalized) {
+    console.error(`Error: --host value is not a hostname: ${name}`);
+    process.exit(1);
+  }
+  allowedHosts.add(normalized);
+}
 
 // ── State ──────────────────────────────────────────────────────────────────
 
@@ -272,6 +336,24 @@ async function handleRequest(req, res) {
     // Validate Origin / Sec-Fetch-Site (conditional — only checked if present)
     const secFetchSite = req.headers['sec-fetch-site'];
     if (secFetchSite !== undefined && secFetchSite !== 'same-origin' && secFetchSite !== 'none') {
+      jsonResponse(res, 403, { error: 'forbidden' });
+      return;
+    }
+
+    // Pin Host to a name this machine actually answers as, before the Origin
+    // comparison below trusts it. See the allow-list note at the top of the
+    // file: that comparison is host-relative, so on its own it agrees with
+    // whatever name a rebound page used.
+    //
+    // Gated here and not on GET /, so a page reached under an unlisted alias
+    // still displays — only the request Claude acts on has to name this host.
+    const requestHost = normalizeHost(req.headers['host'] || '');
+    if (!requestHost || !allowedHosts.has(requestHost)) {
+      // Log the normalized value, never the raw header — it is attacker-supplied.
+      console.error(
+        `[html-visualization] Submit refused: Host "${requestHost || '(unparseable)'}" is not a name this machine answers as. ` +
+        'Pass --host <name> to allow it.'
+      );
       jsonResponse(res, 403, { error: 'forbidden' });
       return;
     }
