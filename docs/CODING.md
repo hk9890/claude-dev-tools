@@ -10,6 +10,23 @@ Implementation guide for contributing to this plugin marketplace.
 4. Add the plugin to the table in `README.md`.
 5. Use the `plugin-dev` skill set to scaffold components: commands, skills, agents, hooks, MCP integration. `plugin-dev` ships in an external plugin and must be installed separately — see [TESTING.md](TESTING.md) for install instructions.
 
+## Keeping plugin artifacts portable
+
+A plugin's skills, agents, and workflows run in whatever repository the user installs them into. Write them
+against what every project has — the working tree, git, the harness's own tools — and never against this
+repository's layout, its `plugins/` tree, or a stack the target project may not use.
+
+A dependency on a specific technology is allowed when it is declared rather than assumed:
+
+- Another plugin → `dependencies` in `plugin.json` (see below).
+- A CLI tool or runtime → a load-time availability check that stops with guidance when it is missing (see below).
+- A whole platform → the plugin is named for it, so the constraint is visible before install.
+  `keep-awake-linux` is the worked example: logind and `systemd-inhibit` are the point of the plugin, and its
+  test suite skips rather than fails where they are absent ([TESTING.md](TESTING.md)).
+
+What this rules out is the undeclared assumption — a skill that greps `plugins/`, hard-codes `mise`, or expects
+a `docs/` layout it never checks for.
+
 ## Declaring plugin dependencies
 
 The `plugin.json` `dependencies` field is honored by the Claude Code marketplace harness — when a user installs a plugin that declares dependencies, the harness auto-installs each listed plugin at the same scope as the parent. Semver constraints are supported and enforced. Full behavior is documented at https://code.claude.com/docs/en/plugin-dependencies.
