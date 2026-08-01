@@ -1,8 +1,7 @@
 ---
 name: grill
 description: "Grill a plan, design, or decision before committing to it."
-user-invocable: true
-disable-model-invocation: true
+when_to_use: "Grill a plan, design, or decision that still carries open questions — decisions nobody has made, assumptions never put to the user — before it is committed to. Triggers on 'grill', 'stress-test this plan'. Fits a knot of decisions, not a single clarification — ask that one directly."
 argument-hint: "[what-to-grill]"
 ---
 

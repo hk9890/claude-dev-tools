@@ -1,8 +1,7 @@
 ---
 name: writing-skills
 description: "Reference for writing and editing skills well — the vocabulary and principles that make a skill predictable."
-user-invocable: true
-disable-model-invocation: true
+when_to_use: "Use when writing or revising a SKILL.md, or a file it bundles under references/, scripts/, or assets/. Triggers on 'SKILL.md', 'write a skill', 'skill description'. Also loaded by name when another skill needs the rubric. Not for a project's own docs — AGENTS.md, README.md, docs/ guides (`writing-project-docs`)."
 argument-hint: "[skill-path-or-request]"
 ---
 

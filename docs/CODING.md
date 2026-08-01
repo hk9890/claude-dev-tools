@@ -110,7 +110,7 @@ disable-model-invocation: true
 ---
 ```
 
-This is the default schema — nearly every skill in the marketplace uses it. Examples: `tasks-work`, `project-explore`, `html-visualize-page`, the `project-execute` exec skills (`project-exec-testing`, `project-exec-releasing`, `project-exec-monitoring`), `project-explain`, the `project-review-*` lenses, `challenge:grill`, `challenge:kiss`, `github-releases`, `keep-awake-inspect`, `test-tests`, and `test-app`.
+This is the default schema — nearly every skill in the marketplace uses it. Examples: `tasks-work`, `project-explore`, `html-visualize-page`, the `project-execute` exec skills (`project-exec-testing`, `project-exec-releasing`, `project-exec-monitoring`), `project-explain`, the `project-review-*` lenses, `challenge:kiss`, `github-releases`, `keep-awake-inspect`, `test-tests`, and `test-app`.
 
 **Schema B — model-discoverable:**
 
@@ -122,9 +122,9 @@ when_to_use: "Use when … Triggers on '…', '…'. Does not apply to …"
 ---
 ```
 
-Use only for skills that must stay reachable through the `Skill` tool — in practice, a skill that sibling skills or agents load by name while it also stays user-invocable. Example: `tasks:tasks`, loaded by `tasks-work`, `tasks-create`, and the `implementer`/`verifier` agents. `when_to_use` carries the trigger guidance — write positive triggers, exclusions, and (where it helps) the argument shape.
+Use for skills the `Skill` tool must reach, for either of two reasons — sibling skills or agents load them by name (`tasks:tasks`, loaded by `tasks-work`, `tasks-create`, and the `implementer`/`verifier` agents), or the agent should fire them unprompted from conversation context (`challenge:grill` when a plan still carries open decisions, `writing-skills` when a `SKILL.md` is being written). `when_to_use` carries the trigger guidance — write positive triggers, exclusions, and (where it helps) the argument shape.
 
-Do not reach for Schema B just because a skill *could* be auto-invoked. A 60-day audit of local transcripts found the model almost never picked these skills up from context (0 invocations in the trailing two weeks) while users reached them by slash command, so the auto-invokable ones were converted to Schema A.
+Do not reach for Schema B just because a skill *could* be auto-invoked. A 60-day audit of local transcripts found the model almost never picked these skills up from context (0 invocations in the trailing two weeks) while users reached them by slash command, so the auto-invokable ones were converted to Schema A. `challenge:grill` and `writing-skills` are the deliberate exceptions: both are meant to fire at a moment the user is unlikely to stop and name — a plan about to be committed to, a `SKILL.md` about to be written — and the audit's low pickup rate is the accepted cost, not a reason to stop typing them when it matters.
 
 When the new skill's domain overlaps a sibling's (a likely case within a `*`-family), disambiguate in **both** directions: exclude the sibling from this skill's `when_to_use` *and* add the reverse pointer to the sibling's `when_to_use` in the same change. A one-sided carve-out still lets the shared queries land on the wrong skill.
 
