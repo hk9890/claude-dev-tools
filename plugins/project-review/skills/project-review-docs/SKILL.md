@@ -1,6 +1,6 @@
 ---
 name: project-review-docs
-description: "Read-only audit of a project's docs for accuracy, staleness, gaps, misplaced content, and whether an agent can actually use them — runs a multi-agent workflow, reports fixes, never edits."
+description: "Read-only audit of a project's docs for accuracy, staleness, gaps, misplaced content, and whether agents can and do actually use them — runs a multi-agent workflow, reports fixes, never edits."
 user-invocable: true
 disable-model-invocation: true
 argument-hint: "[low|medium|high|ultra] [path]"
@@ -21,8 +21,9 @@ docs inline. The workflow returns a structured report; relay it.
    If the argument is a description rather than a path, resolve it to a directory or
    fall back to the root.
 
-2. `SKILL_DIR` is the **base directory for this skill**, given at the top of this file when
-   the skill loads. It is absolute and install-correct — build every path below from it.
+2. Load the standard. `SKILL_DIR` is the **base directory for this skill**, given at the top
+   of this file when the skill loads. It is absolute and install-correct — build every path
+   below from it.
 
    The standard this review measures against is **not** in this plugin: the ownership
    contracts and the authoring rules belong to `instruction-writing:writing-project-docs`.
@@ -33,39 +34,63 @@ docs inline. The workflow returns a structured report; relay it.
    stop and say so — `project-review` declares it as a dependency, so a missing one means
    a broken install, not an optional extra.
 
-   Then check the prerequisite and mint a per-run scratch dir. The workflow writes execution
-   traces to that dir under deterministic names, and the grading stage treats a trace as
-   primary evidence — so two concurrent reviews sharing one directory would grade each
-   other's run. Echo the path: shell state does not survive between commands, so a value you
-   only assign is gone by the time you need it in step 3.
+   Done when you hold two absolute paths: `SKILL_DIR` and `STANDARD_DIR`.
+
+3. Prepare the run — check the prerequisite, then mint a per-run scratch dir. The workflow
+   writes its history extracts and execution traces to that dir under deterministic names,
+   and the grading stage treats a trace as primary evidence, so two concurrent reviews
+   sharing one directory would grade each other's run. Echo the path: shell state does not
+   survive between commands, so a value you only assign is gone by the time you need it in
+   step 4.
 
    ```bash
    command -v python3 >/dev/null || { echo "python3 missing — stop and fall back to a manual read"; return 2>/dev/null || exit 1; }
    SCRATCH=$(mktemp -d /tmp/docreview-XXXXXX) && echo "$SCRATCH" || echo "mktemp failed — stop; do not launch without a scratch dir"
    ```
 
-3. Invoke the **Workflow** tool:
+   Done when the scratch path is printed above. If either command failed, stop here.
+
+4. Invoke the **Workflow** tool:
    - `scriptPath`: `<SKILL_DIR>/workflows/review-docs.js`
    - `args`: `{ "repoRoot": "<the step-1 path>", "scriptsDir": "<SKILL_DIR>/scripts", "standardDir": "<STANDARD_DIR>", "level": "<the step-1 level>", "scratchDir": "<the absolute path printed above>" }`
-   - `level` rungs, on top of the per-file read-review that always runs:
-     `low` = no execution phase; `medium` = execution on ~3 AGENTS routes;
-     `high` = execution on every route; `ultra` = `high` plus an adversarial pass that
-     tries to refute each finding and drops the ones that fail.
-     Advanced: `"maxExecutionRoutes": <n>` overrides the route cap (`-1` all, `0` skip).
-   - The execution phase runs a cold agent **in the live working tree** — so it audits
-     your uncommitted doc edits, not `HEAD` — under a hard read-only contract. Tier-C
-     (destructive) tasks are never executed.
+   - `level` rungs, on top of the read-review that always runs — one agent per use case
+     (`docs/CODING.md` reviewed by an agent that arrives wanting to code), plus one per
+     file that is not a use case:
+     `low` = a fast sonnet read-review, history reports coverage only;
+     `medium` = opus read-review, history over ~40 sessions;
+     `high` = history over every session;
+     `ultra` = `high` plus the execution phase.
+     Advanced: `"maxExecutionRoutes": <n>` overrides the execution route cap (`-1` all,
+     `0` skip).
+   - The history phase reads this repository's past Claude Code sessions and asks whether
+     the doc each route points at was actually opened, and opened *before* the work. It
+     writes only to the scratch dir. Findings need at least 3 comparable sessions, and a
+     session is dropped when the `AGENTS.md` route it ran under has since been reworded —
+     that session is evidence about the old route, not the current one. Those dropped
+     sessions are still summarised per old wording and reported as superseded-route
+     evidence: it never affects a finding or the verdict, but "agents ignored this doc
+     under its previous wording" is what shows a rewrite was warranted. A repo with no
+     sessions skips the phase: no evidence is a gap in the audit, never a finding about
+     the docs.
+   - The execution phase (`ultra`) runs a cold agent **in the live working tree** — so it
+     audits your uncommitted doc edits, not `HEAD` — under a hard read-only contract.
+     Tier-C (destructive) tasks are never executed.
 
-4. Relay the report. The workflow returns `{ report: { verdict, headline, findings[], … }, raw, … }`
+5. Relay the report. The workflow returns `{ report: { verdict, headline, findings[], … }, raw, … }`
    — surface `.report`, and do not re-derive it. For a "did you really check X?"
    follow-up, **re-run the skill**; never answer from the report alone, and never
    from `grep`/link-checks.
 
-   If it returns `{ error: … }` and no `report`, the audit did not run: relay the
-   error **verbatim**, say so plainly, and do not improvise findings. An error
-   carrying `got` means an argument was wrong before any agent was spawned, and
-   `got.keys` lists the arguments that actually arrived — surface it, since that is
-   what shows a misspelled key.
+   Report a failed run as a failure. There are two ways to come back without a
+   usable report, and both end the same way — say the audit did not complete, and
+   improvise nothing:
+   - `{ error: … }` and no `report` — relay the error **verbatim**. An error
+     carrying `got` means an argument was wrong before any agent was spawned, and
+     `got.keys` lists the arguments that actually arrived — surface it, since that
+     is what shows a misspelled key.
+   - a null or absent `report` with no `error` — the synthesis stage died. Say so
+     and offer to re-run; `raw.read_findings` holds unsynthesized per-file output,
+     so relay it only as raw material, never as the report.
 
    Once relayed, offer to decide on the findings via a form: `/html-visualize-ask`
    built from `findings[]` renders a browser HTML question/decision form so they
@@ -88,13 +113,11 @@ rules, the failure modes, and the bar each suggested fix must clear), and the wo
 `examples/`. `manifest.py` parses the first and injects each file's contract
 inline into the read-review agents, which load the second and apply it.
 
-`references/project-doc-review-guidelines.md` — the review process, the rules to
-cite, and severities — stays here: it is maintainer documentation and the manual-fallback
-rubric, and the workflow does not load it.
-
-Verdict labels: `accurate` · `minor gaps` · `significant gaps` · `misleading`. A
-clean `accurate` requires no blocker/major finding and positive coverage — a green
-manifest is necessary, never sufficient.
+`references/project-doc-review-guidelines.md` describes what this review does — its
+stages, its severity bar, and the read-only contract each stage runs under. It is
+maintainer documentation for changing the workflow, not an input to it: the bars it
+describes are inlined in `workflows/review-docs.js`, which is what the agents actually
+read.
 
 ## Not covered
 
