@@ -128,7 +128,8 @@ server exits **code 2 and writes no feedback file**. If the server exited
 non-zero or the feedback file does not exist, the round-trip timed out — tell
 the user, then offer to re-serve the form or continue in chat.
 
-**Optional flags**: `--port N` (fixed port), `--timeout-sec N` (default 1800 s).
+**Optional flags**: `--port N` (fixed port), `--timeout-sec N` (default 1800 s),
+`--host NAME` (see [Host allow-list](#host-allow-list)).
 
 ### Cycle B — Non-blocking serve-and-continue with optional submit (visualize mode)
 
@@ -164,7 +165,8 @@ happens:
 All three paths exit 0. The only path that produces a feedback file (and a harness
 re-invocation of Claude) is a non-empty `freeform` field in the POST payload.
 
-**Optional flags**: `--timeout-sec N`.
+**Optional flags**: `--timeout-sec N`, `--host NAME` (see
+[Host allow-list](#host-allow-list)).
 
 ### Cycle C — Apply loop (feedback mode)
 
@@ -229,6 +231,9 @@ After each `action: "apply"` response:
    node "$(cat "$HTML_DIR/.plugin-root")/bin/server.js" "$HTML_DIR/review.html" --port "$(cat "$HTML_DIR/.port")"
    ```
    If the port is momentarily unavailable, wait ~1 s and retry once.
+   **Carry every flag the first round used** — in particular `--host NAME` if the
+   first round needed one. Flags do not persist across rounds; dropping `--host`
+   here gives the user a 403 on round two after round one worked.
 4. Tell the user the comments have been applied; the URL is unchanged and the
    open tab reloads itself automatically.
 5. The loop continues until an `action: "submit"` response.
@@ -238,10 +243,58 @@ After each `action: "apply"` response:
 - **`.port` file** (`$HTML_DIR/.port`): written on the first serve round (Cycle C
   first round), never overwritten. Contains only the port number as a plain string.
   Used by every Apply re-serve via `--port "$(cat "$HTML_DIR/.port")"`.
+- **`--host NAME`**: not persisted anywhere — if the first round needed one, every
+  Apply re-serve must repeat it. See [Host allow-list](#host-allow-list).
 - **`fb-generation` meta**: `<meta name="fb-generation" content="...">` in the
   served HTML. MUST be set to a **new, unique value on every regeneration** (e.g.
   the output of `date +%s%N`). `app.js` polls `GET /` and auto-reloads the open
   tab when it sees a changed value. A reused value means the page never reloads.
+
+---
+
+## Host allow-list
+
+`POST /submit` requires the request to address this machine by a name it actually
+answers as. The allow-list is built at startup and needs no configuration for the
+normal path:
+
+- `localhost`, `127.0.0.1`, `::1`
+- `os.hostname()` — the name the printed URL uses
+- every address on the machine's own network interfaces
+
+Serving is **not** gated — `GET /` answers under any name, so a page reached
+through a forwarder or an alias still displays. Only the submit has to name this
+host.
+
+**Why**: the bind is all-interfaces, so the server answers to every name that
+resolves here — including one an attacker owns. A page at `attacker.com` whose DNS
+re-resolves to this host arrives with `Host: attacker.com`, an `Origin` that agrees
+with it, and `Sec-Fetch-Site: same-origin`, because as far as the browser is
+concerned it *is* same-origin. The Origin check is deliberately host-relative and
+so agrees too; the allow-list is the only check that can tell the two apart. This
+is a DNS-rebinding defence, not access control — anyone who can reach the port
+still reads the page.
+
+**When a submit 403s**: the server prints the refused host to stderr —
+
+```
+[html-visualization] Submit refused: Host "devbox.corp.example" is not a name this machine answers as. Pass --host <name> to allow it.
+```
+
+This happens whenever the user reaches the box under a name the list cannot
+derive: an FQDN when `os.hostname()` is the short name (or the reverse), an mDNS
+`.local` name, a VPN or Tailscale name, a CNAME, or the public host of a
+TLS-terminating forwarder (Codespaces, VS Code forwarded ports, ngrok). Re-serve
+with that name allow-listed:
+
+```bash
+node "$(cat "$HTML_DIR/.plugin-root")/bin/server.js" "$HTML_DIR/review.html" --host devbox.corp.example
+```
+
+`--host` is repeatable and **adds to** the defaults rather than replacing them. A
+value that is not a hostname exits non-zero at startup rather than failing later
+at submit time. In feedback mode (Cycle C) pass the same `--host` on every Apply
+re-serve, alongside `--port`.
 
 ---
 
@@ -272,6 +325,12 @@ proves a request came from the page, not that it came from the user. The user is
 the only one who knows whether they are on a trusted network, and they cannot
 weigh that if the link arrives without the fact.
 
+Reachability is still the whole boundary for reading. Submitting is narrower —
+the [Host allow-list](#host-allow-list) requires a submit to address this machine
+by one of its own names — but that only rules out a page on someone else's site
+rebinding its way in. It does not narrow who on the network can submit, so the
+sentence above stands as written.
+
 ### When the printed hostname does not resolve
 
 The hostname is advertised as-is; whether it resolves for the user's browser
@@ -285,6 +344,11 @@ port, offer `http://localhost:PORT/` with the **same port** — the server is
 listening on every interface, so loopback serves the identical page and the submit
 round-trip works normally. This is a response to how the user actually reaches
 the machine, not a substitution to make pre-emptively.
+
+If instead the user opens the page fine under some *other* name — a corporate
+FQDN, a `.local` name, a Codespaces or ngrok URL — the page displays but the
+submit 403s, because that name is not one the allow-list can derive. Re-serve
+with `--host <that-name>`; see [Host allow-list](#host-allow-list).
 
 If neither address is reachable, fall back per the active mode:
 
