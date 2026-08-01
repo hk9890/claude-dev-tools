@@ -6,7 +6,7 @@ export const meta = {
     { title: 'Manifest', detail: 'deterministic facts: files, metrics, links, routes' },
     { title: 'Read-review', detail: 'one agent per use case, plus the files that are not use cases' },
     { title: 'History', detail: 'did past sessions open the doc their route points at?' },
-    { title: 'Execution', detail: 'per AGENTS route: cold agent does a task, driver grades (level=ultra)' },
+    { title: 'Execution', detail: 'per AGENTS route: cold agent does a task, driver grades (high = 3 routes, ultra = all)' },
     { title: 'Synthesis', detail: 'dedupe + cross-file reconciliation + report' },
   ],
 }
@@ -38,15 +38,22 @@ const USE_CASES = {
   'monitoring': { doc: 'docs/MONITORING.md', work: 'read logs, traces, or usage data' },
 }
 
-// What each level buys. Read-review always runs — only its model changes, because a
-// rung that costs the same as the one above it is a lie the skill then has to explain.
-// History always runs; at low the sample is below the finding floor, so it reports
-// coverage only. Execution is ultra alone: it is roughly 3x everything else combined.
+// What each level buys, as an execution-route budget (0 none, -1 every route).
+//
+// Read-review always runs — only its model changes, because a rung that costs the same as
+// the one above it is a lie the skill then has to explain. History always runs; at low the
+// sample is below the finding floor, so it reports coverage only.
+//
+// Execution is what separates the top two rungs, because it is the only stage expensive
+// enough to be worth a rung: measured against three repos, read-review is ~84% of a
+// no-execution run, so raising the history sample alone moved high about 4% off medium —
+// a rung nobody could feel. A capped probe at high and full coverage at ultra makes each
+// step roughly a doubling.
 const LEVEL_CONFIG = {
-  low: { reviewModel: 'sonnet', sessionLimit: 15, perUseCase: 1, historyFindings: false, execution: false },
-  medium: { reviewModel: 'opus', sessionLimit: 40, perUseCase: 3, historyFindings: true, execution: false },
-  high: { reviewModel: 'opus', sessionLimit: 0, perUseCase: 5, historyFindings: true, execution: false },
-  ultra: { reviewModel: 'opus', sessionLimit: 0, perUseCase: 5, historyFindings: true, execution: true },
+  low: { reviewModel: 'sonnet', sessionLimit: 15, perUseCase: 1, historyFindings: false, executionRoutes: 0 },
+  medium: { reviewModel: 'opus', sessionLimit: 40, perUseCase: 3, historyFindings: true, executionRoutes: 0 },
+  high: { reviewModel: 'opus', sessionLimit: 0, perUseCase: 5, historyFindings: true, executionRoutes: 3 },
+  ultra: { reviewModel: 'opus', sessionLimit: 0, perUseCase: 5, historyFindings: true, executionRoutes: -1 },
 }
 
 // A single miss is not a pattern. Below this many valid segments a use case reports
@@ -80,9 +87,7 @@ function normalizeArgs(rawArgs) {
   // emit — would satisfy neither test and fall through to "run every route": the caller
   // asks for zero execution routes and instead gets one cold action agent per AGENTS.md
   // route running commands in the live repository.
-  // Execution is a level switch now, not a route budget: ultra runs every route, every
-  // other rung runs none. maxExecutionRoutes stays as the manual override.
-  let maxExec = LEVEL_CONFIG[level].execution ? -1 : 0
+  let maxExec = LEVEL_CONFIG[level].executionRoutes
   let maxExecError = null
   if (parsed.maxExecutionRoutes !== undefined && parsed.maxExecutionRoutes !== null) {
     const n = Number(parsed.maxExecutionRoutes)
@@ -500,12 +505,17 @@ if (typeof agent === 'function') {
       return frame + contractBlock(f) +
         `\nDo not run commands. Read-only. Return findings with concrete evidence (quote the offending lines / cite the repo fact). Empty findings array if the file is genuinely clean — do not invent problems.`
     }
+    // A non-standard doc has no ownership contract, but it makes claims about this repo
+    // like any other. Asking only "is it filed correctly?" was leaving the accuracy pass
+    // to luck: agents did it anyway and it produced a third of the blockers across three
+    // trial repos — including a spec that contradicted the coding guide it cited. A more
+    // literal run would have obeyed the placement-only brief and dropped them.
     return frame +
-      `\nThis is a NON-STANDARD doc (not one of the canonical files). Judge placement, not an ownership boundary:\n` +
-      `- Does its content actually BELONG to a canonical topic (OVERVIEW / CODING / TESTING / RELEASING / MONITORING / CHANGE-WORKFLOW / RUNNING / REVIEWING / README / CONTRIBUTING)? If so, it is a placement finding: recommend RENAME to docs/<TOPIC>.md when that canonical slot is empty (missing canonical: ${JSON.stringify(manifest.missing_canonical)}), or LINK it from the canonical doc when that slot is filled.\n` +
-      `- If it maps to no canonical topic, it is legitimately project-specific — no finding.\n` +
-      `- Still flag it if it is hollow (a stub) or duplicates AGENTS.md routing.\n\n` +
-      `Read the full file, decide which case applies, and return findings (category 'placement' or 'hollow' or 'other') with evidence. Empty array if it is fine as-is. Read-only.`
+      `\nThis is a NON-STANDARD doc — not one of the canonical files, so it has no ownership contract. Judge it on two axes.\n\n` +
+      `1. TRUE? This is the main job. For every claim, command, path, flag, and code reference, verify it against the repo with read-only grep/read. A false claim is an accuracy finding at the same severity bar as any canonical doc — and a doc that contradicts a canonical doc, or describes behaviour the code does not implement, is a blocker. Specs and design documents are the highest-risk case: they are written once, read as authoritative, and drift silently as the code moves.\n` +
+      `2. FILED CORRECTLY? Does its content belong to a canonical topic (OVERVIEW / CODING / TESTING / RELEASING / MONITORING / CHANGE-WORKFLOW / RUNNING / REVIEWING / README / CONTRIBUTING)? If so, that is a placement finding: recommend RENAME to docs/<TOPIC>.md when that canonical slot is empty (missing canonical: ${JSON.stringify(manifest.missing_canonical)}), or LINK it from the canonical doc when the slot is filled. If it maps to no canonical topic it is legitimately project-specific — no placement finding, which says nothing about whether it is accurate.\n\n` +
+      `Also flag it if it is hollow (a stub) or duplicates AGENTS.md routing.\n\n` +
+      `Read the full file, then return findings (category 'accuracy', 'placement', 'hollow', or 'other') with concrete evidence — quote the offending line and cite the repo fact that contradicts it. Empty array only if the file is genuinely both accurate and correctly filed. Read-only; do not run commands that change anything.`
   }
 
   const reviewJobs = [

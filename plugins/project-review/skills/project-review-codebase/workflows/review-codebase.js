@@ -18,9 +18,18 @@ export const meta = {
 
 // The depth vocabulary is shared with project-review-docs and test-tests: one
 // argument name, one token set, so a token learned at one skill means the same
-// thing at the next. Here only `ultra` changes behaviour — it adds the
-// per-finding refutation pass; the other three run the same three dimensions.
+// thing at the next. That promise was only half-kept: `ultra` added the per-finding
+// refutation pass while low/medium/high ran identically, so `low` cost the same as
+// `high` and the skill had to warn users about its own vocabulary.
+//
+// `low` now means here what it means in project-review-docs: the reviewing agents drop
+// to sonnet. Same dimensions, same coverage, roughly 40% of the cost — a cheap rung
+// that is actually cheap.
 const LEVELS = ['low', 'medium', 'high', 'ultra']
+
+// The model each rung reviews with. Synthesis stays on opus at every level: it is one
+// agent reconciling every dimension's findings, and it is where a downgrade would show.
+const LEVEL_REVIEW_MODEL = { low: 'sonnet', medium: 'opus', high: 'opus', ultra: 'opus' }
 
 // Normalize the incoming `args` value into the review's configuration, and reject an
 // unusable one here rather than three dimension agents later.
@@ -62,6 +71,7 @@ function normalizeArgs(rawArgs) {
     vocabFile: parsed.vocabFile || '',
     level,
     ultra: level === 'ultra',
+    reviewModel: LEVEL_REVIEW_MODEL[level],
     // Echoed on a bail-out: naming the keys that actually arrived is what lets a caller
     // spot a misspelling, which an error naming only the expected keys cannot.
     receivedKeys: Object.keys(parsed),
@@ -481,7 +491,7 @@ if (typeof agent === 'function') {
     return { error: cfg.error, got: { type: typeof args, keys: cfg.receivedKeys, repoRoot: cfg.repoRoot } }
   }
 
-  const { repoRoot, scope, vocabFile, level, ultra } = cfg
+  const { repoRoot, scope, vocabFile, level, ultra, reviewModel } = cfg
   const DIMENSIONS = buildDimensions(vocabFile)
 
   // ── Review → (ultra) per-finding refutation. pipeline: each dimension's findings
@@ -491,7 +501,7 @@ if (typeof agent === 'function') {
 
   const results = await pipeline(
     DIMENSIONS,
-    d => agent(dimensionPrompt(d, cfg), { label: `review:${d.key}`, phase: 'Review', model: 'opus', schema: d.schema }),
+    d => agent(dimensionPrompt(d, cfg), { label: `review:${d.key}`, phase: 'Review', model: reviewModel, schema: d.schema }),
     (review, d) => {
       if (!review) return null
       if (!ultra || !review.findings.length) return review

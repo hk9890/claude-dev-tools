@@ -31,13 +31,11 @@ modes are actually exercised.
    - `args`: `{ "repoRoot": "<repo root, or the step-1 path>", "scope": "<the step-1 what-to-review, or empty>", "vocabFile": "<SKILL_DIR>/references/design-vocabulary.md", "level": "<the step-1 level>" }`
    - The workflow fans out one adversarial read-only agent per dimension
      (consistency, structure, architecture), then a synthesis stage dedupes and
-     reconciles findings across dimensions. `ultra` is the only rung that changes
-     the run, adding an adversarial refutation gate every finding must pass before
-     it is reported. `low`, `medium` and `high` are accepted so one depth token
-     means the same thing across the audit skills, but they are **not** cheaper
-     here — all three run the same three opus dimension agents and the same
-     high-effort synthesis. If the user asked for `low` expecting a quick pass,
-     say so before launching.
+     reconciles findings across dimensions. `low` runs the same three dimensions on
+     sonnet rather than opus — same coverage, roughly 40% of the cost. `medium` and
+     `high` are identical: opus dimensions, high-effort synthesis. `ultra` adds an
+     adversarial refutation gate every finding must pass before it is reported.
+     Synthesis stays on opus at every rung.
 
 4. Relay the report. The workflow returns
    `{ report: { verdict, dimension_verdicts, headline, findings[], recommended_actions[], architecture_candidates[], report_markdown, … }, raw, … }`

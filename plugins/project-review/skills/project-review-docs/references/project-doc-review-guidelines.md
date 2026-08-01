@@ -44,7 +44,7 @@ class of defect.
    labels each with a use case; the script then filters, stratifies, and projects; a judge
    decides per use case whether the doc was opened, and opened before the first action of
    that kind. Details below.
-4. **Execution** (`level=ultra` only) — the synthetic counterpart. Per `AGENTS.md` route: a
+4. **Execution** (`high` = 3 routes, `ultra` = every route) — the synthetic counterpart. Per `AGENTS.md` route: a
    driver generates a task from the target doc and holds the answer key; a cold, uncoached
    action agent attempts it in the live tree; the driver grades the trace against the key.
    Attribution to doc / agent / environment is the driver's core judgment — get it wrong and

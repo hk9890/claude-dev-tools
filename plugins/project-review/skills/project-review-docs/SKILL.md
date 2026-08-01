@@ -58,8 +58,11 @@ docs inline. The workflow returns a structured report; relay it.
      file that is not a use case:
      `low` = a fast sonnet read-review, history reports coverage only;
      `medium` = opus read-review, history over ~40 sessions;
-     `high` = history over every session;
-     `ultra` = `high` plus the execution phase.
+     `high` = history over every session, plus execution on 3 routes;
+     `ultra` = execution on every route.
+     Each rung is roughly double the one below it. Execution is what separates the top
+     two — it is the only stage costly enough to be worth a rung, since read-review is
+     ~84% of a run without it.
      Advanced: `"maxExecutionRoutes": <n>` overrides the execution route cap (`-1` all,
      `0` skip).
    - The history phase reads this repository's past Claude Code sessions and asks whether

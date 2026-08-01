@@ -152,15 +152,24 @@ async function main() {
   eq('level: is case-insensitive', 'high',
     normalizeArgs({ repoRoot: '/r', scriptsDir: '/s', level: 'HIGH' }).level);
 
-  // Execution is a level switch, not a route budget: ultra runs every route and every
-  // other rung runs none. A rung that silently ran execution would be ~3x its stated cost.
+  // Execution is the only stage expensive enough to separate a rung — read-review is ~84%
+  // of a no-execution run, so raising the history sample alone left high ~4% off medium.
+  // A capped probe at high and full coverage at ultra makes each step roughly a doubling.
   const maxExecFor = (level) => normalizeArgs({ repoRoot: '/r', scriptsDir: '/s', level }).maxExec;
   eq('level: low runs no execution phase', 0, maxExecFor('low'));
   eq('level: medium runs no execution phase', 0, maxExecFor('medium'));
-  eq('level: high runs no execution phase', 0, maxExecFor('high'));
+  eq('level: high probes a capped sample of routes', 3, maxExecFor('high'));
   eq('level: ultra runs every route', -1, maxExecFor('ultra'));
-  eq('level: ultra is the only rung that executes', ['ultra'],
-    Object.keys(LEVEL_CONFIG).filter((l) => LEVEL_CONFIG[l].execution));
+  eq('level: execution is what separates the top two rungs', ['high', 'ultra'],
+    Object.keys(LEVEL_CONFIG).filter((l) => LEVEL_CONFIG[l].executionRoutes !== 0));
+  // Every rung must differ from the one below it in something a user can feel.
+  const rungs = ['low', 'medium', 'high', 'ultra'];
+  for (let i = 1; i < rungs.length; i++) {
+    const a = LEVEL_CONFIG[rungs[i - 1]], b = LEVEL_CONFIG[rungs[i]];
+    truthy(`level: ${rungs[i]} differs from ${rungs[i - 1]} in more than sample size`,
+      a.reviewModel !== b.reviewModel || a.historyFindings !== b.historyFindings ||
+      a.executionRoutes !== b.executionRoutes);
+  }
 
   // low is the only rung that downgrades the read-review model. Without that, low and
   // high cost nearly the same and the cheap token is a lie.
