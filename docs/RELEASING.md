@@ -25,8 +25,19 @@ Versions live in **two** places that must stay in sync:
 All plugins are released together under a single repo-level tag — bump every version field to the same new version in both files.
 
 ```bash
-find plugins -name plugin.json -path "*/.claude-plugin/*"
+jq -r '.metadata.version' .claude-plugin/marketplace.json   # the version being released from
+find plugins -name plugin.json -path "*/.claude-plugin/*"   # every file to bump
 ```
+
+### Choosing the number
+
+One version covers all ten plugins, so it describes the release, not any one plugin. Take the largest change in it:
+
+- **Minor** (`1.26.0` → `1.27.0`) — the default, and what every release from v1.21.0 to v1.26.0 has been. Any new skill, command, agent, or hook; any behaviour change to an existing one.
+- **Patch** (`1.26.0` → `1.26.1`) — nothing but fixes and documentation. No new component and no changed behaviour, in any plugin.
+- **Major** — a change that breaks how an installed plugin is invoked: a skill or command removed or renamed, or an argument contract changed incompatibly. Never used yet; a retirement with a documented successor has so far gone out as minor.
+
+Lockstep is the cost of one tag: a patch-only fix in one plugin still bumps all ten. That is intended — the alternative is per-plugin tags, which the dependency rule in [CODING.md](CODING.md) already rules out.
 
 ## Release steps
 

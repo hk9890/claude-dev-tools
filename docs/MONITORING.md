@@ -181,6 +181,31 @@ For each slice, Claude assigns scores on a 1–5 scale with a rationale:
 | `task-completed` | Was the user's underlying task completed? |
 | `user-accepted` | Did the user accept the outcome without correction or retry? |
 
+### Verdict file format
+
+One JSON file per slice, named to match it (`<slice-basename>.json`). `episode_id` and
+`attribution_skill` are copied from the slice so a verdict is readable alone; every
+dimension carries both a score and the rationale for it, since a bare number cannot be
+audited later.
+
+```json
+{
+  "episode_id": "<copied from the slice>",
+  "attribution_skill": "<copied from the slice>",
+  "scores": {
+    "trigger-appropriate": { "score": 4, "rationale": "…" },
+    "followed-instructions": { "score": 5, "rationale": "…" },
+    "task-completed": { "score": 3, "rationale": "…" },
+    "user-accepted": { "score": 3, "rationale": "…" }
+  },
+  "notes": "optional — anything that does not fit a dimension"
+}
+```
+
+All four dimension keys must be present. Use `null` for a score the slice cannot support,
+with the rationale saying why — an omitted key is indistinguishable from an oversight.
+Nothing consumes these files yet; the format exists so two judging runs are comparable.
+
 ## False-negative pass
 
 The unmatched-plugin table in `output/session-analysis/summary.md` shows plugins attributed in transcripts that did not resolve to any known marketplace plugin. Plugins installed from *other* marketplaces (e.g. `commit-commands` from `claude-plugins-official`) are expected here — only a stale name of one of this marketplace's own plugins is actionable. The table catches those stale names but does not catch sessions where attribution was absent entirely.
