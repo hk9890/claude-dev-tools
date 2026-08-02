@@ -53,9 +53,10 @@ need from it:
 
 Two layouts exist, so check where the file actually sits before building the path
 (see [OVERVIEW.md](OVERVIEW.md)): a workflow owned by one skill lives under that skill, as
-above, while one shared beyond a single skill sits at the plugin root and is reached with
-`<base directory for this skill>/../../workflows/<the-file-you-need>` — `tasks` is the current
-example. Say which layout applies in the skill, so the `../..` reads as deliberate.
+above — every workflow in the marketplace currently does. One shared beyond a single skill
+sits at the plugin root instead and is reached with
+`<base directory for this skill>/../../workflows/<the-file-you-need>`; no plugin uses that
+form today, so state in the skill that it applies, or the `../..` reads as a mistake.
 
 Do not search the filesystem for the plugin. A `find`-based resolution is not just redundant,
 it is worse than the value the harness hands you: it can select a stale cached version or a
@@ -111,7 +112,7 @@ Review the skill at plugins/my-plugin/skills/my-skill/SKILL.md
 
 ### Naming
 
-Skill directory name and the `name:` field in frontmatter must match. **Sibling skills share one prefix** so they sort and read as a family: the plugin's domain word where the plugin has one (`keep-awake-`, `html-visualize-`, `project-review-`, `tasks-`), otherwise a family word the siblings agree on (`writing-` in `instruction-writing`, `test-` in `project-auto-work`). A "main" skill may take the plugin's own name instead (`tasks:tasks`, `github-releases:github-releases`).
+Skill directory name and the `name:` field in frontmatter must match. **Sibling skills share one prefix** so they sort and read as a family: the plugin's domain word where the plugin has one (`keep-awake-`, `html-visualize-`, `project-review-`, `tasks-`), otherwise a family word the siblings agree on (`writing-` in `instruction-writing`, `test-` in `project-auto-work`). A "main" skill may take the plugin's own name instead (`github-releases:github-releases`).
 
 - ✅ `keep-awake-linux:keep-awake-inspect`, `html-visualization:html-visualize-ask`, `instruction-writing:writing-skills`
 - ❌ `keep-awake-linux:inspect` — bare verb, shared with no sibling
@@ -147,7 +148,7 @@ when_to_use: "Use when … Triggers on '…', '…'. Does not apply to …"
 ---
 ```
 
-Use for skills the `Skill` tool must reach, for either of two reasons — sibling skills or agents load them by name (`tasks:tasks`, loaded by `tasks-work`, `tasks-create`, and the `implementer`/`verifier` agents), or the agent should fire them unprompted from conversation context (`challenge:grill` when a plan still carries open decisions, `writing-skills` when a `SKILL.md` is being written). `when_to_use` carries the trigger guidance — write positive triggers, exclusions, and (where it helps) the argument shape.
+Use for skills the `Skill` tool must reach, for either of two reasons — sibling skills or agents load them by name (`tasks:tasks-writing`, loaded by `tasks-create`; `instruction-writing:writing-project-docs`, loaded by `project-review:project-review-docs`), or the agent should fire them unprompted from conversation context (`challenge:grill` when a plan still carries open decisions, `writing-skills` when a `SKILL.md` is being written). `when_to_use` carries the trigger guidance — write positive triggers, exclusions, and (where it helps) the argument shape.
 
 Default to Schema A; use Schema B only for the two reasons above. Do not reach for it just because a skill *could* be auto-invoked — measured pickup from context is low (see the Invocation modes table in [MONITORING.md](MONITORING.md)), so the cost is paid on every skill that takes it without needing it.
 

@@ -1,6 +1,6 @@
 {
   "name": "tasks",
-  "description": "Use the taskmgr file-based task tracker — data model and commands, a skill to turn review findings into well-formed tasks, generic implementer/verifier agents, and a tasks-work workflow that runs ready work through implement, verify, and record.",
+  "description": "Write and file tasks worth executing — a writing standard for task bodies with a worked example of every type, and a user-invoked skill that turns the current conversation into an approved, dependency-ordered set of filed taskmgr tasks.",
   "version": "1.26.0",
   "author": {
     "name": "Hans Kohlreiter",
@@ -9,6 +9,5 @@
   "homepage": "https://github.com/hk9890/claude-dev-tools",
   "repository": "https://github.com/hk9890/claude-dev-tools",
   "license": "MIT",
-  "keywords": ["tasks", "taskmgr", "task-tracking", "issues", "dependencies"],
-  "dependencies": ["project-review"]
+  "keywords": ["tasks", "taskmgr", "task-tracking", "issues", "dependencies"]
 }
