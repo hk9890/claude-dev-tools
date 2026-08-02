@@ -17,12 +17,12 @@ Use the `commit-commands:commit` skill (or `commit-commands:commit-push-pr`) for
 
 ## Pre-push checklist
 
-These gates apply at PR-open time; re-run at merge time only if new commits were pushed since the last green run.
+These gates apply at PR-open time; re-run at merge time only if new commits were pushed since the last green run. Each is named for what it checks — the same names are used in [RELEASING.md](RELEASING.md), so a gate means the same thing wherever it is cited.
 
-1. **Script tests** — `bash tests/run-all.sh` must pass.
-2. **Structural validation** (plugin changes only) — Run `plugin-dev:plugin-validator` on every changed plugin; it ships in the external `plugin-dev` plugin, see [TESTING.md](TESTING.md) for install instructions. Then post the evidence on the taskmgr task this change closes, the same ID the PR body's `Closes` line will carry: `taskmgr comment add <task-id> "gate2:passed — <validator summary line>"`. When the change touches none of `.claude-plugin/plugin.json`, `agents/`, `skills/`, `commands/`, or `hooks/`, post `gate2:n/a` with a one-line reason instead. Missing evidence blocks the next release ([RELEASING.md](RELEASING.md)).
-3. **Docs validation** (doc changes only) — `validate-routes.py` must exit 0; the Docs validation section in TESTING.md carries the commands.
-4. **Lint** (any `*.sh` change) — `mise run lint` must pass; CI enforces it in the `shellcheck` job.
+- **Test-Run** (always) — `bash tests/run-all.sh` must pass. Mirrored by the CI `test` job.
+- **Plugin-Structure-Check** (plugin changes only) — Run `plugin-dev:plugin-validator` on every changed plugin; it must pass with zero errors. It ships in the external `plugin-dev` plugin, see [TESTING.md](TESTING.md) for install instructions. Skip it when the change touches none of `.claude-plugin/plugin.json`, `agents/`, `skills/`, `commands/`, or `hooks/`. Put the validator's summary line in the PR body so a reviewer can see it ran. No CI job can enforce this one — the validator is an agent, not a script — and nothing audits it afterwards; RELEASING.md re-runs it over every plugin before a release, which is where a plugin that was never validated is caught.
+- **Docs-Route-Check** (doc changes only) — `validate-routes.py` must exit 0; the Docs validation section in TESTING.md carries the commands.
+- **Shell-Lint** (any `*.sh` change) — `mise run lint` must pass. Mirrored by the CI `shellcheck` job.
 
 ## Pull requests
 
@@ -30,7 +30,7 @@ Internal changes (maintainer or agent-orchestrated) use feature-branch PRs as th
 
 1. Branch off `master` using the naming convention above.
 2. Push the branch to `origin`.
-3. Open a PR — every applicable gate above must pass before opening. When a taskmgr task exists, the PR body must carry `Closes <task-id>`: `scripts/check-gate2-evidence.sh` parses that line to find the task holding the gate-2 evidence.
+3. Open a PR — every applicable gate above must pass before opening.
 4. Merge after review, with all five CI jobs green — see [TESTING.md](TESTING.md) for the job list. Merges use GitHub's default merge-commit style, producing `Merge pull request #N from hk9890/<branch>` subjects (`hk9890/` is the GitHub owner namespace, not part of the branch name).
 
 External contributors fork the repo and open a PR from their fork branch; no direct branch push to origin. The same pre-push checklist applies.
