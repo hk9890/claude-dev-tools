@@ -2,18 +2,22 @@
 
 Release process for this plugin marketplace. All plugins ship together under a single repo-level version tag.
 
+Requires `gh` (authenticated), `taskmgr`, `jq`, and `python3` on PATH. Cut releases from a clean tree on an up-to-date `master`.
+
 ## Tests
 
-There is no build step — the repo is markdown, JSON, and shell scripts, none of which compile. Three gates, all required before releasing:
+There is no build step. Three gates, all required before releasing:
 
-1. **In-repo script tests** — `bash tests/run-all.sh` must pass. This gate includes `scripts/check-internal-consistency.py`, which mechanically enforces section-level cross-reference integrity, version mirror, description mirror between `plugin.json` and `marketplace.json`, and single-version uniformity (every plugin entry and `marketplace.json` `metadata.version` carry the same version — the lockstep this doc requires). The Script tests section in TESTING.md covers local test execution.
-2. **Structural validation** — Run `plugin-dev:plugin-validator` on every plugin. All must pass with zero errors. This agent ships in the external `plugin-dev` plugin (see [TESTING.md](TESTING.md) for install instructions); skip this gate only if `plugin-dev` cannot be installed. (`plugin-dev:skill-reviewer` is a dev-time quality tool, not a release gate — see TESTING.md.)
-3. **Gate 2 evidence audit** — Run `bash scripts/check-gate2-evidence.sh` to verify that every PR merged since the previous release tag whose commits touched validator-checked plugin surfaces (`.claude-plugin/plugin.json`, `agents/`, `skills/`, `commands/`, or `hooks/`) has a `gate2:passed` or `gate2:n/a` comment on its linked taskmgr task. The script exits 1 and prints the offending PR(s) if any evidence is missing. This is the release-time enforcement of the process gate described in [CHANGE-WORKFLOW.md](CHANGE-WORKFLOW.md). Block the release if this audit fails; add the missing `gate2:passed` or `gate2:n/a` comment to the task and re-run to clear.
+1. **In-repo script tests** — `bash tests/run-all.sh` must pass. This gate includes `scripts/check-internal-consistency.py`: a version mismatch between any `plugin.json` and `marketplace.json`, or more than one distinct version in the repo, fails it. The Script tests section in TESTING.md covers local test execution.
+2. **Structural validation** — Run `plugin-dev:plugin-validator` on every plugin. All must pass with zero errors. This agent ships in the external `plugin-dev` plugin (see [TESTING.md](TESTING.md) for install instructions); skip this gate only if `plugin-dev` cannot be installed. (`plugin-dev:skill-reviewer` is a dev-time quality tool, not a release gate — see [CODING.md](CODING.md).)
+3. **Gate 2 evidence audit** — Run `bash scripts/check-gate2-evidence.sh [<base-ref>]`, which defaults to the most recent tag. It verifies that every PR merged since that tag whose commits touched validator-checked plugin surfaces (`.claude-plugin/plugin.json`, `agents/`, `skills/`, `commands/`, or `hooks/`) has a `gate2:passed` or `gate2:n/a` comment on its linked taskmgr task. This is the release-time enforcement of the process gate described in [CHANGE-WORKFLOW.md](CHANGE-WORKFLOW.md). Read its outcomes as:
 
-   ```bash
-   bash scripts/check-gate2-evidence.sh [<previous-release-tag>]
-   # defaults to the most recent annotated tag
-   ```
+   - **Exit 1, missing evidence** — add the missing `gate2:passed` / `gate2:n/a` comment to the named task and re-run.
+   - **Exit 1, no linked task ID** — the merged PR body carries no `Closes <task-id>` line, so no comment can clear it. Add the line to the merged PR body (the script re-reads it live via `gh pr view`), then post the gate2 comment.
+   - **A `WARN` line** — taskmgr could not read the task. This is excluded from the exit-1 condition, so the audit can print a passing exit having verified nothing. Treat any WARN as a block and resolve it by hand.
+   - **Exit 2** — `gh` or `taskmgr` is missing. Not a clean audit.
+
+   Block the release if this audit fails.
 
 See [TESTING.md](TESTING.md) for full validation details.
 
@@ -30,19 +34,23 @@ All plugins are released together under a single repo-level tag — bump every v
 find plugins -name plugin.json -path "*/.claude-plugin/*"
 ```
 
-### A version bump is not a release
+## Release steps
 
-Bumping the version fields and publishing the GitHub release are one unit of work, not two. Merging the bump without publishing the release leaves the repo in a state that degrades quietly rather than failing:
+1. Run the three gates in the **Tests** section above — all must pass before releasing.
+2. Bump `"version"` in all `plugin.json` files found above. If a `dependencies` entry ever carries a version constraint, a major bump has to widen it too — but none does: [CODING.md](CODING.md) forbids constraints in this marketplace.
+3. Bump every `"version"` in `.claude-plugin/marketplace.json` to the same new version. Edit only the version lines — reformatting these files (e.g. piping them through `jq`) rewrites unrelated compact arrays and buries the bump in churn.
+4. Verify they match: `bash tests/run-all.sh` will catch any version mismatch via `scripts/check-internal-consistency.py`. As a quick manual check: `diff <(jq -r '.plugins[] | "\(.name) \(.version)"' .claude-plugin/marketplace.json | sort) <(find plugins -name plugin.json -path "*/.claude-plugin/*" -exec jq -r '"\(.name) \(.version)"' {} \; | sort)` — should print nothing.
+5. Commit the bump on a `chore/release-X.Y.Z` branch and merge it via PR: `git commit -m "Bump all plugins to vX.Y.Z"`. `master` is protected — see [CHANGE-WORKFLOW.md](CHANGE-WORKFLOW.md) — so the bump cannot be pushed to it directly. The bump PR needs no taskmgr task or gate2 comment: the tag lands on its merge commit and the audit window is exclusive of the base ref, so the next audit never includes it.
+6. Write the release notes per the **Release notes** section below, into a draft file in the gitignored scratch folder — not in the repo, where it would land in the bump commit.
+7. Create the GitHub release from the merged bump commit: `gh release create vX.Y.Z --title "vX.Y.Z" --notes-file <draft> --target master`
 
-- `master` advertises a version that no tag points at, breaking this doc's own invariant that `vX.Y.Z` tags the commit whose `plugin.json` files read `X.Y.Z`.
-- `scripts/check-gate2-evidence.sh` measures its audit window from the most recent tag. With the tag missing, the next release audits the wrong commit range and can report a clean pass over PRs it never examined.
-- A consumer reading `marketplace.json` sees a version that does not appear in the releases list, with no notes explaining what changed.
-
-None of these surface as an error at bump time. If the bump PR merges, publish the release in the same sitting — and if that is not possible, say so explicitly rather than leaving the state to be discovered later.
+Publish in the same sitting the bump PR merges — a merged bump with no tag skews the next audit window and breaks the tag invariant. The tag and the version fields must carry the same version: `vX.Y.Z` tags the commit whose `plugin.json` files read `X.Y.Z`.
 
 ## Release notes
 
-Write the notes around **what changed for users**, not around the list of PRs that changed it. `--generate-notes` produces a flat bullet per merged PR — useful as raw material for finding what landed, never as the published notes. A reader scanning the release should learn what they can now do, and what will behave differently, without opening a single PR.
+`github-releases:github-releases` carries the generic release flow. Local delta: its `release-notes-guide.md` structure does not apply here — use the structure below, and no emoji.
+
+Write the notes around **what changed for users**, not around the list of PRs that changed it. A reader scanning the release should learn what they can now do, and what will behave differently, without opening a single PR.
 
 Structure the notes as:
 
@@ -52,32 +60,14 @@ Structure the notes as:
 4. **Changed behavior worth knowing** — argument-order changes, removed scripts, new defaults, anything that breaks a habit. Keep this section even when it is short; it is the first place a reader upgrading will look.
 5. **Full Changelog** — the compare link, which is where the per-PR list belongs.
 
-Rules of thumb:
-
-- Omit sections that have no content. A release with no behavior changes drops that heading rather than writing "none".
-- Purely internal work (CI, refactors, test scaffolding) gets at most one short section near the end, or no mention at all. Dependabot bumps are never their own bullet.
-- Name trade-offs and known limitations explicitly. A release note that only markets is a release note nobody trusts twice.
-- Draft in a file and publish with `--notes-file`; do not paste prose into `--notes` on the command line.
-
-Use `gh release create ... --generate-notes` only to produce a scratch list of merged PRs, then read those PRs' descriptions to write the real notes.
-
-## Release steps
-
-1. Run the three gates in the **Tests** section above — all must pass before releasing.
-2. Bump `"version"` in all `plugin.json` files found above. If a `dependencies` entry ever carries a version constraint, a major bump has to widen it too — `^1.x` does not admit `2.0.0`. No plugin does today: `plugins/tasks` and `plugins/project-review` are the only ones declaring a dependency and both use the bare-name form, which resolves without consulting tags. That form is deliberate — a constraint resolves against per-plugin `<name>--vX.Y.Z` tags, which the single-repo-tag policy above never creates, so a constrained dependency here can never be satisfied.
-3. Bump every `"version"` in `.claude-plugin/marketplace.json` to the same new version. Edit only the version lines — reformatting these files (e.g. piping them through `jq`) rewrites unrelated compact arrays and buries the bump in churn.
-4. Verify they match: `bash tests/run-all.sh` will catch any version mismatch via `scripts/check-internal-consistency.py`. As a quick manual check: `diff <(jq -r '.plugins[] | "\(.name) \(.version)"' .claude-plugin/marketplace.json | sort) <(find plugins -name plugin.json -path "*/.claude-plugin/*" -exec jq -r '"\(.name) \(.version)"' {} \; | sort)` — should print nothing.
-5. Commit the bump on a `chore/release-X.Y.Z` branch and merge it via PR: `git commit -m "Bump all plugins to vX.Y.Z"`. `master` is protected — see [CHANGE-WORKFLOW.md](CHANGE-WORKFLOW.md) — so the bump cannot be pushed to it directly.
-6. Write the release notes per the **Release notes** section above, into a draft file.
-7. Create the GitHub release from the merged bump commit: `gh release create vX.Y.Z --title "vX.Y.Z" --notes-file <draft> --target master`
-
-The tag and the version fields must carry the same version — `vX.Y.Z` tags the commit whose `plugin.json` files read `X.Y.Z`.
+Draft in a file and publish with `--notes-file`; do not paste prose into `--notes` on the command line. Use `gh release create ... --generate-notes` only to produce a scratch list of merged PRs, then read those PRs' descriptions to write the real notes.
 
 ## Verification
 
 The release is not done until all three of these agree. The middle one is the check that catches a merged bump whose release was never published:
 
 ```bash
+git fetch --tags origin                       # gh release create writes the tag server-side only
 gh release view vX.Y.Z                        # the release exists and its notes read as intended
 git describe --tags --abbrev=0 origin/master  # prints vX.Y.Z, not the previous tag
 jq -r '.metadata.version' .claude-plugin/marketplace.json   # prints X.Y.Z

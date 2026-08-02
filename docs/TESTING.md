@@ -11,22 +11,28 @@ A `.mise.toml` at the repo root provides a single discoverable entry point. Run 
 | `mise run test` | Full test suite — all plugins (`tests/run-all.sh`) |
 | `mise run test-html` | html-visualization browser/server tests only |
 | `mise run check-consistency` | Cross-reference and version-mirror validation (`scripts/check-internal-consistency.py`) |
-| `mise run analyze-sessions` | Session-transcript analyser (append options as extra args, e.g. `mise run analyze-sessions --help`) |
+| `mise run analyze-sessions` | Session-transcript analyser — usage in [MONITORING.md](MONITORING.md) |
 | `mise run lint` | ShellCheck (`--severity=warning`) over every tracked `*.sh` — reproduces the CI `shellcheck` job |
+
+Required on PATH: `bash`, `python3`, `node`, `jq`, `shellcheck`. `mise` runs the tasks but installs none of them — `.mise.toml` declares no `[tools]`. Absent `node`, the node-backed suites fail rather than skip.
 
 ## Script tests — `tests/run-all.sh`
 
-In-repo script tests live under `tests/` (see [tests/README.md](../tests/README.md)). Run them with:
+In-repo script tests live under `tests/` (see [tests/README.md](../tests/README.md) for the layout and the path-resolution idiom). Run them with:
 
 ```bash
-bash tests/run-all.sh
+bash tests/run-all.sh                       # every suite
+bash tests/run-all.sh <plugin>              # one plugin
+bash tests/<plugin>/script-tests/test-x.sh  # one suite
 ```
 
-A plugin has a `tests/<plugin-name>/script-tests/` suite only when it ships committed bash/python helpers worth testing (e.g., the `project-review` validator scripts); plugins without script-level tests have no `tests/` subdirectory at all. A repo-level suite under `tests/marketplace/script-tests/` covers marketplace-wide helpers such as `scripts/check-internal-consistency.py`. `tests/run-all.sh` discovers and runs every suite, per-plugin and marketplace alike.
+`tests/run-all.sh` discovers every suite, per-plugin and marketplace alike.
 
 ### Writing a test
 
-A suite is a `test-*.sh` script under `tests/<plugin>/script-tests/` (or `tests/marketplace/script-tests/`); `run-all.sh` discovers every `test-*.sh` at that depth. Model a new one on an existing suite — e.g. [`test-manifest.sh`](../tests/project-review/script-tests/test-manifest.sh) — resolving the script under test via `git rev-parse --show-toplevel` (see [tests/README.md](../tests/README.md) for the path-resolution idiom). A suite exits `0` on pass, `1` on failure, `77` to skip.
+A suite is a `test-*.sh` script under `tests/<plugin>/script-tests/` (or `tests/marketplace/script-tests/`); `run-all.sh` discovers every `test-*.sh` at that depth. A plugin earns a suite when it ships committed bash, python, or JS helpers worth testing. Model a new one on an existing suite — e.g. [`test-manifest.sh`](../tests/project-review/script-tests/test-manifest.sh) — resolving the script under test via `git rev-parse --show-toplevel`. A suite exits `0` on pass, `1` on failure, `77` to skip.
+
+A suite covering a JS workflow script is a `test-*.sh` wrapper that guards `node` on PATH and `exec node`s a sibling `test-*.js` — model it on [`test-review-docs.sh`](../tests/project-review/script-tests/test-review-docs.sh).
 
 ### analyze-sessions fixture check
 
@@ -40,22 +46,34 @@ python3 tests/marketplace/script-tests/check-fixture.py \
     --summary output/session-analysis/fixture/summary.md
 ```
 
-### Optional prerequisite: Playwright (browser suite)
+### Optional prerequisites
 
-The html-visualization browser suite (`tests/html-visualization/script-tests/test-browser.sh`) needs Playwright with Chromium, resolved from the npm `_npx` cache. On machines without it, the suite prints `SKIP` and exits with the skip code (77); `tests/run-all.sh` reports it as a skipped suite in its summary line (not a silent pass) and keeps the overall run green. Set `REQUIRE_BROWSER=1` to turn an absent Playwright into a hard failure instead — use this in CI that must exercise the browser path. To enable the suite:
+Two suites skip rather than fail where their prerequisite is absent:
+
+- `tests/html-visualization/script-tests/test-browser.sh` skips without Playwright in the npm `_npx` cache; `REQUIRE_BROWSER=1` makes it fail instead.
+
+  ```bash
+  npx playwright --version        # populates the npm _npx cache
+  npx playwright install chromium
+  ```
+
+- `tests/keep-awake-linux/script-tests/test-keep-awake.sh` skips where logind will not register an inhibitor (so it skips on GitHub Actions); `REQUIRE_LOGIND=1` makes it fail instead.
+
+## Docs validation
+
+Neither validator below runs in CI — run them locally on any change under `docs/`, from the repo root:
 
 ```bash
-npx playwright --version        # populates the npm _npx cache
-npx playwright install chromium
+SCR=plugins/project-review/skills/project-review-docs/scripts
+python3 "$SCR/validate-routes.py" . --include-docs   # hard-fails on broken routes
+python3 "$SCR/manifest.py" . --format=text           # CLAUDE.md invariant, missing/hollow docs, dead links
 ```
 
-### Optional prerequisite: a running logind (keep-awake suite)
+A non-zero `validate-routes.py` (broken routes) must be fixed before pushing. The manifest is informational — check its summary line for a false `claude_md_ok`, missing canonical docs, or unresolved links. For a full content audit, run the `/project-review-docs` skill.
 
-The keep-awake-linux suite (`tests/keep-awake-linux/script-tests/test-keep-awake.sh`) asserts against real inhibitors registered with logind, so it needs a session manager that actually registers them. It probes that capability rather than the binary: a container can ship `systemd-inhibit` with no logind running, in which case the helper still spawns and still writes a marker but nothing ever registers — every count reads 0 and the failures would describe the sandbox, not the code. Where the probe fails the suite prints `SKIP` and exits 77, and `tests/run-all.sh` reports it as skipped while keeping the run green. This is why the suite skips on GitHub Actions. Set `REQUIRE_LOGIND=1` to turn the skip into a hard failure, for a runner that is supposed to have it.
+## CI — `.github/`
 
-## CI — `.github/workflows/`
-
-`ci.yml` runs five jobs on every PR against `master` and on every push to `master`. All five must be green to merge; four have a local equivalent, so a clean local run should predict a clean CI run:
+`ci.yml` runs five jobs on every PR against `master` and on every push to `master`. All five must be green to merge; four have a local equivalent, so a clean local run predicts a clean CI run — but not a fully verified change: the doc validators above run in no job.
 
 | Job | What it checks | Locally |
 |---|---|---|
@@ -65,7 +83,7 @@ The keep-awake-linux suite (`tests/keep-awake-linux/script-tests/test-keep-awake
 | `shellcheck` | ShellCheck at `--severity=warning` over every tracked `*.sh` | `mise run lint` |
 | `gitleaks` | Leaked-secret scan over full history | CI-only (needs the `gitleaks` binary) |
 
-`codeql.yml` adds a CodeQL analysis on the same triggers plus a weekly scheduled scan, and `dependabot.yml` keeps the pinned GitHub Actions current. Neither has a local equivalent.
+`codeql.yml` adds a CodeQL analysis on the same triggers plus a weekly scheduled scan, and `.github/dependabot.yml` (not a workflow) keeps the pinned GitHub Actions current. Neither has a local equivalent.
 
 ## Structural validation — `plugin-dev:plugin-validator`
 
@@ -85,14 +103,4 @@ It checks:
 
 Use this before publishing or after any structural changes.
 
-## Skill quality review — `plugin-dev:skill-reviewer` (dev-time, not a release gate)
-
-> **Prerequisite:** Same as `plugin-dev:plugin-validator` above — `plugin-dev:skill-reviewer` ships in the external `plugin-dev` plugin and must be installed separately.
-
-The `plugin-dev:skill-reviewer` agent reviews `SKILL.md` files for trigger description quality, progressive disclosure, and content organisation. This is a recommended development-time tool; it is **not** a required release gate (only `plugin-dev:plugin-validator` is).
-
-```
-Review the skill at plugins/my-plugin/skills/my-skill/SKILL.md
-```
-
-Use this after writing or revising a skill to catch weak trigger phrases, over-long bodies, or missing references.
+The same plugin ships `plugin-dev:skill-reviewer`, a dev-time aid for `SKILL.md` quality rather than a gate — see [CODING.md](CODING.md).
