@@ -44,7 +44,7 @@ ls plugins/*/skills/*/SKILL.md                                 # every skill in 
 git grep -ln 'name: <skill>' -- 'plugins/*/skills/*/SKILL.md'  # which plugin ships a skill
 git grep -n '<plugin>:<skill>' -- plugins                      # where a skill is referenced by its qualified name
 ls -d plugins/*/hooks                                          # which plugins define hooks
-ls plugins/*/agents/*.md plugins/*/workflows/*.js plugins/*/skills/*/workflows/*.js   # agents, and workflows in both layouts
+git ls-files 'plugins/*/agents/*.md' 'plugins/*/workflows/*.js' 'plugins/*/skills/*/workflows/*.js'   # agents, and workflows in both layouts
 ```
 
 ## External references

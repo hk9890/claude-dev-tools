@@ -144,6 +144,13 @@ SKILL_RENAME_ALIASES = {
     "project-review:project-review-complexity": "challenge:kiss",
     # github-releases: stale "release" skill name -> the plugin's actual skill
     "github-releases:release": "github-releases:github-releases",
+    # Deliberately absent:
+    #   "tasks:tasks" — the taskmgr CLI reference was DELETED, not renamed. Only its
+    #     availability probe and two create flags survive, inside tasks-create; the command
+    #     surface, filter language, and tracker gotchas it existed for are gone. Aliasing it
+    #     to tasks-create would attribute CLI-reference episodes to a create-flow skill.
+    #   "tasks:tasks-work" — DELETED with its agents and workflow, no successor to point at.
+    #   Episodes for both land in the unmatched bucket by design, as project-explore's do.
 }
 
 # Weight map for friction scoring

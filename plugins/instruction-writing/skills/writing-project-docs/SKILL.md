@@ -1,7 +1,7 @@
 ---
 name: writing-project-docs
 description: "The standard a project's agent-facing docs follow — which file owns what, plus a worked example of each."
-when_to_use: "Use when writing or fixing a project's agent-facing docs — AGENTS.md, CLAUDE.md, README.md, CONTRIBUTING.md, or a topic doc under docs/ — including deciding where a piece of content belongs. Triggers on 'AGENTS.md' and 'project docs'. Also loaded by name when another skill needs the standard. Not for auditing a doc set (`project-review:project-review-docs`) or writing skills (`writing-skills`)."
+when_to_use: "Use when writing or fixing a project's agent-facing docs — AGENTS.md, CLAUDE.md, README.md, CONTRIBUTING.md, or a topic doc under docs/ — including deciding where a piece of content belongs. Triggers on 'AGENTS.md' and 'project docs'. Also loaded by name when another skill needs the standard. Not for auditing a doc set (`project-review:project-review-docs`), writing skills (`writing-skills`), or writing task and issue bodies (`tasks:tasks-writing`)."
 argument-hint: "[doc-path-or-request]"
 ---
 
