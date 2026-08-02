@@ -38,15 +38,14 @@ TMPDIR_BASE=$(node -e "process.stdout.write(require('os').tmpdir())")
 HTML_DIR="$TMPDIR_BASE/<mode>-$(date +%s)-$$"
 mkdir -p "$HTML_DIR"
 # Resolve the plugin root once and persist it for server-start commands.
-# $CLAUDE_PLUGIN_ROOT is NOT exported into Bash tool subprocesses; locate the
-# install under $HOME so this resolves for any user and marketplace name.
-PLUGIN_DIR=$(find "$HOME/.claude/plugins/cache" -maxdepth 3 -type d -name html-visualization 2>/dev/null | head -1)
-PLUGIN_ROOT=""
-[ -n "$PLUGIN_DIR" ] && PLUGIN_ROOT=$(find "$PLUGIN_DIR" -maxdepth 1 -mindepth 1 -type d | sort -V | tail -1)
-# Dev fallback: a --plugin-dir run loads from a working tree and has no cache copy.
-[ -f "$PLUGIN_ROOT/bin/server.js" ] || PLUGIN_ROOT=$(find "$PWD" -maxdepth 4 -type d -name html-visualization -exec test -f '{}/bin/server.js' \; -print -quit 2>/dev/null)
+# Substitute the absolute path the harness printed as "Base directory for this
+# skill:" when it loaded html-visualize. That base directory is
+# <plugin root>/skills/html-visualize, so ../.. is the plugin root, where bin/
+# sits — this is the plugin-root layout, not the usual per-skill one.
+PLUGIN_ROOT=$(cd "<base directory for this skill>/../.." 2>/dev/null && pwd)
 if [ -f "$PLUGIN_ROOT/bin/server.js" ]; then
   echo "$PLUGIN_ROOT" > "$HTML_DIR/.plugin-root"
+  echo "plugin root: $PLUGIN_ROOT"
 else
   echo "ERROR: cannot locate the html-visualization plugin root"
 fi
@@ -54,20 +53,23 @@ fi
 
 If the `ERROR` line prints, stop — do not start a server. Fall back to the
 active mode's chat fallback (as in the Node pre-flight) and tell the user the
-plugin's files could not be located. Note: `sort -V | tail -1` picks the newest
-cached version; when several versions are cached that is normally the enabled
-one, but after a plugin downgrade it may not be.
+plugin's files could not be located. Never guess a path in its place.
 
 Replace `<mode>` with `html-ask`, `html-feedback`, or `html-visualize` depending
 on the active mode. The directory must be unique per invocation — never reuse one
 from a previous invocation.
 
-> **Why `find` instead of `$CLAUDE_PLUGIN_ROOT`**: `$CLAUDE_PLUGIN_ROOT` is a
-> harness token substituted only in plugin-config contexts (hook scripts,
-> settings.json). It is **not** exported into the environment of Bash tool
-> invocations. Any skill text that uses `$CLAUDE_PLUGIN_ROOT` in a `Bash` call
-> will silently expand to an empty string, producing broken paths. Always resolve
-> the plugin root via `find` as shown above.
+> **Why the base directory, and not `$CLAUDE_PLUGIN_ROOT` or `find`**:
+> `$CLAUDE_PLUGIN_ROOT` is a harness token substituted only in plugin-config
+> contexts (hook scripts, settings.json). It is **not** exported into the
+> environment of Bash tool invocations, so in a `Bash` call it silently expands
+> to an empty string and produces broken paths. Searching the filesystem is not
+> the answer either: a `find` over the install cache can select a stale version
+> after a downgrade, and a `find` over `$PWD` can match an unrelated directory in
+> whatever repository the user installed this plugin into. The
+> `Base directory for this skill:` line the harness prints on every skill load is
+> already correct in all three install shapes — dev checkout, `--plugin-dir` run,
+> and cached install — so use it.
 
 **Feedback mode only**: this directory is created **once** and reused for every
 Apply round of the same skill invocation. It is deleted only after a final Submit.
