@@ -55,8 +55,10 @@ Two layouts exist, so check where the file actually sits before building the pat
 (see [OVERVIEW.md](OVERVIEW.md)): a workflow owned by one skill lives under that skill, as
 above — every workflow in the marketplace currently does. One shared beyond a single skill
 sits at the plugin root instead and is reached with
-`<base directory for this skill>/../../workflows/<the-file-you-need>`; no plugin uses that
-form today, so state in the skill that it applies, or the `../..` reads as a mistake.
+`<base directory for this skill>/../../<dir>/<the-file-you-need>`. `html-visualization` is
+the worked example: its three mode skills all run `bin/server.js`, so the shared
+`references/serve.md` climbs `../..` from the `html-visualize` library's base directory.
+State in the skill that the plugin-root layout applies, or the `../..` reads as a mistake.
 
 Do not search the filesystem for the plugin. A `find`-based resolution is not just redundant,
 it is worse than the value the harness hands you: it can select a stale cached version or a
