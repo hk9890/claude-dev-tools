@@ -25,7 +25,6 @@ file wins.
   only one. Otherwise the manifest classifies the doc as non-standard. That classification
   is advisory (the review's per-file agents judge placement); registering the topic is a
   human step, not an automatic gate.
-- Reviews never touch the task tracker.
 
 ## Out of scope / non-blocking
 

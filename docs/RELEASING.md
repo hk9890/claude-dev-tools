@@ -2,22 +2,16 @@
 
 Release process for this plugin marketplace. All plugins ship together under a single repo-level version tag.
 
-Requires `gh` (authenticated), `taskmgr`, `jq`, and `python3` on PATH. Cut releases from a clean tree on an up-to-date `master`.
+Requires `gh` (authenticated), `jq`, and `python3` on PATH. Cut releases from a clean tree on an up-to-date `master`.
 
 ## Tests
 
-There is no build step. Three gates, all required before releasing:
+There is no build step. Two gates, both required before releasing. They are the same two named in the [CHANGE-WORKFLOW.md pre-push checklist](CHANGE-WORKFLOW.md#pre-push-checklist), re-run here over the whole repo rather than over one change:
 
-1. **In-repo script tests** — `bash tests/run-all.sh` must pass. This gate includes `scripts/check-internal-consistency.py`: a version mismatch between any `plugin.json` and `marketplace.json`, or more than one distinct version in the repo, fails it. The Script tests section in TESTING.md covers local test execution.
-2. **Structural validation** — Run `plugin-dev:plugin-validator` on every plugin. All must pass with zero errors. This agent ships in the external `plugin-dev` plugin (see [TESTING.md](TESTING.md) for install instructions); skip this gate only if `plugin-dev` cannot be installed. (`plugin-dev:skill-reviewer` is a dev-time quality tool, not a release gate — see [CODING.md](CODING.md).)
-3. **Gate 2 evidence audit** — Run `bash scripts/check-gate2-evidence.sh [<base-ref>]`, which defaults to the most recent tag. It verifies that every PR merged since that tag whose commits touched validator-checked plugin surfaces (`.claude-plugin/plugin.json`, `agents/`, `skills/`, `commands/`, or `hooks/`) has a `gate2:passed` or `gate2:n/a` comment on its linked taskmgr task. This is the release-time enforcement of the process gate described in [CHANGE-WORKFLOW.md](CHANGE-WORKFLOW.md). Read its outcomes as:
+- **Test-Run** — `bash tests/run-all.sh` must pass. This is the gate that catches a botched bump: it includes `scripts/check-internal-consistency.py`, so a version mismatch between any `plugin.json` and `marketplace.json`, or more than one distinct version in the repo, fails it. The Script tests section in TESTING.md covers local test execution.
+- **Plugin-Structure-Check** — Run `plugin-dev:plugin-validator` on **every** plugin, not just recently changed ones. All must pass with zero errors. This agent ships in the external `plugin-dev` plugin (see [TESTING.md](TESTING.md) for install instructions); skip this gate only if `plugin-dev` cannot be installed. (`plugin-dev:skill-reviewer` is a dev-time quality tool, not a release gate — see [CODING.md](CODING.md).)
 
-   - **Exit 1, missing evidence** — add the missing `gate2:passed` / `gate2:n/a` comment to the named task and re-run.
-   - **Exit 1, no linked task ID** — the merged PR body carries no `Closes <task-id>` line, so no comment can clear it. Add the line to the merged PR body (the script re-reads it live via `gh pr view`), then post the gate2 comment.
-   - **A `WARN` line** — taskmgr could not read the task. This is excluded from the exit-1 condition, so the audit can print a passing exit having verified nothing. Treat any WARN as a block and resolve it by hand.
-   - **Exit 2** — `gh` or `taskmgr` is missing. Not a clean audit.
-
-   Block the release if this audit fails.
+The full sweep is the point of running Plugin-Structure-Check here: nothing tracks whether it was run on each merged PR, so the release is where a plugin that was never validated is caught.
 
 See [TESTING.md](TESTING.md) for full validation details.
 
@@ -36,15 +30,15 @@ find plugins -name plugin.json -path "*/.claude-plugin/*"
 
 ## Release steps
 
-1. Run the three gates in the **Tests** section above — all must pass before releasing.
+1. Run Test-Run and Plugin-Structure-Check from the **Tests** section above — both must pass before releasing.
 2. Bump `"version"` in all `plugin.json` files found above. If a `dependencies` entry ever carries a version constraint, a major bump has to widen it too — but none does: [CODING.md](CODING.md) forbids constraints in this marketplace.
 3. Bump every `"version"` in `.claude-plugin/marketplace.json` to the same new version. Edit only the version lines — reformatting these files (e.g. piping them through `jq`) rewrites unrelated compact arrays and buries the bump in churn.
 4. Verify they match: `bash tests/run-all.sh` will catch any version mismatch via `scripts/check-internal-consistency.py`. As a quick manual check: `diff <(jq -r '.plugins[] | "\(.name) \(.version)"' .claude-plugin/marketplace.json | sort) <(find plugins -name plugin.json -path "*/.claude-plugin/*" -exec jq -r '"\(.name) \(.version)"' {} \; | sort)` — should print nothing.
-5. Commit the bump on a `chore/release-X.Y.Z` branch and merge it via PR: `git commit -m "Bump all plugins to vX.Y.Z"`. `master` is protected — see [CHANGE-WORKFLOW.md](CHANGE-WORKFLOW.md) — so the bump cannot be pushed to it directly. The bump PR needs no taskmgr task or gate2 comment: the tag lands on its merge commit and the audit window is exclusive of the base ref, so the next audit never includes it.
+5. Commit the bump on a `chore/release-X.Y.Z` branch and merge it via PR: `git commit -m "Bump all plugins to vX.Y.Z"`. `master` is protected — see [CHANGE-WORKFLOW.md](CHANGE-WORKFLOW.md) — so the bump cannot be pushed to it directly.
 6. Write the release notes per the **Release notes** section below, into a draft file in the gitignored scratch folder — not in the repo, where it would land in the bump commit.
 7. Create the GitHub release from the merged bump commit: `gh release create vX.Y.Z --title "vX.Y.Z" --notes-file <draft> --target master`
 
-Publish in the same sitting the bump PR merges — a merged bump with no tag skews the next audit window and breaks the tag invariant. The tag and the version fields must carry the same version: `vX.Y.Z` tags the commit whose `plugin.json` files read `X.Y.Z`.
+Publish in the same sitting the bump PR merges — a merged bump with no tag breaks the tag invariant and leaves `marketplace.json` advertising a version that appears in no release. The tag and the version fields must carry the same version: `vX.Y.Z` tags the commit whose `plugin.json` files read `X.Y.Z`.
 
 ## Release notes
 
