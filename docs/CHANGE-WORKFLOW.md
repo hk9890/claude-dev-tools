@@ -9,11 +9,11 @@ Use the `commit-commands:commit` skill (or `commit-commands:commit-push-pr`) for
 
 - `master` is the main protected branch — no direct pushes from any actor.
 - Branch off `master` with a descriptive name. Convention:
-  - `fix/<id>-<slug>` — bug fixes
-  - `feat/<id>-<slug>` — new features
-  - `docs/<id>-<slug>` — documentation-only changes
-  - `chore/<id>-<slug>` — housekeeping and refactoring
-  `<id>` is the taskmgr short ID when one exists (e.g. `docs/claudedevt-2xdmn0-feature-branch-policy`).
+  - `fix/<slug>` — bug fixes
+  - `feat/<slug>` — new features
+  - `docs/<slug>` — documentation-only changes
+  - `chore/<slug>` — housekeeping and refactoring
+  The slug says what the branch does (`docs/feature-branch-policy`). Prefixing an issue or task ID is allowed but never required — nothing in this repo parses it.
 
 ## Pre-push checklist
 
@@ -34,7 +34,3 @@ Internal changes (maintainer or agent-orchestrated) use feature-branch PRs as th
 4. Merge after review, with all five CI jobs green — see [TESTING.md](TESTING.md) for the job list. Merges use GitHub's default merge-commit style, producing `Merge pull request #N from hk9890/<branch>` subjects (`hk9890/` is the GitHub owner namespace, not part of the branch name).
 
 External contributors fork the repo and open a PR from their fork branch; no direct branch push to origin. The same pre-push checklist applies.
-
-## Task tracking
-
-Tasks are tracked with the `taskmgr` CLI via the `tasks` plugin. Typical workflow: `taskmgr ready` to find available work, `taskmgr create` to capture follow-ups discovered while working, `taskmgr close` when a task is done. See [the `tasks` skill](../plugins/tasks/skills/tasks/SKILL.md) for the full workflow.
