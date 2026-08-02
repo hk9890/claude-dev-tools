@@ -1,122 +1,113 @@
 ---
 name: tasks-create
-description: "Turn findings from the current conversation into well-formed taskmgr issues — classified by type with a standard body."
+description: "Turn this conversation — a review, a plan, a spec — into a set of filed tasks with real blocking edges, approved before anything is written."
 user-invocable: true
 disable-model-invocation: true
-argument-hint: "[scope-or-findings]"
+argument-hint: "[scope]"
 ---
 
-# Creating tasks from findings
+# Creating tasks from this conversation
 
-Turn the findings already present in **this conversation** — a code review, a `/simplify` pass, an
-exploration, a design discussion — into well-formed `taskmgr` issues. This skill is the single
-source of truth for how a finding becomes a task: follow it, do not invent your own body shape.
+The material is already here: a review that produced findings, a plan that was argued out, a spec
+that was read. This skill turns it into filed tasks. **Scope:** $ARGUMENTS narrows which material to
+file — "only the critical findings", "just the auth work". With no scope, everything actionable in
+the conversation is a candidate and step 4 confirms the set.
 
-**Scope (optional):** anything passed after the command narrows which findings to file — read it
-together with step 2.
+## 1. Load the standard
 
-$ARGUMENTS
+Load `tasks:tasks-writing` before drafting anything. It owns the type contracts, the four body
+sections, and the rules each body must clear; this skill owns only how a conversation becomes a
+*set* of them. Draft nothing before it is loaded — repairing a batch of wishes afterwards costs more
+than writing them right once.
 
-## 1. Preconditions
-
-First, **load the `tasks` skill** for the CLI surface and the taskmgr gotchas (closure is not gated,
-`--description-file -`, `create --json` returns id-only) — this skill relies on them.
-
-Then confirm the tracker is usable before creating anything: run the availability check from that
-skill ("Is taskmgr available?") and follow its failure guidance — for a missing store, continue
-once `taskmgr init` has created one.
-
-## 2. Gather the findings
-
-Collect the actionable findings from the current conversation. A finding is anything with a
-location, a problem, and an implied fix — a review finding, a failing check, a simplification
-opportunity, a flaw raised in discussion.
-
-**Honor the user's scope.** `/tasks-create` may carry an instruction ("only the critical findings",
-"just the auth bugs", "make chores for the cleanups"). Create tasks for exactly that subset. With no
-scope given, list the candidate findings and confirm which to file before writing anything.
-
-## 3. Classify each finding by nature
-
-The *nature* of the finding picks the type — not its source. `/code-review` and `/simplify`
-findings are classified the same way as anything else.
-
-| Type | Use when the finding is | Examples |
-|---|---|---|
-| `bug` | something is broken vs. intended behavior | a defect, a wrong result, a crash, a failing test |
-| `chore` | cleanup with no behavior change | a simplification, a refactor, dead-code removal, a rename |
-| `task` | actionable work that is neither | a missing capability, a follow-up investigation |
-
-If one finding is both ("this is broken *and* the surrounding code should be simplified"), file the
-defect as a `bug` and the cleanup as a separate `chore`. One problem per issue; batch several
-instances of the *same* fix into one issue.
-
-## 4. Map severity to priority
-
-`taskmgr` priorities are numeric `0`–`4`. Map the finding's severity:
-
-| Severity | Priority |
-|---|---|
-| critical / blocker | `0` |
-| high | `1` |
-| medium / normal | `2` |
-| low | `3` |
-| trivial / nit | `4` |
-
-## 5. Write the standard body
-
-Every created issue uses this body — no variations:
-
-```markdown
-## Context
-<where: file:line, component, or the review/conversation that produced this>
-
-## Problem
-<what is wrong and why it matters — the finding, stated concretely>
-
-## Recommended action
-<the concrete change to make>
-
-## Acceptance criteria
-- [ ] <testable check>
-- [ ] <testable check>
-```
-
-For a `chore`, "Problem" describes the complexity or debt and "Recommended action" the
-simplification — the skeleton is identical.
-
-Acceptance criteria must be **testable**: a command to run, an observable result, a check that
-passes. "Works" or "looks right" is not acceptance criteria. If a finding has no testable
-criterion, say so and ask the user rather than inventing one.
-
-## 6. Create the issues
-
-Pipe the body via stdin (`--description-file -`); the title is short and imperative:
+## 2. Confirm the tracker
 
 ```bash
-cat <<'EOF' | taskmgr create --title "Return 401 on expired JWT" --type bug --priority 1 --description-file -
+command -v taskmgr >/dev/null 2>&1   # is the binary installed?
+taskmgr where                         # does a store resolve, and which one?
+```
+
+Read `where`'s output rather than its exit status — it exits `0` whether or not a store resolves. No
+binary, or `kind: none`, means stop and tell the user; offer `taskmgr init` for a missing store.
+
+## 3. Gather and ground
+
+Collect the actionable material from the conversation, and read anything it points at that you have
+not read — a linked spec, an issue, a file discussed but never opened.
+
+Then ground it in the repository. Open the code each task will touch and take the real path, the
+real symbol, the real command from it. A task written from memory of the discussion carries the
+discussion's vocabulary; a task written from the code carries the project's, and the implementer
+starts in the right file instead of searching for it.
+
+## 4. Decompose
+
+Two shapes, depending on what the conversation produced.
+
+**Findings** — a review, a `/simplify` pass, a failing build. One task per finding; no slicing.
+Several instances of the *same* fix are one task. A finding that is both a defect and untidiness
+around it splits by type, not by call site.
+
+**A plan or spec** — cut it into **tracer bullets**. Each task is a narrow but *complete* path
+through every layer it touches — schema, API, UI, test — so finishing it produces something
+demonstrable. Size each to one sitting. Horizontal slices ("do all the schema changes") are the
+failure mode here: every one of them can be finished with nothing working end to end, so the first
+evidence anything is right arrives only after the last task closes.
+
+Then the edges:
+
+- **Blocked-by** is a real ordering constraint: B genuinely cannot start until A closes. Preferring
+  to do A first is not a blocker — that is what priority is for. False edges make the ready queue
+  lie about what is available.
+- **Parent** groups children under an epic when the set shares one outcome. It is organisational and
+  never blocks anything.
+
+## 5. Get the set approved
+
+Present the whole set as a numbered list before writing anything — id-less at this point:
+
+```
+1. [bug/1]     Expired access token is accepted on every endpoint
+2. [feature/2] Export the orders table as CSV        blocked by: 1
+3. [chore/3]   Collapse the three date formatters
+```
+
+Ask the user about granularity (too coarse, too fine), the blocking edges, and anything to merge,
+split, or drop. Iterate until they approve. Nothing is filed before that approval — a filed task
+set is harder to reshape than a list in a message.
+
+## 6. File them
+
+Create in dependency order — an epic and any blocker before the issues that reference them, since
+their ids do not exist until they are created. Ids are opaque short codes; take each from the
+command's output and never invent one.
+
+```bash
+cat <<'EOF' | taskmgr create --title "Expired access token is accepted on every endpoint" \
+    --type bug --priority 1 --description-file -
 ## Context
-src/middleware/auth.ts:42 — flagged in code review.
+src/middleware/auth.ts:42 — reproduced on main at a1b3f90.
 
 ## Problem
-An expired token is treated as valid: the exp claim is parsed but never compared to now, so expired
-sessions keep working.
+verifyToken reads the exp claim but never compares it to the current time, so any structurally
+valid token authenticates indefinitely. <observed output>
 
 ## Recommended action
-Compare exp against the current time and reject when past; return 401.
+Compare exp against the current time and reject when it is past; return 401.
 
 ## Acceptance criteria
 - [ ] A request with an expired token returns 401
-- [ ] A request with a valid token still succeeds
-- [ ] Relevant middleware tests pass
+- [ ] A request with a valid token still returns 200
+- [ ] `npm test -- auth` passes, including a case for the expired path
 EOF
 ```
 
-Add `--label area:<x>` for routing when useful, `--parent <epic>` to group under an epic, and
-`--blocked-by <id>` for a real ordering constraint. `create --json` returns the new id only.
+Add `--parent <epic-id>` to group, `--blocked-by <id>` for an edge known at creation time, and
+`--label area:<x>` for routing. An edge discovered later is `taskmgr dep add <dependent> <blocker>`.
 
 ## 7. Report
 
-List what you created — `id`, type, priority, title — so the user can see the result and run
-`taskmgr ready`. If you skipped any candidate findings (out of scope, or no testable criterion),
-say which and why. Do not close or modify any existing issue from this skill — it only creates.
+List what was created — id, type, priority, title — and the edges between them, so the user can see
+the shape and run `taskmgr ready`. Name anything you did not file and why: out of the given scope,
+or no testable criterion could be written for it. This skill only creates; existing issues are not
+closed or edited here.

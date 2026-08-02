@@ -10,7 +10,7 @@ Row order matches `.claude-plugin/marketplace.json`, which carries the long-form
 
 | Plugin | Description |
 |---|---|
-| [`tasks`](plugins/tasks/) | Drive the `taskmgr` file-based tracker — `tasks` (data model and commands), `tasks-create`, and the `tasks-work` implement/verify/record workflow. |
+| [`tasks`](plugins/tasks/) | Write and file tasks worth executing — `tasks-writing` (the standard a task body follows, with a worked example of every type) and `tasks-create` (turns the current conversation into a filed, dependency-ordered set). |
 | [`project-review`](plugins/project-review/) | Read-only adversarial audits that return a prioritized action list — `project-review-codebase` and `project-review-docs`. |
 | [`project-execute`](plugins/project-execute/) | Run a project's own documented flows from its docs — `project-exec-testing`, `project-exec-releasing`, `project-exec-monitoring`, and `project-explain`. |
 | [`challenge`](plugins/challenge/) | Project-agnostic adversarial passes — `grill` (stress-test a plan), `kiss` (cut accidental complexity), `are-you-sure` (re-check finished work). |

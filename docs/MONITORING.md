@@ -17,7 +17,7 @@ Claude Code writes session transcripts to `~/.claude/projects/<slug>/<uuid>.json
 `attributionPlugin` and `attributionSkill` appear **on assistant messages only**. They are set by the harness when a skill is running and are absent on unattributed turns.
 
 - `attributionPlugin` — the plugin directory name (e.g. `tasks`)
-- `attributionSkill` — the namespaced skill identifier (e.g. `tasks:tasks`)
+- `attributionSkill` — the namespaced skill identifier (e.g. `tasks:tasks-writing`)
 
 `tool_result` blocks live **inside user messages**, not assistant messages. The error signal is `tool_result.is_error == true`.
 
