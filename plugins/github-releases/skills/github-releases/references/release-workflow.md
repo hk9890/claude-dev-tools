@@ -91,20 +91,25 @@ git show "origin/$DEFAULT_BRANCH:<a version file>" | grep -q "<the release versi
 
 ## Phase 7 — Create GitHub release
 
-Write the release notes first, then create the release from them:
+Write the release notes first, then create the release from them. Writing them is its own
+tool call, so print the path and substitute it literally afterwards — a variable assigned
+here is gone by the next `Bash` call.
 
 ```bash
-# Write release notes to a temp file — never create it inside the repo
-NOTES=$(mktemp)
-# ... write structured notes per release-notes-guide.md ...
+# Reserve a notes path outside the repo, and print it
+mktemp
+```
 
+Write the structured notes to the printed path, then:
+
+```bash
 # Tag the release
 git tag v<version>
 git push origin v<version>
 
 # Create GitHub release
-gh release create v<version> --title "v<version>" --notes-file "$NOTES"
-rm "$NOTES"
+gh release create v<version> --title "v<version>" --notes-file <the printed notes path>
+rm <the printed notes path>
 ```
 
 See [release-notes-guide.md](release-notes-guide.md) for the required release notes format.
