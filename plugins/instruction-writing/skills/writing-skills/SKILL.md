@@ -8,8 +8,9 @@ argument-hint: "[skill-path-or-request]"
 A skill exists to wrangle determinism out of a stochastic system. **Predictability** — the agent taking the same _process_ every run, not producing the same output (a brainstorming skill should _predictably_ diverge: its tokens vary, its behaviour does not) — is the root virtue every lever below serves. Cost and maintainability are symptoms of it, not rivals.
 
 **What to write or review:** $ARGUMENTS — a skill path, a draft, or a request; with no argument, the
-skill under discussion. Apply every rule below to it. The work is done when each one has been held
-against that target and either cleared or named as a defect — not when the rubric has been read.
+skill under discussion. Apply every rule below, and every rule in the hygiene reference the Pruning
+section points at, to that target. The work is done when each one has been held against it and
+either cleared or named as a defect — not when the rubric has been read.
 
 ## The two loads
 
@@ -87,11 +88,12 @@ Hunt for opportunities to refactor skills to use leading words. A triad spelled 
 
 You win twice: fewer tokens, and a sharper hook for the agent to hang its thinking on. Assume every skill is carrying restatements that leading words retire — go find them.
 
-**Negation** is the failure mode beside this lever: steering by prohibition drags the forbidden behaviour into context and makes it _more_ available, not less. _Don't think of an elephant_, and the elephant is all there is; the negation is a weak modifier the strongly-activated concept overruns, so the ban half-reads as an instruction to do the thing. Prompt the **positive** — state the target behaviour ("write one-line comments") so the banned one is never spoken. A prohibition earns its place only as a hard guardrail you cannot phrase positively; even then, pair it with the positive target so attention lands on what to do.
+**Negation** — steering by prohibition, which makes the banned behaviour _more_ available rather than less — is the failure mode beside this lever. It is defined with the other shared rules in the hygiene reference below.
 
 ## Pruning
 
-- Keep each meaning in a **single source of truth**: one authoritative place, so changing the skill's behaviour is a one-place edit. **Duplication** — the same meaning in more than one place — costs maintenance and tokens, and inflates a meaning's prominence on the ladder past its real rank. (The accidental inverse of a leading word, which repeats a token on purpose, never the meaning.)
-- The **environment** is a source of truth too — `package.json` scripts, config files, the directory layout, `--help` output — and a skill that restates it is a **cache**: a copy of a lookup, earning its load only when the lookup is expensive. Cache what the agent cannot find by looking: the unwritten convention, the reason behind a choice, the gotcha no config confesses. Leave the one-file, one-command lookups to the environment, where they cannot go stale.
-- Check every line for **relevance**: does it still bear on what the skill does? A line loses relevance by never bearing on the task (mere exposition, or a branch that should be disclosed) or by going stale as the behaviour or world it describes changes. Shorter skills are easier to keep relevant. Without a pruning discipline the default fate is **sediment**: stale layers that settle because adding feels safe and removing feels risky, until you must core down through them to find what is still live.
-- Hunt **no-ops** sentence by sentence: an instruction the model already obeys by default pays load to say nothing. The test — does it change behaviour versus the default? — is model-relative, not reader-relative: two people disagreeing about a no-op disagree about the default, and settle it by running the skill, not by debate. When a sentence fails, delete the whole sentence rather than trim words from it. The test also grades leading words: a word too weak to beat the default (_be thorough_ when the agent is already thorough-ish) is a no-op, and the fix is a stronger word (_relentless_), not a different technique.
+Single source of truth, cache, relevance, sediment, no-ops and negation are shared with `writing-project-docs`, so they live at the **plugin root** rather than inside this skill — the `../../` is the layout, not a mistake:
+
+[`../../references/writing-hygiene.md`](../../references/writing-hygiene.md)
+
+Read it and apply every rule in it to the target. A `SKILL.md` is a document an agent reads, so each one binds here as written; nothing in this skill overrides them.

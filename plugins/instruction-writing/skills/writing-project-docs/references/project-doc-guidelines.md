@@ -26,12 +26,9 @@ being read, and nothing in either says which is stale. When two files could hold
 it and the other links; when a section here restates a section there, cut it and link. This binds
 hardest inside a single file, where the same rule restated two sections apart reads as two rules.
 
-**The repository is a home too.** `package.json` scripts, the `mise.toml` tasks, config files, the
-directory layout, `--help` output — each is already authoritative, and a doc that restates one is a
-**cache** of a lookup. A cache earns its load only when the lookup is expensive, and it goes stale
-the moment the source moves. Cache what the agent cannot get by looking: the unwritten convention,
-the reason behind a choice, the gotcha no config confesses, which of two commands to reach for.
-Leave the one-file, one-command lookups to the repository, where they cannot drift.
+**The repository is a home too** — `package.json` scripts, the `mise.toml` tasks, config files, the
+directory layout. A doc that restates one is a **cache**, governed by the shared rule the skill
+routes to; what belongs here is only which of this repo's own surfaces count as authoritative.
 
 The homes most often got wrong:
 
@@ -114,12 +111,11 @@ Two things make the obligation fire:
 
 ## Failure modes
 
-Use these to diagnose a doc set that is not working.
+Use these to diagnose a doc set that is not working. They are the ones peculiar to a doc *set* —
+duplication, sediment and no-ops afflict any document and are defined in the hygiene reference the
+skill routes to, where a doc set's version of sediment is the routing file swelling into a
+handbook.
 
-- **Duplication** — the same fact in two files, or twice in one. Costs maintenance and tokens, and
-  inflates the fact's apparent importance. Pick the owner, cut the copy, link.
-- **Sediment** — layers that settle because adding feels safe and removing feels risky, until the
-  routing file has become a handbook. The default fate of any doc set without a pruning discipline.
 - **Advisory route** — "load X to understand Y", "see X for details", "consider reading X". An agent
   under load reads these as skippable and skips them; the routed doc goes unopened while the work
   proceeds from guesswork.

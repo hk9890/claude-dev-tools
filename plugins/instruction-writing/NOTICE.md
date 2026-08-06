@@ -11,9 +11,12 @@ The following files in this plugin are derived from
   `SKILL.md` and its `SKILL-MECHANICS.md`, unchanged upstream through v1.2.3. Nearly all of the
   body is upstream text, locally adapted and maintained since; assume any passage traces upstream
   rather than reading this as a list of the ones that do
-- `skills/writing-project-docs/references/project-doc-guidelines.md` — its `cache` rule, and the
-  Failure modes framing with its `Duplication` and `Sediment` bullets, are adapted from the same
-  skill; the surrounding guidance is locally authored
+- `references/writing-hygiene.md` — the shared hygiene rules both skills point at. Adapted from
+  the same upstream skill: single source of truth and duplication, `cache`, relevance and
+  sediment, no-ops, and negation all trace there, across v1.1.0 and v1.2.0
+- `skills/writing-project-docs/references/project-doc-guidelines.md` — the Failure modes framing
+  is adapted from the same skill. The `cache`, `Duplication` and `Sediment` material that used to
+  sit here has moved into `references/writing-hygiene.md` above; what is left is locally authored
 
 Upstream renamed that skill to `writing-for-agents` in v1.2.0, folded `GLOSSARY.md` into its
 `SKILL.md`, split the skill-specific mechanics out into a new `SKILL-MECHANICS.md`, and widened

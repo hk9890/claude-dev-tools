@@ -31,6 +31,11 @@ under discussion.
 3. **How is it written?** [`references/project-doc-guidelines.md`](references/project-doc-guidelines.md)
    — the six named rules (*Ownership*, *Local delta*, *Anchors*, *Command register*, *Economy*,
    *Obligation*), the failure modes, and the bar any change must clear before it lands.
+4. **What holds for any agent-facing document?**
+   [`../../references/writing-hygiene.md`](../../references/writing-hygiene.md) — single source of
+   truth, cache, relevance, sediment, no-ops, negation. Shared with `writing-skills`, so it sits at
+   the **plugin root** and the `../../` is the layout rather than a mistake. Item 3 is what a
+   project doc *set* adds on top of it; both bind.
 
 ## Sediment
 
