@@ -23,8 +23,11 @@ the reader who needed it never arrives.
 
 **A second copy is worse than a wrong home.** Copies drift — one gets corrected, the other keeps
 being read, and nothing in either says which is stale. When two files could hold a fact, one keeps
-it and the other links; when a section here restates a section there, cut it and link. This binds
-hardest inside a single file, where the same rule restated two sections apart reads as two rules.
+it and the other links; when a section here restates a section there, cut it and link.
+
+**The repository is a home too.** A doc restating something the repo itself already declares — a
+script, a config, the tree — is a **cache**, governed by the shared rule the skill routes to. What
+belongs in the doc set is only which of this repo's surfaces count as authoritative.
 
 The homes most often got wrong:
 
@@ -57,9 +60,7 @@ and changes nothing:
 > **write** "Run `make test` from the repo root before `git push`; CI enforces it in
 > `.github/workflows/ci.yml`."
 
-Point at a file rather than pasting it — a fifty-line script inline is a fifty-line maintenance
-liability that the file itself already holds. Paste only the invariant a reader cannot get by
-opening it.
+Point at a file rather than pasting it; paste only the invariant a reader cannot get by opening it.
 
 ## Command register
 
@@ -109,12 +110,11 @@ Two things make the obligation fire:
 
 ## Failure modes
 
-Use these to diagnose a doc set that is not working.
+Use these to diagnose a doc set that is not working. They are the ones peculiar to a doc *set* —
+duplication, sediment and no-ops afflict any document and are defined in the hygiene reference the
+skill routes to, where a doc set's version of sediment is the routing file swelling into a
+handbook.
 
-- **Duplication** — the same fact in two files, or twice in one. Costs maintenance and tokens, and
-  inflates the fact's apparent importance. Pick the owner, cut the copy, link.
-- **Sediment** — layers that settle because adding feels safe and removing feels risky, until the
-  routing file has become a handbook. The default fate of any doc set without a pruning discipline.
 - **Advisory route** — "load X to understand Y", "see X for details", "consider reading X". An agent
   under load reads these as skippable and skips them; the routed doc goes unopened while the work
   proceeds from guesswork.

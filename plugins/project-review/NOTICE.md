@@ -4,8 +4,17 @@ The following file in this plugin is derived from
 [mattpocock/skills](https://github.com/mattpocock/skills) (the `codebase-design`
 skill), used under the MIT license:
 
-- `skills/project-review-codebase/references/design-vocabulary.md` — adapted; its
-  terms trace to Ousterhout and Feathers
+- `skills/project-review-codebase/references/design-vocabulary.md` — adapted from
+  [v1.1.0](https://github.com/mattpocock/skills/releases/tag/v1.1.0), unchanged
+  upstream through v1.2.3; its terms trace to Ousterhout and Feathers
+
+`skills/project-review-codebase/workflows/review-codebase.js` borrows from the same source twice:
+
+- its `dependency_category` enum and the prose describing it rename the four categories in that
+  skill's `DEEPENING.md` at v1.1.0
+- its churn weighting follows the YAGNI filter added to upstream's
+  `improve-codebase-architecture` skill in
+  [v1.2.0](https://github.com/mattpocock/skills/releases/tag/v1.2.0)
 
 ## MIT License (mattpocock/skills)
 

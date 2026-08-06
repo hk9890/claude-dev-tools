@@ -7,12 +7,7 @@ argument-hint: "[doc-path-or-request]"
 
 # Writing project docs
 
-Every file in the set has one owner. Content placed outside that owner's boundary is a defect
-**even when every sentence in it is true** — a reader who loads the file for its topic pays for the
-stray content and still has to go find the real thing.
-
-Only `README.md`, `AGENTS.md` and `CLAUDE.md` are required. Every topic doc under `docs/` is
-optional and created lazily, when the repository has real local guidance for that topic.
+Every file in the set has one owner.
 
 **What to write or fix:** $ARGUMENTS — a doc path, a draft, or a request; with no argument, the doc
 under discussion.
@@ -31,16 +26,21 @@ under discussion.
 3. **How is it written?** [`references/project-doc-guidelines.md`](references/project-doc-guidelines.md)
    — the six named rules (*Ownership*, *Local delta*, *Anchors*, *Command register*, *Economy*,
    *Obligation*), the failure modes, and the bar any change must clear before it lands.
+4. **What holds for any agent-facing document?**
+   [`../../references/writing-hygiene.md`](../../references/writing-hygiene.md), at
+   `<base directory for this skill>/../../references/` — single source of truth, cache, relevance,
+   sediment, no-ops, negation. Shared with `writing-skills`, so it sits at the **plugin root** and
+   the `../../` is the layout rather than a mistake. Item 3 is what a project doc *set* adds on top
+   of it; both bind.
 
 ## Sediment
 
-Doc sets fail by **sediment** — the failure mode the guidelines define, and the one every rule
-below the surface is guarding. Two things hold it off: a change is an *edit, not an append*, and
-`AGENTS.md` is the only place routing lives. Read both where they are defined, then hold them
-against every line you write.
+Doc sets fail by **sediment**, defined in item 4 and the failure every rule below the surface is
+guarding. Two things hold it off: a change is an *edit, not an append*, and `AGENTS.md` is the only
+place routing lives.
 
 ## Done means
 
 Every section you added or changed has been held against its file's *Inside* / *Not inside*
-contract and against the authoring rules — cleared, moved to the file that owns it, or cut. Reading
-the references is not the work; applying them to the target file is.
+contract, against the authoring rules, and against the hygiene rules — cleared, moved to the file
+that owns it, or cut. Reading the references is not the work; applying them to the target file is.

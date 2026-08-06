@@ -93,12 +93,17 @@ async function main() {
   const good = normalizeArgs({ repoRoot: '/r', scriptsDir: '/s/scripts', standardDir: '/std' });
   eq('normalizeArgs: a valid config carries no error', null, good.error);
   eq('normalizeArgs: level defaults to medium', 'medium', good.level);
-  // The standard lives in another plugin, so both artifacts hang off standardDir — never
+  // The standard lives in another plugin, so all three artifacts hang off standardDir — never
   // off scriptsDir, whose sibling directories belong to the reviewer, not the standard.
   eq('normalizeArgs: the authoring rules resolve under the standard directory',
     '/std/references/project-doc-guidelines.md', good.guidelinesFile);
   eq('normalizeArgs: the ownership contracts resolve under the standard directory',
     '/std/references/project-setup.md', good.setupFile);
+  // The hygiene rules are shared by both instruction-writing skills, so they sit at that
+  // plugin's root and the path climbs out of the skill. A review agent is spawned with paths
+  // and never loads the skill, so dropping this leaves the guidelines' redirects dead-ended.
+  eq('normalizeArgs: the shared hygiene rules climb to the standard plugin root',
+    '/std/../../references/writing-hygiene.md', good.hygieneFile);
   eq('normalizeArgs: a trailing slash on standardDir does not double the separator',
     '/std/references/project-doc-guidelines.md',
     normalizeArgs({ repoRoot: '/r', scriptsDir: '/s/scripts', standardDir: '/std/' }).guidelinesFile);

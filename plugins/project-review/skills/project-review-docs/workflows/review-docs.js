@@ -138,9 +138,14 @@ function normalizeArgs(rawArgs) {
     repoRoot,
     scriptsDir,
     standardDir,
-    // Both artifacts of the authoring standard: the rules every read-review agent applies,
-    // and the ownership contracts manifest.py parses to attach a boundary to each file.
+    // Three artifacts of the authoring standard: the doc-set rules every read-review agent
+    // applies, the rules that bind any agent-facing document, and the ownership contracts
+    // manifest.py parses to attach a boundary to each file. The hygiene file climbs out of
+    // the skill to the plugin root because the two instruction-writing skills share it —
+    // a review agent is spawned with paths and never loads the skill, so it has to be
+    // passed explicitly or the guidelines' redirects to it dead-end.
     guidelinesFile: standardDir + '/references/project-doc-guidelines.md',
+    hygieneFile: standardDir + '/../../references/writing-hygiene.md',
     setupFile: standardDir + '/references/project-setup.md',
     level,
     levelConfig: LEVEL_CONFIG[level],
@@ -401,7 +406,7 @@ if (typeof agent === 'function') {
     return { error: cfg.error, got: { type: typeof args, keys: cfg.receivedKeys, repoRoot: cfg.repoRoot } }
   }
 
-  const { repoRoot, scriptsDir, guidelinesFile, setupFile, level, levelConfig, maxExec, scratchDir } = cfg
+  const { repoRoot, scriptsDir, guidelinesFile, hygieneFile, setupFile, level, levelConfig, maxExec, scratchDir } = cfg
 
   // ── Manifest (deterministic facts)
 
@@ -446,6 +451,7 @@ if (typeof agent === 'function') {
       `Metrics for ${f.path} (from the deterministic manifest — do NOT recompute): ${m.lines} lines, ${m.words} words, ${m.non_heading_lines} content lines.\n` +
       `Links were already resolved by the manifest. Unresolved links in this file:\n${dead}\n` +
       `\nApply the authoring rules — read ${guidelinesFile} once, all of it: the six named rules (Ownership, Local delta, Anchors, Command register, Economy, Obligation), the failure modes, and the closing bar a change must clear before it lands. The rules define the accuracy, belonging, and form bar for the file; the closing bar is what every fix you recommend must itself clear.\n` +
+      `Then read ${hygieneFile}, all of it, and apply it too: single source of truth, cache, relevance, sediment, no-ops and negation bind any document an agent reads, and the guidelines file redirects to it rather than restating it. Both files bind — a finding under either is a finding.\n` +
       // Severity is a required enum on every finding, so leaving the bar unstated does not
       // produce fewer severities — it produces severities assigned from the model's priors,
       // which vary run to run. This is the whole rubric; it has no other home the agent reads.

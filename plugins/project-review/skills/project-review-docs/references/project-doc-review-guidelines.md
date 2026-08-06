@@ -4,11 +4,14 @@ What `project-review-docs` does, stage by stage, and where each bar the agents a
 inlined. **Nothing loads this file.** The workflow carries its own prompts, so every bar
 described here has an authoritative home in code — change the code, and keep this in step.
 
-The standard the review measures against belongs to `instruction-writing:writing-project-docs`:
-`references/project-setup.md` (the canonical doc set and each file's Inside / Not-inside
-ownership), `references/project-doc-guidelines.md` (the six named authoring rules and the
-failure modes), and the worked `examples/`. `manifest.py --setup-md` parses the first into a
-per-file contract; the read-review agents load the second.
+The standard the review measures against belongs to `instruction-writing`:
+`writing-project-docs/references/project-setup.md` (the canonical doc set and each file's
+Inside / Not-inside ownership), `writing-project-docs/references/project-doc-guidelines.md`
+(the six named authoring rules and the doc-set failure modes), the worked `examples/`, and
+`references/writing-hygiene.md` at that plugin's root (single source of truth, cache,
+relevance, sediment, no-ops, negation — shared with `writing-skills`, which is why the
+workflow reaches it with `../..`). `manifest.py --setup-md` parses the setup file into a
+per-file contract; the read-review agents load the guidelines and the hygiene rules.
 
 ## Why it is built this way
 
@@ -60,7 +63,8 @@ Change them at the authoritative site. This table is the index, not the source.
 
 | Bar | Authoritative site |
 |---|---|
-| The six authoring rules, the failure modes | `instruction-writing:writing-project-docs`, loaded by each read-review agent |
+| The six authoring rules, the doc-set failure modes | `instruction-writing:writing-project-docs`, loaded by each read-review agent |
+| Single source of truth, cache, relevance, sediment, no-ops, negation | `references/writing-hygiene.md` at the `instruction-writing` plugin root, loaded by each read-review agent |
 | Per-file ownership contract | `project-setup.md`, parsed by `manifest.py`, injected per agent |
 | Severity (`blocker` / `major` / `minor`) and the escalation rule | the `commonFrame` block in `review-docs.js` |
 | Use case → doc, and the classifier's label vocabulary | `USE_CASES` in `review-docs.js` and `USE_CASE_DOCS` in `history.py` — two copies, because workflow scripts cannot import; pinned by `test-history.sh` |

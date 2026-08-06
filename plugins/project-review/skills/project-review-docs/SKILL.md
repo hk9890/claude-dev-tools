@@ -102,19 +102,25 @@ docs inline. The workflow returns a structured report; relay it.
    plugin.
 
 If `python3` is missing or the workflow cannot launch, read every doc in full by
-hand against both halves of the standard — `<STANDARD_DIR>/references/project-setup.md`
-for what belongs in the file, and `<STANDARD_DIR>/references/project-doc-guidelines.md`
-for how it must be written — and state that the workflow did not run. Never report
-"docs look good" from mechanical checks alone.
+hand against all three parts of the standard — `<STANDARD_DIR>/references/project-setup.md`
+for what belongs in the file, `<STANDARD_DIR>/references/project-doc-guidelines.md`
+for how a doc set must be written, and
+`<STANDARD_DIR>/../../references/writing-hygiene.md` for the rules binding any document
+an agent reads, which the guidelines redirect to rather than restate. That last path
+climbs out of the skill because the two `instruction-writing` skills share it at their
+plugin root. State that the workflow did not run, and never report "docs look good" from
+mechanical checks alone.
 
 ## Rubric
 
 The standard is authored elsewhere and only applied here. `instruction-writing:writing-project-docs`
 owns `references/project-setup.md` (the canonical doc set and each file's audience /
 Inside / Not-inside ownership), `references/project-doc-guidelines.md` (the six named
-rules, the failure modes, and the bar each suggested fix must clear), and the worked
-`examples/`. `manifest.py` parses the first and injects each file's contract
-inline into the read-review agents, which load the second and apply it.
+rules, the doc-set failure modes, and the bar each suggested fix must clear), and the
+worked `examples/`. Its plugin root owns `references/writing-hygiene.md` — single source
+of truth, cache, relevance, sediment, no-ops, negation — shared with
+`instruction-writing:writing-skills`. `manifest.py` parses the setup file and injects each
+file's contract inline into the read-review agents, which load the other two and apply both.
 
 `references/project-doc-review-guidelines.md` describes what this review does — its
 stages, its severity bar, and the read-only contract each stage runs under. It is
