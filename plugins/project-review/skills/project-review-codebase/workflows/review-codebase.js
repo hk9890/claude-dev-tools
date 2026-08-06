@@ -330,7 +330,8 @@ function architectureProcedure(vocabFile) {
     `WEIGHT YOUR ATTENTION BY CHURN. Deepening a module pays off by making future changes to it cheaper, so put ` +
     `extra weight on where change actually lands. If the scope above names a direction, take it and skip this step. ` +
     `Otherwise rank the hot spots, from the repo root given above — \`git log --name-only --pretty=format: -n 200 ` +
-    `| grep -v '^$' | sort | uniq -c | sort -rn | head -40\` — and let those paths pull your attention first; ` +
+    `| grep -v '^$' | sort | uniq -c | sort -rn | head -40\`. That ranks FILES; roll them up to the modules that ` +
+    `own them, and let those modules pull your attention first; ` +
     `where the churn is scattered with no clear hot spot, walk the tree evenly instead. This binds the CANDIDATES ` +
     `hardest: a deepening proposal in code nobody edits is a refactor never cashed in, so order candidates with ` +
     `the hot spots first and let churn break a tie on which to emit at all. FINDINGS are exempt — a blocker in a ` +
