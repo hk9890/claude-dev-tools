@@ -324,6 +324,17 @@ function architectureProcedure(vocabFile) {
       ? `First read the design vocabulary at ${vocabFile} and use its terms (module, interface, depth, seam, adapter, ` +
         `leverage, locality) precisely in findings.\n\n`
       : '') +
+    // YAGNI weighting: depth pays off only where the code keeps being edited, so bias the walk
+    // toward churn rather than scanning the tree evenly. Findings are exempt — a blocker in
+    // dormant code is still a blocker; it is the CANDIDATES that go stale as proposals.
+    `WEIGHT YOUR ATTENTION BY CHURN. Deepening a module pays off by making future changes to it cheaper, so put ` +
+    `extra weight on where change actually lands. If the scope above names a direction, take it and skip this step. ` +
+    `Otherwise rank the hot spots, from the repo root given above — \`git log --name-only --pretty=format: -n 200 ` +
+    `| grep -v '^$' | sort | uniq -c | sort -rn | head -40\` — and let those paths pull your attention first; ` +
+    `where the churn is scattered with no clear hot spot, walk the tree evenly instead. This binds the CANDIDATES ` +
+    `hardest: a deepening proposal in code nobody edits is a refactor never cashed in, so order candidates with ` +
+    `the hot spots first and let churn break a tie on which to emit at all. FINDINGS are exempt — a blocker in a ` +
+    `dormant module is still a blocker.\n\n` +
     `Work through these checks in sequence:\n` +
     `1. SHALLOW / PASS-THROUGH MODULES — interfaces as large as their implementation: wrappers that forward calls, ` +
     `layers that add no behaviour. Apply the deletion test: if the module were removed, would its complexity scatter ` +

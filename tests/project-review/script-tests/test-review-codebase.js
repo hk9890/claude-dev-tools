@@ -181,6 +181,17 @@ async function main() {
   truthy('buildDimensions: no dangling vocabulary sentence when it is absent',
     !/design vocabulary at/.test(arch('')));
 
+  // The churn weighting is a prompt invariant. Without it the architecture agent walks the
+  // tree evenly and proposes deepenings in code nobody edits; without the blank-line filter
+  // its ranking is topped by git log's empty separator lines. The findings exemption is this
+  // repo's departure from the upstream YAGNI filter and has to survive an edit to the block.
+  truthy('buildDimensions: architecture weights its walk by churn',
+    /WEIGHT YOUR ATTENTION BY CHURN/.test(arch('')));
+  truthy('buildDimensions: the churn ranking drops the blank separator lines',
+    arch('').includes("grep -v '^$'"));
+  truthy('buildDimensions: findings stay exempt from the churn weighting',
+    /FINDINGS are exempt/.test(arch('')));
+
   const cfg = { repoRoot: '/repo', scope: '' };
   const structurePrompt = dimensionPrompt(dims.find((d) => d.key === 'structure'), cfg);
   truthy('dimensionPrompt: carries the repo root', structurePrompt.includes('Repo root: /repo'));
