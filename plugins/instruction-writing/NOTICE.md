@@ -13,7 +13,8 @@ The following files in this plugin are derived from
   rather than reading this as a list of the ones that do
 - `references/writing-hygiene.md` — the shared hygiene rules both skills point at. Adapted from
   the same upstream skill: single source of truth and duplication, `cache`, relevance and
-  sediment, no-ops, and negation all trace there, across v1.1.0 and v1.2.0
+  sediment, no-ops, negation, and the gloss of `leading word` all trace there, across v1.1.0 and
+  v1.2.0
 - `skills/writing-project-docs/references/project-doc-guidelines.md` — the Failure modes framing
   is adapted from the same skill. The `cache`, `Duplication` and `Sediment` material that used to
   sit here has moved into `references/writing-hygiene.md` above; the rest is locally authored

@@ -41,8 +41,8 @@ under discussion.
 ## Sediment
 
 Doc sets fail by **sediment**, defined in item 4 and the failure every rule below the surface is
-guarding. Its doc-set form is the routing file swelling into a handbook. Two things hold it off: a
-change is an *edit, not an append*, and `AGENTS.md` is the only place routing lives.
+guarding. Two things hold it off: a change is an *edit, not an append*, and `AGENTS.md` is the only
+place routing lives.
 
 ## Done means
 

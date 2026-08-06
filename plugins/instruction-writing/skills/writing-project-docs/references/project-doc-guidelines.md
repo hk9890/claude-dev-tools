@@ -25,9 +25,9 @@ the reader who needed it never arrives.
 being read, and nothing in either says which is stale. When two files could hold a fact, one keeps
 it and the other links; when a section here restates a section there, cut it and link.
 
-**The repository is a home too** — `package.json` scripts, the `mise.toml` tasks, config files, the
-directory layout. A doc that restates one is a **cache**, governed by the shared rule the skill
-routes to; what belongs here is only which of this repo's own surfaces count as authoritative.
+**The repository is a home too.** A doc restating something the repo itself already declares — a
+script, a config, the tree — is a **cache**, governed by the shared rule the skill routes to. What
+belongs in the doc set is only which of this repo's surfaces count as authoritative.
 
 The homes most often got wrong:
 
