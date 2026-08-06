@@ -26,6 +26,13 @@ being read, and nothing in either says which is stale. When two files could hold
 it and the other links; when a section here restates a section there, cut it and link. This binds
 hardest inside a single file, where the same rule restated two sections apart reads as two rules.
 
+**The repository is a home too.** `package.json` scripts, the `mise.toml` tasks, config files, the
+directory layout, `--help` output — each is already authoritative, and a doc that restates one is a
+**cache** of a lookup. A cache earns its load only when the lookup is expensive, and it goes stale
+the moment the source moves. Cache what the agent cannot get by looking: the unwritten convention,
+the reason behind a choice, the gotcha no config confesses, which of two commands to reach for.
+Leave the one-file, one-command lookups to the repository, where they cannot drift.
+
 The homes most often got wrong:
 
 | Fact | Home |
@@ -57,9 +64,7 @@ and changes nothing:
 > **write** "Run `make test` from the repo root before `git push`; CI enforces it in
 > `.github/workflows/ci.yml`."
 
-Point at a file rather than pasting it — a fifty-line script inline is a fifty-line maintenance
-liability that the file itself already holds. Paste only the invariant a reader cannot get by
-opening it.
+Point at a file rather than pasting it; paste only the invariant a reader cannot get by opening it.
 
 ## Command register
 
