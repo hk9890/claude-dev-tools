@@ -16,7 +16,7 @@ The following files in this plugin are derived from
   sediment, no-ops, and negation all trace there, across v1.1.0 and v1.2.0
 - `skills/writing-project-docs/references/project-doc-guidelines.md` — the Failure modes framing
   is adapted from the same skill. The `cache`, `Duplication` and `Sediment` material that used to
-  sit here has moved into `references/writing-hygiene.md` above; what is left is locally authored
+  sit here has moved into `references/writing-hygiene.md` above; the rest is locally authored
 
 Upstream renamed that skill to `writing-for-agents` in v1.2.0, folded `GLOSSARY.md` into its
 `SKILL.md`, split the skill-specific mechanics out into a new `SKILL-MECHANICS.md`, and widened

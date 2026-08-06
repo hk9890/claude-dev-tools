@@ -32,20 +32,20 @@ under discussion.
    — the six named rules (*Ownership*, *Local delta*, *Anchors*, *Command register*, *Economy*,
    *Obligation*), the failure modes, and the bar any change must clear before it lands.
 4. **What holds for any agent-facing document?**
-   [`../../references/writing-hygiene.md`](../../references/writing-hygiene.md) — single source of
-   truth, cache, relevance, sediment, no-ops, negation. Shared with `writing-skills`, so it sits at
-   the **plugin root** and the `../../` is the layout rather than a mistake. Item 3 is what a
-   project doc *set* adds on top of it; both bind.
+   [`../../references/writing-hygiene.md`](../../references/writing-hygiene.md), at
+   `<base directory for this skill>/../../references/` — single source of truth, cache, relevance,
+   sediment, no-ops, negation. Shared with `writing-skills`, so it sits at the **plugin root** and
+   the `../../` is the layout rather than a mistake. Item 3 is what a project doc *set* adds on top
+   of it; both bind.
 
 ## Sediment
 
-Doc sets fail by **sediment** — the failure mode the guidelines define, and the one every rule
-below the surface is guarding. Two things hold it off: a change is an *edit, not an append*, and
-`AGENTS.md` is the only place routing lives. Read both where they are defined, then hold them
-against every line you write.
+Doc sets fail by **sediment**, defined in item 4 and the failure every rule below the surface is
+guarding. Its doc-set form is the routing file swelling into a handbook. Two things hold it off: a
+change is an *edit, not an append*, and `AGENTS.md` is the only place routing lives.
 
 ## Done means
 
 Every section you added or changed has been held against its file's *Inside* / *Not inside*
-contract and against the authoring rules — cleared, moved to the file that owns it, or cut. Reading
-the references is not the work; applying them to the target file is.
+contract, against the authoring rules, and against the hygiene rules — cleared, moved to the file
+that owns it, or cut. Reading the references is not the work; applying them to the target file is.

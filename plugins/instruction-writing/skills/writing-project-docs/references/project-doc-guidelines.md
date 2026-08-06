@@ -23,8 +23,7 @@ the reader who needed it never arrives.
 
 **A second copy is worse than a wrong home.** Copies drift — one gets corrected, the other keeps
 being read, and nothing in either says which is stale. When two files could hold a fact, one keeps
-it and the other links; when a section here restates a section there, cut it and link. This binds
-hardest inside a single file, where the same rule restated two sections apart reads as two rules.
+it and the other links; when a section here restates a section there, cut it and link.
 
 **The repository is a home too** — `package.json` scripts, the `mise.toml` tasks, config files, the
 directory layout. A doc that restates one is a **cache**, governed by the shared rule the skill

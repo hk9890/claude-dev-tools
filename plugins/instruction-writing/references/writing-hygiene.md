@@ -17,8 +17,9 @@ Keep each meaning in one authoritative place, so changing the behaviour is a one
 prominence past its real rank. It binds hardest inside a single file, where the same rule restated
 two sections apart reads as two rules.
 
-Duplication is the accidental inverse of a **leading word**, which repeats a token on purpose and
-never the meaning.
+Duplication is the accidental inverse of a **leading word** — a compact concept from the model's
+pretraining that a document repeats as a token to anchor a region of behaviour. That repeats a
+token on purpose, never the meaning.
 
 ## Cache
 
