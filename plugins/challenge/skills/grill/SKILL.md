@@ -8,14 +8,40 @@ argument-hint: "[what-to-grill]"
 What to grill: $ARGUMENTS. If no argument is given, grill the plan, design, or work
 currently under discussion.
 
-Interview me relentlessly about every aspect of this plan until we reach a shared
-understanding. Walk down each branch of the design tree, resolving dependencies between
-decisions one-by-one. For each question, provide your recommended answer.
+Interview the user relentlessly until you reach a shared understanding. Map the target as a
+**design tree**: every decision branches into the decisions that hang off it.
 
-Ask the questions one at a time, waiting for feedback on each question before continuing.
-Asking multiple questions at once is bewildering.
+Work the tree in **rounds**. The **frontier** is every decision whose prerequisites are already
+settled — the questions you can ask *now* without guessing at answers you have not heard yet. Ask
+the whole frontier, then wait for the answers before recomputing it. Each round's answers reshape
+the tree: settled decisions push the frontier outward and unblock the questions that depended on
+them. A question whose answer depends on another question still open in this round belongs to a
+*later* round.
 
-If a *fact* can be found by exploring the codebase, look it up rather than asking me. The
-*decisions*, though, are mine — put each one to me and wait for my answer.
+## Asking a round
 
-Do not enact the plan until I confirm we have reached a shared understanding.
+Every question goes through the `AskUserQuestion` tool, so the user answers by picking rather than
+by quoting questions back.
+
+- Four questions per call is the ceiling. A frontier wider than that goes out as back-to-back
+  calls before you recompute — those calls are still one round.
+- Each question takes a `header` of at most 12 characters naming the decision it settles
+  ("Auth model", "Rollout"), since that is what the user sees as the chip.
+- Give each question 2–4 candidate answers, and put your recommendation first with
+  `(Recommended)` ending its label. Each option's `description` says what choosing it commits to.
+- Options are the real, distinct answers to the question — the design choices themselves, not
+  "yes"/"no" restatements of the question. The user can always supply their own; the tool carries
+  its own escape hatch.
+- Set `multiSelect: true` where the options genuinely combine.
+
+## Facts and decisions
+
+Finding *facts* is your job, never the user's. When a frontier question turns on a fact from the
+environment — the working tree, the git history, a tool's output — go and get it. Dispatch a
+sub-agent for anything that takes real digging and keep asking the rest of the frontier while it
+runs: a live exploration is an unsettled prerequisite, so only the questions downstream of it wait
+for the answer. The *decisions* are the user's — put each one to them and wait.
+
+The session is done when the frontier is empty: every branch of the design tree visited, nothing
+left silently assumed. Act on the plan once the user confirms you have reached a shared
+understanding.
