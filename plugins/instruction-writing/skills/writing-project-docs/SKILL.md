@@ -7,12 +7,7 @@ argument-hint: "[doc-path-or-request]"
 
 # Writing project docs
 
-Every file in the set has one owner. Content placed outside that owner's boundary is a defect
-**even when every sentence in it is true** — a reader who loads the file for its topic pays for the
-stray content and still has to go find the real thing.
-
-Only `README.md`, `AGENTS.md` and `CLAUDE.md` are required. Every topic doc under `docs/` is
-optional and created lazily, when the repository has real local guidance for that topic.
+Every file in the set has one owner.
 
 **What to write or fix:** $ARGUMENTS — a doc path, a draft, or a request; with no argument, the doc
 under discussion.
