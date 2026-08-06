@@ -13,8 +13,10 @@
 #      must mean adding it here, having confirmed the name is one Claude Code
 #      actually consumes — grep the CLI binary for it.
 #   5. plugin.json's experimental.themes path resolves to this same themes/
-#      directory — the manifest key CODING.md documents as this plugin's wiring
-#      into the harness, checked here since no schema validator covers it.
+#      directory. Anthropic's own `claude plugin validate` schema-checks this
+#      key, but this repo's test suite doesn't depend on the claude binary
+#      being installed, so nothing else here catches the manifest path and
+#      the actual themes/ dir drifting apart.
 
 set -uo pipefail
 
