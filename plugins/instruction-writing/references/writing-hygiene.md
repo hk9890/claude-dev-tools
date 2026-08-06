@@ -17,9 +17,8 @@ Keep each meaning in one authoritative place, so changing the behaviour is a one
 prominence past its real rank. It binds hardest inside a single file, where the same rule restated
 two sections apart reads as two rules.
 
-Duplication is the accidental inverse of a **leading word** — a compact concept from the model's
-pretraining that a document repeats as a token to anchor a region of behaviour. That repeats a
-token on purpose, never the meaning.
+A repeated meaning is not a repeated token: deliberately reusing one word to anchor a behaviour is
+a different move, and `writing-skills` covers it.
 
 ## Cache
 
@@ -53,7 +52,7 @@ than by debate. A line can be perfectly relevant and still be a no-op.
 Hunt them sentence by sentence, and when one fails, delete the whole sentence rather than trim
 words from it.
 
-The same test grades **leading words**: a word too weak to beat the default (_be thorough_, where
+The same test grades a word chosen to steer: one too weak to beat the default (_be thorough_, where
 the agent is already thorough-ish) is a no-op, and the fix is a stronger word (_relentless_), not a
 different technique.
 

@@ -1,7 +1,7 @@
 ---
 name: writing-skills
 description: "Reference for writing and editing skills well — the vocabulary and principles that make a skill predictable."
-when_to_use: "Use when writing or revising a SKILL.md, or a file it bundles under references/, scripts/, or assets/. Triggers on 'SKILL.md', 'write a skill', 'skill description'. Also loaded by name when another skill needs the rubric. Not for a project's own docs — AGENTS.md, README.md, docs/ guides (`writing-project-docs`) — nor for task and issue bodies (`tasks:tasks-writing`)."
+when_to_use: "Use when writing or revising a SKILL.md, or a file it bundles or shares — under references/, scripts/, assets/, or a plugin-root references/ two skills reach. Triggers on 'SKILL.md', 'write a skill', 'skill description'. Also loaded by name when another skill needs the rubric. Not for a project's own docs — AGENTS.md, README.md, docs/ guides (`writing-project-docs`) — nor for task and issue bodies (`tasks:tasks-writing`)."
 argument-hint: "[skill-path-or-request]"
 ---
 
@@ -27,7 +27,7 @@ Two choices, each spending one of the loads:
 
 Pick model-invocation only where the agent must reach the skill on its own, or another skill must.
 
-Reference that several skills need has two homes. A model-invoked skill of pure reference is one, since any skill can invoke it — but invoking a sibling loads its whole body, so that only works where the sibling _is_ the reference. Otherwise — and always between two **user-invoked** skills, which have no agent-visible description and so cannot fire each other — push it to **external reference**: a plain file outside the skill system that any skill points at.
+Reference that several skills need has two homes. A model-invoked skill of pure reference is one, since any skill can invoke it — but it only works where the sibling _is_ the reference, because invoking it loads its whole body, and it buys that reach with a description loaded in every session. Weigh that against how much is shared: a few hundred words rarely earns permanent context load. Otherwise — and always between two **user-invoked** skills, which have no agent-visible description and so cannot fire each other — push it to **external reference**: a plain file outside the skill system that any skill points at.
 
 When user-invoked skills multiply past what you can remember, that cognitive load is cured by a **router skill**: one user-invoked skill naming the others and when to reach for each. It can only hint, never fire them.
 
@@ -85,9 +85,9 @@ A triad spelled out at three sites, a description spending a sentence to gesture
 - "fast, deterministic, low-overhead" → _tight_ (a _tight_ loop).
 - "a loop you believe in" → _red_ — a fuzzy gate becomes a binary observable state.
 
-Assume every skill carries restatements that leading words retire, and go find them.
+Assume every skill carries restatements that leading words retire, and go find them. A leading word is the deliberate inverse of **duplication**: it repeats a token on purpose, never the meaning.
 
-**Negation** — steering by prohibition, which makes the banned behaviour _more_ available rather than less — is the failure mode beside this lever, defined with the shared rules below.
+**Negation** — steering by prohibition — is the failure mode beside this lever, defined with the shared rules below.
 
 ## Pruning
 
