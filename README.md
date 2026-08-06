@@ -2,11 +2,7 @@
 
 A plugin marketplace for [Claude Code](https://claude.ai/code). Each plugin is a self-contained unit — skills, agents, hooks, or themes — that extends Claude Code's capabilities in a specific domain.
 
-For the repo layout and architecture, see [docs/OVERVIEW.md](docs/OVERVIEW.md).
-
 ## Plugins
-
-Row order matches `.claude-plugin/marketplace.json`, which carries the long-form description the installer shows.
 
 | Plugin | Description |
 |---|---|
@@ -23,14 +19,12 @@ Row order matches `.claude-plugin/marketplace.json`, which carries the long-form
 
 ## Installation
 
-This repo is a Claude Code marketplace. Inside Claude Code, add the marketplace and install plugins from it:
+Inside Claude Code, add the marketplace and install plugins from it:
 
 ```
 /plugin marketplace add hk9890/claude-dev-tools
 /plugin install <plugin-name>@claude-dev-tools
 ```
-
-`/plugin install` records the plugin as `"<plugin-name>@claude-dev-tools": true` under `enabledPlugins` in `.claude/settings.json`.
 
 ## Usage
 
@@ -43,7 +37,7 @@ Most plugins ship skills. Describe the task and Claude loads the matching skill 
 
 ## Contributing
 
-See [AGENTS.md](AGENTS.md) for the doc map and the workflow each task loads.
+[AGENTS.md](AGENTS.md) routes every kind of task to the doc that owns it, and [docs/OVERVIEW.md](docs/OVERVIEW.md) is the repo map.
 
 ## License
 

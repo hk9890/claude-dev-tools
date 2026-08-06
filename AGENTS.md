@@ -10,11 +10,11 @@ Every route below is **mandatory, not advisory**. Load the document BEFORE the f
 
 ### Research, planning, analysis
 
-**MUST read [docs/OVERVIEW.md](docs/OVERVIEW.md) before your first `grep`, `rg`, `Glob`, or `ls` in this repo.** It is the map — repo and plugin layout, where things live, and how to find them fast.
+**MUST read [docs/OVERVIEW.md](docs/OVERVIEW.md) before your first `grep`, `rg`, `Glob`, or `ls` in this repo.** It is the map — repo and plugin layout, and the expressions that locate things fast.
 
 ### Coding and file changes
 
-**MUST read [docs/CODING.md](docs/CODING.md) before creating or editing ANY file under `plugins/` or `scripts/`, or `.claude-plugin/marketplace.json`.** It owns plugin scaffolding, marketplace registration, dependency declarations, runtime path resolution, the SKILL.md conventions, and the lint rule binding every tracked shell script.
+**MUST read [docs/CODING.md](docs/CODING.md) before creating or editing ANY file under `plugins/` or `scripts/`, or `.claude-plugin/marketplace.json`.** It owns plugin scaffolding and registration, dependency declarations, runtime path resolution, the `SKILL.md` conventions, and the shell-lint rule.
 
 ### Writing project docs
 

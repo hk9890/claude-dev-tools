@@ -1,112 +1,63 @@
 # Coding Guide
 
-Implementation guide for contributing to this plugin marketplace.
+Rules for creating or changing files in this plugin marketplace.
 
 ## Adding a new plugin
 
-1. Create `plugins/<plugin-name>/` with the standard layout (see [OVERVIEW.md](OVERVIEW.md) for the directory tree).
-2. Write `.claude-plugin/plugin.json` — required fields: `name`, `version`, `description`, `author`. Set `version` to whatever `.claude-plugin/marketplace.json` `metadata.version` already carries, not `1.0.0`: all plugins ship in lockstep under one repo tag (see [RELEASING.md](RELEASING.md)), and `mise run check-consistency` fails on more than one distinct version string in the repo.
-3. Register the plugin in `.claude-plugin/marketplace.json` under the `plugins` array with fields: `name`, `source`, `description`, `version`, `author`, `category`, `keywords`. The `description` must be **byte-identical** to the one in `plugin.json`, and `version` must match it too — `mise run check-consistency` compares both and the CI `consistency` job runs it.
-4. Add the plugin to the table in `README.md`.
-5. Use the `plugin-dev` skill set to scaffold components: commands, skills, agents, hooks, MCP integration. `plugin-dev` ships in an external plugin and must be installed separately — see [TESTING.md](TESTING.md) for install instructions.
+1. Create `plugins/<plugin-name>/` with the layout in [OVERVIEW.md](OVERVIEW.md).
+2. Write `.claude-plugin/plugin.json` with `name`, `version`, `description`, `author`. Set `version` to whatever `.claude-plugin/marketplace.json` `metadata.version` already carries, not `1.0.0` — all plugins ship in lockstep under one repo tag ([RELEASING.md](RELEASING.md)), and `mise run check-consistency` fails on a second distinct version string.
+3. Register it in `.claude-plugin/marketplace.json` under `plugins` with `name`, `source`, `description`, `version`, `author`, `category`, `keywords`. `description` must be **byte-identical** to `plugin.json`'s and `version` must match it — the CI `consistency` job compares both.
+4. Add a row to the plugin table in `README.md`, in `marketplace.json` order.
+5. Scaffold components with the `plugin-dev` skill set — an external plugin, installed separately ([TESTING.md](TESTING.md)).
 
-## Keeping plugin artifacts portable
+## Portability
 
-A plugin's skills, agents, and workflows run in whatever repository the user installs them into. Write them
-against what every project has — the working tree, git, the harness's own tools — and never against this
-repository's layout, its `plugins/` tree, or a stack the target project may not use.
+A plugin's skills, agents, and workflows run in whatever repository the user installs them into. Write them against what every project has — the working tree, git, the harness's own tools. What this rules out is the undeclared assumption: a skill that greps `plugins/`, hard-codes `mise`, or expects a `docs/` layout it never checks for.
 
-A dependency on a specific technology is allowed when it is declared rather than assumed:
+Depend on a specific technology only where the dependency is declared:
 
-- Another plugin → `dependencies` in `plugin.json` (see below).
-- A CLI tool or runtime → a load-time availability check that stops with guidance when it is missing (see below).
-- A whole platform → the plugin is named for it, so the constraint is visible before install.
-  `keep-awake-linux` is the worked example: logind and `systemd-inhibit` are the point of the plugin, and its
-  test suite skips rather than fails where they are absent ([TESTING.md](TESTING.md)).
-
-What this rules out is the undeclared assumption — a skill that greps `plugins/`, hard-codes `mise`, or expects
-a `docs/` layout it never checks for.
+- Another plugin → `dependencies` in `plugin.json` (below).
+- A CLI tool or runtime → a load-time check that stops with guidance when it is missing (below).
+- A whole platform → name the plugin for it, so the constraint is visible before install. `keep-awake-linux` is the worked example: logind is the point of the plugin, and its suite skips rather than fails where it is absent ([TESTING.md](TESTING.md)).
 
 ## Declaring plugin dependencies
 
-The `plugin.json` `dependencies` field is honored by the Claude Code marketplace harness — when a user installs a plugin that declares dependencies, the harness auto-installs each listed plugin at the same scope as the parent. Full behavior is documented at https://code.claude.com/docs/en/plugin-dependencies.
+The harness auto-installs every plugin listed in `plugin.json`'s `dependencies` at the parent's scope, and chains enable/disable ([full behavior](https://code.claude.com/docs/en/plugin-dependencies)).
 
-**Declare dependencies in bare-name form only** (`"dependencies": ["instruction-writing"]`). A version constraint resolves against per-plugin `<name>--vX.Y.Z` tags, which this marketplace's single-repo-tag release policy never creates ([RELEASING.md](RELEASING.md)), so a constrained dependency here can never be satisfied. Nothing in CI catches a constrained entry — the install fails on the user's machine.
-
-Use the right pattern for each dependency kind:
-
-- **Plugin depends on another plugin** (e.g. a workflow plugin that reuses another plugin's skills): declare the dependency in `plugin.json` under `dependencies`. The harness handles install, scope, and chained enable/disable.
-- **Plugin depends on a CLI tool** (e.g. `tasks` → `taskmgr`, `html-visualization` → `node`): the harness cannot install CLI binaries. Add a runtime check at skill load time (Phase 0) that tests whether the CLI is present and stops with guidance if it is missing. Do not add CLI tools to the `dependencies` field.
+- **Bare names only** — `"dependencies": ["instruction-writing"]`. A version constraint resolves against per-plugin `<name>--vX.Y.Z` tags, which the single-repo-tag policy ([RELEASING.md](RELEASING.md)) never creates; nothing in CI catches it and the install fails on the user's machine.
+- **A CLI tool is not a dependency** — `tasks` → `taskmgr`, `html-visualization` → `node`. The harness installs no binaries: check at skill load (Phase 0) and stop with guidance when absent.
 
 ## Locating a plugin's own files at runtime
 
-A skill that has to run one of its plugin's bundled files (a workflow script, a server, a
-Python helper) needs that file's absolute path. **The harness already supplies it:** every
-skill is loaded with a `Base directory for this skill: <absolute path>` line, and that path
-is correct in every install shape — a dev checkout, a `--plugin-dir` run, and a cached
-install under `$HOME/.claude/plugins/<marketplace>/<plugin>/<version>/`. Build the path you
-need from it:
+Every skill is loaded with a `Base directory for this skill: <absolute path>` line, correct in every install shape — dev checkout, `--plugin-dir` run, cached install under `$HOME/.claude/plugins/<marketplace>/<plugin>/<version>/`. Build paths from it:
 
 ```
 <base directory for this skill>/workflows/<the-file-you-need>
 ```
 
-Two layouts exist, so check where the file actually sits before building the path
-(see [OVERVIEW.md](OVERVIEW.md)): a workflow owned by one skill lives under that skill, as
-above — every workflow in the marketplace currently does. One shared beyond a single skill
-sits at the plugin root instead and is reached with
-`<base directory for this skill>/../../<dir>/<the-file-you-need>`. `html-visualization` is
-the worked example: its three mode skills all run `bin/server.js`, so the shared
-`references/serve.md` climbs `../..` from the `html-visualize` library's base directory.
-State in the skill that the plugin-root layout applies, or the `../..` reads as a mistake.
-
-Do not search the filesystem for the plugin. A `find`-based resolution is not just redundant,
-it is worse than the value the harness hands you: it can select a stale cached version or a
-long-dead copy of the plugin, and — because shell state does not persist between `Bash` tool
-calls — a path it assigns to a variable is gone before the next command runs, so print any
-path you compute rather than only assigning it.
-
-**`$CLAUDE_PLUGIN_ROOT` is a plugin-config token.** It is substituted in hook commands and
-`settings.json`, not exported into the environment of `Bash` tool calls. Use the base
-directory instead.
-
-When a needed file is genuinely missing, stop and tell the user — never improvise a path.
+- Check which of the two layouts holds the file ([OVERVIEW.md](OVERVIEW.md)). A workflow owned by one skill sits under that skill — every workflow here currently does.
+- One shared beyond a single skill sits at the plugin root, reached with `<base directory for this skill>/../../<dir>/<file>`; say in the skill that the plugin-root layout applies, or the `../..` reads as a mistake. `html-visualization` is the worked example — its three mode skills all run `bin/server.js`, so `references/serve.md` climbs `../..` from the `html-visualize` library's base directory.
+- Never `find` the plugin: it can select a stale cached version, and shell state does not persist between `Bash` calls, so a path assigned to a variable is gone by the next command. Print any path you compute.
+- `$CLAUDE_PLUGIN_ROOT` is substituted in hook commands and `settings.json` only — it is not in a `Bash` call's environment.
+- Stop and tell the user when a needed file is missing; never improvise a path.
 
 ### Reaching another plugin's files
 
-`../..` stops at the plugin root. A **sibling plugin's** install directory is not derivable
-from this one's — the two are versioned separately in a cached install and unversioned in a
-dev checkout — so there is no relative path to write and `find` is worse than useless here.
+`../..` stops at the plugin root, and a sibling's install directory is not derivable from this one's — versioned separately in a cached install, unversioned in a dev checkout.
 
-- Load the sibling's skill and take the `Base directory for this skill:` line it prints. That
-  value is the sibling's install directory, correct in every install shape.
-- Pass it into whatever needs it — a workflow arg, a script flag — and validate it at that
-  boundary rather than letting a missing one degrade silently.
-- Declare the dependency in `plugin.json` so the harness installs the sibling, and say in the
-  skill what to do when it is absent — a missing dependency is a broken install, not an
-  optional extra.
+- Load the sibling's skill and take the `Base directory for this skill:` line it prints.
+- Pass that value in explicitly (a workflow arg, a script flag) and validate it at that boundary.
+- Declare the sibling in `dependencies`, and say in the skill what to do when it is absent — a missing dependency is a broken install, not an optional extra.
 
-`project-review:project-review-docs` is the worked example: it loads
-`instruction-writing:writing-project-docs` for the authoring standard, passes the result as
-`standardDir`, and its workflow rejects a missing or relative value before spawning an agent.
+`project-review:project-review-docs` is the worked example: it loads `instruction-writing:writing-project-docs`, passes the base directory as `standardDir`, and rejects a missing or relative value before spawning an agent.
 
 ## Shell scripts
 
-Every tracked `*.sh` — under `scripts/`, `tests/`, or bundled in a plugin's `bin/` — must pass `mise run lint` (ShellCheck `--severity=warning`). A plugin `bin/` script without a `.sh` extension (e.g. `keep-awake-linux`'s `bin/keep-awake`) is still covered: `scripts/list-shell-scripts.sh` finds it by shebang rather than extension, so it does not need renaming to be linted. The CI `shellcheck` job enforces it; see [TESTING.md](TESTING.md) for the full job list.
+Every tracked `*.sh` — under `scripts/`, `tests/`, or a plugin's `bin/` — must pass `mise run lint` ([TESTING.md](TESTING.md)). An extensionless `bin/` script is still covered: `scripts/list-shell-scripts.sh` finds it by shebang, so `keep-awake-linux`'s `bin/keep-awake` needs no rename.
 
 ## SKILL.md conventions
 
-These apply to every `SKILL.md` under `plugins/<plugin-name>/skills/<skill-name>/`.
-
-Before writing or editing any `SKILL.md`, read the `writing-skills` rubric at
-[`plugins/instruction-writing/skills/writing-skills/SKILL.md`](../plugins/instruction-writing/skills/writing-skills/SKILL.md) —
-invocation choice, description writing, information hierarchy, and pruning.
-
-After writing or revising one, the `plugin-dev:skill-reviewer` agent reviews a `SKILL.md` for
-trigger description quality, progressive disclosure, and content organisation — it catches weak
-trigger phrases, over-long bodies, and missing references. It is a development-time aid, **not**
-a release gate (only `plugin-dev:plugin-validator` is). Like the validator it ships in the
-external `plugin-dev` plugin and must be installed separately — see [TESTING.md](TESTING.md).
+For every `SKILL.md` under `plugins/<plugin-name>/skills/<skill-name>/`. The authoring rubric — invocation choice, description writing, information hierarchy, pruning — is [`plugins/instruction-writing/skills/writing-skills/SKILL.md`](../plugins/instruction-writing/skills/writing-skills/SKILL.md); read it first, and run `plugin-dev:skill-reviewer` on the result afterwards (a dev-time aid, not a release gate — only `plugin-dev:plugin-validator` is; both ship in the external `plugin-dev` plugin, [TESTING.md](TESTING.md)):
 
 ```
 Review the skill at plugins/my-plugin/skills/my-skill/SKILL.md
@@ -114,20 +65,18 @@ Review the skill at plugins/my-plugin/skills/my-skill/SKILL.md
 
 ### Naming
 
-Skill directory name and the `name:` field in frontmatter must match. **Sibling skills share one prefix** so they sort and read as a family: the plugin's domain word where the plugin has one (`keep-awake-`, `html-visualize-`, `project-review-`, `tasks-`), otherwise a family word the siblings agree on (`writing-` in `instruction-writing`, `test-` in `project-auto-work`). A "main" skill may take the plugin's own name instead (`github-releases:github-releases`).
+Directory name and frontmatter `name:` must match. **Sibling skills share one prefix** so they sort and read as a family: the plugin's domain word where it has one (`keep-awake-`, `html-visualize-`, `project-review-`, `tasks-`), otherwise a word the siblings agree on (`writing-` in `instruction-writing`, `test-` in `project-auto-work`). A "main" skill may take the plugin's own name (`github-releases:github-releases`).
 
-- ✅ `keep-awake-linux:keep-awake-inspect`, `html-visualization:html-visualize-ask`, `instruction-writing:writing-skills`
+- ✅ `keep-awake-linux:keep-awake-inspect`, `instruction-writing:writing-skills`
 - ❌ `keep-awake-linux:inspect` — bare verb, shared with no sibling
 
-The exception is a plugin whose skill names do the triggering on their own — each a distinct, self-sufficient concept rather than a generic operation like `inspect` — where a shared prefix would only dilute them (`challenge:grill`, `challenge:kiss`, `challenge:are-you-sure`). Either way, the qualified `<plugin>:<skill>` reference still carries the domain in its plugin segment.
+The exception is a plugin whose names trigger on their own, each a distinct concept rather than a generic operation, where a shared prefix would only dilute them (`challenge:grill`, `challenge:kiss`, `challenge:are-you-sure`).
 
-**Renaming a plugin directory or a skill:** add the old-to-new entry to `RENAME_ALIASES` / `SKILL_RENAME_ALIASES` in [`scripts/analyze-sessions.py`](../scripts/analyze-sessions.py) in the same change, or every historical episode for that name silently falls into the unmatched bucket (see [MONITORING.md](MONITORING.md)).
+**When renaming a plugin directory or a skill**, add the old-to-new entry to `RENAME_ALIASES` / `SKILL_RENAME_ALIASES` in [`scripts/analyze-sessions.py`](../scripts/analyze-sessions.py) in the same change, or that name's history silently falls into the unmatched bucket ([MONITORING.md](MONITORING.md)).
 
-### Frontmatter — pick a schema by invocation behaviour
+### Frontmatter
 
-A skill is either **user-only** (must not auto-trigger) or **model-discoverable** (the model should auto-invoke it from conversation context). Pick the schema that matches the skill's intent.
-
-**Schema A — user-only:**
+**Schema A — user-only.** The default; nearly every skill here uses it.
 
 ```yaml
 ---
@@ -138,9 +87,7 @@ disable-model-invocation: true
 ---
 ```
 
-This is the default schema — nearly every skill in the marketplace uses it.
-
-**Schema B — model-discoverable:**
+**Schema B — model-discoverable.** Only where the `Skill` tool must reach the skill: siblings or agents load it by name (`tasks:tasks-writing`, `instruction-writing:writing-project-docs`), or the model should fire it unprompted from context (`challenge:grill`, `writing-skills`). `when_to_use` carries positive triggers, exclusions, and the argument shape where it helps.
 
 ```yaml
 ---
@@ -150,32 +97,19 @@ when_to_use: "Use when … Triggers on '…', '…'. Does not apply to …"
 ---
 ```
 
-Use for skills the `Skill` tool must reach, for either of two reasons — sibling skills or agents load them by name (`tasks:tasks-writing`, loaded by `tasks-create`; `instruction-writing:writing-project-docs`, loaded by `project-review:project-review-docs`), or the agent should fire them unprompted from conversation context (`challenge:grill` when a plan still carries open decisions, `writing-skills` when a `SKILL.md` is being written). `when_to_use` carries the trigger guidance — write positive triggers, exclusions, and (where it helps) the argument shape.
-
-Default to Schema A; use Schema B only for the two reasons above. Do not reach for it just because a skill *could* be auto-invoked — measured pickup from context is low (see the Invocation modes table in [MONITORING.md](MONITORING.md)), so the cost is paid on every skill that takes it without needing it.
-
-When the new skill's domain overlaps a sibling's (a likely case within a `*`-family), disambiguate in **both** directions: exclude the sibling from this skill's `when_to_use` *and* add the reverse pointer to the sibling's `when_to_use` in the same change. A one-sided carve-out still lets the shared queries land on the wrong skill.
-
-**Reference libraries** are skill folders loaded *by* sibling skills, not invoked directly. They use `user-invocable: false` and omit `when_to_use`. Examples: `html-visualize`.
-
-Do not mix schemas — a skill with both `disable-model-invocation: true` and `when_to_use:` is contradictory.
+- Do not take Schema B just because a skill *could* auto-invoke: measured pickup from context is low (the Invocation modes section in [MONITORING.md](MONITORING.md)), and every skill that takes it pays the cost.
+- Never mix them — `disable-model-invocation: true` alongside `when_to_use:` is contradictory.
+- Where a Schema B skill's domain overlaps a sibling's, disambiguate in **both** directions in the same change: exclude the sibling here, add the reverse pointer there. A one-sided carve-out still lets shared queries land on the wrong skill.
+- **Reference libraries** — loaded by sibling skills, never invoked directly — use `user-invocable: false` and omit `when_to_use` (`html-visualize`).
 
 ### `argument-hint` and `$ARGUMENTS`
 
-A skill that takes an argument declares `argument-hint` in its frontmatter and consumes
-`$ARGUMENTS` in its body. The two travel together: a hint with no `$ARGUMENTS` advertises an
-argument the skill then ignores, and `$ARGUMENTS` with no hint hides that the skill takes one.
+Declare `argument-hint` and consume `$ARGUMENTS` together, or the skill advertises an argument it ignores — or hides one it takes.
 
 ```yaml
 argument-hint: "[what-to-review]"
 ```
 
-Keep the hint a short bracketed placeholder — it appears in the slash-command picker, where a
-long value is truncated. Name the shape, not a description of it (`[what-to-review]`) — that
-duplicates prose the body already owns and goes stale independently of it.
-
-Exception: an **enum-valued** argument (a fixed, closed set of literal tokens, like a level)
-spells out the values instead — `[low|medium|high|ultra]`, not the generic `[level]`.
-
-State what happens when the argument is empty, since a user-invoked skill is frequently
-invoked bare. Either default it ("with no argument, review the whole test suite") or ask.
+- Name the shape in a short bracketed placeholder; the slash-command picker truncates anything longer.
+- Spell out an **enum-valued** argument instead: `[low|medium|high|ultra]`, not `[level]`.
+- State what an empty argument does — default it ("with no argument, review the whole test suite") or ask.
