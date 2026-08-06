@@ -3,8 +3,23 @@
 The following files in this plugin are derived from
 [mattpocock/skills](https://github.com/mattpocock/skills), used under the MIT license:
 
-- `skills/writing-skills/GLOSSARY.md` — vendored verbatim
-- `skills/writing-skills/SKILL.md` — adapted, locally maintained
+- `skills/writing-skills/SKILL.md` — adapted from the `writing-great-skills` skill and its
+  `GLOSSARY.md` at
+  [v1.1.0](https://github.com/mattpocock/skills/releases/tag/v1.1.0), then largely resynced
+  against that skill's successor `writing-for-agents` at
+  [v1.2.0](https://github.com/mattpocock/skills/releases/tag/v1.2.0) — both that skill's
+  `SKILL.md` and its `SKILL-MECHANICS.md`, unchanged upstream through v1.2.3. Nearly all of the
+  body is upstream text, locally adapted and maintained since; assume any passage traces upstream
+  rather than reading this as a list of the ones that do
+- `skills/writing-project-docs/references/project-doc-guidelines.md` — its `cache` rule, and the
+  Failure modes framing with its `Duplication` and `Sediment` bullets, are adapted from the same
+  skill; the surrounding guidance is locally authored
+
+Upstream renamed that skill to `writing-for-agents` in v1.2.0, folded `GLOSSARY.md` into its
+`SKILL.md`, split the skill-specific mechanics out into a new `SKILL-MECHANICS.md`, and widened
+its scope to any agent-facing document. The `writing-skills` skill here keeps the skills-only
+scope and holds the mechanics inline, with the other document audiences owned by
+`writing-project-docs`, so the two file sets no longer correspond one-to-one.
 
 ## MIT License (mattpocock/skills)
 
