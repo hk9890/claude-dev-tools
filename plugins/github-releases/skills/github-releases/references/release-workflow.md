@@ -80,6 +80,12 @@ git diff HEAD "origin/$DEFAULT_BRANCH" --stat   # expect no differences
 If the project's `docs/RELEASING.md` prescribes its own commit/push procedure (e.g. a version-bump PR), follow that instead — but never proceed to Phase 7 with the bump uncommitted or unpushed. That path needs its own check: the bump lands via a server-side merge, so no local push updates the remote-tracking ref and the re-verify above would report a spurious difference. Fetch first, then confirm the merged bump is actually on the remote default branch:
 
 ```bash
+# Derive in-block: each Bash call is a fresh shell, and this path skips the block above,
+# so nothing has set DEFAULT_BRANCH. Same sequence as that derivation.
+git remote set-head origin -a >/dev/null 2>&1
+DEFAULT_BRANCH=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|origin/||')
+DEFAULT_BRANCH=${DEFAULT_BRANCH:-$(git remote show origin | sed -n 's/.*HEAD branch: //p')}
+
 git fetch origin
 # Assert the REMOTE's copy carries the release version. Diffing the working tree against
 # the remote answers a different question: it passes when the PR was never merged and the
@@ -91,20 +97,25 @@ git show "origin/$DEFAULT_BRANCH:<a version file>" | grep -q "<the release versi
 
 ## Phase 7 — Create GitHub release
 
-Write the release notes first, then create the release from them:
+Write the release notes first, then create the release from them. Writing them is its own
+tool call, so print the path and substitute it literally afterwards — a variable assigned
+here is gone by the next `Bash` call.
 
 ```bash
-# Write release notes to a temp file — never create it inside the repo
-NOTES=$(mktemp)
-# ... write structured notes per release-notes-guide.md ...
+# Reserve a notes path outside the repo, and print it
+mktemp
+```
 
+Write the structured notes to the printed path, then:
+
+```bash
 # Tag the release
 git tag v<version>
 git push origin v<version>
 
 # Create GitHub release
-gh release create v<version> --title "v<version>" --notes-file "$NOTES"
-rm "$NOTES"
+gh release create v<version> --title "v<version>" --notes-file <the printed notes path>
+rm <the printed notes path>
 ```
 
 See [release-notes-guide.md](release-notes-guide.md) for the required release notes format.
