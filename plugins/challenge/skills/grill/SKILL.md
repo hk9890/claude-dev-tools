@@ -23,16 +23,11 @@ them. A question whose answer depends on another question still open in this rou
 Every question goes through the `AskUserQuestion` tool, so the user answers by picking rather than
 by quoting questions back.
 
-- Four questions per call is the ceiling. A frontier wider than that goes out as back-to-back
-  calls before you recompute — those calls are still one round.
-- Each question takes a `header` of at most 12 characters naming the decision it settles
-  ("Auth model", "Rollout"), since that is what the user sees as the chip.
-- Give each question 2–4 candidate answers, and put your recommendation first with
-  `(Recommended)` ending its label. Each option's `description` says what choosing it commits to.
-- Options are the real, distinct answers to the question — the design choices themselves, not
-  "yes"/"no" restatements of the question. The user can always supply their own; the tool carries
-  its own escape hatch.
-- Set `multiSelect: true` where the options genuinely combine.
+- A frontier wider than one call goes out as back-to-back calls before you recompute — those
+  calls are still one round.
+- Each `header` names the decision its question settles ("Auth model", "Rollout").
+- Each option is a design choice the user could commit to, and its `description` says what
+  choosing it commits them to.
 
 ## Facts and decisions
 
