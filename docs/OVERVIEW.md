@@ -13,7 +13,6 @@ claude-dev-tools/
   .github/               # CI workflows and Dependabot config — see TESTING.md for the jobs
   docs/                  # developer topic guides — see AGENTS.md for task->doc routing
   plugins/               # one subdirectory per plugin
-  prototypes/            # non-shipped HTML reference prototypes — not served or loaded by any plugin
   scripts/               # repo maintenance scripts
   tests/                 # structural validation and smoke tests
 ```
