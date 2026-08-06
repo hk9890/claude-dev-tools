@@ -92,7 +92,7 @@ dev checkout — so there is no relative path to write and `find` is worse than 
 
 ## Shell scripts
 
-Every tracked `*.sh` — under `scripts/`, `tests/`, or bundled in a plugin's `bin/` — must pass `mise run lint` (ShellCheck `--severity=warning`). The CI `shellcheck` job enforces it; see [TESTING.md](TESTING.md) for the full job list.
+Every tracked `*.sh` — under `scripts/`, `tests/`, or bundled in a plugin's `bin/` — must pass `mise run lint` (ShellCheck `--severity=warning`). A plugin `bin/` script without a `.sh` extension (e.g. `keep-awake-linux`'s `bin/keep-awake`) is still covered: `scripts/list-shell-scripts.sh` finds it by shebang rather than extension, so it does not need renaming to be linted. The CI `shellcheck` job enforces it; see [TESTING.md](TESTING.md) for the full job list.
 
 ## SKILL.md conventions
 

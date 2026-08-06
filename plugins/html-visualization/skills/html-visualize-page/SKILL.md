@@ -8,7 +8,9 @@ disable-model-invocation: true
 
 ## Workflow
 
-What to display as a visualization, diagram, chart, or data summary:
+What to display as a visualization, diagram, chart, or data summary, given
+directly, or nothing when the subject is whatever the conversation was just
+discussing:
 
 $ARGUMENTS
 

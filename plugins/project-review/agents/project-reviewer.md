@@ -1,6 +1,6 @@
 ---
 name: project-reviewer
-description: "Adversarial reviewer persona used by the tasks plugin's review leg — read-only, skeptical, evidence-driven. Carries the review attitude and a fixed output skeleton; the caller supplies the review procedure and verdict label set."
+description: "Adversarial reviewer persona for a read-only, skeptical, evidence-driven review, invoked directly with a caller-supplied procedure. Carries the review attitude and a fixed output skeleton; the caller supplies the review procedure and verdict label set. `project-review-codebase`'s workflow distills its shared persona from this file, and `tests/project-review/script-tests/test-readonly-contract.sh` pins the read-only contract between the two so they cannot drift apart."
 model: opus
 color: red
 ---

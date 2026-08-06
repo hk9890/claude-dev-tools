@@ -12,6 +12,11 @@
 #      ship in all four flavours as inert config. Adding a role to the generator
 #      must mean adding it here, having confirmed the name is one Claude Code
 #      actually consumes — grep the CLI binary for it.
+#   5. plugin.json's experimental.themes path resolves to this same themes/
+#      directory. Anthropic's own `claude plugin validate` schema-checks this
+#      key, but this repo's test suite doesn't depend on the claude binary
+#      being installed, so nothing else here catches the manifest path and
+#      the actual themes/ dir drifting apart.
 
 set -uo pipefail
 
@@ -140,6 +145,20 @@ if THEMES_OUT_DIR="$tmp" node "$PLUGIN_DIR/scripts/generate-themes.mjs" >/dev/nu
   fi
 else
   fail "generate-themes.mjs failed to run"
+fi
+
+# 5. Manifest wiring — plugin.json's experimental.themes must point at this themes/ dir.
+manifest="$PLUGIN_DIR/.claude-plugin/plugin.json"
+themes_key="$(jq -r '.experimental.themes // empty' "$manifest")"
+if [[ -z "$themes_key" ]]; then
+  fail "plugin.json is missing .experimental.themes"
+else
+  resolved="$(cd "$PLUGIN_DIR" && cd "$themes_key" 2>/dev/null && pwd)"
+  if [[ "$resolved" == "$THEMES_DIR" ]]; then
+    ok "plugin.json's experimental.themes resolves to themes/"
+  else
+    fail "plugin.json's experimental.themes ('$themes_key') resolves to '${resolved:-<not found>}', expected $THEMES_DIR"
+  fi
 fi
 
 printf '\nResults: %d passed, %d failed\n' "$PASS" "$FAIL"

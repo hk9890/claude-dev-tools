@@ -12,7 +12,7 @@ A `.mise.toml` at the repo root provides a single discoverable entry point. Run 
 | `mise run test-html` | html-visualization browser/server tests only |
 | `mise run check-consistency` | Cross-reference and version-mirror validation (`scripts/check-internal-consistency.py`) |
 | `mise run analyze-sessions` | Session-transcript analyser — usage in [MONITORING.md](MONITORING.md) |
-| `mise run lint` | ShellCheck (`--severity=warning`) over every tracked `*.sh` — reproduces the CI `shellcheck` job |
+| `mise run lint` | ShellCheck (`--severity=warning`) over every tracked shell script (`scripts/list-shell-scripts.sh`: every tracked `*.sh`, plus plugin `bin/` scripts with a shell shebang) — reproduces the CI `shellcheck` job |
 
 Required on PATH: `bash`, `python3`, `node`, `jq`, `shellcheck`. `mise` runs the tasks but installs none of them — `.mise.toml` declares no `[tools]`. Absent `node`, the node-backed suites fail rather than skip.
 
@@ -80,7 +80,7 @@ A non-zero `validate-routes.py` (broken routes) must be fixed before pushing. Th
 | `test` | Full script-test suite | `mise run test` |
 | `consistency` | Cross-references, version mirrors, marketplace | `mise run check-consistency` |
 | `manifests` | JSON well-formedness of every plugin and marketplace manifest | `for f in .claude-plugin/marketplace.json plugins/*/.claude-plugin/plugin.json; do jq empty "$f"; done` |
-| `shellcheck` | ShellCheck at `--severity=warning` over every tracked `*.sh` | `mise run lint` |
+| `shellcheck` | ShellCheck at `--severity=warning` over every tracked shell script (see `scripts/list-shell-scripts.sh`) | `mise run lint` |
 | `gitleaks` | Leaked-secret scan over full history | CI-only (needs the `gitleaks` binary) |
 
 `codeql.yml` adds a CodeQL analysis on the same triggers plus a weekly scheduled scan, and `.github/dependabot.yml` (not a workflow) keeps the pinned GitHub Actions current. Neither has a local equivalent.

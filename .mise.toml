@@ -28,4 +28,4 @@ run = "python3 scripts/analyze-sessions.py"
 [tasks.lint]
 description = "ShellCheck every tracked shell script (reproduces the CI shellcheck job)"
 dir = "{{config_root}}"
-run = "git ls-files '*.sh' | xargs -r shellcheck --severity=warning"
+run = "bash scripts/list-shell-scripts.sh | xargs -r shellcheck --severity=warning"
