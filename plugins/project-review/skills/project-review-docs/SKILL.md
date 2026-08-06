@@ -45,10 +45,15 @@ docs inline. The workflow returns a structured report; relay it.
 
    ```bash
    command -v python3 >/dev/null || { echo "python3 missing — stop and fall back to a manual read"; return 2>/dev/null || exit 1; }
+   ls "<STANDARD_DIR>/references/project-doc-guidelines.md" "<STANDARD_DIR>/references/project-setup.md" "<STANDARD_DIR>/../../references/writing-hygiene.md" >/dev/null || { echo "the standard is incomplete under STANDARD_DIR — stop; the instruction-writing install is broken, and the agents would silently review against fewer rules"; return 2>/dev/null || exit 1; }
    SCRATCH=$(mktemp -d /tmp/docreview-XXXXXX) && echo "$SCRATCH" || echo "mktemp failed — stop; do not launch without a scratch dir"
    ```
 
-   Done when the scratch path is printed above. If either command failed, stop here.
+   Substitute the step-2 `STANDARD_DIR` value literally — the workflow derives the same three
+   paths from it and hands them to agents that never load the skill, so a path that does not
+   resolve here dead-ends there.
+
+   Done when the scratch path is printed above. If any command failed, stop here.
 
 4. Invoke the **Workflow** tool:
    - `scriptPath`: `<SKILL_DIR>/workflows/review-docs.js`
