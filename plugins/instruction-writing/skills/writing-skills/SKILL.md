@@ -27,7 +27,7 @@ Two choices, each spending one of the loads:
 
 Pick model-invocation only where the agent must reach the skill on its own, or another skill must.
 
-Reference that several skills need has two homes. A model-invoked skill of pure reference is one, since any skill can invoke it — but it only works where the sibling _is_ the reference, because invoking it loads its whole body, and it buys that reach with a description loaded in every session. Weigh that against how much is shared: a few hundred words rarely earns permanent context load. Otherwise — and always between two **user-invoked** skills, which have no agent-visible description and so cannot fire each other — push it to **external reference**: a plain file outside the skill system that any skill points at.
+Reference that several skills need has two homes. A model-invoked skill of pure reference is one, since any skill can invoke it — but it only works where the sibling _is_ the reference, because invoking it loads its whole body, and it buys that reach with a description loaded in every session. Weigh that against how much is shared: a few hundred words rarely earns permanent context load. Otherwise — and always between two **user-invoked** skills — push it to **external reference**: a plain file outside the skill system that any skill points at.
 
 When user-invoked skills multiply past what you can remember, that cognitive load is cured by a **router skill**: one user-invoked skill naming the others and when to reach for each. It can only hint, never fire them.
 
@@ -35,7 +35,7 @@ When user-invoked skills multiply past what you can remember, that cognitive loa
 
 A **context pointer** names out-of-context material and encodes the condition for reaching it. A description is the top-level one (context window → skill); a pointer to a disclosed file is the same object one level down. The pointer's _wording_, not its target, decides when the agent reaches the material and how reliably — so a must-have target behind a weak pointer is a variance bug: sharpen the wording first, and inline the material only if that fails.
 
-A description does two jobs: state what the skill is, and list the **branches** that should trigger it. Every word costs on every turn, so it earns harder pruning than the body.
+A description does two jobs: state what the skill is, and list the **branches** that should trigger it (a branch is a distinct way the skill can be invoked, so different runs take different paths through it). Every word costs on every turn, so it earns harder pruning than the body.
 
 - **Front-load the skill's leading word** — the description is where it does its invocation work.
 - **One trigger per branch.** Synonyms that rename a single branch are one branch written twice — "build features using TDD … asks for test-first development". Collapse them.
@@ -43,7 +43,7 @@ A description does two jobs: state what the skill is, and list the **branches** 
 
 ## Information hierarchy
 
-A skill mixes two content types: **steps**, the ordered actions the agent performs, and **reference**, the definitions and rules it consults on demand. A skill can be all steps (`tdd`), all reference (a review), or both. The decision is where each piece sits on the **information hierarchy**, a ladder ranked by how immediately the agent needs it:
+A skill mixes two content types: **steps**, the ordered actions the agent performs, and **reference**, the definitions and rules it consults on demand. A skill can be all steps (a TDD loop), all reference (a review), or both. The decision is where each piece sits on the **information hierarchy**, a ladder ranked by how immediately the agent needs it:
 
 1. **In-skill step** — the primary tier: what the agent does, in order.
 2. **In-skill reference** — consulted on demand. Often a legitimately flat peer-set (every rule of a review on one rung), which is a fine arrangement rather than a smell.
@@ -52,9 +52,9 @@ A skill mixes two content types: **steps**, the ordered actions the agent perfor
 
 Push too little down and the top bloats; push too much and you hide material the agent needs.
 
-**Progressive disclosure** is the move down the ladder, so the top stays legible. A **branch** is a distinct way a skill can be invoked, so different runs take different paths through it — and branching is the disclosure test: inline what every branch needs, push behind a pointer what only some branches reach. Where a skill has steps, in-skill reference that should be disclosed buries them and turns attending to them into a coin-flip.
+**Progressive disclosure** is the move down the ladder, so the top stays legible. Branching is the disclosure test: inline what every branch needs, push behind a pointer what only some branches reach. Where a skill has steps, in-skill reference that should be disclosed buries them and turns attending to them into a coin-flip.
 
-**Co-location** decides what sits beside a piece once the ladder has placed it: keep a concept's definition, rules and caveats under one heading rather than scattered, so reading one part brings its neighbours with it.
+**Co-location** decides what sits beside a piece once the ladder has placed it: keep a concept's definition, rules and caveats under one heading rather than scattered, so reading one part brings its neighbours with it. The test: the skill should read like documentation written for the agent — grouped material reads that way, scattered material does not. Distinct from **duplication**: that repeats one meaning in two places, where scattering fragments one meaning across many.
 
 **Sprawl** is the failure mode here: a skill too long even when every line is live and unique, so attention thins across the excess. The cure is the ladder — disclose reference behind pointers, and split by branch or sequence so each path carries only what it needs.
 
@@ -69,10 +69,10 @@ The strongest criteria are both checkable and exhaustive.
 
 ## When to split
 
-**Granularity** is how finely you divide skills, and each cut spends one of the two loads, so split only where the cut earns it:
+Splitting one skill into two spends one of the two loads, so split only where the cut earns it:
 
 - **By invocation** — split off a model-invoked skill where a distinct **leading word** should trigger it on its own, a word you actually use in your prompts, or where another skill must reach it.
-- **By sequence** — split a run of steps where the post-completion steps tempt the agent to rush the one in front of it. Merging sequences does the reverse: it exposes each step's later steps to what follows, inviting premature completion.
+- **By sequence** — split a run of steps where the post-completion steps tempt the agent to rush the one in front of it. Beware the reverse: merging sequences exposes each step's post-completion steps to what follows, inviting premature completion.
 
 ## Leading words
 
