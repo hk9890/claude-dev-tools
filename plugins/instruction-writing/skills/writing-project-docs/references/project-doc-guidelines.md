@@ -21,13 +21,13 @@ Write into the file that owns the fact, not merely one where the statement is tr
 in the wrong file is still a defect: the reader who loaded that file for its topic pays for it, and
 the reader who needed it never arrives.
 
-**A second copy is worse than a wrong home.** Copies drift — one gets corrected, the other keeps
-being read, and nothing in either says which is stale. When two files could hold a fact, one keeps
-it and the other links; when a section here restates a section there, cut it and link.
+**A second copy is worse than a wrong home.** When two files could hold a fact, one keeps it and
+the other links; when a section here restates a section there, cut it and link.
 
 **The repository is a home too.** A doc restating something the repo itself already declares — a
-script, a config, the tree — is a **cache**, governed by the shared rule the skill routes to. What
-belongs in the doc set is only which of this repo's surfaces count as authoritative.
+script, a config, the tree — is a **cache**, governed by
+[`../../../references/writing-hygiene.md`](../../../references/writing-hygiene.md). What belongs in
+the doc set is only which of this repo's surfaces count as authoritative.
 
 The homes most often got wrong:
 
@@ -111,9 +111,9 @@ Two things make the obligation fire:
 ## Failure modes
 
 Use these to diagnose a doc set that is not working. They are the ones peculiar to a doc *set* —
-duplication, sediment and no-ops afflict any document and are defined in the hygiene reference the
-skill routes to, where a doc set's version of sediment is the routing file swelling into a
-handbook.
+duplication, sediment and no-ops afflict any document and are defined in
+[`../../../references/writing-hygiene.md`](../../../references/writing-hygiene.md), where a doc
+set's version of sediment is the routing file swelling into a handbook.
 
 - **Advisory route** — "load X to understand Y", "see X for details", "consider reading X". An agent
   under load reads these as skippable and skips them; the routed doc goes unopened while the work
