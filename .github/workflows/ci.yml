@@ -51,7 +51,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: ShellCheck (warning severity)
-        run: git ls-files '*.sh' | xargs -r shellcheck --severity=warning
+        run: bash scripts/list-shell-scripts.sh | xargs -r shellcheck --severity=warning
 
   gitleaks:
     name: gitleaks

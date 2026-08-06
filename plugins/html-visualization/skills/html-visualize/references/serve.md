@@ -48,12 +48,14 @@ if [ -f "$PLUGIN_ROOT/bin/server.js" ]; then
   echo "plugin root: $PLUGIN_ROOT"
 else
   echo "ERROR: cannot locate the html-visualization plugin root"
+  exit 1
 fi
 ```
 
-If the `ERROR` line prints, stop — do not start a server. Fall back to the
-active mode's chat fallback (as in the Node pre-flight) and tell the user the
-plugin's files could not be located. Never guess a path in its place.
+If the `ERROR` line prints (the command exits non-zero), stop — do not start a
+server. Fall back to the active mode's chat fallback (as in the Node pre-flight)
+and tell the user the plugin's files could not be located. Never guess a path in
+its place.
 
 Replace `<mode>` with `html-ask`, `html-feedback`, or `html-visualize` depending
 on the active mode. The directory must be unique per invocation — never reuse one

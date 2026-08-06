@@ -38,6 +38,20 @@ Use the right pattern for each dependency kind:
 - **Plugin depends on another plugin** (e.g. a workflow plugin that reuses another plugin's skills): declare the dependency in `plugin.json` under `dependencies`. The harness handles install, scope, and chained enable/disable.
 - **Plugin depends on a CLI tool** (e.g. `tasks` → `taskmgr`, `html-visualization` → `node`): the harness cannot install CLI binaries. Add a runtime check at skill load time (Phase 0) that tests whether the CLI is present and stops with guidance if it is missing. Do not add CLI tools to the `dependencies` field.
 
+## Experimental manifest keys
+
+`plugin.json` also accepts an `experimental` object for manifest surfaces the Claude
+Code harness reads but has not stabilized or documented publicly. `claude-catppuccin`
+is the worked example: its `plugin.json` sets `"experimental": { "themes": "./themes/" }`,
+pointing the harness at a directory of theme JSON files it loads and offers to the user.
+
+Because the key is undocumented upstream, neither `check-internal-consistency.py` nor
+`plugin-dev:plugin-validator` can validate it against a schema. The burden shifts to the
+plugin's own test suite: assert that the manifest's path resolves to the directory the
+suite is otherwise validating, so the two cannot drift apart silently — see
+`tests/claude-catppuccin/script-tests/test-themes.sh`. A plugin adding an `experimental`
+key must add an equivalent self-consistency check.
+
 ## Locating a plugin's own files at runtime
 
 A skill that has to run one of its plugin's bundled files (a workflow script, a server, a
@@ -92,7 +106,7 @@ dev checkout — so there is no relative path to write and `find` is worse than 
 
 ## Shell scripts
 
-Every tracked `*.sh` — under `scripts/`, `tests/`, or bundled in a plugin's `bin/` — must pass `mise run lint` (ShellCheck `--severity=warning`). The CI `shellcheck` job enforces it; see [TESTING.md](TESTING.md) for the full job list.
+Every tracked `*.sh` — under `scripts/`, `tests/`, or bundled in a plugin's `bin/` — must pass `mise run lint` (ShellCheck `--severity=warning`). A plugin `bin/` script without a `.sh` extension (e.g. `keep-awake-linux`'s `bin/keep-awake`) is still covered: `scripts/list-shell-scripts.sh` finds it by shebang rather than extension, so it does not need renaming to be linted. The CI `shellcheck` job enforces it; see [TESTING.md](TESTING.md) for the full job list.
 
 ## SKILL.md conventions
 

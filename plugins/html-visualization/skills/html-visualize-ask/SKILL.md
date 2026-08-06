@@ -8,7 +8,9 @@ disable-model-invocation: true
 
 ## Workflow
 
-The questions or approve/reject decisions to put on the form:
+The questions or approve/reject decisions to put on the form, given directly, or
+nothing when the open questions are the ones already on the table in this
+conversation:
 
 $ARGUMENTS
 
