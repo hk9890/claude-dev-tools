@@ -46,9 +46,14 @@ the command with the filter in the argument so it survives into a fresh turn:
 ```
 
 Either path needs the separate `html-visualization` plugin, which is not a
-dependency of this one. Offer the command only if that skill exists; when the
-flag was passed and it is absent, say the flag needs that plugin installed, then
-put the same questions in chat.
+dependency of this one. The check for the invoke path is whether
+`html-visualize-ask` appears in your own available skills — invoke it only then.
+It is missing from that list for either of two reasons: the plugin is not
+installed, or it is installed at a version whose ask mode is user-only and so
+unreachable by the `Skill` tool. Say which of those you can tell, then put the
+same questions in chat. Never reconstruct the form by other means — a user-only
+skill is reserved for the user typing its name. The printed command still works
+in that case, since typing it is exactly what a user-only skill allows.
 
 Then say plainly that the settled batch is not on the form, and that the form's
 free-text box is where they stop any of it. A settled item is one the user never

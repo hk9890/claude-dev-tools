@@ -47,9 +47,13 @@ the <N> open decisions from <the test-app run|the test-suite audit> — the sett
 Invoking it in this turn is what keeps the report in context when the answers
 come back, so the picks read as the reply the user would otherwise have typed.
 
-That skill ships in the separate `html-visualization` plugin and is not a
-dependency of this one. When it is absent, say the flag needs that plugin
-installed, then put the same questions in chat.
+The check is whether `html-visualize-ask` appears in your own available skills —
+invoke it only then. It ships in the separate `html-visualization` plugin, which
+is not a dependency of this one, and it is missing from that list for either of
+two reasons: the plugin is not installed, or it is installed at a version whose
+ask mode is user-only and so unreachable by the `Skill` tool. Say which of those
+you can tell, then put the same questions in chat. Never reconstruct the form by
+other means — a user-only skill is reserved for the user typing its name.
 
 Either way, say plainly that the settled batch is not among the questions. A
 settled proposal is one the user never saw a question about, so one filed wrongly
