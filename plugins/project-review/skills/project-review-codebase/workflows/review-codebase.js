@@ -4,7 +4,11 @@ export const meta = {
   whenToUse: 'Launched by the /project-review-codebase skill. Reviews a codebase — production and test code alike — for internal consistency, physical layout, and module architecture, including whether failure modes are tested; dedupes findings across dimensions and returns a standalone Markdown report with Mermaid diagrams.',
   phases: [
     { title: 'Review', detail: 'one adversarial agent per dimension' },
-    { title: 'Verify', detail: 'adversarially refute each finding (level=ultra only)' },
+    // `meta` must be a pure literal, so this phase cannot be declared conditionally.
+    // At every level below ultra it therefore sits at "not started" for the whole run,
+    // which reads as a hang — the title carries the condition so the progress tree
+    // explains itself without the detail line.
+    { title: 'Verify (ultra only)', detail: 'adversarially refute each finding' },
     { title: 'Synthesis', detail: 'dedupe + reconcile + deepening candidates + Markdown artifact' },
   ],
 }
@@ -495,8 +499,10 @@ const ARTIFACT_FORMAT =
   `- **\`<location>\`** — <severity>. <observation> **Evidence:** <evidence> **Why it matters:** <why_it_matters> ` +
   `**Fix:** <recommended_action>\n\n` +
   `The evidence is what makes a finding checkable rather than an assertion — never drop it from a bullet.\n\n` +
-  `Two \`###\` subsections, both numbered from 1 in priority order, each omitted when it would be empty. Keeping them ` +
-  `apart is what tells the developer where their attention is actually needed.\n\n` +
+  `## Recommended actions\n\n` +
+  `Emit that \`##\` heading, then the two \`###\` subsections below nested under it. Omit a subsection that would be ` +
+  `empty; never omit the parent, or the subsections read as the tail of Findings. Both number from 1 in priority ` +
+  `order. Keeping them apart is what tells the developer where their attention is actually needed.\n\n` +
   `### Do these\n\n` +
   `Every settled action, one numbered \`action\` per line. Introduce the subsection with one line saying these have a ` +
   `single correct answer and are listed so the batch can be checked, not debated.\n\n` +
@@ -538,6 +544,10 @@ if (typeof agent === 'function') {
 
   phase('Review')
 
+  // The refutation phase is declared unconditionally (meta is a literal) but only runs
+  // at ultra. Say so once, or its permanently-unstarted row reads as a stuck run.
+  if (!ultra) log(`level=${level}: the refutation pass is ultra-only, so "Verify (ultra only)" stays empty this run`)
+
   const results = await pipeline(
     DIMENSIONS,
     d => agent(dimensionPrompt(d, cfg), { label: `review:${d.key}`, phase: 'Review', model: reviewModel, schema: d.schema }),
@@ -550,7 +560,7 @@ if (typeof agent === 'function') {
           `REFUTE it. Default refuted=true if the cited evidence does not clearly hold up on inspection.\n\n` +
           `Severity: ${f.severity}\nLocation: ${f.location}\nClaim: ${f.observation}\nEvidence cited: ${f.evidence}\n\n` +
           `Return {refuted, reason}.`,
-          { label: `verify:${d.key}`, phase: 'Verify', model: 'opus', schema: VERIFY_SCHEMA }
+          { label: `verify:${d.key}`, phase: 'Verify (ultra only)', model: 'opus', schema: VERIFY_SCHEMA }
         ).then(v => ({ f, refuted: !!(v && v.refuted), reason: v ? (v.reason || '') : 'no verdict' }))
       )).then(verdicts => {
         const vs = verdicts.filter(Boolean)

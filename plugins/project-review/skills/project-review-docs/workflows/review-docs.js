@@ -6,7 +6,10 @@ export const meta = {
     { title: 'Manifest', detail: 'deterministic facts: files, metrics, links, routes' },
     { title: 'Read-review', detail: 'one agent per use case, plus the files that are not use cases' },
     { title: 'History', detail: 'did past sessions open the doc their route points at?' },
-    { title: 'Execution', detail: 'per AGENTS route: cold agent does a task, driver grades (high = 3 routes, ultra = all)' },
+    // `meta` must be a pure literal, so this cannot be declared conditionally.
+    // executionRoutes is 0 at low and medium, where the row would otherwise sit at
+    // "not started" for the whole run and read as a hang.
+    { title: 'Execution (high/ultra only)', detail: 'per AGENTS route: cold agent does a task, driver grades — 3 routes at high, all at ultra' },
     { title: 'Synthesis', detail: 'dedupe + cross-file reconciliation + report' },
   ],
 }
@@ -700,7 +703,7 @@ if (typeof agent === 'function') {
       `Because you have read the doc, you also hold the correct answer/outcome — record it as the answer key.\n` +
       `Classify the task's safety tier: A = safe/read-only, B = expensive but safe, C = destructive/irreversible (tag/push/publish/delete/prod).\n` +
       `Return {task, expected (the answer key), tier, rationale}.`,
-      { label: `gen:${route.target}`, phase: 'Execution', model: 'opus', schema: TASK_SCHEMA }
+      { label: `gen:${route.target}`, phase: 'Execution (high/ultra only)', model: 'opus', schema: TASK_SCHEMA }
     ),
     // Stage 2: cold action agent attempts the task — uncoached, in the live repo,
     // so it sees uncommitted doc edits — and appends a live trace to a scratch file.
@@ -717,7 +720,7 @@ if (typeof agent === 'function') {
         `HARD CONSTRAINT — you are working directly in the user's live repository. There is no sandbox and nothing is discarded afterwards, so every side effect is real. Do not create, modify, or delete any file in the repo. Do not change git state (no commit, branch, tag, stash, checkout, push). Do not install packages, publish, or deploy. Reading, searching, and running self-contained commands is fine — a build or test run is allowed, and the untracked cache output it leaves behind is acceptable. The only path you may write to is the trace file below. If finishing the task would require a forbidden step, stop there and report the command you would have run instead of running it.\n\n` +
         `KEEP A LIVE TRACE: run \`mkdir -p ${scratchDir}\` once, then as you work append to ${tf} — this path is outside the repo, so it keeps the repo clean. Log every step: each doc you open (its path), each command with its REAL exit code and a short output snippet, and any obstacle. This trace, not your summary, is what gets graded — make it faithful.\n\n` +
         `When done also return: whether you completed it, your answer/outcome, which docs you consulted, and the commands you ran.`,
-        { label: `do:${route.target}`, phase: 'Execution', model: 'sonnet', schema: ACTION_SCHEMA }
+        { label: `do:${route.target}`, phase: 'Execution (high/ultra only)', model: 'sonnet', schema: ACTION_SCHEMA }
       ).then(res => ({ _skipped: false, route: route.target, task, action: res, traceFile: tf }))
     },
     // Stage 3: driver grades the SESSION (the trace file) against its answer key,
@@ -746,7 +749,7 @@ if (typeof agent === 'function') {
         `- inconclusive: failed for a reason NOT attributable to the doc (missing environment/creds/network, or the agent did something dumb) — discard.\n` +
         `Set attribution to doc / agent / environment / none. If there is a documentation finding, state it and its severity; otherwise finding="" severity=none.\n` +
         `Return {route, verdict, attribution, finding, severity}.`,
-        { label: `grade:${route.target}`, phase: 'Execution', model: 'opus', schema: GRADE_SCHEMA }
+        { label: `grade:${route.target}`, phase: 'Execution (high/ultra only)', model: 'opus', schema: GRADE_SCHEMA }
       )
     }
   )
