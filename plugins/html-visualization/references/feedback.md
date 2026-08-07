@@ -19,7 +19,9 @@ skill's base directory that is `../../references/<file>`; once `$HTML_DIR` exist
 
 ## Scope of feedback mode
 
-The user invoked feedback mode explicitly — render the content for markup.
+The user asked for this surface — render the content for markup. That holds
+whether they typed the slash command or asked for a browser page in prose; either
+way the mode is settled, so do not re-litigate it.
 Feedback mode shows the user a piece of content — a document, draft, plan,
 proposal, or set of brainstormed options — and lets them attach inline comments
 to specific parts of it, then iterate via an Apply loop. The content may be

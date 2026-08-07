@@ -1,9 +1,8 @@
 ---
 name: html-visualize-ask
 description: "Render a browser HTML question/decision form for the user to answer — ask mode of html-visualize."
+when_to_use: "Use when the user explicitly asks for open questions or approve/reject decisions to be put on a browser form or HTML page rather than asked in chat. Triggers on 'ask me in a browser', 'put those questions in an HTML form', 'give me a web form for these decisions'. Naming the browser surface is the trigger — a batch of open questions on its own is not, so ask those in chat. Not for marking up an existing document, draft, or plan (`html-visualization:html-visualize-feedback`); for a page the user only reads, point them at `/html-visualization:html-visualize-page`."
 argument-hint: "[questions-or-decisions]"
-user-invocable: true
-disable-model-invocation: true
 ---
 
 ## Workflow

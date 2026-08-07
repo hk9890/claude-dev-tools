@@ -18,9 +18,11 @@ skill's base directory that is `../../references/<file>`; once `$HTML_DIR` exist
 
 ## Scope of ask mode
 
-The user invoked ask mode explicitly — build the form. Ask mode fits a batch of
-open questions or approve/reject decisions the user answers in one pass, with a
-blocking submit round-trip.
+The user asked for this surface — build the form. That holds whether they typed
+the slash command or asked for a browser form in prose; either way the mode is
+settled, so do not re-litigate it. Ask mode fits a batch of open questions or
+approve/reject decisions the user answers in one pass, with a blocking submit
+round-trip.
 
 Fall back to plain chat in only two cases:
 
