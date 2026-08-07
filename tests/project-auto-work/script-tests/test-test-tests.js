@@ -96,9 +96,9 @@ async function main() {
     pipeline: throwIfCalled('pipeline'),
   });
 
-  const { normalizeArgs, dialFor, baselineAbort, scoreabilityAbort, notCheckedList, DIALS } = helpers;
+  const { normalizeArgs, dialFor, baselineAbort, scoreabilityAbort, notCheckedList, findingSignals, DIALS } = helpers;
 
-  const required = { normalizeArgs, dialFor, baselineAbort, scoreabilityAbort, notCheckedList };
+  const required = { normalizeArgs, dialFor, baselineAbort, scoreabilityAbort, notCheckedList, findingSignals };
   const missingExport = Object.keys(required).filter((k) => typeof required[k] !== 'function');
   if (missingExport.length) {
     bad('test-tests.js exposes its pure helpers', `missing or not a function: ${missingExport.join(', ')}`);
@@ -263,6 +263,19 @@ async function main() {
     (scoreabilityAbort([worker({}), { component: 'other', audited: false }]) || { perWorker: '' })
       .perWorker.split('\n').length === 2);
 
+  // ── findingSignals ───────────────────────────────────────────────────────────
+  // What the cap counts. A killed mutant is the suite working, so counting it would stop the
+  // audit early on a strong suite — exactly backwards.
+  eq('findingSignals: a dead worker contributes nothing', 0, findingSignals(null));
+  eq('findingSignals: killed mutants do not count', 0,
+    findingSignals({ mutants: [{ outcome: 'KILLED' }, { outcome: 'KILLED' }] }));
+  eq('findingSignals: survivors, flakes and brittle breaks all count', 4,
+    findingSignals({
+      mutants: [{ outcome: 'SURVIVED' }, { outcome: 'KILLED' }, { outcome: 'SURVIVED' }],
+      flakes: [{ test: 'a', symptom: 'b' }],
+      noops: [{ broke: true }, { broke: false }],
+    }));
+
   // ── notCheckedList ───────────────────────────────────────────────────────────
   const baseNotChecked = {
     level: 'low',
@@ -302,6 +315,26 @@ async function main() {
   });
   truthy('notCheckedList: a budgeted probe that could not run names its reason',
     probeSkipped.some((s) => /declares no unit\/integration split/.test(s)));
+
+  // A component the findings cap stopped us reaching has a null worker result, exactly like
+  // one whose agent died. Reporting it as a failure would send the reader chasing a crash
+  // that never happened, so the cap must claim its own components.
+  const cappedList = notCheckedList({
+    ...baseNotChecked,
+    components: [{ name: 'core' }, { name: 'billing' }],
+    workerResults: [{ component: 'core' }, null],
+    cappedComponents: ['billing'],
+  });
+  truthy('notCheckedList: a capped component says the run was already full',
+    cappedList.some((s) => /component billing — never audited/.test(s)));
+  truthy('notCheckedList: a capped component is NOT reported as a failed worker',
+    !cappedList.some((s) => /component billing — worker agent failed/.test(s)));
+  truthy('notCheckedList: a genuinely failed worker is still reported as one',
+    notCheckedList({
+      ...baseNotChecked,
+      components: [{ name: 'core' }, { name: 'billing' }],
+      workerResults: [{ component: 'core' }, null],
+    }).some((s) => /component billing — worker agent failed/.test(s)));
 
   const highList = notCheckedList({
     ...baseNotChecked,

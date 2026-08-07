@@ -3,7 +3,7 @@ name: project-review-docs
 description: "Read-only audit of a project's docs for accuracy, staleness, gaps, misplaced content, and whether agents can and do actually use them — runs a multi-agent workflow, reports fixes, never edits."
 user-invocable: true
 disable-model-invocation: true
-argument-hint: "[low|medium|high|ultra] [path]"
+argument-hint: "[low|medium|high|ultra] [html-viz] [path]"
 ---
 
 Read-only documentation audit. Launch the review workflow — do **not** review the
@@ -11,9 +11,10 @@ docs inline. The workflow returns a structured report; relay it.
 
 ## Run the workflow
 
-1. Parse `$ARGUMENTS` as `[low|medium|high|ultra] [what-to-review]`. Both are optional.
-   A leading `low` | `medium` | `high` | `ultra` token is the **level** (default
-   `medium`); everything after it is **what to review**. Most invocations pass only a
+1. Parse `$ARGUMENTS` as `[low|medium|high|ultra] [html-viz] [what-to-review]`. All are
+   optional. A leading `low` | `medium` | `high` | `ultra` token is the **level** (default
+   `medium`), and a leading `html-viz` token after it puts the open decisions on a browser
+   form in step 5. Everything left is **what to review**. Most invocations pass only a
    level.
 
    Unlike the other reviewers, what-to-review here must resolve to a **path** —
@@ -103,8 +104,9 @@ docs inline. The workflow returns a structured report; relay it.
      and offer to re-run; `raw.read_findings` holds unsynthesized per-file output,
      so relay it only as raw material, never as the report.
 
-   Once relayed, offer the form per `../../references/decision-split.md`, over the open
-   findings. "the docs audit" is what was reviewed.
+   Once relayed, take the form path `../../references/decision-split.md` sets for the
+   `html-viz` flag as parsed in step 1, over the open findings. "the docs audit" is
+   what was reviewed.
 
 If `python3` is missing or the workflow cannot launch, read every doc in full by
 hand against all three parts of the standard — `<STANDARD_DIR>/references/project-setup.md`

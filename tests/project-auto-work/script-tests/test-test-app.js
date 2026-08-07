@@ -314,7 +314,7 @@ async function main() {
     notCheckedList(baseNotChecked).some((s) => /b: y/.test(s)));
 
   // ── unreachedReason ──────────────────────────────────────────────────────────
-  // The loop has four exits; naming the ceiling after an aborted run explains the gap with
+  // The loop has five exits; naming the ceiling after an aborted run explains the gap with
   // a cause that did not happen, inside the section meant to prevent false impressions.
   truthy('unreachedReason: a dry exit says so',
     /dry streak/.test(unreachedReason('dry', DIALS.medium, 'medium')));
@@ -326,6 +326,12 @@ async function main() {
     /did not start the application/.test(unreachedReason('abort:the documented launch command did not start the application', DIALS.medium, 'medium')));
   truthy('unreachedReason: an exhausted inventory says so',
     /inventory was exhausted/.test(unreachedReason('exhausted', DIALS.medium, 'medium')));
+  // The findings cap is the one exit a reader could mistake for coverage: the flows it left
+  // unreached are unreached because the report was already full, not because they passed.
+  truthy('unreachedReason: the findings cap says the run was already full',
+    /already had \d+ findings/.test(unreachedReason('findings-cap', DIALS.medium, 'medium')));
+  truthy('unreachedReason: the findings cap does NOT blame the ceiling',
+    !/ceiling/.test(unreachedReason('findings-cap', DIALS.medium, 'medium')));
 
   // ── buildDrift ───────────────────────────────────────────────────────────────
   // Each driver launches the application itself, so nothing structurally binds the

@@ -3,7 +3,7 @@ name: test-app
 description: "Exploratory application testing — launches the application, actually uses it, and judges what happened against the project's own user-facing docs and monitoring data. Reports findings, questions and proposals; writes no code and fixes nothing."
 user-invocable: true
 disable-model-invocation: true
-argument-hint: "[low|medium|high|ultra] [focus-or-doc]"
+argument-hint: "[low|medium|high|ultra] [html-viz] [focus-or-doc]"
 ---
 
 Exploratory testing of the application itself — what `test-tests` does to a test suite, this
@@ -17,8 +17,9 @@ know what the app reaches. Point it at an environment whose data you can afford 
 
 ## Run the workflow
 
-1. Parse `$ARGUMENTS` as `[low|medium|high|ultra] [focus-or-doc]`. Both optional. A leading
-   `low` | `medium` | `high` | `ultra` token is the **level**; everything after it is the
+1. Parse `$ARGUMENTS` as `[low|medium|high|ultra] [html-viz] [focus-or-doc]`. All optional. A
+   leading `low` | `medium` | `high` | `ultra` token is the **level**, and a leading `html-viz`
+   token after it puts the open decisions on a browser form in step 5. Everything left is the
    **focus**, in one of three shapes:
 
    - **absent** — launch the application and exercise it broadly.
@@ -63,7 +64,9 @@ know what the app reaches. Point it at an environment whose data you can afford 
    monitoring contract and a flow inventory; then runs a serial loop where one agent uses
    the app and reports only what it saw, and a second agent reads that plus the monitoring
    data and decides what it means. It stops at the level's iteration ceiling, or early
-   after two iterations that turn up nothing new.
+   after two iterations that turn up nothing new, or once the findings reach the cap the
+   workflow's `FINDINGS_CAP` sets — whichever comes first. Every flow a stop left unreached
+   lands in `not_checked`.
 
 5. Relay the report. The workflow returns
    `{ report: { verdict, evidence_basis, headline, findings[], questions[], checked[], not_checked[], proposals[], stop_reason, report_markdown }, raw, … }` —
@@ -77,6 +80,11 @@ know what the app reaches. Point it at an environment whose data you can afford 
    truncated — to `$SCRATCH/test-app-report.md` (outside the project) and state that path.
    For a "did you really check X?" follow-up, **re-run the skill**; never answer from the
    report alone.
+
+   Each proposal is tagged `settled` or `open`, and `questions[]` are open by construction.
+   Read `<base directory for this skill>/../../references/decision-split.md` for what those
+   mean, how to relay them, and what `html-viz` changes — the plugin-root layout applies, so
+   `../..` is correct here.
 
 If the workflow returns an object with `error` and no `report` (bad arguments, or the recon
 agent died), relay the error verbatim, state that the run did not happen, and do not

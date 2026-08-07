@@ -3,7 +3,7 @@ name: project-review-codebase
 description: "Read-only review of production and test code across three dimensions — consistency, structure, architecture — via a multi-agent workflow that dedupes findings across dimensions and writes a standalone Markdown report with Mermaid diagrams; reports fixes, never edits."
 user-invocable: true
 disable-model-invocation: true
-argument-hint: "[low|medium|high|ultra] [what-to-review]"
+argument-hint: "[low|medium|high|ultra] [html-viz] [what-to-review]"
 ---
 
 Read-only codebase review across three dimensions — consistency, structure, and
@@ -17,9 +17,10 @@ modes are actually exercised.
 
 ## Run the workflow
 
-1. Parse `$ARGUMENTS` as `[low|medium|high|ultra] [what-to-review]`. Both are
+1. Parse `$ARGUMENTS` as `[low|medium|high|ultra] [html-viz] [what-to-review]`. All are
    optional. A leading `low` | `medium` | `high` | `ultra` token is the **level**
-   (default `medium`); everything after it is **what to review** — a free-form
+   (default `medium`), and a leading `html-viz` token after it puts the open decisions
+   on a browser form in step 5. Everything left is **what to review** — a free-form
    description ("naming across the service layer") or a path. Default: the whole
    codebase.
 
@@ -74,9 +75,9 @@ modes are actually exercised.
    Then surface it in one line, e.g.
    `Full report with diagrams: /tmp/codebase-review-20260724-101500.md`
    — and note what they can do with it:
-   - **Decide on it** — offer the form per `../../references/decision-split.md`, over the
-     open actions plus any `architecture_candidates`. "the codebase review" is what
-     was reviewed.
+   - **Decide on it** — take the form path `../../references/decision-split.md` sets for
+     the `html-viz` flag as parsed in step 1, over the open actions plus any
+     `architecture_candidates`. "the codebase review" is what was reviewed.
    - **Keep it** — if they want it in the repo, they say where and you copy it.
      Do not pick a location or copy it unprompted.
 

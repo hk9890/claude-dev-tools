@@ -17,17 +17,34 @@ report put it in.
 Relay the two groups separately: the settled ones as a batch you can just do, the
 open ones as questions carrying their `options` and `recommendation`.
 
-## Offering the form
+## The browser form
 
-Offer a browser form over the open items only. State the count, and give the
-command with the filter in the argument so it survives into a fresh turn:
+The form covers the open items only, and `html-viz` decides how it is reached.
+The relay above and the saved report happen first and in full either way, so the
+form adds a surface and takes nothing away — a missing plugin, an absent Node, or
+a closed tab leaves the user exactly where the review would have left them.
+
+**With `html-viz`**, invoke `html-visualization:html-visualize-ask` through the
+`Skill` tool, passing the open items and naming what was reviewed:
+
+```
+the <N> open decisions from <what was reviewed> — the settled fixes are already agreed
+```
+
+Invoking it in this turn is what keeps the report in context when the answers
+come back, so the picks read as the reply the user would otherwise have typed.
+
+**Without it**, offer the form instead of opening one. State the count, and give
+the command with the filter in the argument so it survives into a fresh turn:
 
 ```
 /html-visualization:html-visualize-ask the <N> open decisions from <what was reviewed> — the settled fixes are already agreed
 ```
 
-Offer it only if that skill exists; it ships in the separate `html-visualization`
-plugin.
+Either path needs the separate `html-visualization` plugin, which is not a
+dependency of this one. Offer the command only if that skill exists; when the
+flag was passed and it is absent, say the flag needs that plugin installed, then
+put the same questions in chat.
 
 Then say plainly that the settled batch is not on the form, and that the form's
 free-text box is where they stop any of it. A settled item is one the user never
