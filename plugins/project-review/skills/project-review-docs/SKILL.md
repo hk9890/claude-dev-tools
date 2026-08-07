@@ -103,7 +103,7 @@ docs inline. The workflow returns a structured report; relay it.
      and offer to re-run; `raw.read_findings` holds unsynthesized per-file output,
      so relay it only as raw material, never as the report.
 
-   Once relayed, offer the form per `references/decision-split.md`, over the open
+   Once relayed, offer the form per `../../references/decision-split.md`, over the open
    findings. "the docs audit" is what was reviewed.
 
 If `python3` is missing or the workflow cannot launch, read every doc in full by

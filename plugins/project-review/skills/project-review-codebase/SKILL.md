@@ -74,7 +74,7 @@ modes are actually exercised.
    Then surface it in one line, e.g.
    `Full report with diagrams: /tmp/codebase-review-20260724-101500.md`
    — and note what they can do with it:
-   - **Decide on it** — offer the form per `references/decision-split.md`, over the
+   - **Decide on it** — offer the form per `../../references/decision-split.md`, over the
      open actions plus any `architecture_candidates`. "the codebase review" is what
      was reviewed.
    - **Keep it** — if they want it in the repo, they say where and you copy it.
