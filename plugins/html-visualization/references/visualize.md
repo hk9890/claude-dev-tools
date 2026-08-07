@@ -11,6 +11,11 @@ The shared serve procedure (pre-flight, temp dir, server startup, URL surfacing,
 cleanup) lives in `references/serve.md` — Cycle B (non-blocking serve-and-continue).
 This file covers visualize-specific content authoring and rendering guidance.
 
+Every `references/<file>` named below sits **beside this file**, in
+`<plugin root>/references/` — one directory shared by all three modes. From a mode
+skill's base directory that is `../../references/<file>`; once `$HTML_DIR` exists,
+`"$(cat "$HTML_DIR/.plugin-root")/references/<file>"` reaches the same file.
+
 ---
 
 ## Scope of visualize mode
@@ -75,7 +80,7 @@ Read the template using its resolved absolute path (use the `.plugin-root` file
 written in Step 2a):
 
 ```
-Read: "$(cat "$HTML_DIR/.plugin-root")/skills/html-visualize/references/visualize-template.html"
+Read: "$(cat "$HTML_DIR/.plugin-root")/references/visualize-template.html"
 ```
 
 Then author `$HTML_DIR/visualization.html` **with the Write tool**, directly at
@@ -148,7 +153,7 @@ The integration — the module block that bridges Mermaid to the `--hv-*` tokens
 lives in `references/mermaid.md`. Read it before authoring a diagram:
 
 ```
-Read: "$(cat "$HTML_DIR/.plugin-root")/skills/html-visualize/references/mermaid.md"
+Read: "$(cat "$HTML_DIR/.plugin-root")/references/mermaid.md"
 ```
 
 This template already carries the `.vis-mermaid-wrap` styling that file refers to,
@@ -210,10 +215,14 @@ headers, and `scope="row"` for row headers. Stripe rows with CSS
 
 ## Visual quality rules
 
-Follow the **Authoring guidelines — all modes** in the `html-visualize` `SKILL.md`
-(already loaded) — stand-alone page, scannable, purposeful visuals, legible in
-light and dark. Visualize mode adds three specifics, whatever rendering form you
-chose:
+Read and follow the guidelines binding every mode — stand-alone page, scannable,
+purposeful visuals, legible in light and dark:
+
+```
+Read: "$(cat "$HTML_DIR/.plugin-root")/references/authoring.md"
+```
+
+Visualize mode adds three specifics, whatever rendering form you chose:
 
 **Self-contained.** Every resource must be inline (SVG, CSS, JS) or fetched from
 a CDN. Do NOT reference `/assets/…` server paths or any path that exists only on
@@ -255,7 +264,7 @@ non-blocking in the background.
 
 The three submit outcomes are tabulated in `references/serve.md` — Cycle B. Full
 submit schema (payload shape, CSRF, feedback file format):
-`"$(cat "$HTML_DIR/.plugin-root")/skills/html-visualize/references/visualize-submit-schema.md"`.
+`"$(cat "$HTML_DIR/.plugin-root")/references/visualize-submit-schema.md"`.
 
 If the user later asks to update or re-render the visualization, run the full
 procedure again from Step 1 — create a fresh temp directory, build a new HTML

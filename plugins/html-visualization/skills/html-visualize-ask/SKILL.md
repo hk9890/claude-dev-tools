@@ -16,8 +16,11 @@ $ARGUMENTS
 
 Work from that directly; do not ask the user to restate it.
 
-1. Load `html-visualization:html-visualize` for the mode routing table and the
-   shared serve procedure.
-2. Load and follow `references/ask.md` (in the `html-visualize` skill) — build the
-   question/decision form from the intent above, serve it with the blocking
-   submit round-trip, and read back the user's verdict and answers.
+Load and follow [`../../references/ask.md`](../../references/ask.md) — build the
+question/decision form from the intent above, serve it with the blocking submit
+round-trip, and read back the user's verdict and answers. It carries the
+ask-specific authoring and read-back, and points on to the shared serve procedure
+and authoring guidelines.
+
+The `../..` is deliberate: this plugin takes the plugin-root layout, with
+`references/`, `bin/`, and `assets/` shared by all three mode skills.

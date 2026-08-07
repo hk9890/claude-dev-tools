@@ -17,8 +17,11 @@ $ARGUMENTS
 
 Work from that directly; do not ask the user to restate it.
 
-1. Load `html-visualization:html-visualize` for the mode routing table and the
-   shared serve procedure.
-2. Load and follow `references/feedback.md` (in the `html-visualize` skill) —
-   render the content for inline commenting, run the Apply loop (re-serve on the
-   same port after each Apply), and finish on Submit.
+Load and follow [`../../references/feedback.md`](../../references/feedback.md) —
+render the content for inline commenting, run the Apply loop (re-serve on the same
+port after each Apply), and finish on Submit. It carries the feedback-specific
+rendering and loop, and points on to the shared serve procedure and authoring
+guidelines.
+
+The `../..` is deliberate: this plugin takes the plugin-root layout, with
+`references/`, `bin/`, and `assets/` shared by all three mode skills.

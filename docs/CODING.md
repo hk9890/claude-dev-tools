@@ -36,7 +36,7 @@ Every skill is loaded with a `Base directory for this skill: <absolute path>` li
 ```
 
 - Check which of the two layouts holds the file ([OVERVIEW.md](OVERVIEW.md)). A workflow owned by one skill sits under that skill — every workflow here currently does.
-- One shared beyond a single skill sits at the plugin root, reached with `<base directory for this skill>/../../<dir>/<file>`; say in the skill that the plugin-root layout applies, or the `../..` reads as a mistake. `html-visualization` is the worked example — its three mode skills all run `bin/server.js`, so `references/serve.md` climbs `../..` from the `html-visualize` library's base directory.
+- One shared beyond a single skill sits at the plugin root, reached with `<base directory for this skill>/../../<dir>/<file>`; say in the skill that the plugin-root layout applies, or the `../..` reads as a mistake. Shared content takes this layout rather than a skill of its own — a skill costs a row in every session's skill index. `html-visualization` is the worked example — its three mode skills all read `references/` and run `bin/server.js` from the plugin root, so each climbs `../..` from its own base directory; `instruction-writing` and `project-review` share `references/` the same way.
 - Never `find` the plugin: it can select a stale cached version, and shell state does not persist between `Bash` calls, so a path assigned to a variable is gone by the next command. Print any path you compute.
 - `$CLAUDE_PLUGIN_ROOT` is substituted in hook commands and `settings.json` only — it is not in a `Bash` call's environment.
 - Stop and tell the user when a needed file is missing; never improvise a path.
@@ -100,7 +100,6 @@ when_to_use: "Use when … Triggers on '…', '…'. Does not apply to …"
 - Do not take Schema B just because a skill *could* auto-invoke: measured pickup from context is low (the Invocation modes section in [MONITORING.md](MONITORING.md)), and every skill that takes it pays the cost.
 - Never mix them — `disable-model-invocation: true` alongside `when_to_use:` is contradictory.
 - Where a Schema B skill's domain overlaps a sibling's, disambiguate in **both** directions in the same change: exclude the sibling here, add the reverse pointer there. A one-sided carve-out still lets shared queries land on the wrong skill.
-- **Reference libraries** — loaded by sibling skills, never invoked directly — use `user-invocable: false` and omit `when_to_use` (`html-visualize`).
 
 ### `argument-hint` and `$ARGUMENTS`
 

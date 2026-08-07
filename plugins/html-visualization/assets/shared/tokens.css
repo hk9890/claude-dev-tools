@@ -8,8 +8,8 @@
  *      assets/ask/style.css and assets/feedback/style.css import in turn; all
  *      three are served by the local server.
  *   2. Inlined inside <style> — used by
- *      skills/html-visualize/references/visualize-template.html, which must
- *      remain fully self-contained for file:// use.
+ *      references/visualize-template.html, which must remain fully
+ *      self-contained for file:// use.
  *
  *   The inline copy in visualize-template.html is a verbatim duplicate of the
  *   :root and @media blocks below. Keep both in sync whenever you edit tokens.

@@ -62,12 +62,21 @@ RENAME_ALIASES = {
 # appear in older transcripts; values are the current canonical skill name.
 # Applied before per-skill aggregation so renamed skills merge into a single row.
 SKILL_RENAME_ALIASES = {
-    # html-ask plugin era (plugin was later renamed to html-visualization)
-    "html-ask:html-ask": "html-visualization:html-visualize",
-    # intermediate names inside html-visualization before the unified skill
-    "html-visualization:html-ask": "html-visualization:html-visualize",
-    "html-visualization:html-feedback": "html-visualization:html-visualize",
-    "html-visualization:visualize-html": "html-visualization:html-visualize",
+    # html-ask plugin era (plugin was later renamed to html-visualization), plus the
+    # intermediate per-mode names inside html-visualization. Each covered one mode, so
+    # each points at the mode skill carrying that work today.
+    "html-ask:html-ask": "html-visualization:html-visualize-ask",
+    "html-visualization:html-ask": "html-visualization:html-visualize-ask",
+    "html-visualization:html-feedback": "html-visualization:html-visualize-feedback",
+    "html-visualization:visualize-html": "html-visualization:html-visualize-page",
+    # Deliberately absent: "html-visualization:html-visualize" — the unified skill that
+    # covered all three modes, then the shared reference library after the split, now
+    # deleted with its references moved to the plugin root. A split has no single live
+    # successor to name, so its episodes keep the retired name and group together, as
+    # project-quality:project-review-tests does below. No entry is needed to achieve
+    # that here: the retired name already carries the live plugin's prefix, so
+    # canonical_plugin() resolves it correctly and an identity alias would only
+    # restate the fallback.
     # the visualize-mode command skill, renamed once the name "demo" proved to
     # read as a showcase of the plugin rather than as "render me a page"
     "html-visualization:html-visualize-demo": "html-visualization:html-visualize-page",
