@@ -12,9 +12,9 @@ cleanup) lives in `references/serve.md` — Cycle B (non-blocking serve-and-cont
 This file covers visualize-specific content authoring and rendering guidance.
 
 Every `references/<file>` named below sits **beside this file**, in
-`<plugin root>/references/` — one directory shared by all three modes. From a mode
-skill's base directory that is `../../references/<file>`; once `$HTML_DIR` exists,
-`"$(cat "$HTML_DIR/.plugin-root")/references/<file>"` reaches the same file.
+`<plugin root>/references/` — the directory this file was read from. Once
+`$HTML_DIR` exists, `"$(cat "$HTML_DIR/.plugin-root")/references/<file>"` reaches
+the same file.
 
 ---
 

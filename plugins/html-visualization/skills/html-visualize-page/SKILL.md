@@ -1,6 +1,6 @@
 ---
 name: html-visualize-page
-description: "Render a browser HTML page — visualization, chart, or data summary — and serve it non-blocking; visualize mode of html-visualize."
+description: "Render a browser HTML page — visualization, chart, or data summary — and serve it non-blocking; visualize mode of the html-visualize workflow."
 argument-hint: "[what-to-visualize]"
 user-invocable: true
 disable-model-invocation: true

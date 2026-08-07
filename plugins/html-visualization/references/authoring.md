@@ -1,8 +1,7 @@
 # Authoring guidelines — all modes
 
 These bind every mode — ask, feedback, and visualize. The goal is a page the user
-can take in at a glance and act on without effort. Each mode reference reads this
-file from its authoring step, then adds its own mode-specific rules on top.
+can take in at a glance and act on without effort.
 
 - **Make the page stand alone.** A clear title and a one-line subtitle must
   orient a reader who has none of the chat context. The user should be able to

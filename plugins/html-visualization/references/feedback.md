@@ -11,9 +11,9 @@ Cycle C (Apply loop). This file covers the feedback-specific content authoring a
 read-back.
 
 Every `references/<file>` named below sits **beside this file**, in
-`<plugin root>/references/` — one directory shared by all three modes. From a mode
-skill's base directory that is `../../references/<file>`; once `$HTML_DIR` exists,
-`"$(cat "$HTML_DIR/.plugin-root")/references/<file>"` reaches the same file.
+`<plugin root>/references/` — the directory this file was read from. Once
+`$HTML_DIR` exists, `"$(cat "$HTML_DIR/.plugin-root")/references/<file>"` reaches
+the same file.
 
 ---
 
@@ -21,12 +21,11 @@ skill's base directory that is `../../references/<file>`; once `$HTML_DIR` exist
 
 The user asked for this surface — render the content for markup. That holds
 whether they typed the slash command or asked for a browser page in prose; either
-way the mode is settled, so do not re-litigate it.
-Feedback mode shows the user a piece of content — a document, draft, plan,
-proposal, or set of brainstormed options — and lets them attach inline comments
-to specific parts of it, then iterate via an Apply loop. The content may be
-pre-existing user prose *or* a plan or set of ideas Claude authored during the
-conversation (no backing file required).
+way the mode is settled. Feedback mode shows the user a piece of content — a
+document, draft, plan, proposal, or set of brainstormed options — and lets them
+attach inline comments to specific parts of it, then iterate via an Apply loop.
+The content may be pre-existing user prose *or* a plan or set of ideas Claude
+authored during the conversation (no backing file required).
 
 Fall back to plain chat in only two cases:
 
