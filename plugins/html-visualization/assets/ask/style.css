@@ -21,9 +21,9 @@
  *   .widget-verdict      — overall verdict radio group (approve/approve-with-changes/reject)
  *   .widget-label        — <label> wrapping question text
  *   .widget-hint         — supplementary hint text below a label
- *   .widget-why          — <details> holding the plain-English background
- *   .widget-why-body     — the prose inside .widget-why
- *   .widget-recommendation       — Claude's recommended answer and its reasoning
+ *   .is-recommended      — marks the recommended option / approach column
+ *   .recommended-mark    — the "Recommended" pill + its why button, inside that option
+ *   .widget-recommendation       — recommendation block, for a question with no options
  *   .widget-recommendation-label — "Recommended" eyebrow inside it
  *   .recommendation-why  — the reasoning paragraph inside it
  *   .vis-mermaid-wrap    — container for one Mermaid diagram
@@ -35,7 +35,9 @@
  *   .widget-note-input   — the per-question free-text note textarea
  *   .approach-col        — one column in a .widget-approaches layout
  *   .approach-header     — heading row in a .widget-approaches column
- *   .approach-verdict    — per-column approve/reject within .widget-approaches
+ *   .approach-choice     — single-mode radio inside one .approach-col
+ *   .approaches-none     — single-mode "neither" option below the grid
+ *   .approach-verdict    — independent-mode approve/reject within one column
  *   .verdict-section     — wraps the overall .widget-verdict
  *   .freeform-section    — wraps the global free-text textarea
  *   .submit-row          — wraps the submit button and copy-feedback button
@@ -46,6 +48,11 @@
  *   [data-qid]           — identifies a question widget by its question ID
  *   [data-qtype]         — declares widget type: text | radio | checkbox | approaches
  *   [data-anchor-id]     — CSS id used as the comment anchor selector (#value)
+ *   [data-choice]        — "single" makes a .widget-approaches mutually exclusive
+ *
+ * Background prose and the reasoning behind a recommendation are shown through
+ * the shared .hv-info-btn / .hv-popover primitive in /assets/shared/overlay.css,
+ * and diagrams gain its .hv-zoom-btn — the same components the other modes use.
  */
 
 @import "/assets/shared/chrome.css";
@@ -56,10 +63,6 @@ body {
   line-height: 1.5;
 }
 
-.page-chrome {
-  max-width: 760px;
-}
-
 .page-header {
   margin-bottom: 30px;
 }
@@ -68,8 +71,11 @@ body {
   margin: 0;
 }
 
-/* Staggered entrance for the form body. */
-#main-form > * {
+/* Staggered entrance for the form body. Popover panels are excluded: they are
+   children of #main-form, and a popover restarts its animations each time it
+   opens — so the panel would fade in from transparent every time, showing the
+   page through it for half a second. */
+#main-form > *:not([popover]) {
   animation: rise 0.5s ease both;
 }
 #main-form > *:nth-child(1) { animation-delay: 0.06s; }
@@ -255,6 +261,60 @@ body {
   line-height: 1.55;
   color: var(--hv-muted);
   margin: 0 0 14px;
+}
+
+/* Single-choice comparison: one radio per column, all in one group. The whole
+   column is the click target, and the checked column reads as chosen. */
+.widget-approaches[data-choice="single"] .approach-col:has(input:checked) {
+  border-color: var(--hv-accent);
+  background: var(--hv-accent-tint);
+}
+
+.approach-choice {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--hv-border);
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--hv-text);
+  cursor: pointer;
+}
+
+.approach-choice input[type="radio"] {
+  accent-color: var(--hv-accent);
+  cursor: pointer;
+}
+
+/* The "neither" escape, below the grid and in the same radio group — so declining
+   both is an answer the user gives, not an empty field indistinguishable from one
+   they never reached. */
+.approaches-none {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-top: 12px;
+  padding: 10px 13px;
+  border: 1px solid var(--hv-border);
+  border-radius: 8px;
+  background: var(--hv-surface-2);
+  font-size: 0.95rem;
+  color: var(--hv-text);
+  cursor: pointer;
+}
+
+.approaches-none:hover { border-color: var(--hv-accent); }
+
+.approaches-none:has(input:checked) {
+  border-color: var(--hv-accent);
+  background: var(--hv-accent-tint);
+}
+
+.approaches-none input[type="radio"] {
+  accent-color: var(--hv-accent);
+  cursor: pointer;
 }
 
 .approach-verdict {
@@ -494,60 +554,44 @@ body {
   color: var(--hv-faint);
 }
 
-/* ── Explanation disclosure ───────────────────────────────────────────────── */
-/* A <details> carrying the plain-English background for one question. Native
-   disclosure, so it works with no JavaScript and is keyboard-reachable. */
+/* ── Recommended option ───────────────────────────────────────────────────── */
+/* The recommendation lives ON the option it recommends, not in a block above the
+   list: at a glance the user sees which one is advised without reading a
+   paragraph and mapping it back onto the choices. Marking is not selecting —
+   the input stays unchecked, so a submitted form still carries a real answer. */
 
-.widget-why {
-  margin: 0 0 13px;
-  border: 1px solid var(--hv-border-soft);
-  border-radius: 8px;
-  background: var(--hv-surface-2);
+.radio-option.is-recommended,
+.checkbox-option.is-recommended {
+  border-color: var(--hv-ok);
+  background: var(--hv-ok-tint);
 }
 
-.widget-why > summary {
-  padding: 8px 12px;
-  cursor: pointer;
-  list-style: none;
-  font-size: 0.82rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--hv-accent);
-  user-select: none;
+.radio-option.is-recommended:hover,
+.checkbox-option.is-recommended:hover {
+  border-color: var(--hv-ok-deep);
 }
 
-.widget-why > summary::-webkit-details-marker { display: none; }
-
-.widget-why > summary::before {
-  content: "";
-  display: inline-block;
-  width: 0;
-  height: 0;
-  margin-right: 8px;
-  border-left: 5px solid currentColor;
-  border-top: 4px solid transparent;
-  border-bottom: 4px solid transparent;
-  transition: transform 0.15s ease;
+.approach-col.is-recommended {
+  border-color: var(--hv-ok);
 }
 
-.widget-why[open] > summary::before { transform: rotate(90deg); }
-
-.widget-why > summary:hover { color: var(--hv-accent-deep); }
-
-.widget-why-body {
-  padding: 2px 13px 12px;
-  font-size: 0.9rem;
-  line-height: 1.6;
-  color: var(--hv-muted);
+/* Selecting an option other than the recommended one must still read as the
+   selected one — the checked treatment wins over the recommendation tint. */
+.widget-radio .radio-option.is-recommended:has(input:checked),
+.widget-checkbox .checkbox-option.is-recommended:has(input:checked) {
+  border-color: var(--hv-accent);
 }
 
-.widget-why-body > :first-child { margin-top: 0; }
-.widget-why-body > :last-child { margin-bottom: 0; }
+.recommended-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 8px;
+  white-space: nowrap;
+}
 
-/* ── Recommendation ───────────────────────────────────────────────────────── */
-/* What Claude would choose, and why. Deliberately NOT a pre-selected input —
-   the user still has to answer, so a submitted form always carries a real
-   decision rather than an unread default. */
+/* ── Recommendation block ─────────────────────────────────────────────────── */
+/* For a question with no options to mark — an open-ended .widget-text. */
 
 .widget-recommendation {
   margin: 0 0 14px;
@@ -588,6 +632,7 @@ body {
    match visualize mode's so one reference document serves both. */
 
 .vis-mermaid-wrap {
+  position: relative;
   margin: 0 0 13px;
   padding: 12px 14px;
   background: var(--hv-surface-2);

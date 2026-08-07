@@ -18,6 +18,7 @@
  */
 
 @import "/assets/shared/tokens.css";
+@import "/assets/shared/overlay.css";
 
 /* ── Reset / base ─────────────────────────────────────────────────────────── */
 
@@ -63,6 +64,7 @@ body {
 /* ── Page chrome ──────────────────────────────────────────────────────────── */
 
 .page-chrome {
+  max-width: var(--hv-page);
   margin: 0 auto;
   padding: 40px 22px 64px;
 }

@@ -107,9 +107,42 @@ flowchart LR
 </div>
 ```
 
+**Keep a node label to one line.** `securityLevel: "strict"` is what makes it safe to
+render model-authored diagram source, and under it a `<br/>` inside a label is dropped
+rather than honoured — `["interactive.ts<br/>974 lines"]` renders as
+`interactive.ts974 lines`, which reads as a typo the user will report. Put the second
+line in the surrounding prose, or shorten the label.
+
 `.vis-mermaid-wrap`, `.vis-mermaid-label` and `.vis-compare` are already styled in
 every mode that points here — `assets/ask/style.css` for ask mode, the inline
 `<style>` block for visualize mode's self-contained template. Do not restyle them.
+
+### Expand
+
+A graph laid out to fit a column is often too small to read, so **every diagram gets
+an Expand control** that opens it at viewport size. Add a `.hv-zoom-btn` inside the
+wrap and one empty `.hv-popover-wide` panel per diagram:
+
+```html
+<div class="vis-mermaid-wrap">
+  <button class="hv-zoom-btn" popovertarget="d-flow-big" type="button">Expand</button>
+  <pre class="mermaid">
+flowchart LR
+  A[OrderHandler] --> B[OrderValidator]
+  </pre>
+</div>
+
+<div id="d-flow-big" popover class="hv-popover hv-popover-wide">
+  <div class="hv-popover-body"></div>
+  <button class="hv-popover-close" popovertarget="d-flow-big"
+          popovertargetaction="hide" type="button">Close</button>
+</div>
+```
+
+Leave `.hv-popover-body` empty — `overlay.js` clones the rendered diagram into it
+when the button is clicked, which is why the source is written once. Give each
+panel an `id` unique on the page and match it in both `popovertarget` values.
+Escape and a click outside close it; the browser handles both.
 
 ---
 

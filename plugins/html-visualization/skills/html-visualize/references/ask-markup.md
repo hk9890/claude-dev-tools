@@ -34,6 +34,7 @@ Every document must have this top-level structure:
     <div id="state-already-submitted" class="state-already-submitted"> … </div>
   </div>
   <script src="/assets/shared/submit.js"></script>
+  <script src="/assets/shared/overlay.js"></script>
   <script src="/assets/ask/app.js"></script>
 </body>
 </html>
@@ -69,19 +70,29 @@ Every document must have this top-level structure:
 | `.widget-label` | `<span>` or `<label>` | Question label; displayed in bold above the input. |
 | `.widget-hint` | `<span>` | Supplementary hint text below the label. Optional. |
 
-### Explanation and recommendation classes
+### Explanation and recommendation
 
-Both sit **inside** the `.widget`, between the label and the input. Order top to
-bottom: label → hint → evidence (code, table, diagram) → `.widget-why` →
-`.widget-recommendation` → the input.
+Both are shown through the shared overlay primitive — a button that opens a
+panel — so they cost no vertical space until the reader asks for them. The
+panels are plain `[popover]` elements: the browser gives Escape, click-outside
+dismissal and focus handling, and no JavaScript is involved.
+
+Reading order inside a `.widget` is: label (carrying the why button) → hint →
+evidence (code, table, diagram) → the input, with the recommended option marked
+in place.
 
 | Class | Element | Purpose |
 |---|---|---|
-| `.widget-why` | `<details>` | Collapsed disclosure holding the plain-English background for this question. Its `<summary>` is the click target — give it a label that says what is inside, e.g. "Why this matters". |
-| `.widget-why-body` | `<div>` inside `.widget-why` | The prose. Ordinary HTML — `<p>`, `<ul>`, `<pre>`, a diagram. |
-| `.widget-recommendation` | `<div>` | Always-visible block carrying the recommended answer and its reasoning. Prose only; the inputs below it stay unselected, so the user still answers the question themselves. |
-| `.widget-recommendation-label` | `<span>` inside it | The "Recommended" eyebrow. |
-| `.recommendation-why` | `<p>` inside it | The reasoning paragraph, set smaller than the recommendation itself. |
+| `.hv-info-btn` | `<button>` with `popovertarget` | The small round opener. Put one inside `.widget-label` for "why this matters", and one inside `.recommended-mark` for "why this option". Always give it an `aria-label`. |
+| `.hv-popover` | `<div popover>` | The panel. Lead with an `<h3>` naming what it answers, then prose. Place it as a sibling of the widget; `id` must match the opener's `popovertarget`. |
+| `.hv-popover-close` | `<button>` inside the panel | Closes it — `popovertarget` set to the panel's `id`, `popovertargetaction="hide"`. |
+| `.is-recommended` | A `.radio-option`, `.checkbox-option`, or `.approach-col` | Tints that option green. Marking is not selecting: leave every input unchecked. |
+| `.recommended-mark` | `<span>` inside the recommended option | Wraps the "Recommended" pill and its why button. |
+| `.hv-pill` | `<span>` inside `.recommended-mark` | The pill itself; text is "Recommended". |
+| `.widget-recommendation` | `<div>` | Only for a question with no options to mark — an open-ended `.widget-text`. Carries `.widget-recommendation-label`, the recommendation, and a `.recommendation-why` paragraph. |
+
+A question has at most one `.is-recommended` option. Where the recommendation is
+"leave it as is", that must be an option in the list so it can be the one marked.
 
 ### Diagram classes
 
@@ -92,6 +103,8 @@ Available in ask mode exactly as in visualize mode; the integration is documente
 | `.vis-mermaid-wrap` | `<div>` wrapping one `<pre class="mermaid">` | Diagram surface; scrolls horizontally rather than overflowing the widget. |
 | `.vis-mermaid-label` | `<span>` inside it | Caption above a diagram, e.g. **Before** / **After**. |
 | `.vis-compare` | `<div>` wrapping two `.vis-mermaid-wrap` | Two-column grid for a before/after pair; stacks below 580px. |
+| `.hv-zoom-btn` | `<button>` inside `.vis-mermaid-wrap` | "Expand" — opens the diagram at viewport size. Every diagram gets one; `mermaid.md` has the markup. |
+| `.hv-popover-wide` | `<div popover>` with an empty `.hv-popover-body` | The zoom panel. `overlay.js` clones the rendered diagram into the body on open. |
 
 ### Option list classes
 
@@ -117,10 +130,23 @@ Available in ask mode exactly as in visualize mode; the integration is documente
 
 | Class | Element | Purpose |
 |---|---|---|
+The widget has **two modes**, and picking the wrong one produces answers that are not decisions.
+
+| Mode | `data-choice` | The question it asks | Answer |
+|---|---|---|---|
+| **Single** — the default choice for a comparison | `"single"` | "Which of these?" The columns share one radio group, so exactly one wins or none does. | `answers["<qid>"]` = the winning `data-approach-id`, or `null` |
+| **Independent** | omitted | "For each of these separately, yes or no?" Each column carries its own verdict. Only correct when every combination is a real outcome — all of them, none of them, any subset. | `answers["<qid>-<approach-id>"]` per column |
+
+Two mutually exclusive options in independent mode let the user approve both and reject both, neither of which answers the question. When in doubt, use single.
+
+| Class | Element | Purpose |
+|---|---|---|
 | `.approaches-grid` | `<div>` inside `.widget-approaches` | CSS grid that lays out the columns (2-column, collapses on mobile). |
 | `.approach-col` | `<div>` for one column | One approach; **must** carry `data-approach-id`. |
 | `.approach-header` | `<div>` inside `.approach-col` | Column heading (approach name). |
-| `.approach-verdict` | `<div>` inside `.approach-col` | Per-column approve/reject radio pair. |
+| `.approach-choice` | `<label>` inside `.approach-col` | **Single mode.** The column's radio — `name` is the widget's `data-qid`, `value` is the column's `data-approach-id`. |
+| `.approaches-none` | `<label>` after `.approaches-grid` | **Single mode.** "Neither" — same `name`, its own `value` (e.g. `"neither"`). Include it whenever declining both is a real answer, so it is distinguishable from a question the user never reached. |
+| `.approach-verdict` | `<div>` inside `.approach-col` | **Independent mode.** Per-column approve/reject radio pair, `name="<qid>-<approach-id>"`. |
 
 ### Per-question note classes
 
@@ -191,7 +217,38 @@ The verdict is **optional**: if the user submits without selecting one, the payl
 
 ## Approaches widget — answer key convention
 
-For an `.widget-approaches` widget with `data-qid="q-approach"`:
+**Single mode** (`data-choice="single"`) — one key for the whole widget. Every radio in the widget, including `.approaches-none`, shares `name="<data-qid>"`:
+
+```html
+<div class="widget widget-approaches annotatable" data-qid="q-approach"
+     data-qtype="approaches" data-choice="single"
+     data-anchor-id="q-approach" id="q-approach">
+  <span class="widget-label">Which approach?</span>
+  <div class="approaches-grid">
+    <div class="approach-col" data-approach-id="a">
+      <div class="approach-header">Approach A</div>
+      <p>What it does, and what it costs.</p>
+      <label class="approach-choice">
+        <input type="radio" name="q-approach" value="a"> Pick this one
+      </label>
+    </div>
+    <div class="approach-col" data-approach-id="b">
+      <div class="approach-header">Approach B</div>
+      <p>What it does, and what it costs.</p>
+      <label class="approach-choice">
+        <input type="radio" name="q-approach" value="b"> Pick this one
+      </label>
+    </div>
+  </div>
+  <label class="approaches-none">
+    <input type="radio" name="q-approach" value="neither"> Neither — leave it as it is
+  </label>
+</div>
+```
+
+→ `answers["q-approach"]` is `"a"`, `"b"`, `"neither"`, or `null` if unanswered.
+
+**Independent mode** (no `data-choice`) — one key per column:
 
 - A column with `data-approach-id="a"` → answer key `"q-approach-a"`
 - A column with `data-approach-id="b"` → answer key `"q-approach-b"`
@@ -199,7 +256,7 @@ For an `.widget-approaches` widget with `data-qid="q-approach"`:
 The per-column radio group `name` must match the answer key: `name="q-approach-a"`.
 Per-column radio values must be `"approve"` or `"reject"`.
 
-These per-column answers live in `answers`, not in `verdict`. The overall `verdict` is always the page-level `.widget-verdict` selection.
+These answers live in `answers`, not in `verdict`. The overall `verdict` is always the page-level `.widget-verdict` selection.
 
 ---
 
@@ -210,13 +267,16 @@ Before finalising an ask-mode document:
 - [ ] Every `.widget` has a unique `data-qid` (printable ASCII, no whitespace).
 - [ ] Every `.widget` has a `data-qtype` matching its input type.
 - [ ] Every question is answerable from the page alone — the thing being decided is quoted, drawn, or explained on it.
-- [ ] Every `.widget` carries a `.widget-recommendation`, or the question genuinely has no basis for one and says so.
-- [ ] Every `<pre class="mermaid">` sits inside a `.vis-mermaid-wrap`, and the page carries the module block from `mermaid.md` once.
+- [ ] Every question with options marks one `.is-recommended`, or genuinely has no basis for a recommendation and says so in a panel.
+- [ ] Every `.widget-approaches` whose options are mutually exclusive carries `data-choice="single"`, with one shared radio group and a `.approaches-none` where declining both is real.
+- [ ] Every `popovertarget` names a `[popover]` element that exists on the page, and no two panels share an `id`.
+- [ ] No input is pre-checked — including the recommended one.
+- [ ] Every `<pre class="mermaid">` sits inside a `.vis-mermaid-wrap` with a `.hv-zoom-btn`, and the page carries the module block from `mermaid.md` once.
 - [ ] Every `radio` / `checkbox` / `approaches` widget has `.annotatable` and a `data-anchor-id` equal to its `data-qid`, so it gets an always-visible note field.
 - [ ] `.widget-text` widgets are NOT `.annotatable` (the textarea is already free text).
 - [ ] Every `.approach-col` has `data-approach-id`; the radio `name` matches `<data-qid>-<data-approach-id>`.
 - [ ] The verdict section contains all three radio options with the exact values above.
 - [ ] `id="freeform-input"` is on the freeform textarea.
 - [ ] `id="submit-btn"`, `id="copy-btn"`, `id="submit-error"`, `id="main-form"`, `id="state-submitted"`, `id="state-already-submitted"` are all present once.
-- [ ] `<link>` to `/assets/ask/style.css` is in `<head>`; `<script>` for `/assets/shared/submit.js` and then `/assets/ask/app.js` — in that order — are before `</body>`.
+- [ ] `<link>` to `/assets/ask/style.css` is in `<head>`; `<script>` for `/assets/shared/submit.js`, `/assets/shared/overlay.js` and then `/assets/ask/app.js` — in that order — are before `</body>`.
 - [ ] No `<script>const CSRF_TOKEN = …</script>` block — the server injects this.

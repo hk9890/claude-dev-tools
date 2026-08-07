@@ -150,6 +150,106 @@ else
   fail "ask/style.css — no pre.mermaid:not([data-processed]) rule; diagram source flashes on load"
 fi
 
+# ── 5. The zoom control reaches every mode ────────────────────────────────────
+# The served modes link assets/shared/overlay.{css,js}; the template inlines both to
+# stay file://-capable. Drift between them is silent — the button renders and simply
+# opens an empty panel — so pin each declaration the pair depends on.
+OVERLAY_CSS="$REPO_ROOT/plugins/html-visualization/assets/shared/overlay.css"
+OVERLAY_JS="$REPO_ROOT/plugins/html-visualization/assets/shared/overlay.js"
+
+for f in "$OVERLAY_CSS" "$OVERLAY_JS"; do
+  [[ -f "$f" ]] || fail "$(basename "$f") — file not found"
+done
+
+for cls in 'hv-zoom-btn' 'hv-popover-wide' 'hv-popover-body'; do
+  if grep -Fq ".$cls" "$OVERLAY_CSS"; then
+    ok "overlay.css styles .$cls"
+  else
+    fail "overlay.css — .$cls is named by the zoom markup but has no styles"
+  fi
+  # The template's inline copy must carry the same rule.
+  if grep -Fq ".$cls" "$TPL"; then
+    ok "template inlines .$cls"
+  else
+    fail "template — .$cls missing from the inline overlay copy; zoom panel renders unstyled"
+  fi
+done
+
+# A closed [popover] is hidden by `display: none` in the UA stylesheet. Declaring any
+# other display on the element itself overrides that and pins the panel open, so it
+# covers the page as a blank box and NOTHING else on the page is reachable. The rule
+# must sit on :popover-open instead. This shipped once; it is invisible to any check
+# that only fetches the page.
+for f in "$OVERLAY_CSS" "$TPL"; do
+  n="$(basename "$f")"
+  # Only the bare `.hv-popover-wide {` block — descendant rules like
+  # `.hv-popover-wide .hv-popover-body` set display legitimately.
+  if awk '/^[[:space:]]*\.hv-popover-wide[[:space:]]*\{/,/\}/' "$f" | grep -qE '^[[:space:]]*display:'; then
+    fail "$n — .hv-popover-wide sets display outside :popover-open; the panel stays open and blanks the page"
+  else
+    ok "$n keeps display off the closed .hv-popover-wide"
+  fi
+  if grep -Fq '.hv-popover-wide:popover-open' "$f"; then
+    ok "$n sets the panel's display on :popover-open"
+  else
+    fail "$n — no .hv-popover-wide:popover-open rule; the zoom panel would never lay out"
+  fi
+done
+
+# Stripping ids from the clone breaks Mermaid's own <style>, which scopes every rule to
+# the svg's id: the panel then renders black default nodes with clipped labels.
+for f in "$OVERLAY_JS" "$TPL"; do
+  n="$(basename "$f")"
+  if grep -qE "removeAttribute\(['\"]id" "$f"; then
+    fail "$n — clone strips ids; Mermaid's id-scoped <style> stops matching and the zoom renders unstyled"
+  else
+    ok "$n leaves the clone's ids intact"
+  fi
+done
+
+# The clone step is what lets a diagram be authored once. Without it the panel opens
+# empty and the make-big button looks broken rather than absent.
+for f in "$OVERLAY_JS" "$TPL"; do
+  n="$(basename "$f")"
+  if grep -Fq 'hv-popover-body' "$f" && grep -Fq 'cloneNode' "$f"; then
+    ok "$n clones the diagram into the zoom panel"
+  else
+    fail "$n — no cloneNode into .hv-popover-body; the zoom panel would open empty"
+  fi
+done
+
+# mermaid.md is where an author learns the markup; if it stops describing the control,
+# diagrams ship without one and the styles above are dead.
+if grep -Fq 'hv-zoom-btn' "$DOC"; then
+  ok "mermaid.md documents the zoom control"
+else
+  fail "mermaid.md — no .hv-zoom-btn markup; authors would never add one"
+fi
+
+# ── 6. One page measure across the modes ──────────────────────────────────────
+# ask, feedback and visualize used to disagree (760/840/900). The token is the fix;
+# a mode reintroducing its own max-width silently opts out of it.
+if grep -Eq '^\s*--hv-page:' "$REPO_ROOT/plugins/html-visualization/assets/shared/tokens.css"; then
+  ok "tokens.css defines --hv-page"
+else
+  fail "tokens.css — --hv-page is missing; the modes have no shared page measure"
+fi
+
+if grep -Eq '^\s*--hv-page:' "$TPL"; then
+  ok "template inlines --hv-page"
+else
+  fail "template — --hv-page missing from the inline token copy"
+fi
+
+for f in "$ASK_CSS" "$REPO_ROOT/plugins/html-visualization/assets/feedback/style.css"; do
+  n="$(basename "$(dirname "$f")")/$(basename "$f")"
+  if grep -Eq '\.page-chrome\s*\{[^}]*max-width' "$(dirname "$f")/style.css" 2>/dev/null; then
+    fail "$n — sets its own .page-chrome max-width, overriding the shared --hv-page"
+  else
+    ok "$n takes the shared page measure"
+  fi
+done
+
 # ── 5. No CSS function inside a classDef declaration ──────────────────────────
 # Mermaid parses classDef itself: `classDef leak stroke:var(--hv-bad)` is a hard parse
 # error on the "(" and takes the ENTIRE diagram down, not just the colour. Verified

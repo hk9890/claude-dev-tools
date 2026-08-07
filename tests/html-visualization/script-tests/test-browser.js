@@ -586,6 +586,80 @@ async function testMissingSharedClient() {
   }
 }
 
+// ── Test 5: approaches widget, single-choice mode ──────────────────────────
+// The default (independent) mode gives each column its own approve/reject, so two
+// mutually exclusive options can both be approved and both be rejected — answers
+// that decide nothing. data-choice="single" puts the columns in one radio group.
+// The payload shape differs between the modes, so this pins both the exclusivity
+// and the key it lands under.
+
+async function testApproachesSingleChoice() {
+  console.log('\n--- test: approaches widget in single-choice mode ---');
+  let browser = null, srv = null, tmpDir = null;
+
+  try {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hv-test-approaches-'));
+    const htmlFile = path.join(tmpDir, 'feedback.html');
+    fs.writeFileSync(htmlFile, fs.readFileSync(ASK_TMPL, 'utf8'));
+
+    srv = await startServer(htmlFile);
+    await waitForPort(srv.port);
+
+    browser = await chromium.launch();
+    const page = await (await browser.newContext()).newPage();
+    await page.goto(srv.baseUrl + '/', { waitUntil: 'networkidle' });
+
+    const group = 'input[name="q-approach"]';
+    const count = await page.locator(group).count();
+    if (count >= 3) ok(`single choice: template offers ${count} options in one group`);
+    else            fail(`single choice: expected the two columns plus a neither option, saw ${count}`);
+
+    // Exclusivity: each pick must clear the previous one.
+    await page.check(`${group}[value="a"]`);
+    await page.check(`${group}[value="b"]`);
+    const checked = await page.evaluate(() => {
+      const on = document.querySelectorAll('input[name="q-approach"]:checked');
+      return { n: on.length, value: on.length ? on[0].value : null };
+    });
+    if (checked.n === 1 && checked.value === 'b') {
+      ok('single choice: picking a second approach clears the first');
+    } else {
+      fail(`single choice: ${checked.n} option(s) checked after two picks (value=${checked.value})`);
+    }
+
+    // The payload must carry ONE key for the widget, not one per column.
+    await page.click('#submit-btn');
+    await page.waitForTimeout(600);
+
+    let payload = null;
+    try { payload = JSON.parse(fs.readFileSync(srv.feedbackFile, 'utf8')); } catch (_) {}
+
+    if (!payload) {
+      fail('single choice: no feedback file written on submit');
+    } else if (payload.answers['q-approach'] === 'b') {
+      ok('single choice: answers["q-approach"] carries the winning approach id');
+    } else {
+      fail('single choice: expected answers["q-approach"]="b", got '
+           + JSON.stringify(payload.answers['q-approach']));
+    }
+
+    if (payload && !('q-approach-a' in payload.answers)) {
+      ok('single choice: no per-column keys leak into the payload');
+    } else if (payload) {
+      fail('single choice: per-column key q-approach-a present in single mode');
+    }
+
+    await browser.close(); browser = null;
+
+  } catch (err) {
+    fail('single choice: unexpected error — ' + err.message);
+    if (browser) { try { await browser.close(); } catch (_) {} }
+  } finally {
+    killServer(srv);
+    if (tmpDir) { try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {} }
+  }
+}
+
 // ── Main ───────────────────────────────────────────────────────────────────
 
 (async () => {
@@ -593,6 +667,7 @@ async function testMissingSharedClient() {
   await testVisualizeSubmitTrims();
   await testFeedbackApplyLoop();
   await testMissingSharedClient();
+  await testApproachesSingleChoice();
 
   console.log('\nResults: ' + PASS + ' passed, ' + FAIL + ' failed');
   if (FAIL > 0) {

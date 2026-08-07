@@ -109,9 +109,18 @@ if (typeof document !== 'undefined') {
           checkboxes.forEach(function (cb) { vals.push(cb.value); });
           answers[qid] = vals;
 
+        } else if (qtype === 'approaches' && widget.getAttribute('data-choice') === 'single') {
+          // Mutually exclusive comparison: the columns share ONE radio group, so the
+          // answer is which approach won — or null for "neither / not answered".
+          // Without this mode a two-option either/or lets the user approve both and
+          // reject both, neither of which is a decision.
+          var picked = widget.querySelector('input[type="radio"]:checked');
+          answers[qid] = picked ? picked.value : null;
+
         } else if (qtype === 'approaches') {
-          // Per-column verdict stored as answers["<data-qid>-<data-approach-id>"]
-          // The approaches widget stores each column's verdict under a sub-key.
+          // Independent evaluation: each column carries its own verdict, stored as
+          // answers["<data-qid>-<data-approach-id>"]. Use this only when the options
+          // genuinely can all be taken, all be refused, or any subset.
           // Columns must carry data-approach-id on the .approach-col element.
           var cols = widget.querySelectorAll('.approach-col[data-approach-id]');
           cols.forEach(function (col) {

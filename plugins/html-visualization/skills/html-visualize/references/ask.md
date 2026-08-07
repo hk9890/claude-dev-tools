@@ -58,11 +58,18 @@ answering is a question you have not finished writing.
 - **Page-level context goes in prose**: material that orients the whole form —
   what was reviewed, what is already decided — goes in `<p>` blocks at the top
   of the form, not into widget labels.
-- **Widget type per question**:
+- **Widget type per question** — the type is the shape of the answer, so match it
+  to what the user is actually being asked to decide:
   - Open-ended question → `widget-text` (textarea)
   - Single-choice from a named list → `widget-radio`
   - "Select all that apply" → `widget-checkbox`
-  - Two or more approaches to compare and choose between → `widget-approaches`
+  - Approaches to compare side by side → `widget-approaches`, and pick its mode
+    deliberately. Add `data-choice="single"` when the options are alternatives —
+    the columns then share one radio group, so the answer is which one won, plus a
+    `.approaches-none` where declining both is real. Leave `data-choice` off only
+    when every combination is a genuine outcome, since that mode lets the user
+    take all of them or none. Two alternatives evaluated independently come back
+    as "approve both", which decides nothing.
 - **Question IDs**: assign a short, stable, printable-ASCII slug (no whitespace)
   to each question — e.g. `q1`, `q-timeline`, `q-approach`. Record all IDs now;
   you will need them during read-back.
@@ -78,19 +85,20 @@ answering is a question you have not finished writing.
   a `<pre>`, the competing options in a table, the numbers that matter. Beside
   the quoted code, a `path:line` is a useful citation; on its own it is an
   errand.
-- **Explain the background in a `.widget-why`**: where a question needs more than
-  the one-line hint, put it in the disclosure — what happens today, why this is
-  a question at all, and what changes with each answer. Depth stays one click
-  away, so the page reads as a list of questions rather than an essay.
+- **Explain the background behind the question's why button**: where a question
+  needs more than the one-line hint, put it in the panel — what happens today,
+  why this is a question at all, and what changes with each answer. Depth stays
+  one click away, so the page reads as a list of questions rather than an essay.
 - **Draw it when the shape is the point**: what depends on what, what moves
   where, what happens in which order — a diagram settles these faster than a
   paragraph. Step 2c has the integration.
-- **Recommend**: on every question you can form a view on, name the option you
-  would pick and the tradeoff that decided it, in a `.widget-recommendation`.
-  Leave the inputs unselected, so a submitted form always carries an answer the
-  user actually gave. Where you genuinely have no basis to prefer one, say so in
-  the block: a missing recommendation reads as an oversight rather than as
-  neutrality.
+- **Recommend by marking the option**: on every question you can form a view on,
+  put `.is-recommended` on the option you would pick, with the tradeoff that
+  decided it behind its why button. The reader sees which one is advised without
+  mapping a paragraph back onto the list. Leave every input unselected, so a
+  submitted form always carries an answer the user actually gave. Where you
+  genuinely have no basis to prefer one, say so in the question's why panel: a
+  missing recommendation reads as an oversight rather than as neutrality.
 
 ---
 
@@ -155,12 +163,12 @@ question faster*, so reach for —
 - **Inline SVG** when a picture decides a question faster than a sentence and the
   shape is not a graph.
 
-`.widget-why`, `.widget-recommendation`, `<pre>`, `<table>` and the diagram
-containers are all styled by `/assets/ask/style.css` already — author the markup
-from `ask-markup.md` and add no CSS for them. Author styling for anything genuinely
-new inline or in a `<style>` block in `<head>` — never edit `/assets/ask/style.css`,
-and never edit `/assets/shared/chrome.css` or `/assets/shared/tokens.css`, which the
-feedback mode renders from too.
+The why and recommendation panels, `<pre>`, `<table>` and the diagram containers
+are all styled by `/assets/ask/style.css` and `/assets/shared/overlay.css`
+already — author the markup from `ask-markup.md` and add no CSS for them. Author
+styling for anything genuinely new inline or in a `<style>` block in `<head>` —
+never edit the served stylesheets under `/assets/`, which the other modes render
+from too.
 
 ### 2d. Compute and record the feedback file path
 

@@ -55,6 +55,12 @@
   --hv-shadow-lg: 0 2px 4px rgba(42,32,14,.06), 0 16px 38px -14px rgba(42,32,14,.26);
   --hv-radius: 11px;
 
+  /* Page measure — one value across ask, feedback and visualize. The three modes
+     used to disagree (760 / 840 / 900), which left a wide screen mostly empty and
+     made the same content sit at a different width depending on which mode
+     rendered it. */
+  --hv-page: 1360px;
+
   /* Typography */
   --hv-font-display: "Charter", "Bitstream Charter", "Sitka Text", "Iowan Old Style", Cambria, Georgia, serif;
   --hv-font-body: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
