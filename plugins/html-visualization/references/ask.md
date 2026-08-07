@@ -9,13 +9,19 @@ cleanup) lives in `references/serve.md` — Cycle A (blocking submit round-trip)
 This file covers the ask-specific content authoring, read-back, and partial-submit
 handling.
 
+Every `references/<file>` named below sits **beside this file**, in
+`<plugin root>/references/` — the directory this file was read from. Once
+`$HTML_DIR` exists, `"$(cat "$HTML_DIR/.plugin-root")/references/<file>"` reaches
+the same file.
+
 ---
 
 ## Scope of ask mode
 
-The user invoked ask mode explicitly — build the form. Ask mode fits a batch of
-open questions or approve/reject decisions the user answers in one pass, with a
-blocking submit round-trip.
+The user asked for this surface — build the form. That holds whether they typed
+the slash command or asked for a browser form in prose; either way the mode is
+settled. Ask mode fits a batch of open questions or approve/reject decisions the
+user answers in one pass, with a blocking submit round-trip.
 
 Fall back to plain chat in only two cases:
 
@@ -114,7 +120,7 @@ Read the template using its resolved absolute path (use the `.plugin-root` file
 written in the temp-directory step):
 
 ```
-Read: "$(cat "$HTML_DIR/.plugin-root")/skills/html-visualize/references/ask-template.html"
+Read: "$(cat "$HTML_DIR/.plugin-root")/references/ask-template.html"
 ```
 
 Then author `$HTML_DIR/feedback.html` **with the Write tool**, directly at the
@@ -125,7 +131,7 @@ The template contains example widgets — remove every example widget you do not
 need. Keep the page structure, header, verdict section, freeform section, and
 submit row exactly as in the template. Fill in the content per the markup
 contract in
-`"$(cat "$HTML_DIR/.plugin-root")/skills/html-visualize/references/ask-markup.md"`. Key rules:
+`"$(cat "$HTML_DIR/.plugin-root")/references/ask-markup.md"`. Key rules:
 
 - Replace `[Claude: replace with document title]` in `<h1>` and `<title>` with
   your page title.
@@ -144,21 +150,26 @@ contract in
   `/assets/ask/app.js` scripts are correct as-is; do not change the paths or
   their order.
 
-Consult `"$(cat "$HTML_DIR/.plugin-root")/skills/html-visualize/references/ask-markup.md"`
+Consult `"$(cat "$HTML_DIR/.plugin-root")/references/ask-markup.md"`
 for the full vocabulary (classes, data attributes, required IDs, verdict radio
 values).
 
 ### 2c. Use HTML to make the content clear
 
-Follow the **Authoring guidelines — all modes** in the `html-visualize` `SKILL.md`
-(already loaded). Ask-specific: every visual exists to help the user *judge a
-question faster*, so reach for —
+Read and follow the guidelines binding every mode:
+
+```
+Read: "$(cat "$HTML_DIR/.plugin-root")/references/authoring.md"
+```
+
+Ask-specific: every visual exists to help the user *judge a question faster*, so
+reach for —
 
 - **Tables** to compare options, costs, or tradeoffs side by side.
 - **Code blocks** (`<pre><code>`) for the snippets, config, or diffs under review.
 - **Mermaid** when the answer turns on structure — dependencies, call flow,
   sequence, state. Read
-  `"$(cat "$HTML_DIR/.plugin-root")/skills/html-visualize/references/mermaid.md"`
+  `"$(cat "$HTML_DIR/.plugin-root")/references/mermaid.md"`
   and add its module block once, before `</body>`.
 - **Inline SVG** when a picture decides a question faster than a sentence and the
   shape is not a graph.
@@ -225,7 +236,7 @@ The file contains:
 }
 ```
 
-Full schema: `"$(cat "$HTML_DIR/.plugin-root")/skills/html-visualize/references/ask-submit-schema.md"`.
+Full schema: `"$(cat "$HTML_DIR/.plugin-root")/references/ask-submit-schema.md"`.
 
 How to interpret each field:
 

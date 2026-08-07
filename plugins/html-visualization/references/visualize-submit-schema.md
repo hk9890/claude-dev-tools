@@ -160,5 +160,5 @@ request body verbatim. The file is written atomically (write to a temp path, the
 `fs.renameSync`) before `exit 0`.
 
 Claude reads `freeform` as the user's follow-up message or feedback on the
-visualization, then continues accordingly. See `references/visualize.md` Step 4 for
+visualization, then continues accordingly. See `visualize.md`, same directory, Step 4 for
 the re-invocation flow.

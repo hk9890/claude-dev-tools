@@ -1,9 +1,8 @@
 ---
 name: html-visualize-feedback
-description: "Render a document, draft, or plan as a browser HTML page the user marks up with inline comments — feedback mode of html-visualize."
+description: "Render a document, draft, or plan as a browser HTML page the user marks up with inline comments — feedback mode of the html-visualize workflow."
+when_to_use: "Use when the user explicitly asks to review a document, draft, plan, proposal, or set of options as a rendered browser page they attach inline comments to. Triggers on 'let me comment on this document in the browser', 'render that plan so I can mark it up'. Naming the browser surface is the trigger — having something to review on its own is not, so take that feedback in chat. Not for a batch of open questions or approve/reject decisions (`html-visualization:html-visualize-ask`); for a page the user only reads, point them at `/html-visualization:html-visualize-page`."
 argument-hint: "[content-to-review]"
-user-invocable: true
-disable-model-invocation: true
 ---
 
 ## Workflow
@@ -17,8 +16,11 @@ $ARGUMENTS
 
 Work from that directly; do not ask the user to restate it.
 
-1. Load `html-visualization:html-visualize` for the mode routing table and the
-   shared serve procedure.
-2. Load and follow `references/feedback.md` (in the `html-visualize` skill) —
-   render the content for inline commenting, run the Apply loop (re-serve on the
-   same port after each Apply), and finish on Submit.
+Load and follow [`../../references/feedback.md`](../../references/feedback.md) —
+render the content for inline commenting, run the Apply loop (re-serve on the same
+port after each Apply), and finish on Submit. It carries the feedback-specific
+rendering and loop, and points on to the shared serve procedure and authoring
+guidelines.
+
+The `../..` is deliberate: this plugin takes the plugin-root layout, with
+`references/`, `bin/`, and `assets/` shared by all three mode skills.

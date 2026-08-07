@@ -66,12 +66,10 @@ const { chromium } = require(playwrightDir);
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..');
 const SERVER    = path.join(REPO_ROOT, 'plugins', 'html-visualization', 'bin', 'server.js');
-const VIS_TMPL  = path.join(REPO_ROOT, 'plugins', 'html-visualization',
-                             'skills', 'html-visualize', 'references', 'visualize-template.html');
-const FB_TMPL   = path.join(REPO_ROOT, 'plugins', 'html-visualization',
-                             'skills', 'html-visualize', 'references', 'feedback-template.html');
-const ASK_TMPL  = path.join(REPO_ROOT, 'plugins', 'html-visualization',
-                             'skills', 'html-visualize', 'references', 'ask-template.html');
+const REF_DIR   = path.join(REPO_ROOT, 'plugins', 'html-visualization', 'references');
+const VIS_TMPL  = path.join(REF_DIR, 'visualize-template.html');
+const FB_TMPL   = path.join(REF_DIR, 'feedback-template.html');
+const ASK_TMPL  = path.join(REF_DIR, 'ask-template.html');
 
 // ── Counters ───────────────────────────────────────────────────────────────
 

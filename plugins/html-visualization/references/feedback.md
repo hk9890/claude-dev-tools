@@ -10,16 +10,22 @@ cleanup, the `.port` + `fb-generation` contract) lives in `references/serve.md` 
 Cycle C (Apply loop). This file covers the feedback-specific content authoring and
 read-back.
 
+Every `references/<file>` named below sits **beside this file**, in
+`<plugin root>/references/` — the directory this file was read from. Once
+`$HTML_DIR` exists, `"$(cat "$HTML_DIR/.plugin-root")/references/<file>"` reaches
+the same file.
+
 ---
 
 ## Scope of feedback mode
 
-The user invoked feedback mode explicitly — render the content for markup.
-Feedback mode shows the user a piece of content — a document, draft, plan,
-proposal, or set of brainstormed options — and lets them attach inline comments
-to specific parts of it, then iterate via an Apply loop. The content may be
-pre-existing user prose *or* a plan or set of ideas Claude authored during the
-conversation (no backing file required).
+The user asked for this surface — render the content for markup. That holds
+whether they typed the slash command or asked for a browser page in prose; either
+way the mode is settled. Feedback mode shows the user a piece of content — a
+document, draft, plan, proposal, or set of brainstormed options — and lets them
+attach inline comments to specific parts of it, then iterate via an Apply loop.
+The content may be pre-existing user prose *or* a plan or set of ideas Claude
+authored during the conversation (no backing file required).
 
 Fall back to plain chat in only two cases:
 
@@ -87,7 +93,7 @@ Read the template using its resolved absolute path (use the `.plugin-root` file
 written in the temp-directory step):
 
 ```
-Read: "$(cat "$HTML_DIR/.plugin-root")/skills/html-visualize/references/feedback-template.html"
+Read: "$(cat "$HTML_DIR/.plugin-root")/references/feedback-template.html"
 ```
 
 Then author `$HTML_DIR/review.html` **with the Write tool**, directly at the
@@ -102,7 +108,7 @@ sections exactly as in the template.
 ### 2c. Render the content
 
 Render the content inside `<div id="content">` per the markup contract in
-`"$(cat "$HTML_DIR/.plugin-root")/skills/html-visualize/references/feedback-markup.md"`. Key rules:
+`"$(cat "$HTML_DIR/.plugin-root")/references/feedback-markup.md"`. Key rules:
 
 - Set `<meta name="fb-generation" content="...">` to a fresh, unique value (e.g.
   the output of `date +%s%N`). It MUST differ on every regeneration — see the
@@ -118,13 +124,18 @@ Render the content inside `<div id="content">` per the markup contract in
   `/assets/feedback/app.js` scripts are correct as-is; do not change the paths
   or their order.
 
-Consult `"$(cat "$HTML_DIR/.plugin-root")/skills/html-visualize/references/feedback-markup.md"`
+Consult `"$(cat "$HTML_DIR/.plugin-root")/references/feedback-markup.md"`
 for the full vocabulary (block rules, required IDs, the `fb-generation` meta).
 
 ### 2d. Use HTML to render the content well
 
-Follow the **Authoring guidelines — all modes** in the `html-visualize` `SKILL.md`
-(already loaded). Feedback-specific: the user is reviewing the *rendered* content,
+Read and follow the guidelines binding every mode:
+
+```
+Read: "$(cat "$HTML_DIR/.plugin-root")/references/authoring.md"
+```
+
+Feedback-specific: the user is reviewing the *rendered* content,
 so it must look the way it is meant to be read. If the source is markdown,
 convert it faithfully to HTML — real headings, lists, tables, and code blocks,
 never paragraphs of raw markdown.
@@ -201,7 +212,7 @@ The file contains:
 ```
 
 Full schema:
-`"$(cat "$HTML_DIR/.plugin-root")/skills/html-visualize/references/feedback-submit-schema.md"`.
+`"$(cat "$HTML_DIR/.plugin-root")/references/feedback-submit-schema.md"`.
 
 Interpret the comment fields:
 

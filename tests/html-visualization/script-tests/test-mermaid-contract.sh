@@ -2,9 +2,9 @@
 # test-mermaid-contract.sh — pin the Mermaid integration against drift.
 #
 # The Mermaid init block is authored in TWO places that must stay in agreement:
-#   - skills/html-visualize/references/mermaid.md           (the documented snippet,
-#     shared by every mode that draws a graph)
-#   - skills/html-visualize/references/visualize-template.html (the ready-to-uncomment copy)
+#   - references/mermaid.md           (the documented snippet, shared by every mode
+#     that draws a graph)
+#   - references/visualize-template.html (the ready-to-uncomment copy)
 # They are not byte-identical — the template's copy lives inside an HTML comment at a
 # different indent — so this pins the load-bearing invariants rather than the literal text.
 #
@@ -25,7 +25,7 @@ set -uo pipefail
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
 [[ -n "$REPO_ROOT" ]] || { printf 'FAIL: cannot resolve repo root from %s\n' "${BASH_SOURCE[0]}" >&2; exit 1; }
-REF_DIR="$REPO_ROOT/plugins/html-visualization/skills/html-visualize/references"
+REF_DIR="$REPO_ROOT/plugins/html-visualization/references"
 DOC="$REF_DIR/mermaid.md"
 TPL="$REF_DIR/visualize-template.html"
 ASK_CSS="$REPO_ROOT/plugins/html-visualization/assets/ask/style.css"

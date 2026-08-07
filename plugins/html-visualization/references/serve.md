@@ -39,9 +39,10 @@ HTML_DIR="$TMPDIR_BASE/<mode>-$(date +%s)-$$"
 mkdir -p "$HTML_DIR"
 # Resolve the plugin root once and persist it for server-start commands.
 # Substitute the absolute path the harness printed as "Base directory for this
-# skill:" when it loaded html-visualize. That base directory is
-# <plugin root>/skills/html-visualize, so ../.. is the plugin root, where bin/
-# sits — this is the plugin-root layout, not the usual per-skill one.
+# skill:" when it loaded the mode skill (html-visualize-ask, -feedback, or -page).
+# That base directory is <plugin root>/skills/html-visualize-<mode>, so ../.. is
+# the plugin root, where bin/ and references/ sit — this is the plugin-root
+# layout, not the usual per-skill one.
 PLUGIN_ROOT=$(cd "<base directory for this skill>/../.." 2>/dev/null && pwd)
 if [ -f "$PLUGIN_ROOT/bin/server.js" ]; then
   echo "$PLUGIN_ROOT" > "$HTML_DIR/.plugin-root"

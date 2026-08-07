@@ -169,4 +169,4 @@ request body verbatim. The file is written atomically (write to a temp path, the
 
 Claude branches its read-back on `action`: `"apply"` → apply the feedback,
 regenerate the document, and re-serve for another round; `"submit"` → apply the
-feedback and finish. See `references/feedback.md` for the full loop.
+feedback and finish. See `feedback.md`, same directory, for the full loop.
