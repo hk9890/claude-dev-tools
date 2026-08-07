@@ -3,7 +3,7 @@ name: project-review-docs
 description: "Read-only audit of a project's docs for accuracy, staleness, gaps, misplaced content, and whether agents can and do actually use them — runs a multi-agent workflow, reports fixes, never edits."
 user-invocable: true
 disable-model-invocation: true
-argument-hint: "[low|medium|high|ultra] [path]"
+argument-hint: "[low|medium|high|ultra] [html-viz] [path]"
 ---
 
 Read-only documentation audit. Launch the review workflow — do **not** review the
@@ -11,10 +11,12 @@ docs inline. The workflow returns a structured report; relay it.
 
 ## Run the workflow
 
-1. Parse `$ARGUMENTS` as `[low|medium|high|ultra] [what-to-review]`. Both are optional.
-   A leading `low` | `medium` | `high` | `ultra` token is the **level** (default
-   `medium`); everything after it is **what to review**. Most invocations pass only a
-   level.
+1. Parse `$ARGUMENTS` as `[low|medium|high|ultra] [html-viz] [what-to-review]`. All are
+   optional, and either leading token stands without the other. A
+   `low` | `medium` | `high` | `ultra` token is the **level** (default `medium`) and an
+   `html-viz` token puts the open decisions on a browser form in step 5; take both from
+   the front of the argument, in either order. Everything left is **what to review**.
+   Most invocations pass only a level.
 
    Unlike the other reviewers, what-to-review here must resolve to a **path** —
    `manifest.py` takes a directory, not a free-form description. Default: the repo root.
@@ -103,8 +105,10 @@ docs inline. The workflow returns a structured report; relay it.
      and offer to re-run; `raw.read_findings` holds unsynthesized per-file output,
      so relay it only as raw material, never as the report.
 
-   Once relayed, offer the form per `../../references/decision-split.md`, over the open
-   findings. "the docs audit" is what was reviewed.
+   Once relayed, follow `../../references/decision-split.md`, which branches on the
+   `html-viz` flag from step 1, over the open findings. "the docs audit" is what was
+   reviewed. Done when every open item has been put to the user and the settled batch
+   has been named.
 
 If `python3` is missing or the workflow cannot launch, read every doc in full by
 hand against all three parts of the standard — `<STANDARD_DIR>/references/project-setup.md`

@@ -49,6 +49,24 @@ function dialFor(level) {
   return DIALS[LEVEL_DIALS[level] || 'medium']
 }
 
+// Finding-shaped worker output that stops the audit taking on further components. The dials
+// already bound effort; this bounds *output*, so a suite weak enough to survive most of its
+// mutants does not return a report too long to act on in one pass. Components never started
+// land in not_checked, and the headline says the audit was capped — kill_rate is then a rate
+// over the components that DID run, which is only honest if the reader is told.
+const FINDINGS_CAP = 20
+
+// A proxy for "how many findings will synthesis draw from this worker": surviving mutants,
+// flaky tests, and no-ops that broke a test. Counted after the verify stage, so survivors
+// an adversarial pass already refuted are not counted toward the cap.
+function findingSignals(workerResult) {
+  if (!workerResult) return 0
+  const survivors = (workerResult.mutants || []).filter(m => m && m.outcome === 'SURVIVED').length
+  const flakes = (workerResult.flakes || []).length
+  const brittle = (workerResult.noops || []).filter(n => n && n.broke).length
+  return survivors + flakes + brittle
+}
+
 // Normalize the incoming `args` value into the audit's configuration, and reject an
 // unusable one before anything mutates a file.
 // Defensive: the runtime may hand `args` over as a JSON *string* rather than a parsed
@@ -185,10 +203,12 @@ function scoreabilityAbort(workers) {
 
 // Everything the audit did NOT measure, so the report can say so out loud instead of
 // letting a capped or skipped axis read as a clean one.
-function notCheckedList({ level, dial, baseline, components, workerResults, skippedComponents, mode, probes }) {
+function notCheckedList({ level, dial, baseline, components, workerResults, skippedComponents, cappedComponents, mode, probes }) {
+  const capped = new Set(cappedComponents || [])
   return [
     ...skippedComponents.map(n => `component ${n} — beyond the level=${level} cap`),
-    ...components.filter((c, i) => !workerResults[i]).map(c => `component ${c.name} — worker agent failed`),
+    ...[...capped].map(n => `component ${n} — never audited: the run had already reached ${FINDINGS_CAP} findings`),
+    ...components.filter((c, i) => !workerResults[i] && !capped.has(c.name)).map(c => `component ${c.name} — worker agent failed`),
     ...(baseline.shuffle_flag ? [] : ['test-order shuffle — the runner has no native shuffle flag']),
     ...(dial.verify ? [] : ['equivalent-mutant verification — runs at level=high and level=ultra only; survivors are candidates']),
     ...(dial.hermeticity ? [] : ['hermeticity probe — skipped at level=low; workers were serialized instead']),
@@ -488,8 +508,16 @@ const REPORT_SCHEMA = {
           action: { type: 'string' },
           rationale: { type: 'string' },
           related_finding: { type: 'string' },
+          // Settled or open — the vocabulary is defined once in references/decision-split.md.
+          decision: { type: 'string', enum: ['settled', 'open'] },
+          // The three below are what an open decision needs to be answerable by someone who
+          // did not watch the audit. Required in practice when decision is 'open' — JSON
+          // Schema cannot express that conditional, so the synthesis prompt states it.
+          question: { type: 'string' },
+          options: { type: 'array', items: { type: 'string' } },
+          recommendation: { type: 'string' },
         },
-        required: ['action', 'rationale'],
+        required: ['action', 'rationale', 'decision'],
       },
     },
     components: {
@@ -533,7 +561,7 @@ const REPORT_SCHEMA = {
 // tests/project-auto-work/script-tests use this). Assigned before the orchestration below
 // so it is reached whichever path that takes.
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { normalizeArgs, dialFor, baselineAbort, scoreabilityAbort, notCheckedList, LEVELS, DIALS }
+  module.exports = { normalizeArgs, dialFor, baselineAbort, scoreabilityAbort, notCheckedList, findingSignals, LEVELS, DIALS, FINDINGS_CAP }
 }
 
 // ---------------------------------------------------------------------------
@@ -567,7 +595,8 @@ if (typeof agent === 'function') {
       `Rules: verdict is '${reason.startsWith('suite is red') ? 'untrustworthy' : 'not-auditable'}'. ` +
       `One finding on axis '${reason.startsWith('suite is red') ? 'reliability' : 'auditability'}' (severity blocker, candidate false) carrying the evidence verbatim. ` +
       `Each proposal is one concrete action with its exact command or edit where derivable from the evidence ` +
-      `(e.g. the coverage invocation to add, the failing test to quarantine, the slow tests to exclude from the audited command). ` +
+      `(e.g. the coverage invocation to add, the failing test to quarantine, the slow tests to exclude from the audited command), ` +
+      `with decision "settled" (the audit cannot happen until it is done, so there is nothing to weigh). ` +
       `checked describes the little that WAS done; not_checked lists every audit axis that never ran.`,
       { label: 'abort-report', phase: 'Synthesis', schema: REPORT_SCHEMA }
     )
@@ -974,18 +1003,36 @@ if (typeof agent === 'function') {
 
   phase('Workers')
   let workerResults
+  // Findings accumulated so far, and the components the cap stopped us taking on. A worker
+  // only mutates a component if the count is still under the cap when its turn comes up —
+  // pipeline() queues past the concurrency width, so this gate is exactly "do not start new
+  // work", never "abandon work in flight".
+  let signalCount = 0
+  const cappedComponents = []
+  const underCap = (comp) => {
+    if (signalCount < FINDINGS_CAP) return true
+    cappedComponents.push(comp.name)
+    log(`Skipping component ${comp.name}: the audit already has ${signalCount} findings (cap ${FINDINGS_CAP}).`)
+    return false
+  }
+
   if (parallelWorkers) {
     // Worktree mode: workers fan out; each survivor verifies as soon as its worker lands.
     workerResults = await pipeline(
       components,
-      (comp, _orig, idx) => agent(workerPrompt(comp, idx),
-        { label: `worker:${comp.name}`, phase: 'Workers', schema: WORKER_SCHEMA }),
+      (comp, _orig, idx) => underCap(comp)
+        ? agent(workerPrompt(comp, idx),
+          { label: `worker:${comp.name}`, phase: 'Workers', schema: WORKER_SCHEMA })
+        : null,
       async (res, comp, idx) => {
+        if (cappedComponents.includes(comp.name)) return null
         if (!res || !res.integrity_ok) {
           const j = await janitor(comp.name, idx, res ? 'failed its integrity gate' : 'died mid-run')
           if (j) log(`Janitor ${comp.name}: ${j.summary}`)
         }
-        return verifierStage(res, comp)
+        const verified = await verifierStage(res, comp)
+        signalCount += findingSignals(verified)
+        return verified
       }
     )
   } else {
@@ -993,13 +1040,19 @@ if (typeof agent === 'function') {
     // tree must be verified restored before the next worker may start.
     workerResults = []
     for (let i = 0; i < components.length; i++) {
+      if (!underCap(components[i])) {
+        workerResults.push(null)
+        continue
+      }
       const res = await agent(workerPrompt(components[i], i),
         { label: `worker:${components[i].name}`, phase: 'Workers', schema: WORKER_SCHEMA })
       if (!res || !res.integrity_ok) {
         const j = await janitor(components[i].name, i, res ? 'failed its integrity gate' : 'died mid-run')
         if (j) log(`Janitor ${components[i].name}: ${j.summary}`)
       }
-      workerResults.push(await verifierStage(res, components[i]))
+      const verified = await verifierStage(res, components[i])
+      signalCount += findingSignals(verified)
+      workerResults.push(verified)
     }
   }
 
@@ -1028,7 +1081,7 @@ if (typeof agent === 'function') {
 
   phase('Synthesis')
 
-  const notChecked = notCheckedList({ level, dial, baseline, components, workerResults, skippedComponents, mode, probes: probeNotes })
+  const notChecked = notCheckedList({ level, dial, baseline, components, workerResults, skippedComponents, cappedComponents, mode, probes: probeNotes })
 
   const truthKills = ((coverageTruth && coverageTruth.mutants) || []).filter(m => m.outcome === 'KILLED')
   const untestedChurn = (grouping && grouping.untested_churn) || []
@@ -1061,13 +1114,23 @@ if (typeof agent === 'function') {
     `Severity rubric: blocker = a core behavior could be fully inverted/removed undetected or a test is proven vacuous; major = a meaningful branch, bound, or computation is unpinned, or a proven flake/brittle break; minor = a narrow edge case or an inefficiency. ` +
     `Timing findings: major when multiple tests share the timing dependence, minor for an isolated test.\n` +
     `3. proposals: concrete next actions — "add a test that kills this survivor in <file>:<line> (assert <behavior>)", "quarantine flaky test X", "split/exclude slow test Y", ` +
-    `"move test Z into the integration suite, or give it a double for <resource>", "fix the coverage command so it sees <file>". Each tied to its finding. No code, just the actions.\n` +
+    `"move test Z into the integration suite, or give it a double for <resource>", "fix the coverage command so it sees <file>". Each tied to its finding. No code, just the actions. ` +
+    `Classify every one with decision: "settled" when there is one correct answer and no consequence anyone could reasonably weigh differently — ` +
+    `a verify-confirmed survivor with an obvious missing assertion is settled, and needs no question. "open" when a competent person could answer ` +
+    `differently: it trades one cost against another, picks between conventions the suite already uses, or is big enough that "not now" is a real ` +
+    `answer. Anything resting on a finding with candidate=true is open by construction — a possible equivalent mutant or a legitimate latency ` +
+    `contract is exactly the call a human has to make. Every open proposal MUST also carry question (what the human is being asked, in plain ` +
+    `language, understandable without having watched the audit), options (the answers they can pick between), and recommendation (which one you ` +
+    `would take and the tradeoff that decided it). Leave those three off settled proposals.\n` +
     `4. components table: per component kill_rate, flakes, brittle, slice_wall_s, audited.\n` +
     `5. untested_churn: copy the derived list above through unchanged, in the order given. Present it as what it is — churn-weighted, not risk-ranked: it ranks by how often a file changes and how much of it is untested, neither of which says how dangerous the gap is. No severity, no findings built from it, and it changes no score.\n` +
     `6. checked: one compact prose line — components audited, mutants applied and which operator classes they covered, no-ops, delays, reruns, coverage pct, probes run, mode.\n` +
     `7. verdict: untrustworthy = baseline flaky enough to distrust results; strong = kill_rate >= 0.75 across audited components AND zero flakes AND zero brittle breaks AND suite < ~120 s — must be EARNED; weak = kill_rate low or vacuous tests proven; else adequate.\n` +
     `${truthKills.length
       ? `COVERAGE CAP (binding): ${truthKills.length} coverage-truth mutant(s) were killed, so this repo's coverage command demonstrably under-reports. Every mutation site was chosen from that data, which makes kill_rate a figure measured on a provably incomplete sample. The verdict therefore CANNOT be 'strong' — cap it at 'adequate' or lower — and the headline must say the coverage source is unreliable.\n`
+      : ''}` +
+    `${cappedComponents.length
+      ? `FINDINGS CAP (binding): the audit stopped taking on new components after reaching ${FINDINGS_CAP} findings, so ${cappedComponents.length} component(s) were never mutated (${cappedComponents.join(', ')}). kill_rate is a rate over the components that DID run — the headline must say the audit was capped, or the score reads as covering the whole suite.\n`
       : ''}` +
     `Headline must not claim strength unless the verdict is strong.`,
     { label: 'synthesis', phase: 'Synthesis', schema: REPORT_SCHEMA, effort: 'high' }

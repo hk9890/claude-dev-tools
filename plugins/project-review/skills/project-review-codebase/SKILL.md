@@ -3,7 +3,7 @@ name: project-review-codebase
 description: "Read-only review of production and test code across three dimensions — consistency, structure, architecture — via a multi-agent workflow that dedupes findings across dimensions and writes a standalone Markdown report with Mermaid diagrams; reports fixes, never edits."
 user-invocable: true
 disable-model-invocation: true
-argument-hint: "[low|medium|high|ultra] [what-to-review]"
+argument-hint: "[low|medium|high|ultra] [html-viz] [what-to-review]"
 ---
 
 Read-only codebase review across three dimensions — consistency, structure, and
@@ -17,11 +17,13 @@ modes are actually exercised.
 
 ## Run the workflow
 
-1. Parse `$ARGUMENTS` as `[low|medium|high|ultra] [what-to-review]`. Both are
-   optional. A leading `low` | `medium` | `high` | `ultra` token is the **level**
-   (default `medium`); everything after it is **what to review** — a free-form
-   description ("naming across the service layer") or a path. Default: the whole
-   codebase.
+1. Parse `$ARGUMENTS` as `[low|medium|high|ultra] [html-viz] [what-to-review]`. All are
+   optional, and either leading token stands without the other. A
+   `low` | `medium` | `high` | `ultra` token is the **level** (default `medium`) and an
+   `html-viz` token puts the open decisions on a browser form in step 5; take both from
+   the front of the argument, in either order. Everything left is **what to review** — a
+   free-form description ("naming across the service layer") or a path. Default: the
+   whole codebase.
 
 2. `SKILL_DIR` is the **base directory for this skill**, given at the top of this file when
    the skill loads. It is absolute and install-correct — build every path below from it.
@@ -74,9 +76,10 @@ modes are actually exercised.
    Then surface it in one line, e.g.
    `Full report with diagrams: /tmp/codebase-review-20260724-101500.md`
    — and note what they can do with it:
-   - **Decide on it** — offer the form per `../../references/decision-split.md`, over the
-     open actions plus any `architecture_candidates`. "the codebase review" is what
-     was reviewed.
+   - **Decide on it** — follow `../../references/decision-split.md`, which branches on
+     the `html-viz` flag from step 1, over the open actions plus any
+     `architecture_candidates`. "the codebase review" is what was reviewed. Done when
+     every open item has been put to the user and the settled batch has been named.
    - **Keep it** — if they want it in the repo, they say where and you copy it.
      Do not pick a location or copy it unprompted.
 

@@ -110,7 +110,7 @@ async function main() {
     normalizeArgs, dialFor, reconAbort, composeBatch, leadId, isDry,
     evidenceBasis, stampBasis, notCheckedList, unreachedReason,
     buildDrift, isUsableMarkdown, renderFallbackMarkdown,
-    DIALS, DRY_LIMIT, AGGRESSION_BRIEF,
+    DIALS, DRY_LIMIT, FINDINGS_CAP, AGGRESSION_BRIEF,
   } = helpers;
 
   const required = {
@@ -314,7 +314,7 @@ async function main() {
     notCheckedList(baseNotChecked).some((s) => /b: y/.test(s)));
 
   // ── unreachedReason ──────────────────────────────────────────────────────────
-  // The loop has four exits; naming the ceiling after an aborted run explains the gap with
+  // The loop has five exits; naming the ceiling after an aborted run explains the gap with
   // a cause that did not happen, inside the section meant to prevent false impressions.
   truthy('unreachedReason: a dry exit says so',
     /dry streak/.test(unreachedReason('dry', DIALS.medium, 'medium')));
@@ -326,6 +326,12 @@ async function main() {
     /did not start the application/.test(unreachedReason('abort:the documented launch command did not start the application', DIALS.medium, 'medium')));
   truthy('unreachedReason: an exhausted inventory says so',
     /inventory was exhausted/.test(unreachedReason('exhausted', DIALS.medium, 'medium')));
+  // The findings cap is the one exit a reader could mistake for coverage: the flows it left
+  // unreached are unreached because the report was already full, not because they passed.
+  truthy('unreachedReason: the findings cap says the run was already full',
+    /already had \d+ findings/.test(unreachedReason('findings-cap', DIALS.medium, 'medium')));
+  truthy('unreachedReason: the findings cap does NOT blame the ceiling',
+    !/ceiling/.test(unreachedReason('findings-cap', DIALS.medium, 'medium')));
 
   // ── buildDrift ───────────────────────────────────────────────────────────────
   // Each driver launches the application itself, so nothing structurally binds the
@@ -487,6 +493,41 @@ async function main() {
     1, deep.labels.filter((l) => l.startsWith('confirm-')).length);
   eq('orchestration: a reproduced finding is marked confirmed',
     'yes', deep.ret && deep.ret.raw && deep.ret.raw.findings[0].repro_confirmed);
+
+  // A run that keeps finding things stops on the findings cap, not the ceiling. The danger
+  // it guards is a report too long to act on in one pass; the danger IT introduces is a
+  // short run reading as coverage, so the unreached flows must blame the cap by name.
+  const manyFindings = (n) => () => ({
+    findings: Array.from({ length: n }, (_, i) => ({
+      title: `finding ${i + 1}`, what_was_done: 'd', expected: 'e',
+      expected_source: 'README.md', actual: 'a', severity: 'minor', repro: 'r',
+    })),
+    questions: [], leads: [],
+  });
+  // A deep inventory, so flows are left over when the cap fires — with the default 12 the
+  // loop exhausts the plan first and there is no unreached flow to attribute.
+  const capped = await runTest({ level: 'high' }, { analyst: manyFindings(7), recon: healthyRecon(40) });
+  eq('orchestration: the findings cap stops the run before the ceiling',
+    'findings-cap', capped.ret && capped.ret.stop_reason);
+  truthy('orchestration: the cap starts no further iteration',
+    capped.labels.filter((l) => l.startsWith('driver-')).length < DIALS.high.ceiling,
+    `used all ${DIALS.high.ceiling} iterations`);
+  truthy('orchestration: the cap only fires once the findings are there',
+    capped.ret.raw.findings.length >= FINDINGS_CAP,
+    `stopped at ${capped.ret.raw.findings.length} findings`);
+  // not_checked is assembled in code and handed to synthesis in its prompt, so that prompt
+  // is where the phrasing is checkable.
+  truthy('orchestration: the flows the cap skipped blame the cap, not the ceiling',
+    capped.prompts.some((p, i) => capped.labels[i] === 'synthesis'
+      && /never reached \(the run already had \d+ findings/.test(p)),
+    'the not-checked list did not name the cap');
+
+  // A run under the cap must still use its whole ceiling — the guard cannot fire early.
+  const underCap = await runTest({ level: 'medium' }, { analyst: manyFindings(2) });
+  eq('orchestration: a run under the cap uses the whole ceiling',
+    DIALS.medium.ceiling, underCap.labels.filter((l) => l.startsWith('driver-')).length);
+  eq('orchestration: a run under the cap stops on the ceiling',
+    'ceiling', underCap.ret && underCap.ret.stop_reason);
 
   // Two consecutive quiet iterations end the run before the ceiling.
   const dry = await runTest({ level: 'high' });

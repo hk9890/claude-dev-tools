@@ -42,6 +42,12 @@ const DIALS = {
 // gone quiet.
 const DRY_LIMIT = 2
 
+// Findings that end the loop: reach this many and no further iteration starts. Flat across
+// levels, because `ceiling` already scales effort with the level — this bounds *output*
+// instead, and a report past this size stops being one a reader acts on in a single pass.
+// Every flow the loop never reached lands in not_checked, so the cap is never silent.
+const FINDINGS_CAP = 20
+
 // How the aggression dial reads to the driver agent. Kept beside DIALS so a new rung
 // cannot be added without deciding what it does to the user's environment.
 const AGGRESSION_BRIEF = {
@@ -263,7 +269,7 @@ function renderFallbackMarkdown(report, meta) {
     '',
     ...sec('Findings', findings),
     ...sec('Open questions', (r.questions || []).map(q => `- **${q.title}** — ${q.context} _(unclear: ${q.why_unclear})_`)),
-    ...sec('Proposals', (r.proposals || []).map(p => `- ${p.action} — ${p.rationale}`)),
+    ...sec('Proposals', (r.proposals || []).map(p => `- [${p.decision}] ${p.action} — ${p.rationale}`)),
     ...sec('What was checked', (r.checked || []).map(c => `- ${c}`)),
     ...sec('What was NOT checked', (r.not_checked || []).map(c => `- ${c}`)),
   ].join('\n')
@@ -278,6 +284,7 @@ function unreachedReason(stopReason, dial, level) {
   if (reason === 'dry') return 'the loop exited early on a dry streak'
   if (reason.startsWith('abort:')) return `the run stopped before reaching it — ${reason.slice('abort:'.length)}`
   if (reason === 'exhausted') return 'the planned inventory was exhausted'
+  if (reason === 'findings-cap') return `the run already had ${FINDINGS_CAP} findings, so no further iteration started`
   return `the iteration ceiling of ${dial.ceiling} at level=${level} was reached first`
 }
 
@@ -521,8 +528,16 @@ const REPORT_SCHEMA = {
           action: { type: 'string' },
           rationale: { type: 'string' },
           related_finding: { type: 'string' },
+          // Settled or open — the vocabulary is defined once in references/decision-split.md.
+          decision: { type: 'string', enum: ['settled', 'open'] },
+          // The three below are what an open decision needs to be answerable by someone who
+          // did not watch the run. Required in practice when decision is 'open' — JSON
+          // Schema cannot express that conditional, so the synthesis prompt states it.
+          question: { type: 'string' },
+          options: { type: 'array', items: { type: 'string' } },
+          recommendation: { type: 'string' },
         },
-        required: ['action', 'rationale'],
+        required: ['action', 'rationale', 'decision'],
       },
     },
     checked: { type: 'array', items: { type: 'string' } },
@@ -550,7 +565,7 @@ if (typeof module !== 'undefined' && module.exports) {
     normalizeArgs, dialFor, reconAbort, composeBatch, leadId, isDry,
     evidenceBasis, stampBasis, notCheckedList, unreachedReason,
     buildDrift, isUsableMarkdown, renderFallbackMarkdown,
-    LEVELS, DIALS, DRY_LIMIT, AGGRESSION_BRIEF,
+    LEVELS, DIALS, DRY_LIMIT, FINDINGS_CAP, AGGRESSION_BRIEF,
   }
 }
 
@@ -609,7 +624,8 @@ if (typeof agent === 'function') {
       `Remediation direction: ${remediationHint}\n\n` +
       `Rules: verdict is 'not-runnable'. evidence_basis is 'surface-only'. ` +
       `One finding (severity blocker, repro_confirmed 'not-run') carrying the evidence verbatim. ` +
-      `Each proposal is one concrete action — name the file to edit and the content to add where the evidence allows it. ` +
+      `Each proposal is one concrete action — name the file to edit and the content to add where the evidence allows it, ` +
+      `with decision "settled" (the run cannot happen until it is done, so there is nothing to weigh). ` +
       `checked lists the little that WAS done (the docs recon); not_checked states that the application was never launched. ` +
       `stop_reason is "abort:${reason}".`,
       { label: 'abort-report', phase: 'Synthesis', schema: REPORT_SCHEMA }
@@ -895,6 +911,15 @@ if (typeof agent === 'function') {
     )
     log(ledger.iterations[ledger.iterations.length - 1])
 
+    // The cap is checked before the dry streak: both can be true on the same iteration, and
+    // "we have enough to act on" is the more useful thing to tell the reader than "the app
+    // went quiet".
+    if (ledger.findings.length >= FINDINGS_CAP) {
+      stopReason = 'findings-cap'
+      log(`Stopping early: ${ledger.findings.length} findings reached the cap of ${FINDINGS_CAP}; no further iteration starts.`)
+      break
+    }
+
     if (isDry(analysis)) {
       dryStreak += 1
       if (dryStreak >= DRY_LIMIT) {
@@ -981,7 +1006,14 @@ if (typeof agent === 'function') {
       ? 'repro_confirmed comes from the confirmation pass — never change it. A finding with repro_confirmed="no" stays in the report, presented as observed once and not reproduced, and cannot be a blocker.'
       : 'repro_confirmed is "not-run" for every finding — no confirmation pass runs below level=ultra. Say so where findings are presented rather than implying each was verified.'}\n` +
     `2. questions: genuine ambiguity for a human to decide. Keep them separate from findings; do not promote or demote between the two lists.\n` +
-    `3. proposals: concrete actions — what to fix, what to document. Each tied to its finding or question. No code.\n` +
+    `3. proposals: concrete actions — what to fix, what to document. Each tied to its finding or question. No code. ` +
+    `Classify every one with decision: "settled" when there is one correct answer and no consequence anyone could reasonably weigh ` +
+    `differently — a confirmed defect with an obvious fix is settled, and needs no question. "open" when a competent person could answer ` +
+    `differently: it trades one cost against another, picks between conventions the project already uses, or is big enough that "not now" ` +
+    `is a real answer. A proposal resting on a finding that was observed once and not reproduced is open, not settled. ` +
+    `Every open proposal MUST also carry question (what the human is being asked, in plain language, understandable without having watched ` +
+    `the run), options (the answers they can pick between), and recommendation (which one you would take and the tradeoff that decided it). ` +
+    `Leave those three off settled proposals.\n` +
     `4. checked: one line per flow actually exercised, saying what was established about it. This is the honest counterweight to not_checked.\n` +
     `5. not_checked: the list above verbatim, plus anything else.\n` +
     `6. stop_reason: "${stopReason}".\n` +

@@ -3,7 +3,7 @@ name: test-tests
 description: "Empirical test-suite strength audit — proves whether the tests detect injected bugs (mutation kill rate), stay quiet on non-bugs, are flake-free under reruns/shuffle/delays, run fast, are really isolated from external services, and whether the repo's own coverage report tells the truth. Reports findings and proposals; never keeps an edit."
 user-invocable: true
 disable-model-invocation: true
-argument-hint: "[low|medium|high|ultra] [path]"
+argument-hint: "[low|medium|high|ultra] [html-viz] [path]"
 ---
 
 Empirical test-suite strength audit. Launch the audit workflow — do **not** probe the
@@ -16,10 +16,12 @@ Nothing is ever committed, no test is written, nothing is installed.
 
 ## Run the workflow
 
-1. Parse `$ARGUMENTS` as `[low|medium|high|ultra] [path]`. Both optional. A leading
-   `low` | `medium` | `high` | `ultra` token is the **level**; everything after it is
-   the target path (default: the repo root — resolve a free-form description to a
-   directory or fall back to the root).
+1. Parse `$ARGUMENTS` as `[low|medium|high|ultra] [html-viz] [path]`. All optional, and
+   either leading token stands without the other. A `low` | `medium` | `high` | `ultra`
+   token is the **level** and an `html-viz` token puts the open decisions on a browser
+   form in step 6; take both from the front of the argument, in either order. Everything
+   left is the target path (default: the repo root — resolve a free-form description to
+   a directory or fall back to the root).
 
    If no level token is given, ask with `AskUserQuestion` (header "Level"):
    - `low` — the highest-churn components, a few mutants each. Quick signal.
@@ -75,6 +77,10 @@ Nothing is ever committed, no test is written, nothing is installed.
 
    The report then tells the user exactly how to make the repo auditable.
 
+   The audit also stops taking on new components once findings reach the workflow's
+   `FINDINGS_CAP`. Components it never mutated land in `not_checked`, and the headline
+   says the run was capped — `kill_rate` is then a rate over the components that ran.
+
 5. **Verify tree integrity** — after the workflow returns *or* fails:
 
    ```bash
@@ -102,6 +108,12 @@ Nothing is ever committed, no test is written, nothing is installed.
    path — the user may grill it or act on it in a later session. For a "did you
    really check X?" follow-up, **re-run the skill**; never answer from the report
    alone.
+
+   Each proposal is tagged `settled` or `open`. Follow
+   `<base directory for this skill>/../../references/decision-split.md` — it defines
+   both words and branches on `html-viz`. Done when every open item has been put to the
+   user and the settled batch has been named. The plugin-root layout applies, so `../..`
+   is correct here.
 
 If `python3` is missing or the workflow cannot launch, do not improvise an inline
 audit — report which prerequisite is missing and stop. If the workflow returns an

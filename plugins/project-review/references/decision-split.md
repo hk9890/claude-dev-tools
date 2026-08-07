@@ -1,8 +1,12 @@
 # Settled and open
 
 Every review here classifies what it found into two kinds, and both skills relay
-them the same way. This file is the single source of truth for the vocabulary and
-the relay; each skill's workflow owns only what the line means in its own domain.
+them the same way. This file governs that for `project-review`; each skill's
+workflow owns only what the line means in its own domain.
+
+`project-auto-work` carries its own copy of the same vocabulary, because plugins
+install independently and neither can reach the other's files. Changing what
+settled or open *means* is a two-file edit, in both plugins, or they drift.
 
 | Kind | What it is |
 |---|---|
@@ -17,17 +21,39 @@ report put it in.
 Relay the two groups separately: the settled ones as a batch you can just do, the
 open ones as questions carrying their `options` and `recommendation`.
 
-## Offering the form
+## The browser form
 
-Offer a browser form over the open items only. State the count, and give the
-command with the filter in the argument so it survives into a fresh turn:
+The form covers the open items only, and `html-viz` decides how it is reached.
+The relay above and the saved report happen first and in full either way, so the
+form adds a surface and takes nothing away — a missing plugin, an absent Node, or
+a closed tab leaves the user exactly where the review would have left them.
+
+**With `html-viz`**, invoke `html-visualization:html-visualize-ask` through the
+`Skill` tool, passing the open items and naming what was reviewed:
+
+```
+the <N> open decisions from <what was reviewed> — the settled fixes are already agreed
+```
+
+Invoking it in this turn is what keeps the report in context when the answers
+come back, so the picks read as the reply the user would otherwise have typed.
+
+**Without it**, offer the form instead of opening one. State the count, and give
+the command with the filter in the argument so it survives into a fresh turn:
 
 ```
 /html-visualization:html-visualize-ask the <N> open decisions from <what was reviewed> — the settled fixes are already agreed
 ```
 
-Offer it only if that skill exists; it ships in the separate `html-visualization`
-plugin.
+Either path needs the separate `html-visualization` plugin, which is not a
+dependency of this one. The check for the invoke path is whether
+`html-visualize-ask` appears in your own available skills — invoke it only then.
+It is missing from that list for either of two reasons: the plugin is not
+installed, or it is installed at a version whose ask mode is user-only and so
+unreachable by the `Skill` tool. Say which of those you can tell, then put the
+same questions in chat. Never reconstruct the form by other means — a user-only
+skill is reserved for the user typing its name. The printed command still works
+in that case, since typing it is exactly what a user-only skill allows.
 
 Then say plainly that the settled batch is not on the form, and that the form's
 free-text box is where they stop any of it. A settled item is one the user never

@@ -96,9 +96,9 @@ async function main() {
     pipeline: throwIfCalled('pipeline'),
   });
 
-  const { normalizeArgs, dialFor, baselineAbort, scoreabilityAbort, notCheckedList, DIALS } = helpers;
+  const { normalizeArgs, dialFor, baselineAbort, scoreabilityAbort, notCheckedList, findingSignals, DIALS } = helpers;
 
-  const required = { normalizeArgs, dialFor, baselineAbort, scoreabilityAbort, notCheckedList };
+  const required = { normalizeArgs, dialFor, baselineAbort, scoreabilityAbort, notCheckedList, findingSignals };
   const missingExport = Object.keys(required).filter((k) => typeof required[k] !== 'function');
   if (missingExport.length) {
     bad('test-tests.js exposes its pure helpers', `missing or not a function: ${missingExport.join(', ')}`);
@@ -263,6 +263,19 @@ async function main() {
     (scoreabilityAbort([worker({}), { component: 'other', audited: false }]) || { perWorker: '' })
       .perWorker.split('\n').length === 2);
 
+  // ── findingSignals ───────────────────────────────────────────────────────────
+  // What the cap counts. A killed mutant is the suite working, so counting it would stop the
+  // audit early on a strong suite — exactly backwards.
+  eq('findingSignals: a dead worker contributes nothing', 0, findingSignals(null));
+  eq('findingSignals: killed mutants do not count', 0,
+    findingSignals({ mutants: [{ outcome: 'KILLED' }, { outcome: 'KILLED' }] }));
+  eq('findingSignals: survivors, flakes and brittle breaks all count', 4,
+    findingSignals({
+      mutants: [{ outcome: 'SURVIVED' }, { outcome: 'KILLED' }, { outcome: 'SURVIVED' }],
+      flakes: [{ test: 'a', symptom: 'b' }],
+      noops: [{ broke: true }, { broke: false }],
+    }));
+
   // ── notCheckedList ───────────────────────────────────────────────────────────
   const baseNotChecked = {
     level: 'low',
@@ -303,6 +316,26 @@ async function main() {
   truthy('notCheckedList: a budgeted probe that could not run names its reason',
     probeSkipped.some((s) => /declares no unit\/integration split/.test(s)));
 
+  // A component the findings cap stopped us reaching has a null worker result, exactly like
+  // one whose agent died. Reporting it as a failure would send the reader chasing a crash
+  // that never happened, so the cap must claim its own components.
+  const cappedList = notCheckedList({
+    ...baseNotChecked,
+    components: [{ name: 'core' }, { name: 'billing' }],
+    workerResults: [{ component: 'core' }, null],
+    cappedComponents: ['billing'],
+  });
+  truthy('notCheckedList: a capped component says the run was already full',
+    cappedList.some((s) => /component billing — never audited/.test(s)));
+  truthy('notCheckedList: a capped component is NOT reported as a failed worker',
+    !cappedList.some((s) => /component billing — worker agent failed/.test(s)));
+  truthy('notCheckedList: a genuinely failed worker is still reported as one',
+    notCheckedList({
+      ...baseNotChecked,
+      components: [{ name: 'core' }, { name: 'billing' }],
+      workerResults: [{ component: 'core' }, null],
+    }).some((s) => /component billing — worker agent failed/.test(s)));
+
   const highList = notCheckedList({
     ...baseNotChecked,
     level: 'high',
@@ -341,9 +374,12 @@ async function main() {
         return { components: [{ name: 'core', prod_paths: ['src/a.js'], test_selector: 'make test' }] };
       }
       if (opts.label.startsWith('worker:')) {
+        const survivors = agentOver.__workerSurvivors || 1;
         return {
-          component: 'core', audited: true, integrity_ok: true,
-          mutants: [{ file: 'src/a.js', line: 1, diff: 'd', stated_behavior_change: 'b', outcome: 'SURVIVED' }],
+          component: opts.label.slice('worker:'.length), audited: true, integrity_ok: true,
+          mutants: Array.from({ length: survivors }, (_, i) => ({
+            file: 'src/a.js', line: i + 1, diff: 'd', stated_behavior_change: 'b', outcome: 'SURVIVED',
+          })),
           noops: [], delays: [], flakes: [],
         };
       }
@@ -387,6 +423,45 @@ async function main() {
     deep.prompts.some((p) => p.includes('/repo')));
   truthy('orchestration: the scratch dir reaches the worker prompt',
     deep.prompts.some((p) => p.includes('/tmp/sc')));
+
+  // ── the findings cap ─────────────────────────────────────────────────────────
+  // Live-tree mode serializes workers, which is the path the cap is built for: each
+  // component's findings land before the next component starts. A worktree run fans out
+  // inside the concurrency width instead, so the cap can only catch a queued tail — the
+  // second assertion pins that difference so it stays a known limit rather than a surprise.
+  const manyComponents = (n) => ({
+    components: Array.from({ length: n }, (_, i) => ({
+      name: `comp-${i + 1}`, prod_paths: [`src/${i + 1}.js`], test_selector: 'make test',
+    })),
+  });
+  const serialCap = await runAudit({ level: 'medium' }, {
+    baseline: { ...healthyBaseline(), worktree_ok: false },
+    grouping: manyComponents(6),
+    __workerSurvivors: 7,
+  });
+  const serialWorkers = serialCap.labels.filter((l) => l.startsWith('worker:'));
+  eq('cap: a serialized audit stops taking on components once the findings are in', 3, serialWorkers.length);
+  // raw.not_checked is the list assembled in code; report.not_checked is the agent's copy
+  // of it, so the code-assembled one is what proves the cap cannot go unmentioned.
+  truthy('cap: the components it never reached are named in not_checked',
+    serialCap.ret.raw.not_checked.some((s) => /comp-4 — never audited/.test(s)),
+    JSON.stringify(serialCap.ret.raw.not_checked));
+  truthy('cap: a skipped component is not reported as a failed worker',
+    !serialCap.ret.raw.not_checked.some((s) => /comp-4 — worker agent failed/.test(s)));
+  truthy('cap: synthesis is told the run was capped so kill_rate is not read as whole-suite',
+    serialCap.prompts.some((p, i) => serialCap.labels[i] === 'synthesis' && /FINDINGS CAP \(binding\)/.test(p)),
+    'the synthesis prompt never mentioned the cap');
+
+  // Under the cap every component is still audited.
+  const noCap = await runAudit({ level: 'medium' }, {
+    baseline: { ...healthyBaseline(), worktree_ok: false },
+    grouping: manyComponents(6),
+    __workerSurvivors: 1,
+  });
+  eq('cap: an audit under the cap works every component',
+    6, noCap.labels.filter((l) => l.startsWith('worker:')).length);
+  truthy('cap: an uncapped run does not tell synthesis it was capped',
+    !noCap.prompts.some((p, i) => noCap.labels[i] === 'synthesis' && /FINDINGS CAP/.test(p)));
 
   const shallow = await runAudit({ level: 'medium' });
   eq('orchestration: below high nothing is verified',
