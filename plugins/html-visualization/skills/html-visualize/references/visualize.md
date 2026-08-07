@@ -39,7 +39,7 @@ fails, display the content as text in chat and tell the user Node is unavailable
 ## Step 1 — Decide what to render
 
 **If the intent is a path to a file that exists, read it — its contents are what you
-render.** A path is a hand-off, not a subject: `/html-visualize-page /tmp/report.md`
+render.** A path is a hand-off, not a subject: `/html-visualization:html-visualize-page /tmp/report.md`
 means "render this document", never "draw a picture of this filename". Markdown maps
 onto the page directly — headings become sections, tables become tables, and fenced
 ` ```mermaid ` blocks become `<pre class="mermaid">` inside a `.vis-mermaid-wrap`, with
@@ -111,7 +111,7 @@ Pick the simplest form that communicates the data clearly.
 | Content | Recommended form |
 |---|---|
 | Dependency graph, call flow, sequence, state machine | [Mermaid](#mermaid-for-graph-shaped-content) |
-| Before/after structural comparison | [Mermaid pair](#beforeafter-pairs), side by side |
+| Before/after structural comparison | [Mermaid](#mermaid-for-graph-shaped-content) pair, side by side |
 | Hierarchy or graph with few nodes (< ~30) | Inline SVG, or Mermaid if the edges matter more than the layout |
 | Quantitative comparison (bar, line, scatter) | Inline SVG or a CDN chart library |
 | Tabular data | HTML `<table>` with `<thead>`/`<tbody>` |
@@ -141,122 +141,19 @@ dark/light theme.
 ### Mermaid (for graph-shaped content)
 
 Mermaid is the right tool whenever the content is **edges between named things** —
-dependency graphs, call flow, sequences, state machines. Write the diagram as text
-and let it lay itself out; do not hand-place nodes in SVG for this.
+dependency graphs, call flow, sequences, state machines.
 
-Mermaid does **not** read the page's CSS custom properties. Left alone it renders its
-own palette, which will clash with the template in one scheme and be unreadable in the
-other. So it must be wired to the `--hv-*` tokens explicitly, and re-rendered when the
-colour scheme flips. Use this block verbatim — it is the whole integration:
+The integration — the module block that bridges Mermaid to the `--hv-*` tokens, the
+`.vis-mermaid-wrap` markup, the `classDef`/CSS colour split, and before/after pairs —
+lives in `references/mermaid.md`. Read it before authoring a diagram:
 
-```html
-<script type="module">
-  const hv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-
-  const blocks = [...document.querySelectorAll("pre.mermaid")];
-  blocks.forEach(b => { b.dataset.src = b.textContent; });
-
-  // The FOUC guard hides the source until Mermaid marks it processed. If Mermaid never
-  // arrives, that guard would leave an empty bordered box with no explanation — so
-  // reveal the source instead. A wall of syntax beats a silent blank.
-  const reveal = () => blocks.forEach(b => { b.style.visibility = "visible"; });
-
-  // Dynamic import, not a static one: a static `import` that fails aborts the whole
-  // module, so no catch inside it would ever run and the guard could never release.
-  let mermaid;
-  try {
-    mermaid = (await import("https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs")).default;
-  } catch (e) {
-    reveal();
-    throw e;
-  }
-
-  async function render() {
-    mermaid.initialize({
-      startOnLoad: false,
-      securityLevel: "strict",
-      theme: "base",
-      themeVariables: {
-        background:       hv("--hv-surface"),
-        primaryColor:     hv("--hv-surface-2"),
-        primaryTextColor: hv("--hv-text"),
-        primaryBorderColor: hv("--hv-border"),
-        lineColor:        hv("--hv-muted"),
-        secondaryColor:   hv("--hv-accent-tint"),
-        tertiaryColor:    hv("--hv-surface"),
-        fontFamily:       hv("--hv-font-body"),
-      },
-    });
-    // Restore the source and clear Mermaid's processed marker so a re-render works.
-    // textContent, NOT innerHTML — the source was captured as text, and re-parsing it as
-    // HTML mangles any diagram containing "<": stateDiagram's <<choice>>/<<fork>>, or an
-    // edge label like |"n < 10"|. First render would look fine; the theme flip breaks it.
-    blocks.forEach(b => { b.textContent = b.dataset.src; b.removeAttribute("data-processed"); });
-    await mermaid.run({ nodes: blocks });
-  }
-
-  render().catch(reveal);
-  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render);
-</script>
+```
+Read: "$(cat "$HTML_DIR/.plugin-root")/skills/html-visualize/references/mermaid.md"
 ```
 
-Each diagram is a `<pre class="mermaid">` inside a `.vis-mermaid-wrap`. Keep the
-diagram source indented consistently — Mermaid is whitespace-sensitive:
-
-```html
-<div class="vis-mermaid-wrap">
-  <pre class="mermaid">
-flowchart LR
-  A[OrderHandler] --> B[OrderValidator]
-  B --> C[OrderRepo]
-  C -.->|leaks| D[PricingClient]
-  classDef leak stroke-width:2px,stroke-dasharray:4 4;
-  class C,D leak
-  </pre>
-</div>
-```
-
-**Never put a CSS function inside `classDef`.** Mermaid parses the declaration itself, so
-`classDef leak stroke:var(--hv-bad)` is a hard parse error on the `(` — the entire diagram
-fails to render, not just the colour. A literal hex parses, but bakes one scheme's colour
-into a page that flips themes.
-
-Split the two concerns instead: `classDef` carries **structure** (`stroke-width`,
-`stroke-dasharray`), and **CSS carries the colour**, targeting the class Mermaid stamps onto
-the node:
-
-```css
-.vis-mermaid-wrap .leak > rect,
-.vis-mermaid-wrap .leak > polygon,
-.vis-mermaid-wrap .leak > path { stroke: var(--hv-bad) !important; }
-```
-
-That follows the theme for free, being an ordinary token reference. `!important` is required
-— Mermaid writes its own stroke inline.
-
-#### Before/after pairs
-
-A structural change reads best as two diagrams side by side, not one annotated diagram.
-Wrap the pair in `.vis-compare` (see the template) so they sit in two columns on a wide
-screen and stack on a narrow one, and give each half a `.vis-mermaid-label` reading
-**Before** / **After** above its `.vis-mermaid-wrap`:
-
-```html
-<div class="vis-compare">
-  <div class="vis-mermaid-wrap">
-    <span class="vis-mermaid-label">Before</span>
-    <pre class="mermaid">…</pre>
-  </div>
-  <div class="vis-mermaid-wrap">
-    <span class="vis-mermaid-label">After</span>
-    <pre class="mermaid">…</pre>
-  </div>
-</div>
-```
-
-Keep node names identical across the pair so the eye can track what moved, and keep each
-diagram under roughly a dozen nodes — past that the comparison stops being readable and
-you should show only the part that changes.
+This template already carries the `.vis-mermaid-wrap` styling that file refers to,
+including the semantic node colours (`leak`, `dead`, `god`, `misplaced`, `deep`) that
+project-review's Markdown artifacts emit.
 
 ### Editorial diagrams (hand-built)
 
@@ -328,20 +225,8 @@ template's CSS custom properties (`--hv-bg`, `--hv-text`, `--hv-surface`,
 `--hv-accent`, `--hv-muted`) so the page follows the light/dark theme. For SVG
 fills and strokes, prefer `currentColor` or `var(--hv-accent)`. Mermaid is the one
 renderer that cannot see those tokens — it needs the `themeVariables` bridge and the
-re-render listener from the [Mermaid section](#mermaid-for-graph-shaped-content). Three
-symptoms, three causes:
-
-- **Raw Mermaid syntax on the page** — Mermaid never arrived: the CDN is unreachable or
-  CSP-blocked. The `reveal()` fallback released the FOUC guard on purpose, so the source
-  shows rather than an empty box.
-- **Blank space inside a bordered box** — the module block is missing entirely, so nothing
-  ever released `pre.mermaid:not([data-processed])`. If you copied the block, check it is a
-  `<script type="module">` and not a plain `<script>`.
-- **Renders but clashes** — fine in one scheme, dark-on-dark in the other. The module ran
-  but `themeVariables` was omitted, so Mermaid used its own palette.
-
-A malformed diagram is a separate case and is **contained**: `mermaid.run` renders an error
-graphic in that one block and the other diagrams on the page still render.
+re-render listener, and `references/mermaid.md` carries both plus what each rendering
+symptom means.
 
 **Responsive visuals.** Keep `max-width: 900px; margin: 0 auto` on the content
 container (already in the template). For SVGs, set `width="100%"` plus a

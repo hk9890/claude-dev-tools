@@ -21,6 +21,14 @@
  *   .widget-verdict      — overall verdict radio group (approve/approve-with-changes/reject)
  *   .widget-label        — <label> wrapping question text
  *   .widget-hint         — supplementary hint text below a label
+ *   .widget-why          — <details> holding the plain-English background
+ *   .widget-why-body     — the prose inside .widget-why
+ *   .widget-recommendation       — Claude's recommended answer and its reasoning
+ *   .widget-recommendation-label — "Recommended" eyebrow inside it
+ *   .recommendation-why  — the reasoning paragraph inside it
+ *   .vis-mermaid-wrap    — container for one Mermaid diagram
+ *   .vis-mermaid-label   — caption above a diagram (e.g. Before / After)
+ *   .vis-compare         — two-column grid for a before/after diagram pair
  *   .annotatable         — marks a widget that gets an always-visible note field
  *   .widget-note         — wraps the per-question note label + textarea
  *   .widget-note-label   — label shown above the per-question note textarea
@@ -429,6 +437,195 @@ body {
   border-color: var(--hv-accent);
   background: var(--hv-surface);
   box-shadow: 0 0 0 3px var(--hv-accent-tint);
+}
+
+/* ── Evidence: code, tables ───────────────────────────────────────────────── */
+/* A question is answerable only if what it is about is ON the page. These style
+   the material quoted inside a widget so the user never has to go look it up. */
+
+.widget pre {
+  margin: 0 0 12px;
+  padding: 11px 13px;
+  overflow-x: auto;
+  background: var(--hv-surface-2);
+  border: 1px solid var(--hv-border-soft);
+  border-radius: 7px;
+  font-family: var(--hv-font-mono);
+  font-size: 0.83rem;
+  line-height: 1.55;
+  color: var(--hv-text);
+}
+
+.widget pre code {
+  background: none;
+  padding: 0;
+  font-size: inherit;
+}
+
+.widget code {
+  padding: 1px 5px;
+  background: var(--hv-surface-2);
+  border: 1px solid var(--hv-border-soft);
+  border-radius: 4px;
+  font-family: var(--hv-font-mono);
+  font-size: 0.86em;
+}
+
+.widget table {
+  width: 100%;
+  margin: 0 0 12px;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.widget th,
+.widget td {
+  padding: 7px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--hv-border-soft);
+  vertical-align: top;
+}
+
+.widget th {
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--hv-faint);
+}
+
+/* ── Explanation disclosure ───────────────────────────────────────────────── */
+/* A <details> carrying the plain-English background for one question. Native
+   disclosure, so it works with no JavaScript and is keyboard-reachable. */
+
+.widget-why {
+  margin: 0 0 13px;
+  border: 1px solid var(--hv-border-soft);
+  border-radius: 8px;
+  background: var(--hv-surface-2);
+}
+
+.widget-why > summary {
+  padding: 8px 12px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--hv-accent);
+  user-select: none;
+}
+
+.widget-why > summary::-webkit-details-marker { display: none; }
+
+.widget-why > summary::before {
+  content: "";
+  display: inline-block;
+  width: 0;
+  height: 0;
+  margin-right: 8px;
+  border-left: 5px solid currentColor;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  transition: transform 0.15s ease;
+}
+
+.widget-why[open] > summary::before { transform: rotate(90deg); }
+
+.widget-why > summary:hover { color: var(--hv-accent-deep); }
+
+.widget-why-body {
+  padding: 2px 13px 12px;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--hv-muted);
+}
+
+.widget-why-body > :first-child { margin-top: 0; }
+.widget-why-body > :last-child { margin-bottom: 0; }
+
+/* ── Recommendation ───────────────────────────────────────────────────────── */
+/* What Claude would choose, and why. Deliberately NOT a pre-selected input —
+   the user still has to answer, so a submitted form always carries a real
+   decision rather than an unread default. */
+
+.widget-recommendation {
+  margin: 0 0 14px;
+  padding: 11px 14px;
+  border-left: 3px solid var(--hv-ok);
+  border-radius: 0 7px 7px 0;
+  background: var(--hv-ok-tint);
+}
+
+.widget-recommendation-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--hv-ok-deep);
+  margin-bottom: 5px;
+}
+
+.widget-recommendation p {
+  margin: 0 0 6px;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--hv-text);
+}
+
+.widget-recommendation p:last-child { margin-bottom: 0; }
+
+.widget-recommendation .recommendation-why {
+  color: var(--hv-muted);
+  font-size: 0.88rem;
+}
+
+/* ── Diagrams ─────────────────────────────────────────────────────────────── */
+/* Mermaid injects its own <svg>; this supplies the surface and keeps a wide
+   graph scrollable instead of overflowing the widget. Colours come from the
+   themeVariables bridge in references/mermaid.md, not from here. Class names
+   match visualize mode's so one reference document serves both. */
+
+.vis-mermaid-wrap {
+  margin: 0 0 13px;
+  padding: 12px 14px;
+  background: var(--hv-surface-2);
+  border: 1px solid var(--hv-border-soft);
+  border-radius: 8px;
+  overflow-x: auto;
+}
+
+.vis-mermaid-wrap pre.mermaid {
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: none;
+  text-align: center;
+}
+
+/* Pre-render the raw graph source is visible as text. Hide it so the page does
+   not flash a wall of Mermaid syntax before the module script runs. */
+.vis-mermaid-wrap pre.mermaid:not([data-processed]) { visibility: hidden; }
+
+.vis-mermaid-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--hv-faint);
+  margin-bottom: 6px;
+}
+
+.vis-compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 580px) {
+  .vis-compare { grid-template-columns: 1fr; }
 }
 
 /* ── Responsive tweaks ────────────────────────────────────────────────────── */

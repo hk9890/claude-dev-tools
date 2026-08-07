@@ -48,14 +48,41 @@
       data-qtype  : "radio"
       Each option : <input type="radio"> with name=data-qid and value=<option-value>
       .annotatable + data-anchor-id : adds an always-visible free-text note field
+
+      This example carries the FULL stack — see ask-markup.md for the reading
+      order it follows. Evidence and .widget-why are used where the question
+      needs them; a .widget-recommendation belongs on every question you can
+      form a view on.
     -->
     <div class="widget widget-radio annotatable"
          data-qid="q-priority"
          data-qtype="radio"
          data-anchor-id="q-priority"
          id="q-priority">
-      <span class="widget-label">[Claude: question text — e.g. "What priority should this have?"]</span>
-      <span class="widget-hint">[Claude: optional hint]</span>
+      <span class="widget-label">[Claude: the question, in plain English, understandable with no chat context]</span>
+      <span class="widget-hint">[Claude: one line orienting the reader — what this affects]</span>
+
+      <!-- Evidence: quote what is being decided so nobody has to go look it up.
+           <pre>, <table>, and .vis-mermaid-wrap are all styled — see ask-markup.md. -->
+      <pre><code>[Claude: the code, config, or data under discussion]</code></pre>
+
+      <!-- Background, collapsed. Native <details> — no JavaScript involved. -->
+      <details class="widget-why">
+        <summary>Why this matters</summary>
+        <div class="widget-why-body">
+          <p>[Claude: plain-English background — what is happening now, why it is
+             a question at all, and what changes with each answer. Spell out any
+             term the reader may not share with you.]</p>
+        </div>
+      </details>
+
+      <!-- Your recommendation. Note that NO radio below is pre-selected. -->
+      <div class="widget-recommendation">
+        <span class="widget-recommendation-label">Recommended</span>
+        <p>[Claude: which option you would pick, named exactly as it appears below]</p>
+        <p class="recommendation-why">[Claude: why — the tradeoff that decided it]</p>
+      </div>
+
       <div class="radio-options">
         <label class="radio-option">
           <input type="radio" name="q-priority" value="high">
@@ -222,5 +249,8 @@
 
 <script src="/assets/shared/submit.js"></script>
 <script src="/assets/ask/app.js"></script>
+
+<!-- If any question carries a Mermaid diagram, add the module block from
+     references/mermaid.md here, once per page. Remove this comment otherwise. -->
 </body>
 </html>

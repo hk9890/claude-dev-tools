@@ -39,7 +39,15 @@ fails, ask questions in chat instead.
 
 ## Step 1 — Extract content from the conversation
 
-Before writing a single line of HTML, decide what goes into the document:
+Before writing a single line of HTML, decide what goes into the document.
+
+**Every question is a briefing.** The reader was not in the conversation and will
+not go looking: they open the page, read one question, and decide. So each one
+carries what a briefing carries — plain language, the evidence attached, and a
+recommendation at the end. A question the reader has to go research before
+answering is a question you have not finished writing.
+
+### What the document is made of
 
 - **Page title and subtitle**: a short descriptive title and one sentence
   summarising what the user is reviewing. Write these now.
@@ -47,8 +55,9 @@ Before writing a single line of HTML, decide what goes into the document:
   question or decision point becomes one widget. Do not collapse multiple
   questions into a single text widget — keep them separate so answers land in
   distinct `answers` keys.
-- **Context belongs in prose, not widgets**: background information, summaries,
-  and rationale go into `<p>` blocks inside the form, not into widget labels.
+- **Page-level context goes in prose**: material that orients the whole form —
+  what was reviewed, what is already decided — goes in `<p>` blocks at the top
+  of the form, not into widget labels.
 - **Widget type per question**:
   - Open-ended question → `widget-text` (textarea)
   - Single-choice from a named list → `widget-radio`
@@ -57,6 +66,31 @@ Before writing a single line of HTML, decide what goes into the document:
 - **Question IDs**: assign a short, stable, printable-ASCII slug (no whitespace)
   to each question — e.g. `q1`, `q-timeline`, `q-approach`. Record all IDs now;
   you will need them during read-back.
+
+### How each question is briefed
+
+- **Ask in plain language**: write the question so someone who has not read the
+  conversation understands it. Expand a name the first time it appears —
+  "`readTrustDocument`, the function that loads a project's trust file" — and
+  spell out what a term means rather than assuming it is shared. Keep the
+  question itself prose, with any identifier supporting it.
+- **Bring the subject onto the page**: quote what is being decided — the code in
+  a `<pre>`, the competing options in a table, the numbers that matter. Beside
+  the quoted code, a `path:line` is a useful citation; on its own it is an
+  errand.
+- **Explain the background in a `.widget-why`**: where a question needs more than
+  the one-line hint, put it in the disclosure — what happens today, why this is
+  a question at all, and what changes with each answer. Depth stays one click
+  away, so the page reads as a list of questions rather than an essay.
+- **Draw it when the shape is the point**: what depends on what, what moves
+  where, what happens in which order — a diagram settles these faster than a
+  paragraph. Step 2c has the integration.
+- **Recommend**: on every question you can form a view on, name the option you
+  would pick and the tradeoff that decided it, in a `.widget-recommendation`.
+  Leave the inputs unselected, so a submitted form always carries an answer the
+  user actually gave. Where you genuinely have no basis to prefer one, say so in
+  the block: a missing recommendation reads as an oversight rather than as
+  neutrality.
 
 ---
 
@@ -113,12 +147,20 @@ Follow the **Authoring guidelines — all modes** in the `html-visualize` `SKILL
 question faster*, so reach for —
 
 - **Tables** to compare options, costs, or tradeoffs side by side.
-- **Code blocks** (`<pre><code>`) for snippets, file paths, or diffs under review.
-- **Inline SVG** when a picture decides a question faster than a sentence.
+- **Code blocks** (`<pre><code>`) for the snippets, config, or diffs under review.
+- **Mermaid** when the answer turns on structure — dependencies, call flow,
+  sequence, state. Read
+  `"$(cat "$HTML_DIR/.plugin-root")/skills/html-visualize/references/mermaid.md"`
+  and add its module block once, before `</body>`.
+- **Inline SVG** when a picture decides a question faster than a sentence and the
+  shape is not a graph.
 
-Author extra styling inline or in a `<style>` block in `<head>` — never edit
-`/assets/ask/style.css`, and never edit `/assets/shared/chrome.css` or
-`/assets/shared/tokens.css`, which the feedback mode renders from too.
+`.widget-why`, `.widget-recommendation`, `<pre>`, `<table>` and the diagram
+containers are all styled by `/assets/ask/style.css` already — author the markup
+from `ask-markup.md` and add no CSS for them. Author styling for anything genuinely
+new inline or in a `<style>` block in `<head>` — never edit `/assets/ask/style.css`,
+and never edit `/assets/shared/chrome.css` or `/assets/shared/tokens.css`, which the
+feedback mode renders from too.
 
 ### 2d. Compute and record the feedback file path
 

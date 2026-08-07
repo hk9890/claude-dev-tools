@@ -69,6 +69,30 @@ Every document must have this top-level structure:
 | `.widget-label` | `<span>` or `<label>` | Question label; displayed in bold above the input. |
 | `.widget-hint` | `<span>` | Supplementary hint text below the label. Optional. |
 
+### Explanation and recommendation classes
+
+Both sit **inside** the `.widget`, between the label and the input. Order top to
+bottom: label → hint → evidence (code, table, diagram) → `.widget-why` →
+`.widget-recommendation` → the input.
+
+| Class | Element | Purpose |
+|---|---|---|
+| `.widget-why` | `<details>` | Collapsed disclosure holding the plain-English background for this question. Its `<summary>` is the click target — give it a label that says what is inside, e.g. "Why this matters". |
+| `.widget-why-body` | `<div>` inside `.widget-why` | The prose. Ordinary HTML — `<p>`, `<ul>`, `<pre>`, a diagram. |
+| `.widget-recommendation` | `<div>` | Always-visible block carrying the recommended answer and its reasoning. Prose only; the inputs below it stay unselected, so the user still answers the question themselves. |
+| `.widget-recommendation-label` | `<span>` inside it | The "Recommended" eyebrow. |
+| `.recommendation-why` | `<p>` inside it | The reasoning paragraph, set smaller than the recommendation itself. |
+
+### Diagram classes
+
+Available in ask mode exactly as in visualize mode; the integration is documented in `mermaid.md` (same directory).
+
+| Class | Element | Purpose |
+|---|---|---|
+| `.vis-mermaid-wrap` | `<div>` wrapping one `<pre class="mermaid">` | Diagram surface; scrolls horizontally rather than overflowing the widget. |
+| `.vis-mermaid-label` | `<span>` inside it | Caption above a diagram, e.g. **Before** / **After**. |
+| `.vis-compare` | `<div>` wrapping two `.vis-mermaid-wrap` | Two-column grid for a before/after pair; stacks below 580px. |
+
 ### Option list classes
 
 | Class | Element | Parent widget type |
@@ -185,6 +209,9 @@ Before finalising an ask-mode document:
 
 - [ ] Every `.widget` has a unique `data-qid` (printable ASCII, no whitespace).
 - [ ] Every `.widget` has a `data-qtype` matching its input type.
+- [ ] Every question is answerable from the page alone — the thing being decided is quoted, drawn, or explained on it.
+- [ ] Every `.widget` carries a `.widget-recommendation`, or the question genuinely has no basis for one and says so.
+- [ ] Every `<pre class="mermaid">` sits inside a `.vis-mermaid-wrap`, and the page carries the module block from `mermaid.md` once.
 - [ ] Every `radio` / `checkbox` / `approaches` widget has `.annotatable` and a `data-anchor-id` equal to its `data-qid`, so it gets an always-visible note field.
 - [ ] `.widget-text` widgets are NOT `.annotatable` (the textarea is already free text).
 - [ ] Every `.approach-col` has `data-approach-id`; the radio `name` matches `<data-qid>-<data-approach-id>`.

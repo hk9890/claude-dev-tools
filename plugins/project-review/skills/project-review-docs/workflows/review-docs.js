@@ -331,8 +331,18 @@ const REPORT_SCHEMA = {
           observation: { type: 'string' },
           why_it_matters: { type: 'string' },
           recommended_action: { type: 'string' },
+          // Settled or open — the vocabulary is defined once in references/decision-split.md
+          // at the plugin root. Without the split, a form built from findings[] asks the
+          // maintainer to approve fixing a doc that contradicts the code, spending attention
+          // on a question that was never open. The three fields below make an open finding
+          // answerable by someone who did not run the audit; JSON Schema cannot make them
+          // conditionally required, so the synthesis prompt does.
+          decision: { type: 'string', enum: ['settled', 'open'] },
+          question: { type: 'string' },
+          options: { type: 'array', items: { type: 'string' } },
+          recommendation: { type: 'string' },
         },
-        required: ['file', 'severity', 'observation', 'why_it_matters', 'recommended_action'],
+        required: ['file', 'severity', 'observation', 'why_it_matters', 'recommended_action', 'decision'],
       },
     },
     cross_file_notes: { type: 'string' },
@@ -771,7 +781,8 @@ if (typeof agent === 'function') {
     `4. Fold the behavioural and synthetic evidence in. From execution: 'found-but-insufficient' or 'couldnt-route' is a real doc finding; discard 'inconclusive'. From history: only entries with attribution "doc" are doc findings — an "agent" attribution means the route was written correctly and skipped anyway, which belongs in execution_summary as an observation, never as a defect in the file. An "insufficient-evidence" attribution is not a finding of any kind.\n` +
     `5. State the evidence per use case in execution_summary: how many valid segments history had, which use cases had none, and which were probed by execution. A use case with no evidence is a gap in THIS AUDIT, never a defect in the doc — say so in those words rather than implying the doc is unused.\n` +
     `   Report the superseded-route evidence too, in its own short paragraph, and label it as being about wording that no longer exists. Quote the old route and give the ratio of segments that did the work to segments that opened the doc. Where a route has since been rewritten, say whether that evidence supports the rewrite. Never let it change a verdict or a finding about current text — but never drop it either: a route that was ignored under its old wording is the reason the new wording exists.\n` +
-    `6. Assign an overall verdict: accurate / minor gaps / significant gaps / misleading. A clean 'accurate' requires no blocker/major AND positive coverage — not merely absence of findings.\n\n` +
+    `6. Assign an overall verdict: accurate / minor gaps / significant gaps / misleading. A clean 'accurate' requires no blocker/major AND positive coverage — not merely absence of findings.\n` +
+    `7. Tag every finding \`settled\` or \`open\`, leaving none untagged. SETTLED is a doc contradicting the code or the repo's actual layout, a stale command, a dead link, a missing or misnamed route, CLAUDE.md carrying anything but the one-line import, an injected tool-block — one correct answer, nothing to weigh. OPEN moves content from one file to another (who owns a topic is a judgement), deletes a section someone may be relying on, rewords a route people's habits are built on, adopts a convention the repo has not committed to, or is large enough that "not now" is a real answer. When you can argue it either way it is settled: a doc that contradicts the code is a bug, and asking permission to fix it wastes the maintainer's attention. For every OPEN finding also fill \`question\` (what is being decided, in plain English a reader outside this audit understands, naming the file and what it currently says), \`options\` (the real alternatives, including "leave it as is" wherever that is one), and \`recommendation\` (which option you would pick and the tradeoff that decided it).\n\n` +
     `Return the structured object with fields verdict, headline, findings[], cross_file_notes, execution_summary. ` +
     `Each finding's why_it_matters states the concrete cost, risk, or trap the defect creates for someone relying on the doc — not a restatement of the observation. ` +
     `cross_file_notes and execution_summary are separate PLAIN-TEXT prose fields — never write XML/HTML tags, angle-bracket markers, or field names inside their values. ` +

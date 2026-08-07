@@ -155,6 +155,25 @@ const VERIFY_SCHEMA = {
   required: ['refuted'],
 }
 
+// One recommended action, tagged settled or open — the vocabulary is defined once in
+// references/decision-split.md at the plugin root. The split is the point: a developer
+// handed 14 undifferentiated actions has to re-derive which ones were ever in question,
+// and a form built from the flat list asks about settled bugs.
+const ACTION_ITEMS = {
+  type: 'object',
+  properties: {
+    action: { type: 'string' },
+    decision: { type: 'string', enum: ['settled', 'open'] },
+    // The three below are what an open decision needs to be answerable by someone who
+    // did not run the review. Required in practice when decision is 'open' — JSON
+    // Schema cannot express that conditional, so the synthesis prompt states it.
+    question: { type: 'string' },
+    options: { type: 'array', items: { type: 'string' } },
+    recommendation: { type: 'string' },
+  },
+  required: ['action', 'decision'],
+}
+
 const REPORT_SCHEMA = {
   type: 'object',
   properties: {
@@ -188,7 +207,7 @@ const REPORT_SCHEMA = {
         required: ['dimension', 'severity', 'location', 'observation', 'evidence', 'why_it_matters', 'recommended_action'],
       },
     },
-    recommended_actions: { type: 'array', items: { type: 'string' } },
+    recommended_actions: { type: 'array', items: ACTION_ITEMS },
     cross_dimension_notes: { type: 'string' },
     // Surviving deepening candidates, in the order the developer should consider them.
     // Their 1-based position IS the number the user selects by ("implement 2 and 4"),
@@ -476,8 +495,16 @@ const ARTIFACT_FORMAT =
   `- **\`<location>\`** — <severity>. <observation> **Evidence:** <evidence> **Why it matters:** <why_it_matters> ` +
   `**Fix:** <recommended_action>\n\n` +
   `The evidence is what makes a finding checkable rather than an assertion — never drop it from a bullet.\n\n` +
-  `## Recommended actions\n\n` +
-  `recommended_actions as a numbered list in priority order.\n\n` +
+  `Two \`###\` subsections, both numbered from 1 in priority order, each omitted when it would be empty. Keeping them ` +
+  `apart is what tells the developer where their attention is actually needed.\n\n` +
+  `### Do these\n\n` +
+  `Every settled action, one numbered \`action\` per line. Introduce the subsection with one line saying these have a ` +
+  `single correct answer and are listed so the batch can be checked, not debated.\n\n` +
+  `### Your call\n\n` +
+  `Every open action, one numbered entry each:\n\n` +
+  `1. **<question>**\n\n` +
+  `   Options: the \`options\` as a bullet list.\n\n` +
+  `   **Recommended:** the \`recommendation\`.\n\n` +
   `## Notes\n\n` +
   `cross_dimension_notes as prose; omit the section when it is empty.`
 
@@ -566,8 +593,16 @@ if (typeof agent === 'function') {
     `dimension agent's verdict, adjusting where dedupe, refutation, or your step-1 spot-verify changed the picture` +
     `${missing.length ? `; a dimension that did not complete (${missing.join(', ')}) gets no verdict better than "minor issues" and a note that it did not run` : ''} — ` +
     `and ONE overall verdict, never cleaner than the worst dimension.\n` +
-    `5. Produce recommended_actions: a prioritised list ordered by what the developer should tackle first, each entry ` +
-    `referencing its finding(s). Mandatory even when there is only one action — the ordering is itself the deliverable.\n` +
+    `5. Produce recommended_actions: a prioritised list ordered by what the developer should tackle first, each entry's ` +
+    `\`action\` referencing its finding(s). Mandatory even when there is only one action — the ordering is itself the ` +
+    `deliverable. Then tag every action \`settled\` or \`open\`, leaving none untagged. SETTLED is a plain bug, a typo, ` +
+    `a dead exemption, a doc that contradicts the code — one correct answer, nothing to weigh. OPEN changes a public ` +
+    `API or a name people type, picks one convention over another the repo also uses, trades one cost against another, ` +
+    `or is large enough that "not now" is a real answer. When you can argue it either way it is settled: asking about ` +
+    `a bug wastes the developer's attention. For every OPEN action also fill \`question\` (what is being decided, in ` +
+    `plain English a reader outside this review understands, expanding any identifier it names), \`options\` (the real ` +
+    `alternatives, including "leave it as is" wherever that is one), and \`recommendation\` (which option you would ` +
+    `pick and the tradeoff that decided it).\n` +
     `6. Carry the architecture dimension's candidates into architecture_candidates, ordered by what you would tackle ` +
     `first. A candidate is a proposal built ON TOP OF findings, and it was generated BEFORE any of them were ` +
     `challenged — so re-check each one against the findings that actually survived. Drop a candidate whose supporting ` +
