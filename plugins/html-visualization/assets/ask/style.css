@@ -21,13 +21,23 @@
  *   .widget-verdict      — overall verdict radio group (approve/approve-with-changes/reject)
  *   .widget-label        — <label> wrapping question text
  *   .widget-hint         — supplementary hint text below a label
+ *   .is-recommended      — marks the recommended option / approach column
+ *   .recommended-mark    — the "Recommended" pill + its why button, inside that option
+ *   .widget-recommendation       — recommendation block, for a question with no options
+ *   .widget-recommendation-label — "Recommended" eyebrow inside it
+ *   .recommendation-why  — the reasoning paragraph inside it
+ *   .vis-mermaid-wrap    — container for one Mermaid diagram
+ *   .vis-mermaid-label   — caption above a diagram (e.g. Before / After)
+ *   .vis-compare         — two-column grid for a before/after diagram pair
  *   .annotatable         — marks a widget that gets an always-visible note field
  *   .widget-note         — wraps the per-question note label + textarea
  *   .widget-note-label   — label shown above the per-question note textarea
  *   .widget-note-input   — the per-question free-text note textarea
  *   .approach-col        — one column in a .widget-approaches layout
  *   .approach-header     — heading row in a .widget-approaches column
- *   .approach-verdict    — per-column approve/reject within .widget-approaches
+ *   .approach-choice     — single-mode radio inside one .approach-col
+ *   .approaches-none     — single-mode "neither" option below the grid
+ *   .approach-verdict    — independent-mode approve/reject within one column
  *   .verdict-section     — wraps the overall .widget-verdict
  *   .freeform-section    — wraps the global free-text textarea
  *   .submit-row          — wraps the submit button and copy-feedback button
@@ -38,6 +48,11 @@
  *   [data-qid]           — identifies a question widget by its question ID
  *   [data-qtype]         — declares widget type: text | radio | checkbox | approaches
  *   [data-anchor-id]     — CSS id used as the comment anchor selector (#value)
+ *   [data-choice]        — "single" makes a .widget-approaches mutually exclusive
+ *
+ * Background prose and the reasoning behind a recommendation are shown through
+ * the shared .hv-info-btn / .hv-popover primitive in /assets/shared/overlay.css,
+ * and diagrams gain its .hv-zoom-btn — the same components the other modes use.
  */
 
 @import "/assets/shared/chrome.css";
@@ -48,10 +63,6 @@ body {
   line-height: 1.5;
 }
 
-.page-chrome {
-  max-width: 760px;
-}
-
 .page-header {
   margin-bottom: 30px;
 }
@@ -60,8 +71,11 @@ body {
   margin: 0;
 }
 
-/* Staggered entrance for the form body. */
-#main-form > * {
+/* Staggered entrance for the form body. Popover panels are excluded: they are
+   children of #main-form, and a popover restarts its animations each time it
+   opens — so the panel would fade in from transparent every time, showing the
+   page through it for half a second. */
+#main-form > *:not([popover]) {
   animation: rise 0.5s ease both;
 }
 #main-form > *:nth-child(1) { animation-delay: 0.06s; }
@@ -249,6 +263,60 @@ body {
   margin: 0 0 14px;
 }
 
+/* Single-choice comparison: one radio per column, all in one group. The whole
+   column is the click target, and the checked column reads as chosen. */
+.widget-approaches[data-choice="single"] .approach-col:has(input:checked) {
+  border-color: var(--hv-accent);
+  background: var(--hv-accent-tint);
+}
+
+.approach-choice {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--hv-border);
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--hv-text);
+  cursor: pointer;
+}
+
+.approach-choice input[type="radio"] {
+  accent-color: var(--hv-accent);
+  cursor: pointer;
+}
+
+/* The "neither" escape, below the grid and in the same radio group — so declining
+   both is an answer the user gives, not an empty field indistinguishable from one
+   they never reached. */
+.approaches-none {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-top: 12px;
+  padding: 10px 13px;
+  border: 1px solid var(--hv-border);
+  border-radius: 8px;
+  background: var(--hv-surface-2);
+  font-size: 0.95rem;
+  color: var(--hv-text);
+  cursor: pointer;
+}
+
+.approaches-none:hover { border-color: var(--hv-accent); }
+
+.approaches-none:has(input:checked) {
+  border-color: var(--hv-accent);
+  background: var(--hv-accent-tint);
+}
+
+.approaches-none input[type="radio"] {
+  accent-color: var(--hv-accent);
+  cursor: pointer;
+}
+
 .approach-verdict {
   display: flex;
   gap: 14px;
@@ -429,6 +497,180 @@ body {
   border-color: var(--hv-accent);
   background: var(--hv-surface);
   box-shadow: 0 0 0 3px var(--hv-accent-tint);
+}
+
+/* ── Evidence: code, tables ───────────────────────────────────────────────── */
+/* A question is answerable only if what it is about is ON the page. These style
+   the material quoted inside a widget so the user never has to go look it up. */
+
+.widget pre {
+  margin: 0 0 12px;
+  padding: 11px 13px;
+  overflow-x: auto;
+  background: var(--hv-surface-2);
+  border: 1px solid var(--hv-border-soft);
+  border-radius: 7px;
+  font-family: var(--hv-font-mono);
+  font-size: 0.83rem;
+  line-height: 1.55;
+  color: var(--hv-text);
+}
+
+.widget pre code {
+  background: none;
+  padding: 0;
+  font-size: inherit;
+}
+
+.widget code {
+  padding: 1px 5px;
+  background: var(--hv-surface-2);
+  border: 1px solid var(--hv-border-soft);
+  border-radius: 4px;
+  font-family: var(--hv-font-mono);
+  font-size: 0.86em;
+}
+
+.widget table {
+  width: 100%;
+  margin: 0 0 12px;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.widget th,
+.widget td {
+  padding: 7px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--hv-border-soft);
+  vertical-align: top;
+}
+
+.widget th {
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--hv-faint);
+}
+
+/* ── Recommended option ───────────────────────────────────────────────────── */
+/* The recommendation lives ON the option it recommends, not in a block above the
+   list: at a glance the user sees which one is advised without reading a
+   paragraph and mapping it back onto the choices. Marking is not selecting —
+   the input stays unchecked, so a submitted form still carries a real answer. */
+
+.radio-option.is-recommended,
+.checkbox-option.is-recommended {
+  border-color: var(--hv-ok);
+  background: var(--hv-ok-tint);
+}
+
+.radio-option.is-recommended:hover,
+.checkbox-option.is-recommended:hover {
+  border-color: var(--hv-ok-deep);
+}
+
+.approach-col.is-recommended {
+  border-color: var(--hv-ok);
+}
+
+/* Selecting an option other than the recommended one must still read as the
+   selected one — the checked treatment wins over the recommendation tint. */
+.widget-radio .radio-option.is-recommended:has(input:checked),
+.widget-checkbox .checkbox-option.is-recommended:has(input:checked) {
+  border-color: var(--hv-accent);
+}
+
+.recommended-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 8px;
+  white-space: nowrap;
+}
+
+/* ── Recommendation block ─────────────────────────────────────────────────── */
+/* For a question with no options to mark — an open-ended .widget-text. */
+
+.widget-recommendation {
+  margin: 0 0 14px;
+  padding: 11px 14px;
+  border-left: 3px solid var(--hv-ok);
+  border-radius: 0 7px 7px 0;
+  background: var(--hv-ok-tint);
+}
+
+.widget-recommendation-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--hv-ok-deep);
+  margin-bottom: 5px;
+}
+
+.widget-recommendation p {
+  margin: 0 0 6px;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--hv-text);
+}
+
+.widget-recommendation p:last-child { margin-bottom: 0; }
+
+.widget-recommendation .recommendation-why {
+  color: var(--hv-muted);
+  font-size: 0.88rem;
+}
+
+/* ── Diagrams ─────────────────────────────────────────────────────────────── */
+/* Mermaid injects its own <svg>; this supplies the surface and keeps a wide
+   graph scrollable instead of overflowing the widget. Colours come from the
+   themeVariables bridge in references/mermaid.md, not from here. Class names
+   match visualize mode's so one reference document serves both. */
+
+.vis-mermaid-wrap {
+  position: relative;
+  margin: 0 0 13px;
+  padding: 12px 14px;
+  background: var(--hv-surface-2);
+  border: 1px solid var(--hv-border-soft);
+  border-radius: 8px;
+  overflow-x: auto;
+}
+
+.vis-mermaid-wrap pre.mermaid {
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: none;
+  text-align: center;
+}
+
+/* Pre-render the raw graph source is visible as text. Hide it so the page does
+   not flash a wall of Mermaid syntax before the module script runs. */
+.vis-mermaid-wrap pre.mermaid:not([data-processed]) { visibility: hidden; }
+
+.vis-mermaid-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--hv-faint);
+  margin-bottom: 6px;
+}
+
+.vis-compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 580px) {
+  .vis-compare { grid-template-columns: 1fr; }
 }
 
 /* ── Responsive tweaks ────────────────────────────────────────────────────── */

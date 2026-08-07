@@ -48,18 +48,38 @@
       data-qtype  : "radio"
       Each option : <input type="radio"> with name=data-qid and value=<option-value>
       .annotatable + data-anchor-id : adds an always-visible free-text note field
+
+      This example carries the FULL stack — see ask-markup.md for the reading
+      order it follows. Evidence and the why panel are used where the question
+      needs them; one option is marked .is-recommended on every question you can
+      form a view on.
     -->
     <div class="widget widget-radio annotatable"
          data-qid="q-priority"
          data-qtype="radio"
          data-anchor-id="q-priority"
          id="q-priority">
-      <span class="widget-label">[Claude: question text — e.g. "What priority should this have?"]</span>
-      <span class="widget-hint">[Claude: optional hint]</span>
+      <span class="widget-label">[Claude: the question, in plain English, understandable with no chat context]
+        <button class="hv-info-btn" type="button" popovertarget="q-priority-why"
+                aria-label="Why this matters">?</button>
+      </span>
+      <span class="widget-hint">[Claude: one line orienting the reader — what this affects]</span>
+
+      <!-- Evidence: quote what is being decided so nobody has to go look it up.
+           <pre>, <table>, and .vis-mermaid-wrap are all styled — see ask-markup.md. -->
+      <pre><code>[Claude: the code, config, or data under discussion]</code></pre>
+
       <div class="radio-options">
-        <label class="radio-option">
+        <!-- The recommended option. Marked, NOT pre-selected. -->
+        <label class="radio-option is-recommended">
           <input type="radio" name="q-priority" value="high">
-          <span>High — needs immediate attention</span>
+          <span>High — needs immediate attention
+            <span class="recommended-mark">
+              <span class="hv-pill">Recommended</span>
+              <button class="hv-info-btn" type="button" popovertarget="q-priority-rec"
+                      aria-label="Why this option">?</button>
+            </span>
+          </span>
         </label>
         <label class="radio-option">
           <input type="radio" name="q-priority" value="medium">
@@ -70,6 +90,24 @@
           <span>Low — backlog is fine</span>
         </label>
       </div>
+    </div>
+
+    <!-- The two panels for the widget above. Siblings of the widget, never
+         nested inside it. Each id matches its opener's popovertarget. -->
+    <div id="q-priority-why" popover class="hv-popover">
+      <h3>Why this matters</h3>
+      <p>[Claude: plain-English background — what happens today, why this is a
+         question at all, and what changes with each answer. Spell out any term
+         the reader may not share with you.]</p>
+      <button class="hv-popover-close" type="button" popovertarget="q-priority-why"
+              popovertargetaction="hide">Close</button>
+    </div>
+
+    <div id="q-priority-rec" popover class="hv-popover">
+      <h3>Why this one</h3>
+      <p>[Claude: the tradeoff that decided it, and what the other options cost]</p>
+      <button class="hv-popover-close" type="button" popovertarget="q-priority-rec"
+              popovertargetaction="hide">Close</button>
     </div>
 
     <!-- ── EXAMPLE 3: Multi-choice (checkbox) question ──────────────────── -->
@@ -104,54 +142,81 @@
       </div>
     </div>
 
-    <!-- ── EXAMPLE 4: Side-by-side approaches ────────────────────────────── -->
+    <!-- ── EXAMPLE 4: Side-by-side approaches (single choice) ────────────── -->
     <!--
       Widget type      : approaches
-      data-qid         : unique question ID (also the prefix for per-column answer keys)
+      data-qid         : unique question ID
       data-qtype       : "approaches"
+      data-choice      : "single" — the columns share ONE radio group, so the answer
+                         is which approach won. This is the right mode for
+                         alternatives. Omit data-choice ONLY when every combination
+                         is a real outcome (all of them, none, any subset); in that
+                         mode each column carries its own .approach-verdict
+                         approve/reject pair named "<data-qid>-<data-approach-id>",
+                         and two alternatives can both be approved — which decides
+                         nothing. See ask-markup.md for that variant.
       .approach-col    : one column; MUST carry data-approach-id="<col-id>"
-      .approach-header : heading for the column
-      .approach-verdict: per-column approve/reject radios (values: "approve" | "reject")
-      Per-column answer key in payload: "<data-qid>-<data-approach-id>"
-        e.g. data-qid="q-approach" + data-approach-id="a" → answers["q-approach-a"]
+      .approach-choice : the column's radio — name = data-qid, value = approach id
+      .approaches-none : "neither", same radio group; include it wherever declining
+                         both is a real answer
+      Answer in payload: answers["q-approach"] = "a" | "b" | "neither" | null
       .annotatable + data-anchor-id : adds an always-visible free-text note field
     -->
     <div class="widget widget-approaches annotatable"
          data-qid="q-approach"
          data-qtype="approaches"
+         data-choice="single"
          data-anchor-id="q-approach"
          id="q-approach">
-      <span class="widget-label">[Claude: question text — e.g. "Which implementation approach do you prefer?"]</span>
-      <span class="widget-hint">[Claude: optional hint — e.g. "Evaluate the tradeoffs for your context."]</span>
+      <span class="widget-label">[Claude: question text — e.g. "Which implementation approach should we take?"]
+        <button class="hv-info-btn" type="button" popovertarget="q-approach-why"
+                aria-label="Why this matters">?</button>
+      </span>
+      <span class="widget-hint">[Claude: optional hint — what the choice affects]</span>
       <div class="approaches-grid">
 
-        <div class="approach-col" data-approach-id="a">
-          <div class="approach-header">Approach A: [Claude: name]</div>
-          <p>[Claude: describe approach A — key tradeoffs, risks, effort.]</p>
-          <div class="approach-verdict">
-            <label>
-              <input type="radio" name="q-approach-a" value="approve"> Prefer this
-            </label>
-            <label>
-              <input type="radio" name="q-approach-a" value="reject"> Skip this
-            </label>
+        <div class="approach-col is-recommended" data-approach-id="a">
+          <div class="approach-header">[Claude: name of approach A]
+            <span class="recommended-mark">
+              <span class="hv-pill">Recommended</span>
+              <button class="hv-info-btn" type="button" popovertarget="q-approach-rec"
+                      aria-label="Why this option">?</button>
+            </span>
           </div>
+          <p>[Claude: what it does.]</p>
+          <p><strong>Cost:</strong> [Claude: what it costs — state this honestly.]</p>
+          <label class="approach-choice">
+            <input type="radio" name="q-approach" value="a"> Pick this one
+          </label>
         </div>
 
         <div class="approach-col" data-approach-id="b">
-          <div class="approach-header">Approach B: [Claude: name]</div>
-          <p>[Claude: describe approach B — key tradeoffs, risks, effort.]</p>
-          <div class="approach-verdict">
-            <label>
-              <input type="radio" name="q-approach-b" value="approve"> Prefer this
-            </label>
-            <label>
-              <input type="radio" name="q-approach-b" value="reject"> Skip this
-            </label>
-          </div>
+          <div class="approach-header">[Claude: name of approach B]</div>
+          <p>[Claude: what it does.]</p>
+          <p><strong>Cost:</strong> [Claude: what it costs.]</p>
+          <label class="approach-choice">
+            <input type="radio" name="q-approach" value="b"> Pick this one
+          </label>
         </div>
 
       </div>
+      <label class="approaches-none">
+        <input type="radio" name="q-approach" value="neither"> Neither — [Claude: say what happens then]
+      </label>
+    </div>
+
+    <div id="q-approach-why" popover class="hv-popover">
+      <h3>Why this matters</h3>
+      <p>[Claude: the background — what happens today and what each answer changes.]</p>
+      <button class="hv-popover-close" type="button" popovertarget="q-approach-why"
+              popovertargetaction="hide">Close</button>
+    </div>
+
+    <div id="q-approach-rec" popover class="hv-popover">
+      <h3>Why this one</h3>
+      <p>[Claude: the tradeoff that decided it.]</p>
+      <button class="hv-popover-close" type="button" popovertarget="q-approach-rec"
+              popovertargetaction="hide">Close</button>
     </div>
 
     <!-- ── Verdict section ─────────────────────────────────────────────── -->
@@ -221,6 +286,10 @@
 </div><!-- /.page-chrome -->
 
 <script src="/assets/shared/submit.js"></script>
+<script src="/assets/shared/overlay.js"></script>
 <script src="/assets/ask/app.js"></script>
+
+<!-- If any question carries a Mermaid diagram, add the module block from
+     references/mermaid.md here, once per page. Remove this comment otherwise. -->
 </body>
 </html>

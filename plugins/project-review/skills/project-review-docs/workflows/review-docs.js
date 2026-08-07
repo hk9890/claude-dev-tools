@@ -6,7 +6,10 @@ export const meta = {
     { title: 'Manifest', detail: 'deterministic facts: files, metrics, links, routes' },
     { title: 'Read-review', detail: 'one agent per use case, plus the files that are not use cases' },
     { title: 'History', detail: 'did past sessions open the doc their route points at?' },
-    { title: 'Execution', detail: 'per AGENTS route: cold agent does a task, driver grades (high = 3 routes, ultra = all)' },
+    // `meta` must be a pure literal, so this cannot be declared conditionally.
+    // executionRoutes is 0 at low and medium, where the row would otherwise sit at
+    // "not started" for the whole run and read as a hang.
+    { title: 'Execution (high/ultra only)', detail: 'per AGENTS route: cold agent does a task, driver grades — 3 routes at high, all at ultra' },
     { title: 'Synthesis', detail: 'dedupe + cross-file reconciliation + report' },
   ],
 }
@@ -331,8 +334,18 @@ const REPORT_SCHEMA = {
           observation: { type: 'string' },
           why_it_matters: { type: 'string' },
           recommended_action: { type: 'string' },
+          // Settled or open — the vocabulary is defined once in references/decision-split.md
+          // at the plugin root. Without the split, a form built from findings[] asks the
+          // maintainer to approve fixing a doc that contradicts the code, spending attention
+          // on a question that was never open. The three fields below make an open finding
+          // answerable by someone who did not run the audit; JSON Schema cannot make them
+          // conditionally required, so the synthesis prompt does.
+          decision: { type: 'string', enum: ['settled', 'open'] },
+          question: { type: 'string' },
+          options: { type: 'array', items: { type: 'string' } },
+          recommendation: { type: 'string' },
         },
-        required: ['file', 'severity', 'observation', 'why_it_matters', 'recommended_action'],
+        required: ['file', 'severity', 'observation', 'why_it_matters', 'recommended_action', 'decision'],
       },
     },
     cross_file_notes: { type: 'string' },
@@ -690,7 +703,7 @@ if (typeof agent === 'function') {
       `Because you have read the doc, you also hold the correct answer/outcome — record it as the answer key.\n` +
       `Classify the task's safety tier: A = safe/read-only, B = expensive but safe, C = destructive/irreversible (tag/push/publish/delete/prod).\n` +
       `Return {task, expected (the answer key), tier, rationale}.`,
-      { label: `gen:${route.target}`, phase: 'Execution', model: 'opus', schema: TASK_SCHEMA }
+      { label: `gen:${route.target}`, phase: 'Execution (high/ultra only)', model: 'opus', schema: TASK_SCHEMA }
     ),
     // Stage 2: cold action agent attempts the task — uncoached, in the live repo,
     // so it sees uncommitted doc edits — and appends a live trace to a scratch file.
@@ -707,7 +720,7 @@ if (typeof agent === 'function') {
         `HARD CONSTRAINT — you are working directly in the user's live repository. There is no sandbox and nothing is discarded afterwards, so every side effect is real. Do not create, modify, or delete any file in the repo. Do not change git state (no commit, branch, tag, stash, checkout, push). Do not install packages, publish, or deploy. Reading, searching, and running self-contained commands is fine — a build or test run is allowed, and the untracked cache output it leaves behind is acceptable. The only path you may write to is the trace file below. If finishing the task would require a forbidden step, stop there and report the command you would have run instead of running it.\n\n` +
         `KEEP A LIVE TRACE: run \`mkdir -p ${scratchDir}\` once, then as you work append to ${tf} — this path is outside the repo, so it keeps the repo clean. Log every step: each doc you open (its path), each command with its REAL exit code and a short output snippet, and any obstacle. This trace, not your summary, is what gets graded — make it faithful.\n\n` +
         `When done also return: whether you completed it, your answer/outcome, which docs you consulted, and the commands you ran.`,
-        { label: `do:${route.target}`, phase: 'Execution', model: 'sonnet', schema: ACTION_SCHEMA }
+        { label: `do:${route.target}`, phase: 'Execution (high/ultra only)', model: 'sonnet', schema: ACTION_SCHEMA }
       ).then(res => ({ _skipped: false, route: route.target, task, action: res, traceFile: tf }))
     },
     // Stage 3: driver grades the SESSION (the trace file) against its answer key,
@@ -736,7 +749,7 @@ if (typeof agent === 'function') {
         `- inconclusive: failed for a reason NOT attributable to the doc (missing environment/creds/network, or the agent did something dumb) — discard.\n` +
         `Set attribution to doc / agent / environment / none. If there is a documentation finding, state it and its severity; otherwise finding="" severity=none.\n` +
         `Return {route, verdict, attribution, finding, severity}.`,
-        { label: `grade:${route.target}`, phase: 'Execution', model: 'opus', schema: GRADE_SCHEMA }
+        { label: `grade:${route.target}`, phase: 'Execution (high/ultra only)', model: 'opus', schema: GRADE_SCHEMA }
       )
     }
   )
@@ -771,7 +784,8 @@ if (typeof agent === 'function') {
     `4. Fold the behavioural and synthetic evidence in. From execution: 'found-but-insufficient' or 'couldnt-route' is a real doc finding; discard 'inconclusive'. From history: only entries with attribution "doc" are doc findings — an "agent" attribution means the route was written correctly and skipped anyway, which belongs in execution_summary as an observation, never as a defect in the file. An "insufficient-evidence" attribution is not a finding of any kind.\n` +
     `5. State the evidence per use case in execution_summary: how many valid segments history had, which use cases had none, and which were probed by execution. A use case with no evidence is a gap in THIS AUDIT, never a defect in the doc — say so in those words rather than implying the doc is unused.\n` +
     `   Report the superseded-route evidence too, in its own short paragraph, and label it as being about wording that no longer exists. Quote the old route and give the ratio of segments that did the work to segments that opened the doc. Where a route has since been rewritten, say whether that evidence supports the rewrite. Never let it change a verdict or a finding about current text — but never drop it either: a route that was ignored under its old wording is the reason the new wording exists.\n` +
-    `6. Assign an overall verdict: accurate / minor gaps / significant gaps / misleading. A clean 'accurate' requires no blocker/major AND positive coverage — not merely absence of findings.\n\n` +
+    `6. Assign an overall verdict: accurate / minor gaps / significant gaps / misleading. A clean 'accurate' requires no blocker/major AND positive coverage — not merely absence of findings.\n` +
+    `7. Tag every finding \`settled\` or \`open\`, leaving none untagged. SETTLED is a doc contradicting the code or the repo's actual layout, a stale command, a dead link, a missing or misnamed route, CLAUDE.md carrying anything but the one-line import, an injected tool-block — one correct answer, nothing to weigh. OPEN moves content from one file to another (who owns a topic is a judgement), deletes a section someone may be relying on, rewords a route people's habits are built on, adopts a convention the repo has not committed to, or is large enough that "not now" is a real answer. When you can argue it either way it is settled: a doc that contradicts the code is a bug, and asking permission to fix it wastes the maintainer's attention. For every OPEN finding also fill \`question\` (what is being decided, in plain English a reader outside this audit understands, naming the file and what it currently says), \`options\` (the real alternatives, including "leave it as is" wherever that is one), and \`recommendation\` (which option you would pick and the tradeoff that decided it).\n\n` +
     `Return the structured object with fields verdict, headline, findings[], cross_file_notes, execution_summary. ` +
     `Each finding's why_it_matters states the concrete cost, risk, or trap the defect creates for someone relying on the doc — not a restatement of the observation. ` +
     `cross_file_notes and execution_summary are separate PLAIN-TEXT prose fields — never write XML/HTML tags, angle-bracket markers, or field names inside their values. ` +

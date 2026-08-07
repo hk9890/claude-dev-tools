@@ -85,9 +85,12 @@ docs inline. The workflow returns a structured report; relay it.
      Tier-C (destructive) tasks are never executed.
 
 5. Relay the report. The workflow returns `{ report: { verdict, headline, findings[], … }, raw, … }`
-   — surface `.report`, and do not re-derive it. For a "did you really check X?"
-   follow-up, **re-run the skill**; never answer from the report alone, and never
-   from `grep`/link-checks.
+   — surface `.report`, and do not re-derive it. Each finding is tagged `settled`
+   or `open` — read `<base directory for this skill>/../../references/decision-split.md`
+   for what those mean and how to relay them (the plugin-root layout applies, so
+   `../..` is correct here). For a "did you really check X?" follow-up, **re-run
+   the skill**; never answer from the report alone, and never from
+   `grep`/link-checks.
 
    Report a failed run as a failure. There are two ways to come back without a
    usable report, and both end the same way — say the audit did not complete, and
@@ -100,11 +103,8 @@ docs inline. The workflow returns a structured report; relay it.
      and offer to re-run; `raw.read_findings` holds unsynthesized per-file output,
      so relay it only as raw material, never as the report.
 
-   Once relayed, offer to decide on the findings via a form: `/html-visualize-ask`
-   built from `findings[]` renders a browser HTML question/decision form so they
-   can approve/reject each one instead of doing it turn by turn in chat. Only
-   offer this if that skill exists; it ships in the separate `html-visualization`
-   plugin.
+   Once relayed, offer the form per `../../references/decision-split.md`, over the open
+   findings. "the docs audit" is what was reviewed.
 
 If `python3` is missing or the workflow cannot launch, read every doc in full by
 hand against all three parts of the standard — `<STANDARD_DIR>/references/project-setup.md`

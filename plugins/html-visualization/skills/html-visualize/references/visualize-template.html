@@ -68,6 +68,9 @@
       --hv-shadow-lg: 0 2px 4px rgba(42,32,14,.06), 0 16px 38px -14px rgba(42,32,14,.26);
       --hv-radius: 11px;
 
+      /* Page measure — one value across ask, feedback and visualize. */
+      --hv-page: 1360px;
+
       /* Typography */
       --hv-font-display: "Charter", "Bitstream Charter", "Sitka Text", "Iowan Old Style", Cambria, Georgia, serif;
       --hv-font-body: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -148,7 +151,7 @@
 
     /* ── Page layout ────────────────────────────────────────────────────── */
     .page-chrome {
-      max-width: 900px;
+      max-width: var(--hv-page);
       margin: 0 auto;
       padding: 2.5rem 1.5rem 4rem;
     }
@@ -281,6 +284,7 @@
        come from the themeVariables bridge, not from here — see
        references/visualize.md → "Mermaid (for graph-shaped content)". */
     .vis-mermaid-wrap {
+      position: relative;
       background: var(--hv-surface);
       border: 1px solid var(--hv-border);
       border-radius: var(--hv-radius);
@@ -454,6 +458,202 @@
       font-size: 0.85rem;
       color: var(--hv-muted);
       margin-left: 0.25rem;
+    }
+
+    /* ── Shared overlay primitive ────────────────────────────────────────── */
+    /* Verbatim copy of assets/shared/overlay.css — the served modes import that
+       file; this template inlines it to stay self-contained. Keep both in sync. */
+
+    /* ── The opener ───────────────────────────────────────────────────────────── */
+
+    .hv-info-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      margin-left: 6px;
+      padding: 0;
+      vertical-align: middle;
+      border: 1px solid var(--hv-accent);
+      border-radius: 50%;
+      background: transparent;
+      color: var(--hv-accent);
+      font-family: var(--hv-font-body);
+      font-size: 0.72rem;
+      font-weight: 700;
+      line-height: 1;
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    .hv-info-btn:hover,
+    .hv-info-btn:focus-visible {
+      background: var(--hv-accent);
+      color: var(--hv-surface);
+    }
+
+    /* ── Inline badge ─────────────────────────────────────────────────────────── */
+
+    .hv-pill {
+      display: inline-block;
+      padding: 1px 7px;
+      border-radius: 999px;
+      background: var(--hv-ok-tint);
+      color: var(--hv-ok-deep);
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      vertical-align: middle;
+    }
+
+    /* ── The panel ────────────────────────────────────────────────────────────── */
+
+    .hv-popover {
+      width: min(560px, calc(100vw - 32px));
+      max-height: min(70vh, 620px);
+      overflow-y: auto;
+      padding: 20px 22px;
+      border: 1px solid var(--hv-border);
+      border-radius: var(--hv-radius);
+      background: var(--hv-surface);
+      color: var(--hv-text);
+      box-shadow: var(--hv-shadow-lg);
+      font-family: var(--hv-font-body);
+      font-size: 0.94rem;
+      line-height: 1.6;
+    }
+
+    .hv-popover::backdrop {
+      background: rgba(var(--hv-ink-rgb), 0.42);
+    }
+
+    .hv-popover h3 {
+      margin: 0 0 10px;
+      font-family: var(--hv-font-display);
+      font-size: 1.12rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: var(--hv-text);
+    }
+
+    .hv-popover > :last-child { margin-bottom: 0; }
+
+    .hv-popover p { margin: 0 0 10px; }
+
+    .hv-popover-close {
+      display: block;
+      margin: 14px 0 0 auto;
+      padding: 6px 14px;
+      border: 1px solid var(--hv-border);
+      border-radius: 7px;
+      background: var(--hv-surface-2);
+      color: var(--hv-muted);
+      font-family: inherit;
+      font-size: 0.84rem;
+      cursor: pointer;
+    }
+
+    .hv-popover-close:hover {
+      border-color: var(--hv-accent);
+      color: var(--hv-accent);
+    }
+
+    /* Diagram variant: as much of the viewport as the browser will give it, since
+       the whole point is that the graph was unreadable at column width. */
+    .hv-popover-wide {
+      width: calc(100vw - 40px);
+      max-width: none;
+      height: calc(100vh - 40px);
+      max-height: none;
+    }
+
+    /* `display` belongs on :popover-open, NEVER on the element itself. A closed
+       popover is hidden by `display: none` in the UA stylesheet, so declaring any
+       other display here forces the panel open permanently — it then covers the
+       page as a blank box and nothing else is reachable. */
+    .hv-popover-wide:popover-open {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .hv-popover-wide .hv-popover-body {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: auto;
+    }
+
+    /* The clone brings the page's diagram container with it; strip its column-width
+       framing so the graph itself gets the whole panel. */
+    .hv-popover-wide .vis-mermaid-wrap {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      border: none;
+      background: none;
+      overflow: visible;
+      display: flex;
+      flex-direction: column;
+      /* A graph shorter than the panel would otherwise sit against the top edge with
+         a large empty band under it, which reads as a rendering failure. */
+      justify-content: center;
+    }
+
+    /* Mermaid writes `max-width` inline on the <svg> at the size it laid out for the
+       column. Without !important that inline value wins and "make big" produces a
+       column-sized graph centred in a full-screen panel.
+       Width only — forcing the height too stretches the graph off its aspect ratio
+       and the node labels tear away from their boxes. */
+    .hv-popover-wide .hv-popover-body svg {
+      width: 100% !important;
+      height: auto !important;
+      max-width: none !important;
+      max-height: none !important;
+    }
+
+    /* ── Diagram zoom control ─────────────────────────────────────────────────── */
+
+    /* Always visible: a diagram too small to read is exactly when the reader needs this
+       control, and hiding it behind hover means they never learn it exists. Sits in the
+       corner, quiet until pointed at. */
+    .hv-zoom-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 11px;
+      border: 1px solid var(--hv-border);
+      border-radius: 999px;
+      background: var(--hv-surface);
+      color: var(--hv-muted);
+      font-family: var(--hv-font-body);
+      font-size: 0.73rem;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      line-height: 1;
+      cursor: pointer;
+      transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+    }
+
+    /* Corner-arrows glyph, so the control reads as "enlarge" before the label is read. */
+    .hv-zoom-btn::before {
+      content: "⤢";
+      font-size: 0.9rem;
+      line-height: 1;
+    }
+
+    .hv-zoom-btn:hover,
+    .hv-zoom-btn:focus-visible {
+      border-color: var(--hv-accent);
+      color: var(--hv-accent);
+      background: var(--hv-surface-2);
     }
   </style>
 </head>
@@ -742,5 +942,41 @@
 }());
 </script>
 
+
+  <!-- ── Diagram zoom ──────────────────────────────────────────────────────
+    Verbatim copy of assets/shared/overlay.js — the served modes load that file;
+    this template inlines it to stay self-contained. Keep both in sync. Remove
+    this block if the page has no .vis-mermaid-wrap.
+  -->
+  <script>
+  (function () {
+    'use strict';
+
+    function fill(btn) {
+      var panel = document.getElementById(btn.getAttribute('popovertarget'));
+      if (!panel) return;
+      var body = panel.querySelector('.hv-popover-body');
+      var source = btn.closest('.vis-mermaid-wrap');
+      if (!body || !source) return;
+
+      var copy = source.cloneNode(true);
+      // Drop only the opener — the clone would otherwise carry a second button
+      // pointing at the panel it now lives inside.
+      copy.querySelectorAll('.hv-zoom-btn').forEach(function (el) { el.remove(); });
+      // The `id` attributes stay. Mermaid emits a <style> INSIDE the <svg> whose
+      // every rule is scoped to that svg's own id, so stripping ids to keep the
+      // document unique would leave the clone unstyled: black default node fills
+      // and labels clipped out of their boxes. Duplicate ids are harmless here —
+      // nothing looks a diagram up by id, and the scoped rules matching both
+      // copies is exactly what makes the panel render like the page.
+      body.replaceChildren(copy);
+    }
+
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest && e.target.closest('.hv-zoom-btn');
+      if (btn) fill(btn);
+    });
+  })();
+  </script>
 </body>
 </html>

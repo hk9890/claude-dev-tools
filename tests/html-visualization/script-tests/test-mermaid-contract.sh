@@ -2,10 +2,16 @@
 # test-mermaid-contract.sh — pin the Mermaid integration against drift.
 #
 # The Mermaid init block is authored in TWO places that must stay in agreement:
-#   - skills/html-visualize/references/visualize.md         (the documented snippet)
+#   - skills/html-visualize/references/mermaid.md           (the documented snippet,
+#     shared by every mode that draws a graph)
 #   - skills/html-visualize/references/visualize-template.html (the ready-to-uncomment copy)
 # They are not byte-identical — the template's copy lives inside an HTML comment at a
 # different indent — so this pins the load-bearing invariants rather than the literal text.
+#
+# The container styles have TWO homes too, one per mode: the template's inline <style>
+# for visualize (self-contained, file://-capable) and assets/ask/style.css for ask. A
+# diagram authored per mermaid.md into an ask form renders unstyled if that second copy
+# is missing, and nothing else would catch it.
 #
 # The token check is the point of this suite. Mermaid cannot read CSS custom properties,
 # so the bridge names each --hv-* token as a STRING. A typo or an invented token fails
@@ -20,18 +26,30 @@ set -uo pipefail
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
 [[ -n "$REPO_ROOT" ]] || { printf 'FAIL: cannot resolve repo root from %s\n' "${BASH_SOURCE[0]}" >&2; exit 1; }
 REF_DIR="$REPO_ROOT/plugins/html-visualization/skills/html-visualize/references"
-DOC="$REF_DIR/visualize.md"
+DOC="$REF_DIR/mermaid.md"
 TPL="$REF_DIR/visualize-template.html"
+ASK_CSS="$REPO_ROOT/plugins/html-visualization/assets/ask/style.css"
 
 PASS=0
 FAIL=0
 ok()   { printf 'PASS: %s\n' "$1"; PASS=$((PASS + 1)); }
 fail() { printf 'FAIL: %s\n' "$1"; FAIL=$((FAIL + 1)); }
 
-for f in "$DOC" "$TPL"; do
+for f in "$DOC" "$TPL" "$ASK_CSS"; do
   [[ -f "$f" ]] || { fail "$(basename "$f") — file not found"; }
 done
-[[ -f "$DOC" && -f "$TPL" ]] || { printf '\nResults: %d passed, %d failed\n' "$PASS" "$FAIL"; exit 1; }
+[[ -f "$DOC" && -f "$TPL" && -f "$ASK_CSS" ]] || { printf '\nResults: %d passed, %d failed\n' "$PASS" "$FAIL"; exit 1; }
+
+# ── 0. Every mode that offers diagrams must route to the shared snippet ───────
+# mermaid.md is reachable only through these pointers; a mode that stops naming it
+# silently loses the integration while its guidance still tells Claude to draw.
+for mode in visualize ask; do
+  if grep -Fq 'references/mermaid.md' "$REF_DIR/$mode.md"; then
+    ok "$mode.md points at references/mermaid.md"
+  else
+    fail "$mode.md — no pointer to references/mermaid.md; the module block is unreachable"
+  fi
+done
 
 # ── 1. Both copies pin the same Mermaid major version and module flavour ──────
 CDN='mermaid@11/dist/mermaid.esm.min.mjs'
@@ -110,11 +128,125 @@ else
 fi
 
 # ── 4. The container classes the guidance tells Claude to use must exist ──────
+# Once per mode: the visualize template's inline <style>, and ask mode's stylesheet.
 for cls in 'vis-mermaid-wrap' 'vis-compare' 'vis-mermaid-label'; do
   if grep -Fq ".$cls" "$TPL"; then
     ok "template styles .$cls"
   else
     fail "template — .$cls is referenced by the Mermaid guidance but has no styles"
+  fi
+  if grep -Fq ".$cls" "$ASK_CSS"; then
+    ok "ask/style.css styles .$cls"
+  else
+    fail "ask/style.css — .$cls is referenced by the Mermaid guidance but has no styles"
+  fi
+done
+
+# The FOUC guard is part of the container contract, not the module block: without it
+# the raw Mermaid source flashes as text before the script runs.
+if grep -Fq 'pre.mermaid:not([data-processed])' "$ASK_CSS"; then
+  ok "ask/style.css carries the FOUC guard"
+else
+  fail "ask/style.css — no pre.mermaid:not([data-processed]) rule; diagram source flashes on load"
+fi
+
+# ── 5. The zoom control reaches every mode ────────────────────────────────────
+# The served modes link assets/shared/overlay.{css,js}; the template inlines both to
+# stay file://-capable. Drift between them is silent — the button renders and simply
+# opens an empty panel — so pin each declaration the pair depends on.
+OVERLAY_CSS="$REPO_ROOT/plugins/html-visualization/assets/shared/overlay.css"
+OVERLAY_JS="$REPO_ROOT/plugins/html-visualization/assets/shared/overlay.js"
+
+for f in "$OVERLAY_CSS" "$OVERLAY_JS"; do
+  [[ -f "$f" ]] || fail "$(basename "$f") — file not found"
+done
+
+for cls in 'hv-zoom-btn' 'hv-popover-wide' 'hv-popover-body'; do
+  if grep -Fq ".$cls" "$OVERLAY_CSS"; then
+    ok "overlay.css styles .$cls"
+  else
+    fail "overlay.css — .$cls is named by the zoom markup but has no styles"
+  fi
+  # The template's inline copy must carry the same rule.
+  if grep -Fq ".$cls" "$TPL"; then
+    ok "template inlines .$cls"
+  else
+    fail "template — .$cls missing from the inline overlay copy; zoom panel renders unstyled"
+  fi
+done
+
+# A closed [popover] is hidden by `display: none` in the UA stylesheet. Declaring any
+# other display on the element itself overrides that and pins the panel open, so it
+# covers the page as a blank box and NOTHING else on the page is reachable. The rule
+# must sit on :popover-open instead. This shipped once; it is invisible to any check
+# that only fetches the page.
+for f in "$OVERLAY_CSS" "$TPL"; do
+  n="$(basename "$f")"
+  # Only the bare `.hv-popover-wide {` block — descendant rules like
+  # `.hv-popover-wide .hv-popover-body` set display legitimately.
+  if awk '/^[[:space:]]*\.hv-popover-wide[[:space:]]*\{/,/\}/' "$f" | grep -qE '^[[:space:]]*display:'; then
+    fail "$n — .hv-popover-wide sets display outside :popover-open; the panel stays open and blanks the page"
+  else
+    ok "$n keeps display off the closed .hv-popover-wide"
+  fi
+  if grep -Fq '.hv-popover-wide:popover-open' "$f"; then
+    ok "$n sets the panel's display on :popover-open"
+  else
+    fail "$n — no .hv-popover-wide:popover-open rule; the zoom panel would never lay out"
+  fi
+done
+
+# Stripping ids from the clone breaks Mermaid's own <style>, which scopes every rule to
+# the svg's id: the panel then renders black default nodes with clipped labels.
+for f in "$OVERLAY_JS" "$TPL"; do
+  n="$(basename "$f")"
+  if grep -qE "removeAttribute\(['\"]id" "$f"; then
+    fail "$n — clone strips ids; Mermaid's id-scoped <style> stops matching and the zoom renders unstyled"
+  else
+    ok "$n leaves the clone's ids intact"
+  fi
+done
+
+# The clone step is what lets a diagram be authored once. Without it the panel opens
+# empty and the make-big button looks broken rather than absent.
+for f in "$OVERLAY_JS" "$TPL"; do
+  n="$(basename "$f")"
+  if grep -Fq 'hv-popover-body' "$f" && grep -Fq 'cloneNode' "$f"; then
+    ok "$n clones the diagram into the zoom panel"
+  else
+    fail "$n — no cloneNode into .hv-popover-body; the zoom panel would open empty"
+  fi
+done
+
+# mermaid.md is where an author learns the markup; if it stops describing the control,
+# diagrams ship without one and the styles above are dead.
+if grep -Fq 'hv-zoom-btn' "$DOC"; then
+  ok "mermaid.md documents the zoom control"
+else
+  fail "mermaid.md — no .hv-zoom-btn markup; authors would never add one"
+fi
+
+# ── 6. One page measure across the modes ──────────────────────────────────────
+# ask, feedback and visualize used to disagree (760/840/900). The token is the fix;
+# a mode reintroducing its own max-width silently opts out of it.
+if grep -Eq '^\s*--hv-page:' "$REPO_ROOT/plugins/html-visualization/assets/shared/tokens.css"; then
+  ok "tokens.css defines --hv-page"
+else
+  fail "tokens.css — --hv-page is missing; the modes have no shared page measure"
+fi
+
+if grep -Eq '^\s*--hv-page:' "$TPL"; then
+  ok "template inlines --hv-page"
+else
+  fail "template — --hv-page missing from the inline token copy"
+fi
+
+for f in "$ASK_CSS" "$REPO_ROOT/plugins/html-visualization/assets/feedback/style.css"; do
+  n="$(basename "$(dirname "$f")")/$(basename "$f")"
+  if grep -Eq '\.page-chrome\s*\{[^}]*max-width' "$(dirname "$f")/style.css" 2>/dev/null; then
+    fail "$n — sets its own .page-chrome max-width, overriding the shared --hv-page"
+  else
+    ok "$n takes the shared page measure"
   fi
 done
 

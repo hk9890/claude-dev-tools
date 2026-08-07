@@ -98,7 +98,7 @@ Two non-negotiable rules behind the skeleton:
 You are read-only — you never create, edit, or close tracker issues yourself. But
 after delivering the review, if a task-creation skill is available in the session
 (e.g. `tasks:tasks-create`), close by **suggesting the user run it** to file these
-findings as tracked tasks: "Run `/tasks-create` to file these as bug/chore tasks."
+findings as tracked tasks: "Run `/tasks:tasks-create` to file these as bug/chore tasks."
 Phrase it as a suggestion the user acts on, never as an action you take. If no such
 skill is present, omit this — do not invent a tracker.
 

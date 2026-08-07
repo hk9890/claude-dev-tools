@@ -1,0 +1,212 @@
+/* overlay.css — the shared "button opens a panel" primitive.
+ *
+ * One pattern serves every place a mode has more to say than fits inline:
+ * why a question matters, why an option is recommended, and a diagram shown
+ * large. Built on the native `popover` attribute, so Escape, click-outside
+ * dismissal, focus handling and the top-layer stacking come from the browser —
+ * no JavaScript, and it works in a page saved to disk.
+ *
+ * Imported by chrome.css, so ask and feedback get it through their single
+ * import. visualize-template.html must stay self-contained for file:// use and
+ * therefore carries a verbatim inline copy of this file — keep both in sync.
+ *
+ * Vocabulary:
+ *   .hv-info-btn      — the small round button that opens a panel
+ *   .hv-pill          — a short inline badge, e.g. "Recommended"
+ *   .hv-popover       — the panel itself; always carries the `popover` attribute
+ *   .hv-popover-wide  — panel variant sized for a diagram
+ *   .hv-popover-close — the panel's close button
+ *   .hv-zoom-btn      — the "Expand" control on a diagram container
+ */
+
+/* ── The opener ───────────────────────────────────────────────────────────── */
+
+.hv-info-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 6px;
+  padding: 0;
+  vertical-align: middle;
+  border: 1px solid var(--hv-accent);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--hv-accent);
+  font-family: var(--hv-font-body);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.hv-info-btn:hover,
+.hv-info-btn:focus-visible {
+  background: var(--hv-accent);
+  color: var(--hv-surface);
+}
+
+/* ── Inline badge ─────────────────────────────────────────────────────────── */
+
+.hv-pill {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--hv-ok-tint);
+  color: var(--hv-ok-deep);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+/* ── The panel ────────────────────────────────────────────────────────────── */
+
+.hv-popover {
+  width: min(560px, calc(100vw - 32px));
+  max-height: min(70vh, 620px);
+  overflow-y: auto;
+  padding: 20px 22px;
+  border: 1px solid var(--hv-border);
+  border-radius: var(--hv-radius);
+  background: var(--hv-surface);
+  color: var(--hv-text);
+  box-shadow: var(--hv-shadow-lg);
+  font-family: var(--hv-font-body);
+  font-size: 0.94rem;
+  line-height: 1.6;
+}
+
+.hv-popover::backdrop {
+  background: rgba(var(--hv-ink-rgb), 0.42);
+}
+
+.hv-popover h3 {
+  margin: 0 0 10px;
+  font-family: var(--hv-font-display);
+  font-size: 1.12rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--hv-text);
+}
+
+.hv-popover > :last-child { margin-bottom: 0; }
+
+.hv-popover p { margin: 0 0 10px; }
+
+.hv-popover-close {
+  display: block;
+  margin: 14px 0 0 auto;
+  padding: 6px 14px;
+  border: 1px solid var(--hv-border);
+  border-radius: 7px;
+  background: var(--hv-surface-2);
+  color: var(--hv-muted);
+  font-family: inherit;
+  font-size: 0.84rem;
+  cursor: pointer;
+}
+
+.hv-popover-close:hover {
+  border-color: var(--hv-accent);
+  color: var(--hv-accent);
+}
+
+/* Diagram variant: as much of the viewport as the browser will give it, since
+   the whole point is that the graph was unreadable at column width. */
+.hv-popover-wide {
+  width: calc(100vw - 40px);
+  max-width: none;
+  height: calc(100vh - 40px);
+  max-height: none;
+}
+
+/* `display` belongs on :popover-open, NEVER on the element itself. A closed
+   popover is hidden by `display: none` in the UA stylesheet, so declaring any
+   other display here forces the panel open permanently — it then covers the
+   page as a blank box and nothing else is reachable. */
+.hv-popover-wide:popover-open {
+  display: flex;
+  flex-direction: column;
+}
+
+.hv-popover-wide .hv-popover-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+}
+
+/* The clone brings the page's diagram container with it; strip its column-width
+   framing so the graph itself gets the whole panel. */
+.hv-popover-wide .vis-mermaid-wrap {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  /* A graph shorter than the panel would otherwise sit against the top edge with
+     a large empty band under it, which reads as a rendering failure. */
+  justify-content: center;
+}
+
+/* Mermaid writes `max-width` inline on the <svg> at the size it laid out for the
+   column. Without !important that inline value wins and "make big" produces a
+   column-sized graph centred in a full-screen panel.
+   Width only — forcing the height too stretches the graph off its aspect ratio
+   and the node labels tear away from their boxes. */
+.hv-popover-wide .hv-popover-body svg {
+  width: 100% !important;
+  height: auto !important;
+  max-width: none !important;
+  max-height: none !important;
+}
+
+/* ── Diagram zoom control ─────────────────────────────────────────────────── */
+
+/* Always visible: a diagram too small to read is exactly when the reader needs this
+   control, and hiding it behind hover means they never learn it exists. Sits in the
+   corner, quiet until pointed at. */
+.hv-zoom-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border: 1px solid var(--hv-border);
+  border-radius: 999px;
+  background: var(--hv-surface);
+  color: var(--hv-muted);
+  font-family: var(--hv-font-body);
+  font-size: 0.73rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+/* Corner-arrows glyph, so the control reads as "enlarge" before the label is read. */
+.hv-zoom-btn::before {
+  content: "⤢";
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.hv-zoom-btn:hover,
+.hv-zoom-btn:focus-visible {
+  border-color: var(--hv-accent);
+  color: var(--hv-accent);
+  background: var(--hv-surface-2);
+}

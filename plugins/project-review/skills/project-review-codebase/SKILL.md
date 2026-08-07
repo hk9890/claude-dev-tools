@@ -40,7 +40,10 @@ modes are actually exercised.
 4. Relay the report. The workflow returns
    `{ report: { verdict, dimension_verdicts, headline, findings[], recommended_actions[], architecture_candidates[], report_markdown, … }, raw, … }`
    — surface `.report` including the prioritised `recommended_actions`, and do
-   not re-derive or re-label it. When `architecture_candidates` is non-empty, list
+   not re-derive or re-label it. Each action is tagged `settled` or `open` — read
+   `<base directory for this skill>/../../references/decision-split.md` for what
+   those mean and how to relay them (the plugin-root layout applies, so `../..`
+   is correct here). When `architecture_candidates` is non-empty, list
    the candidates **numbered from 1 in array order** with their title, strength and
    dependency category; that number is how the user selects one. For a "did you
    really check X?" follow-up, **re-run the skill**; never answer from the report
@@ -71,13 +74,9 @@ modes are actually exercised.
    Then surface it in one line, e.g.
    `Full report with diagrams: /tmp/codebase-review-20260724-101500.md`
    — and note what they can do with it:
-   - **View it rendered** — `/html-visualize-page <path>` renders the Markdown and
-     its Mermaid diagrams in the browser. Only offer this if that skill exists;
-     it ships in the separate `html-visualization` plugin.
-   - **Decide on it** — `/html-visualize-ask` built from the `recommended_actions`
-     and any `architecture_candidates` renders a browser HTML form so they can
-     approve/reject each one instead of doing it turn by turn in chat. Only offer
-     this if that skill exists; it ships in the separate `html-visualization` plugin.
+   - **Decide on it** — offer the form per `../../references/decision-split.md`, over the
+     open actions plus any `architecture_candidates`. "the codebase review" is what
+     was reviewed.
    - **Keep it** — if they want it in the repo, they say where and you copy it.
      Do not pick a location or copy it unprompted.
 
