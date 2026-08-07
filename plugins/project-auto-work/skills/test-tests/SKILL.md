@@ -16,11 +16,12 @@ Nothing is ever committed, no test is written, nothing is installed.
 
 ## Run the workflow
 
-1. Parse `$ARGUMENTS` as `[low|medium|high|ultra] [html-viz] [path]`. All optional. A
-   leading `low` | `medium` | `high` | `ultra` token is the **level**, and a leading
-   `html-viz` token after it puts the open decisions on a browser form in step 6.
-   Everything left is the target path (default: the repo root — resolve a free-form
-   description to a directory or fall back to the root).
+1. Parse `$ARGUMENTS` as `[low|medium|high|ultra] [html-viz] [path]`. All optional, and
+   either leading token stands without the other. A `low` | `medium` | `high` | `ultra`
+   token is the **level** and an `html-viz` token puts the open decisions on a browser
+   form in step 6; take both from the front of the argument, in either order. Everything
+   left is the target path (default: the repo root — resolve a free-form description to
+   a directory or fall back to the root).
 
    If no level token is given, ask with `AskUserQuestion` (header "Level"):
    - `low` — the highest-churn components, a few mutants each. Quick signal.
@@ -108,10 +109,11 @@ Nothing is ever committed, no test is written, nothing is installed.
    really check X?" follow-up, **re-run the skill**; never answer from the report
    alone.
 
-   Each proposal is tagged `settled` or `open`. Read
-   `<base directory for this skill>/../../references/decision-split.md` for what those
-   mean, how to relay them, and what `html-viz` changes — the plugin-root layout
-   applies, so `../..` is correct here.
+   Each proposal is tagged `settled` or `open`. Follow
+   `<base directory for this skill>/../../references/decision-split.md` — it defines
+   both words and branches on `html-viz`. Done when every open item has been put to the
+   user and the settled batch has been named. The plugin-root layout applies, so `../..`
+   is correct here.
 
 If `python3` is missing or the workflow cannot launch, do not improvise an inline
 audit — report which prerequisite is missing and stop. If the workflow returns an

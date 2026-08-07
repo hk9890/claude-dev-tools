@@ -17,10 +17,11 @@ know what the app reaches. Point it at an environment whose data you can afford 
 
 ## Run the workflow
 
-1. Parse `$ARGUMENTS` as `[low|medium|high|ultra] [html-viz] [focus-or-doc]`. All optional. A
-   leading `low` | `medium` | `high` | `ultra` token is the **level**, and a leading `html-viz`
-   token after it puts the open decisions on a browser form in step 5. Everything left is the
-   **focus**, in one of three shapes:
+1. Parse `$ARGUMENTS` as `[low|medium|high|ultra] [html-viz] [focus-or-doc]`. All optional,
+   and either leading token stands without the other. A `low` | `medium` | `high` | `ultra`
+   token is the **level** and an `html-viz` token puts the open decisions on a browser form
+   in step 5; take both from the front of the argument, in either order. Everything left is
+   the **focus**, in one of three shapes:
 
    - **absent** — launch the application and exercise it broadly.
    - **an area** ("the export feature") — exercise that part of it.
@@ -81,10 +82,11 @@ know what the app reaches. Point it at an environment whose data you can afford 
    For a "did you really check X?" follow-up, **re-run the skill**; never answer from the
    report alone.
 
-   Each proposal is tagged `settled` or `open`, and `questions[]` are open by construction.
-   Read `<base directory for this skill>/../../references/decision-split.md` for what those
-   mean, how to relay them, and what `html-viz` changes — the plugin-root layout applies, so
-   `../..` is correct here.
+   Each proposal is tagged `settled` or `open`. Follow
+   `<base directory for this skill>/../../references/decision-split.md` — it defines both
+   words and branches on `html-viz`. Done when every open item has been put to the user and
+   the settled batch has been named. The plugin-root layout applies, so `../..` is correct
+   here.
 
 If the workflow returns an object with `error` and no `report` (bad arguments, or the recon
 agent died), relay the error verbatim, state that the run did not happen, and do not

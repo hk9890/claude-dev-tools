@@ -1,8 +1,12 @@
 # Settled and open
 
 Every review here classifies what it found into two kinds, and both skills relay
-them the same way. This file is the single source of truth for the vocabulary and
-the relay; each skill's workflow owns only what the line means in its own domain.
+them the same way. This file governs that for `project-review`; each skill's
+workflow owns only what the line means in its own domain.
+
+`project-auto-work` carries its own copy of the same vocabulary, because plugins
+install independently and neither can reach the other's files. Changing what
+settled or open *means* is a two-file edit, in both plugins, or they drift.
 
 | Kind | What it is |
 |---|---|
