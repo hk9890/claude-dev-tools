@@ -8,7 +8,7 @@ A plugin marketplace for [Claude Code](https://claude.ai/code). Each plugin is a
 |---|---|
 | [`tasks`](plugins/tasks/) | Write and file tasks worth executing — `tasks-writing` (the standard a task body follows, with a worked example of every type) and `tasks-create` (turns the current conversation into a filed, dependency-ordered set). |
 | [`project-review`](plugins/project-review/) | Read-only adversarial audits that return a prioritized action list — `project-review-codebase` and `project-review-docs`. |
-| [`project-execute`](plugins/project-execute/) | Run a project's own documented flows from its docs — `project-exec-testing`, `project-exec-releasing`, `project-exec-monitoring`, `project-exec-reviewing`, `project-exec-running`, and `project-explain`. |
+| [`project-execute`](plugins/project-execute/) | Run a project's own documented flows from its docs — `project-exec-testing`, `project-exec-releasing`, `project-exec-monitoring`, `project-exec-reviewing`, `project-exec-running`, and `project-explain`; `project-exec-init` writes the doc set those flows are read from. |
 | [`challenge`](plugins/challenge/) | Project-agnostic adversarial passes — `grill` (stress-test a plan), `kiss` (cut accidental complexity), `are-you-sure` (re-check finished work). |
 | [`github-releases`](plugins/github-releases/) | Language-agnostic GitHub release workflow with quality gates, semver, and release notes. |
 | [`claude-catppuccin`](plugins/claude-catppuccin/) | Catppuccin color themes for Claude Code: Latte, Frappe, Macchiato, Mocha. |
