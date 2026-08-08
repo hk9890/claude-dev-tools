@@ -19,7 +19,7 @@ Invoke `instruction-writing:writing-project-docs` through the `Skill` tool and f
 
 Read what the project already carries and record two lists.
 
-**Present** — which of `README.md`, `AGENTS.md`, `CLAUDE.md` exist, and every file under `docs/`.
+**Present** — which of `README.md`, `AGENTS.md`, `CLAUDE.md` exist, and every file under `docs/`. Read each one against its *Inside* / *Not inside* contract in the standard and note what breaches it. Step 3 routes to these; step 4 reports the breaches.
 
 **Earned** — which canonical topics the repo has real local guidance for. A topic is *earned* only where the repo holds the evidence below; a topic doc for anything else would be hollow, which the standard rules out.
 
@@ -41,9 +41,9 @@ Keep the evidence you found for each earned topic. It is the material step 3 wri
 - `README.md`, `AGENTS.md`, `CLAUDE.md` — always, when absent. They are the required set.
 - `docs/<TOPIC>.md` — only for an earned topic that has no file yet.
 
-**Ground every line in this repo.** Commands come from its actual task runner and CI, layout from its actual tree, conventions from what its code and config already do. Where the repo settles a question, write what it settles; where it does not, drop the point rather than fill it with generic advice. Match each file's worked example in the standard.
+**Ground every line in this repo.** Where the repo settles a question, write what it settles; where it does not, drop the point.
 
-`AGENTS.md` routes to the docs you just wrote — one `###` section per use case, each an obligation, and nothing else.
+`AGENTS.md` routes the whole set — the docs you just wrote and the ones already present.
 
 ## 4. Report
 
