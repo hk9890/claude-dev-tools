@@ -40,9 +40,10 @@
  * touching /ping would hold the server open forever, and there is no fixed
  * timeout left to backstop it.
  *
- * POST /bye is the tab-close beacon. It does not exit the process — it expires
- * the liveness clock, so the next sweep (10s) exits unless another tab has pinged
- * in the meantime. That is what makes closing one of two open tabs safe.
+ * POST /bye is the tab-close beacon. It does not exit the process — it schedules
+ * a close, which any tab still open cancels by pinging. That is what makes
+ * closing one of two open tabs safe, and it is why the window is 90s: a
+ * backgrounded tab has its timers throttled and may only ping once a minute.
  *
  * --mode selects what an abandoned page means:
  *   - visualize: the submit was always optional, so abandonment exits 0 silently.
@@ -277,12 +278,17 @@ let closingDeadline = null;
 // --grace-sec still expires promptly instead of waiting out a fixed sweep.
 const SWEEP_MS = Math.max(250, Math.min(10 * 1000, (graceSec * 1000) / 2));
 
-// How long a tab-close beacon leaves before exiting. This MUST stay longer than
-// the client's idle ping interval (30s): the beacon only says "one tab went
-// away", and the way a second, still-open tab objects is by pinging. Give it
-// less than a full ping interval and closing one of two tabs would reliably kill
-// the page in the other — the exact failure the beacon is routed through the
-// clock to avoid rather than exiting directly.
+// How long a tab-close beacon leaves before exiting. The beacon only says "one
+// tab went away", and the way a second, still-open tab objects is by pinging —
+// so this MUST outlast that tab's ping interval, or closing one of two tabs
+// reliably kills the page in the other. That is the whole reason the beacon is
+// routed through the clock instead of exiting directly.
+//
+// 90s, not the 30s idle interval plus a margin: a tab hidden for more than about
+// five minutes has its timers throttled to roughly one tick per minute, so the
+// surviving tab may be pinging at ~60s rather than 30s. Sizing this to the
+// unthrottled rate would leave exactly that tab — backgrounded, still wanted —
+// as the one the beacon kills.
 //
 // Never longer than the grace itself, so it can only ever shorten a lifetime.
 //
@@ -291,7 +297,7 @@ const SWEEP_MS = Math.max(250, Math.min(10 * 1000, (graceSec * 1000) / 2));
 // simply go quiet?" untestable at any grace short enough to run in a suite —
 // they expire together. Nothing but the test suite sets this.
 const BEACON_WINDOW_MS = Number(process.env.HV_BEACON_WINDOW_MS)
-  || Math.min(35 * 1000, graceSec * 1000);
+  || Math.min(90 * 1000, graceSec * 1000);
 
 const graceMs = graceSec * 1000;
 
