@@ -264,8 +264,14 @@ async function testInjectionAndRootIsNotLiveness() {
     // Save strips scripts mentioning CSRF_TOKEN when it clones the DOM. Split
     // across blocks, a saved offline copy would keep the heartbeat and ping a
     // host that no longer exists.
-    const block = res.body.match(/<script>[^<]*CSRF_TOKEN[^<]*<\/script>/);
-    if (block && /HV_GENERATION/.test(block[0]) && /HV_MODE/.test(block[0])) {
+    // Sliced with indexOf rather than matched with a tag regex: a regex that
+    // tries to delimit HTML tags misses the forms a real parser accepts, and
+    // the invariant here needs no parsing — everything from CSRF_TOKEN to the
+    // end of its own script element must carry the other two constants.
+    const from = res.body.indexOf('CSRF_TOKEN');
+    const to = from === -1 ? -1 : res.body.indexOf('</script', from);
+    const block = from === -1 ? '' : res.body.slice(from, to === -1 ? undefined : to);
+    if (block.includes('HV_GENERATION') && block.includes('HV_MODE')) {
       ok('all three constants share one CSRF_TOKEN-bearing <script> block');
     } else {
       fail('constants are split across script blocks — a saved copy would keep pinging');

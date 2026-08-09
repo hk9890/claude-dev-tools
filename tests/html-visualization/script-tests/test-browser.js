@@ -894,31 +894,29 @@ async function testSavedCopyIsInert() {
     ]);
     const savedPath = path.join(tmpDir, 'saved.html');
     await download.saveAs(savedPath);
-    // Assert on what survived inside <script> blocks, which is the actual
-    // invariant: Save drops every script mentioning CSRF_TOKEN, and a script is
-    // the only thing that could ping. Subtracting the comments first and
-    // searching the remainder would be looser in both directions — the template
-    // explains this mechanism in comments that necessarily name the very things
-    // being stripped, and stripping comments by regex is an incomplete
-    // sanitizer besides.
-    const saved = fs.readFileSync(savedPath, 'utf8');
-    const scriptBodies = Array.from(
-      saved.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi),
-      (m) => m[1]
-    ).join('\n');
+    // Open the saved file with no server behind it, and assert against the
+    // parsed DOM rather than against the file as text. Matching tags with a
+    // regex misses the cases a real parser handles (`</script >`, among others),
+    // and there is no reason to reach for one here: a browser is already open,
+    // and the Save button's own strip runs against the DOM too — so this checks
+    // the same surface Save operated on.
+    const offline = await ctx.newPage();
+    const offlineRequests = [];
+    offline.on('request', (req) => { offlineRequests.push(req.url()); });
+    await offline.goto('file://' + savedPath);
+    await offline.waitForTimeout(1500);
+
+    const scriptBodies = await offline.evaluate(() =>
+      Array.from(document.querySelectorAll('script'))
+        .map((s) => s.textContent || '')
+        .join('\n')
+    );
 
     if (scriptBodies.indexOf('CSRF_TOKEN') === -1) ok('no surviving script carries the CSRF token');
     else                                            fail('a script in the saved copy still references CSRF_TOKEN');
 
     if (scriptBodies.indexOf('hvHeartbeat') === -1) ok('no surviving script carries the heartbeat');
     else                                             fail('the saved copy still runs the heartbeat — it would ping a dead host');
-
-    // And prove it by opening the saved file with no server behind it at all.
-    const offline = await ctx.newPage();
-    const offlineRequests = [];
-    offline.on('request', (req) => { offlineRequests.push(req.url()); });
-    await offline.goto('file://' + savedPath);
-    await offline.waitForTimeout(1500);
 
     if (!offlineRequests.some((u) => u.indexOf('/ping') !== -1)) {
       ok('the saved copy opened offline issues no ping');
