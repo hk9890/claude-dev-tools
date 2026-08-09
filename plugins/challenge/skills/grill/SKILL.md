@@ -20,7 +20,7 @@ them.
 ## Asking a round
 
 Every question goes through the `AskUserQuestion` tool. Your own recommendation leads the
-options, labelled `(Recommended)`.
+options, its `label` ending in `(Recommended)`.
 
 - A frontier wider than one call goes out as back-to-back calls before you recompute — those
   calls are still one round.
