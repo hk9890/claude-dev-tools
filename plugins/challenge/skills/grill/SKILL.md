@@ -28,10 +28,9 @@ by quoting questions back.
 - Each `header` names the decision its question settles ("Auth model", "Rollout").
 - Each option is a design choice the user could commit to, and its `description` says what
   choosing it commits them to.
-- Write the question and its options in ASD-STE100 Simplified Technical English — one idea
-  per sentence, active voice, every identifier and abbreviation expanded. The user reads the
-  picker cold, without the design tree in front of them: that vocabulary is yours for
-  working the tree, not theirs for answering.
+- Write both in ASD-STE100 Simplified Technical English, every identifier and abbreviation
+  expanded — the user reads the picker cold, so the design tree's vocabulary is yours for
+  working it, not theirs for answering.
 
 ## Facts and decisions
 
