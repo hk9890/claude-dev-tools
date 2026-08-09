@@ -1,8 +1,7 @@
 # visualize mode
 
 Render an HTML visualization — a diagram, chart, data summary, interactive demo,
-or any rich visual — serve it non-blocking via the `--no-wait` flag, and continue
-immediately. The user opens the page in a browser to view it. Every visualize page
+or any rich visual — serve it non-blocking, and continue immediately. The user opens the page in a browser to view it. Every visualize page
 has an always-on footer with a "Message to Claude" textarea and **Send** / **Save**
 buttons; the user may optionally send a message back, but Claude does not wait for
 it.
@@ -274,12 +273,12 @@ file, and serve it.
 
 ## Step 5 — Cleanup
 
-See `references/serve.md` — cleanup section (visualize mode). The server
-self-terminates on timeout; the temp directory is left behind. Cleanup is
-optional:
+See `references/serve.md` — cleanup section (visualize mode). Closing the tab
+beacons the server down on its own, so nothing normally needs killing; the temp
+directory is left behind. Cleanup is optional:
 
 ```bash
-rm -rf "$HTML_DIR"   # optional; the server has already exited after timeout
+rm -rf "$HTML_DIR"   # optional; the server exits on its own once the page is gone
 ```
 
 If the user sent a message, a `visualization.feedback.json` file will be present in

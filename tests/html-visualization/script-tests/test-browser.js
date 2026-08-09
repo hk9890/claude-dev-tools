@@ -9,7 +9,7 @@
  * is needed in the repo.
  *
  * Tests:
- *   1. Visualize --no-wait: page renders, always-on footer present,
+ *   1. Visualize: page renders, always-on footer present,
  *      --hv-* CSS tokens resolve in both light and dark colour schemes.
  *   2. Visualize Send trims: a whitespace-only message writes no feedback file
  *      and reports "Closed."; a padded message arrives trimmed.
@@ -17,6 +17,18 @@
  *      auto-reloads when a fresh fb-generation is served on the same port.
  *   4. Missing shared client: an ask page authored without the
  *      /assets/shared/submit.js tag reports it and disables Submit.
+ *   5. Approaches widget in single-choice mode.
+ *   6. Heartbeat: the served page issues authenticated pings, and re-checks
+ *      immediately when a backgrounded tab becomes visible again.
+ *   7. Disconnected banner: killing the server disables Send, explains itself,
+ *      and offers the typed text back on the clipboard; reconnecting clears it.
+ *   8. Tab close: pagehide beacons the server down inside its grace window.
+ *   9. Saved copy: Save strips the heartbeat, so an offline file neither pings
+ *      nor shows a disconnected banner.
+ *  10. Apply gap: the deliberate feedback-round server gap raises no banner.
+ *
+ * Server-side lifetime behaviour (grace expiry, exit codes, token persistence)
+ * lives in test-server-lifetime.js, which needs no browser.
  */
 
 'use strict';
@@ -87,13 +99,14 @@ function fail(label) { console.log('FAIL: ' + label); FAIL++; failures.push(labe
  * Returns Promise<{ pid, proc, baseUrl, feedbackFile, logFile, port }>.
  * Waits up to 5s for the URL line.
  */
-function startServer(htmlFile, extraArgs = []) {
+function startServer(htmlFile, extraArgs = [], extraEnv = {}) {
   return new Promise((resolve, reject) => {
     const logFile = path.join(os.tmpdir(), `hv-test-browser-${process.pid}-${Date.now()}.log`);
     const logFd   = fs.openSync(logFile, 'w');
 
     const proc = spawn(process.execPath, [SERVER, htmlFile, ...extraArgs], {
       stdio: ['ignore', logFd, logFd],
+      env: { ...process.env, ...extraEnv },
     });
 
     let resolved = false;
@@ -168,9 +181,9 @@ function waitForPort(port, timeoutMs = 3000) {
   });
 }
 
-// ── Test 1: visualize --no-wait ────────────────────────────────────────────
+// ── Test 1: visualize page ─────────────────────────────────────────────────
 //
-// Serves the real visualize-template.html with --no-wait.
+// Serves the real visualize-template.html in visualize mode.
 // Asserts:
 //   a) The page renders (has a <body> with content)
 //   b) The always-on footer is present (#vis-message textarea, #vis-send, #vis-save)
@@ -178,7 +191,7 @@ function waitForPort(port, timeoutMs = 3000) {
 //   d) --hv-bg resolves to a DIFFERENT value in dark scheme
 
 async function testVisualize() {
-  console.log('\n--- test: visualize --no-wait ---');
+  console.log('\n--- test: visualize page ---');
   let srv = null;
   let browser = null;
 
@@ -189,7 +202,7 @@ async function testVisualize() {
     const htmlFile = path.join(tmpDir, 'test-vis.html');
     fs.copyFileSync(VIS_TMPL, htmlFile);
 
-    srv = await startServer(htmlFile, ['--no-wait', '--timeout-sec', '30']);
+    srv = await startServer(htmlFile, ['--mode', 'visualize', '--grace-sec', '30']);
 
     // 1a: Launch in light mode
     browser = await chromium.launch({ headless: true });
@@ -200,29 +213,29 @@ async function testVisualize() {
 
     // Assert page has a body
     const bodyExists = await lightPage.evaluate(() => !!document.body);
-    if (bodyExists) ok('visualize --no-wait: page renders (body exists)');
-    else             fail('visualize --no-wait: page body missing');
+    if (bodyExists) ok('visualize: page renders (body exists)');
+    else             fail('visualize: page body missing');
 
     // 1b: Footer elements present
     const textareaVisible = await lightPage.locator('#vis-message').isVisible();
     const sendVisible     = await lightPage.locator('#vis-send').isVisible();
     const saveVisible     = await lightPage.locator('#vis-save').isVisible();
 
-    if (textareaVisible) ok('visualize --no-wait: footer textarea (#vis-message) present');
-    else                  fail('visualize --no-wait: footer textarea (#vis-message) not visible');
+    if (textareaVisible) ok('visualize: footer textarea (#vis-message) present');
+    else                  fail('visualize: footer textarea (#vis-message) not visible');
 
-    if (sendVisible) ok('visualize --no-wait: Send button (#vis-send) present');
-    else              fail('visualize --no-wait: Send button (#vis-send) not visible');
+    if (sendVisible) ok('visualize: Send button (#vis-send) present');
+    else              fail('visualize: Send button (#vis-send) not visible');
 
-    if (saveVisible) ok('visualize --no-wait: Save button (#vis-save) present');
-    else              fail('visualize --no-wait: Save button (#vis-save) not visible');
+    if (saveVisible) ok('visualize: Save button (#vis-save) present');
+    else              fail('visualize: Save button (#vis-save) not visible');
 
     // 1c: --hv-bg resolves in light mode (non-empty, looks like a colour)
     const hvBgLight = await lightPage.evaluate(() =>
       getComputedStyle(document.documentElement).getPropertyValue('--hv-bg').trim()
     );
-    if (hvBgLight) ok('visualize --no-wait: --hv-bg resolves in light mode (' + hvBgLight + ')');
-    else            fail('visualize --no-wait: --hv-bg did not resolve in light mode');
+    if (hvBgLight) ok('visualize: --hv-bg resolves in light mode (' + hvBgLight + ')');
+    else            fail('visualize: --hv-bg did not resolve in light mode');
 
     // 1d: --hv-bg is different in dark mode
     const darkCtx  = await browser.newContext({ colorScheme: 'dark' });
@@ -233,13 +246,13 @@ async function testVisualize() {
     const hvBgDark = await darkPage.evaluate(() =>
       getComputedStyle(document.documentElement).getPropertyValue('--hv-bg').trim()
     );
-    if (hvBgDark) ok('visualize --no-wait: --hv-bg resolves in dark mode (' + hvBgDark + ')');
-    else           fail('visualize --no-wait: --hv-bg did not resolve in dark mode');
+    if (hvBgDark) ok('visualize: --hv-bg resolves in dark mode (' + hvBgDark + ')');
+    else           fail('visualize: --hv-bg did not resolve in dark mode');
 
     if (hvBgLight !== hvBgDark) {
-      ok('visualize --no-wait: --hv-bg differs between light (' + hvBgLight + ') and dark (' + hvBgDark + ')');
+      ok('visualize: --hv-bg differs between light (' + hvBgLight + ') and dark (' + hvBgDark + ')');
     } else {
-      fail('visualize --no-wait: --hv-bg same in light and dark (' + hvBgLight + ') — tokens not switching');
+      fail('visualize: --hv-bg same in light and dark (' + hvBgLight + ') — tokens not switching');
     }
 
     await browser.close();
@@ -249,7 +262,7 @@ async function testVisualize() {
     fs.rmSync(tmpDir, { recursive: true, force: true });
 
   } catch (err) {
-    fail('visualize --no-wait: unexpected error — ' + err.message);
+    fail('visualize: unexpected error — ' + err.message);
     if (browser) { try { await browser.close(); } catch (_) {} }
     killServer(srv);
   }
@@ -272,10 +285,9 @@ async function testVisualizeSubmitTrims() {
     const tmpDir   = fs.mkdtempSync(path.join(os.tmpdir(), 'hv-test-trim-'));
     const htmlFile = path.join(tmpDir, 'test-vis.html');
     fs.copyFileSync(VIS_TMPL, htmlFile);
-    // --no-wait, because that is how visualize mode is served (serve.md) and the
-    // silent-close branch is --no-wait only: in blocking mode, used by ask and
-    // feedback, every submit writes a file by design.
-    const srv = await startServer(htmlFile, ['--no-wait', '--timeout-sec', '30']);
+    // --mode visualize, because the silent-close branch is visualize-only: in
+    // ask and feedback every submit writes a file by design.
+    const srv = await startServer(htmlFile, ['--mode', 'visualize', '--grace-sec', '30']);
     try {
       const ctx  = await browser.newContext();
       const page = await ctx.newPage();
@@ -291,7 +303,7 @@ async function testVisualizeSubmitTrims() {
       await ctx.close();
       // Give the server its moment to write and exit before we look.
       await new Promise(r => setTimeout(r, 400));
-      // --no-wait suppresses the "Feedback file:" startup line, so derive the path
+      // visualize suppresses the "Feedback file:" startup line, so derive the path
       // from the documented convention: <html-dir>/<basename-without-ext>.feedback.json
       const fbFile = path.join(tmpDir, 'test-vis.feedback.json');
       const wrote = fs.existsSync(fbFile);
@@ -342,15 +354,15 @@ async function testFeedbackApplyLoop() {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hv-test-fb-'));
     const htmlFile = path.join(tmpDir, 'review.html');
 
-    // ── Round 1: serve with generation "gen-round-1" ──────────────────────
+    // ── Round 1 ───────────────────────────────────────────────────────────
+    // The generation is the file's mtime now, injected by the server, so the
+    // document needs nothing written into it — which is the point: Claude can
+    // no longer forget to change a value, or reuse one, and leave the tab
+    // sitting on a stale page.
     const fbTmplHtml = fs.readFileSync(FB_TMPL, 'utf8');
-    const html1 = fbTmplHtml.replace(
-      /(<meta\s+name="fb-generation"\s+content=")[^"]*(")/,
-      '$1gen-round-1$2'
-    );
-    fs.writeFileSync(htmlFile, html1, 'utf8');
+    fs.writeFileSync(htmlFile, fbTmplHtml, 'utf8');
 
-    srv1 = await startServer(htmlFile);
+    srv1 = await startServer(htmlFile, ['--mode', 'feedback']);
     const port = srv1.port;
 
     // Write the .port file (mirrors the Cycle C contract)
@@ -363,15 +375,14 @@ async function testFeedbackApplyLoop() {
     await page.goto(srv1.baseUrl + '/');
     await page.waitForLoadState('domcontentloaded');
 
-    // Verify the page loaded the first generation
-    const gen1InPage = await page.evaluate(() => {
-      const meta = document.querySelector('meta[name="fb-generation"]');
-      return meta ? meta.getAttribute('content') : null;
-    });
-    if (gen1InPage === 'gen-round-1') {
-      ok('feedback Apply-loop: round-1 page loaded with correct fb-generation');
+    // The server injects the generation as a page constant.
+    const gen1InPage = await page.evaluate(
+      () => (typeof HV_GENERATION !== 'undefined' ? HV_GENERATION : null)
+    );
+    if (gen1InPage) {
+      ok('feedback Apply-loop: round-1 page carries an injected HV_GENERATION');
     } else {
-      fail('feedback Apply-loop: round-1 fb-generation wrong (expected gen-round-1, got ' + gen1InPage + ')');
+      fail('feedback Apply-loop: HV_GENERATION was not injected');
     }
 
     // ── Submit an Apply action to the first server ─────────────────────────
@@ -416,19 +427,19 @@ async function testFeedbackApplyLoop() {
     });
     srv1 = null; // mark as stopped
 
-    // ── Round 2: regenerate with a fresh fb-generation and re-serve same port
-    const html2 = fbTmplHtml.replace(
-      /(<meta\s+name="fb-generation"\s+content=")[^"]*(")/,
-      '$1gen-round-2$2'
-    );
-    fs.writeFileSync(htmlFile, html2, 'utf8');
+    // ── Round 2: regenerate the document and re-serve on the same port ────
+    // Rewriting the file is the entire regeneration protocol now — the mtime it
+    // advances is the generation. Sleep first so the new mtime is distinguishable
+    // on filesystems with coarse timestamps.
+    await new Promise((r) => setTimeout(r, 50));
+    fs.writeFileSync(htmlFile, fbTmplHtml.replace('</body>', '<!-- round two --></body>'), 'utf8');
 
     // Wait briefly for the port to be freed, then start the second server
     // on the same port (up to 2 retries as per serve.md contract)
     let srv2Started = false;
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        srv2 = await startServer(htmlFile, ['--port', String(port)]);
+        srv2 = await startServer(htmlFile, ['--mode', 'feedback', '--port', String(port)]);
         srv2Started = true;
         break;
       } catch (err) {
@@ -445,9 +456,10 @@ async function testFeedbackApplyLoop() {
     ok('feedback Apply-loop: re-served on same port ' + port);
 
     // ── Wait for the open tab to auto-reload ──────────────────────────────
-    // app.js polls GET / every 1s; once it sees a different fb-generation it
-    // calls window.location.reload(). The sentinel variable is cleared by reload.
-    // Wait up to 10s for the sentinel to disappear.
+    // The heartbeat is in its fast (1s) rate because the page knows it asked
+    // for a regeneration; the first ping to reach the new server reports a
+    // different generation and the page reloads. The sentinel is cleared by
+    // that reload. Wait up to 10s for it to disappear.
     let reloaded = false;
     const deadline = Date.now() + 10000;
     while (Date.now() < deadline) {
@@ -459,22 +471,22 @@ async function testFeedbackApplyLoop() {
     }
 
     if (reloaded) {
-      ok('feedback Apply-loop: open tab auto-reloaded after new fb-generation served');
+      ok('feedback Apply-loop: open tab auto-reloaded once the regenerated document was served');
     } else {
       fail('feedback Apply-loop: open tab did NOT auto-reload within 10s');
     }
 
-    // Verify the reloaded page shows the new generation
+    // Verify the reloaded page carries the advanced generation
     await page.waitForLoadState('domcontentloaded');
-    const gen2InPage = await page.evaluate(() => {
-      const meta = document.querySelector('meta[name="fb-generation"]');
-      return meta ? meta.getAttribute('content') : null;
-    }).catch(() => null);
+    const gen2InPage = await page.evaluate(
+      () => (typeof HV_GENERATION !== 'undefined' ? HV_GENERATION : null)
+    ).catch(() => null);
 
-    if (gen2InPage === 'gen-round-2') {
-      ok('feedback Apply-loop: reloaded page shows new fb-generation (gen-round-2)');
+    if (gen2InPage && gen2InPage !== gen1InPage) {
+      ok('feedback Apply-loop: reloaded page carries the advanced generation');
     } else {
-      fail('feedback Apply-loop: reloaded page fb-generation wrong (expected gen-round-2, got ' + gen2InPage + ')');
+      fail('feedback Apply-loop: generation did not advance across the reload '
+           + '(round 1 = ' + gen1InPage + ', round 2 = ' + gen2InPage + ')');
     }
 
     await browser.close();
@@ -523,7 +535,7 @@ async function testMissingSharedClient() {
     async function probe(html, name) {
       const htmlFile = path.join(tmpDir, name);
       fs.writeFileSync(htmlFile, html, 'utf8');
-      const srv = await startServer(htmlFile, ['--no-wait', '--timeout-sec', '30']);
+      const srv = await startServer(htmlFile, ['--mode', 'visualize', '--grace-sec', '30']);
       try {
         const ctx  = await browser.newContext();
         const page = await ctx.newPage();
@@ -600,7 +612,7 @@ async function testApproachesSingleChoice() {
     const htmlFile = path.join(tmpDir, 'feedback.html');
     fs.writeFileSync(htmlFile, fs.readFileSync(ASK_TMPL, 'utf8'));
 
-    srv = await startServer(htmlFile);
+    srv = await startServer(htmlFile, ['--mode', 'ask']);
     await waitForPort(srv.port);
 
     browser = await chromium.launch();
@@ -658,6 +670,327 @@ async function testApproachesSingleChoice() {
   }
 }
 
+// ── Test 6: the page really sends the heartbeat ────────────────────────────
+//
+// The server suite proves that pings hold a server open. What only a browser
+// can prove is that a real page issues them at all, with the token attached —
+// an unauthenticated ping is not credited, so a page that pinged without the
+// header would look alive here and still die at the grace window.
+
+async function testHeartbeatIsSent() {
+  console.log('\n--- test: the served page sends authenticated pings ---');
+  let srv = null, browser = null, tmpDir = null;
+
+  try {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hv-test-ping-'));
+    const htmlFile = path.join(tmpDir, 'visualization.html');
+    fs.copyFileSync(VIS_TMPL, htmlFile);
+    srv = await startServer(htmlFile, ['--mode', 'visualize', '--grace-sec', '60']);
+
+    browser = await chromium.launch({ headless: true });
+    const page = await (await browser.newContext()).newPage();
+
+    const pings = [];
+    page.on('request', (req) => {
+      const u = new URL(req.url());
+      if (u.pathname === '/ping') pings.push(req.headers()['x-csrf-token'] || '');
+    });
+
+    await page.goto(srv.baseUrl + '/');
+    await page.waitForLoadState('domcontentloaded');
+    // The loop fires one immediately at start rather than waiting out the first
+    // interval, so the server learns the page exists straight away.
+    await page.waitForTimeout(1500);
+
+    if (pings.length > 0) ok('visualize page pings /ping on load');
+    else                   fail('visualize page never pinged');
+
+    if (pings.length && pings[0] && pings[0].length > 20) {
+      ok('the ping carries the CSRF token header');
+    } else {
+      fail('the ping carried no usable x-csrf-token (' + JSON.stringify(pings[0]) + ')');
+    }
+
+    // Returning to a backgrounded tab must re-check immediately: the browser
+    // throttles timers in hidden tabs, so the interval alone can leave a user
+    // staring at a page whose server died while they were away.
+    const before = pings.length;
+    await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+    await page.waitForTimeout(800);
+    if (pings.length > before) ok('becoming visible again triggers an immediate ping');
+    else                        fail('visibilitychange did not force a ping');
+
+    await browser.close(); browser = null;
+  } catch (err) {
+    fail('heartbeat sent: unexpected error — ' + err.message);
+    if (browser) { try { await browser.close(); } catch (_) {} }
+  } finally {
+    killServer(srv);
+    if (tmpDir) { try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {} }
+  }
+}
+
+// ── Test 7: the page tells the user when the server has died ───────────────
+//
+// This is the failure the whole change exists to fix. Before it, a page whose
+// server was gone looked completely normal: you typed a message, pressed Send,
+// and only then found out. Now a failed ping disables the controls, says so,
+// and offers the typed text back rather than stranding it.
+
+async function testDisconnectedBanner() {
+  console.log('\n--- test: disconnected banner when the server dies ---');
+  let srv = null, browser = null, tmpDir = null;
+
+  try {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hv-test-dead-'));
+    const htmlFile = path.join(tmpDir, 'visualization.html');
+    fs.copyFileSync(VIS_TMPL, htmlFile);
+    srv = await startServer(htmlFile, ['--mode', 'visualize', '--grace-sec', '60']);
+    const port = srv.port;
+
+    browser = await chromium.launch({ headless: true });
+    const ctx = await browser.newContext({ permissions: ['clipboard-read', 'clipboard-write'] });
+    const page = await ctx.newPage();
+    await page.goto(srv.baseUrl + '/');
+    await page.waitForLoadState('domcontentloaded');
+
+    // Type something, so there is work to strand.
+    await page.locator('#vis-message').fill('half-written thought');
+
+    const bannerBefore = await page.locator('#hv-disconnected').count();
+    if (bannerBefore === 0) ok('no banner while the server is up');
+    else                     fail('banner shown against a live server');
+
+    // Kill the server out from under the page, the way a timeout or a crash
+    // would. Then force the check rather than waiting out the idle interval.
+    killServer(srv); srv = null;
+    await page.waitForTimeout(300);
+    await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+
+    await page.locator('#hv-disconnected').waitFor({ state: 'visible', timeout: 8000 });
+    ok('a dead server raises the disconnected banner');
+
+    const sendDisabled = await page.locator('#vis-send').isDisabled();
+    if (sendDisabled) ok('Send is disabled while disconnected');
+    else               fail('Send still enabled after the server died');
+
+    const bannerText = await page.locator('#hv-disconnected').textContent();
+    if (/no longer reach/i.test(bannerText)) ok('the banner explains the page cannot reach Claude');
+    else                                      fail('banner text unclear: ' + JSON.stringify(bannerText));
+
+    // The copy button is the whole point: the typed text must survive.
+    const copyBtn = page.locator('#hv-disconnected button');
+    if (await copyBtn.count()) {
+      ok('the banner offers a copy button for the stranded text');
+      await copyBtn.click();
+      await page.waitForTimeout(300);
+      const clip = await page.evaluate(() => navigator.clipboard.readText().catch(() => ''));
+      if (clip.indexOf('half-written thought') !== -1) {
+        ok('the copy button puts the typed text on the clipboard');
+      } else {
+        fail('clipboard did not receive the typed text (got ' + JSON.stringify(clip) + ')');
+      }
+    } else {
+      fail('no copy button in the disconnected banner');
+    }
+
+    // ── Recovery: the same port comes back, as a feedback Apply round does ──
+    srv = await startServer(htmlFile, ['--mode', 'visualize', '--grace-sec', '60', '--port', String(port)]);
+    await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+    await page.locator('#hv-disconnected').waitFor({ state: 'detached', timeout: 8000 });
+    ok('the banner clears when the server comes back');
+
+    const sendReEnabled = await page.locator('#vis-send').isEnabled();
+    if (sendReEnabled) ok('Send is re-enabled on reconnect');
+    else                fail('Send stayed disabled after reconnect');
+
+    await browser.close(); browser = null;
+  } catch (err) {
+    fail('disconnected banner: unexpected error — ' + err.message);
+    if (browser) { try { await browser.close(); } catch (_) {} }
+  } finally {
+    killServer(srv);
+    if (tmpDir) { try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {} }
+  }
+}
+
+// ── Test 8: closing the tab shuts the server down ──────────────────────────
+//
+// The beacon is what makes a closed page give its port back promptly instead of
+// idling out the grace window. Only a real browser fires pagehide.
+
+async function testTabCloseEndsServer() {
+  console.log('\n--- test: closing the tab ends the server ---');
+  let srv = null, browser = null, tmpDir = null;
+
+  try {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hv-test-close-'));
+    const htmlFile = path.join(tmpDir, 'visualization.html');
+    fs.copyFileSync(VIS_TMPL, htmlFile);
+
+    // A grace far longer than the test, and a beacon window forced short: only
+    // the beacon can explain a fast exit.
+    srv = await startServer(htmlFile, ['--mode', 'visualize', '--grace-sec', '120'],
+                            { HV_BEACON_WINDOW_MS: '1500' });
+
+    browser = await chromium.launch({ headless: true });
+    const ctx = await browser.newContext();
+    const page = await ctx.newPage();
+    await page.goto(srv.baseUrl + '/');
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(500);
+
+    let exited = false;
+    srv.proc.on('exit', () => { exited = true; });
+
+    // Close the page, not the context: tearing the whole context down can take
+    // the network stack with it before a queued beacon is flushed, which would
+    // make this fail for a reason that has nothing to do with the page.
+    await page.close(); // pagehide -> sendBeacon('/bye')
+
+    const deadline = Date.now() + 10000;
+    while (Date.now() < deadline && !exited) await new Promise((r) => setTimeout(r, 200));
+
+    if (exited) ok('closing the tab ended the server well inside its 120s grace');
+    else         fail('server outlived the closed tab — the beacon did not arrive');
+
+    await browser.close(); browser = null;
+  } catch (err) {
+    fail('tab close: unexpected error — ' + err.message);
+    if (browser) { try { await browser.close(); } catch (_) {} }
+  } finally {
+    killServer(srv);
+    if (tmpDir) { try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {} }
+  }
+}
+
+// ── Test 9: a saved offline copy neither pings nor cries disconnected ──────
+//
+// Save clones the DOM and drops every script mentioning CSRF_TOKEN, which is
+// how the heartbeat is kept out of the saved file. If that ever stopped
+// working, an offline copy would loop forever against a host that is gone and
+// paint a "disconnected" banner over a page that is behaving exactly as
+// intended — so check the saved artefact itself, not just the live page.
+
+async function testSavedCopyIsInert() {
+  console.log('\n--- test: a saved copy does not ping ---');
+  let srv = null, browser = null, tmpDir = null;
+
+  try {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hv-test-saved-'));
+    const htmlFile = path.join(tmpDir, 'visualization.html');
+    fs.copyFileSync(VIS_TMPL, htmlFile);
+    srv = await startServer(htmlFile, ['--mode', 'visualize', '--grace-sec', '60']);
+
+    browser = await chromium.launch({ headless: true });
+    const ctx = await browser.newContext({ acceptDownloads: true });
+    const page = await ctx.newPage();
+    await page.goto(srv.baseUrl + '/');
+    await page.waitForLoadState('domcontentloaded');
+
+    const [download] = await Promise.all([
+      page.waitForEvent('download', { timeout: 10000 }),
+      page.locator('#vis-save').click(),
+    ]);
+    const savedPath = path.join(tmpDir, 'saved.html');
+    await download.saveAs(savedPath);
+    // Open the saved file with no server behind it, and assert against the
+    // parsed DOM rather than against the file as text. Matching tags with a
+    // regex misses the cases a real parser handles (`</script >`, among others),
+    // and there is no reason to reach for one here: a browser is already open,
+    // and the Save button's own strip runs against the DOM too — so this checks
+    // the same surface Save operated on.
+    const offline = await ctx.newPage();
+    const offlineRequests = [];
+    offline.on('request', (req) => { offlineRequests.push(req.url()); });
+    await offline.goto('file://' + savedPath);
+    await offline.waitForTimeout(1500);
+
+    const scriptBodies = await offline.evaluate(() =>
+      Array.from(document.querySelectorAll('script'))
+        .map((s) => s.textContent || '')
+        .join('\n')
+    );
+
+    if (scriptBodies.indexOf('CSRF_TOKEN') === -1) ok('no surviving script carries the CSRF token');
+    else                                            fail('a script in the saved copy still references CSRF_TOKEN');
+
+    if (scriptBodies.indexOf('hvHeartbeat') === -1) ok('no surviving script carries the heartbeat');
+    else                                             fail('the saved copy still runs the heartbeat — it would ping a dead host');
+
+    if (!offlineRequests.some((u) => u.indexOf('/ping') !== -1)) {
+      ok('the saved copy opened offline issues no ping');
+    } else {
+      fail('the saved copy pinged from file://');
+    }
+    if (await offline.locator('#hv-disconnected').count() === 0) {
+      ok('the saved copy shows no disconnected banner');
+    } else {
+      fail('the saved copy shows a disconnected banner — it is offline by design');
+    }
+
+    await browser.close(); browser = null;
+  } catch (err) {
+    fail('saved copy: unexpected error — ' + err.message);
+    if (browser) { try { await browser.close(); } catch (_) {} }
+  } finally {
+    killServer(srv);
+    if (tmpDir) { try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {} }
+  }
+}
+
+// ── Test 10: the Apply gap does not raise a false alarm ────────────────────
+//
+// Feedback mode takes its own server away on every Apply round. Reporting that
+// as "disconnected" would cry wolf on the one gap the page caused deliberately,
+// so the applying state has to win over the banner.
+
+async function testApplyGapShowsNoBanner() {
+  console.log('\n--- test: the Apply gap shows no disconnected banner ---');
+  let srv = null, browser = null, tmpDir = null;
+
+  try {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hv-test-applygap-'));
+    const htmlFile = path.join(tmpDir, 'review.html');
+    fs.copyFileSync(FB_TMPL, htmlFile);
+    srv = await startServer(htmlFile, ['--mode', 'feedback']);
+
+    browser = await chromium.launch({ headless: true });
+    const page = await (await browser.newContext()).newPage();
+    await page.goto(srv.baseUrl + '/');
+    await page.waitForLoadState('domcontentloaded');
+
+    await page.locator('#freeform-input').fill('please apply this');
+    await page.locator('#apply-btn:not([disabled])').waitFor({ timeout: 3000 });
+    await page.locator('#apply-btn').click();
+    await page.locator('#state-applying').waitFor({ state: 'visible', timeout: 5000 });
+
+    // The server exits on the apply submit; Claude would now be regenerating.
+    // Hold that gap open far longer than a ping interval and force checks.
+    await new Promise((resolve) => { srv.proc.on('exit', resolve); setTimeout(resolve, 3000); });
+    for (let i = 0; i < 4; i++) {
+      await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+      await page.waitForTimeout(400);
+    }
+
+    const banner = await page.locator('#hv-disconnected').count();
+    if (banner === 0) ok('no disconnected banner during the Apply gap');
+    else               fail('the Apply gap raised a false disconnected banner');
+
+    const applyingVisible = await page.locator('#state-applying').isVisible();
+    if (applyingVisible) ok('the applying state stays on screen through the gap');
+    else                  fail('the applying state disappeared during the gap');
+
+    await browser.close(); browser = null;
+  } catch (err) {
+    fail('apply gap: unexpected error — ' + err.message);
+    if (browser) { try { await browser.close(); } catch (_) {} }
+  } finally {
+    killServer(srv);
+    if (tmpDir) { try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {} }
+  }
+}
+
 // ── Main ───────────────────────────────────────────────────────────────────
 
 (async () => {
@@ -666,6 +999,11 @@ async function testApproachesSingleChoice() {
   await testFeedbackApplyLoop();
   await testMissingSharedClient();
   await testApproachesSingleChoice();
+  await testHeartbeatIsSent();
+  await testDisconnectedBanner();
+  await testTabCloseEndsServer();
+  await testSavedCopyIsInert();
+  await testApplyGapShowsNoBanner();
 
   console.log('\nResults: ' + PASS + ' passed, ' + FAIL + ' failed');
   if (FAIL > 0) {

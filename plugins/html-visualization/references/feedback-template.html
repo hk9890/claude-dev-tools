@@ -4,16 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Review — [Claude: replace with document title]</title>
-  <!-- fb-generation: a fresh, different value every time you (re)generate this
-       file — e.g. the output of `date +%s%N`. app.js polls for a changed value
-       to auto-reload the page after an Apply round. -->
-  <meta name="fb-generation" content="[Claude: replace with a fresh unique value]">
   <link rel="stylesheet" href="/assets/feedback/style.css">
 </head>
 <body>
-<!-- CSRF token injected here by server:
-     <script>const CSRF_TOKEN = "...";</script>
-     Do NOT add this manually — the server inserts it before </head>. -->
+<!-- Per-serve constants injected here by the server:
+     <script>const CSRF_TOKEN = "...";const HV_GENERATION = "...";const HV_MODE = "...";</script>
+     Do NOT add these manually — the server inserts them before </head>.
+     HV_GENERATION is the served file's mtime, so an Apply round's auto-reload
+     needs nothing written into this document. -->
 
 <div class="page-chrome">
 
@@ -109,6 +107,7 @@
 </div><!-- /.page-chrome -->
 
 <script src="/assets/shared/submit.js"></script>
+<script src="/assets/shared/heartbeat.js"></script>
 <script src="/assets/feedback/app.js"></script>
 </body>
 </html>

@@ -167,11 +167,6 @@ if (typeof document !== 'undefined') {
       return null;
     }
 
-    // ── Generation marker (for the auto-reload poll) ────────────────────────
-
-    var genMeta = document.querySelector('meta[name="fb-generation"]');
-    var myGeneration = genMeta ? genMeta.getAttribute('content') || '' : '';
-
     // ── Floating comment button driven by text selection ────────────────────
 
     var floatBtn = el('button', 'fb-float-btn', '💬 Comment');
@@ -510,7 +505,7 @@ if (typeof document !== 'undefined') {
           if (feedbackDoc) hide(feedbackDoc);
           if (action === 'apply') {
             if (stateApplying) stateApplying.style.display = 'block';
-            startReloadPolling();
+            beginApplying();
           } else {
             if (stateSubmitted) stateSubmitted.style.display = 'block';
           }
@@ -537,38 +532,29 @@ if (typeof document !== 'undefined') {
     if (submitBtn) submitBtn.addEventListener('click', function () { sendFeedback('submit'); });
 
     // ── Auto-reload after Apply ─────────────────────────────────────────────
-    // Poll GET / until the served page reports a different fb-generation than
-    // ours — that is the regenerated document — then reload. Capped so a
-    // crashed or port-changed re-serve cannot poll forever.
+    // An Apply round deliberately takes the server away: it exits on the submit,
+    // Claude rewrites the document, and a new one comes up on the same port. The
+    // heartbeat is what notices it came back — the ping answer carries the
+    // served document's generation, so the request that proves the page is still
+    // open is the same one that reports it has been regenerated. There is no
+    // separate poll of GET / any more, and no fb-generation value for Claude to
+    // author (and to accidentally reuse, leaving the tab on a stale page).
 
-    function startReloadPolling() {
-      var attempts = 0;
-      var maxAttempts = 60;
-      var timer = setInterval(function () {
-        attempts++;
-        if (attempts > maxAttempts) {
-          clearInterval(timer);
-          if (stateApplying) {
-            var p = stateApplying.querySelector('p');
-            if (p) p.textContent =
-              'This is taking longer than expected. Reload this page manually once Claude reports the update is ready.';
-          }
-          return;
+    var applying = false;
+
+    function beginApplying() {
+      applying = true;
+      // Mirrors the cap the old poll had: after a minute, stop implying this is
+      // still on track and tell the user what to do instead.
+      setTimeout(function () {
+        if (!applying) return;
+        if (!stateApplying) return;
+        var p = stateApplying.querySelector('p');
+        if (p) {
+          p.textContent =
+            'This is taking longer than expected. Reload this page manually once Claude reports the update is ready.';
         }
-        var ctrl = new AbortController();
-        var to = setTimeout(function () { ctrl.abort(); }, 800);
-        fetch('/', { signal: ctrl.signal, cache: 'no-store' })
-          .then(function (res) { return res.text(); })
-          .then(function (txt) {
-            clearTimeout(to);
-            var m = txt.match(/name="fb-generation"\s+content="([^"]*)"/);
-            if (m && m[1] && m[1] !== myGeneration) {
-              clearInterval(timer);
-              window.location.reload();
-            }
-          })
-          .catch(function () { clearTimeout(to); });
-      }, 1000);
+      }, 60000);
     }
 
     // ── Copy feedback fallback ──────────────────────────────────────────────
@@ -578,6 +564,29 @@ if (typeof document !== 'undefined') {
       copyBtn.addEventListener('click', function () {
         closeEditor();
         hvCopy(copyBtn, JSON.stringify(buildFeedbackPayload(buildCurrentState('submit')), null, 2));
+      });
+    }
+
+    // ── Liveness heartbeat ──────────────────────────────────────────────────
+
+    if (typeof hvHeartbeat === 'function') {
+      hvHeartbeat({
+        // The Apply gap is the one time this page knows the server is meant to
+        // be missing. Reporting "disconnected" then would cry wolf on every
+        // round; instead the fast ping rate makes the reload land as promptly
+        // as the old one-second poll did.
+        isBusy: function () { return applying; },
+        // Copy stays enabled on purpose: it is the one control that still does
+        // something useful once the server is gone.
+        controls: function () { return [applyBtn, submitBtn]; },
+        collectWork: function () {
+          try {
+            return JSON.stringify(buildFeedbackPayload(buildCurrentState('submit')), null, 2);
+          } catch (e) {
+            return '';
+          }
+        },
+        onGeneration: function () { window.location.reload(); },
       });
     }
 
