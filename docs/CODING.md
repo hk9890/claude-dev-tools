@@ -70,7 +70,7 @@ Directory name and frontmatter `name:` must match. **Sibling skills share one pr
 - ✅ `keep-awake-linux:keep-awake-inspect`, `instruction-writing:writing-skills`
 - ❌ `keep-awake-linux:inspect` — bare verb, shared with no sibling
 
-The exception is a plugin whose names trigger on their own, each a distinct concept rather than a generic operation, where a shared prefix would only dilute them (`challenge:grill`, `challenge:kiss`, `challenge:are-you-sure`).
+The exception is a plugin whose names trigger on their own, each a distinct concept rather than a generic operation, where a shared prefix would only dilute them — every skill in `challenge` (`grill`, `kiss`, `are-you-sure`, `what-do-you-mean`).
 
 **When renaming a plugin directory or a skill**, add the old-to-new entry to `RENAME_ALIASES` / `SKILL_RENAME_ALIASES` in [`scripts/analyze-sessions.py`](../scripts/analyze-sessions.py) in the same change, or that name's history silently falls into the unmatched bucket ([MONITORING.md](MONITORING.md)).
 
