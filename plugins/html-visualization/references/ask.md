@@ -49,9 +49,10 @@ Before writing a single line of HTML, decide what goes into the document.
 
 **Every question is a briefing.** The reader was not in the conversation and will
 not go looking: they open the page, read one question, and decide. So each one
-carries what a briefing carries — ASD-STE100 Simplified Technical English, the
-evidence attached, and a recommendation at the end. A question the reader has to go research before
-answering is a question you have not finished writing.
+carries what a briefing carries — the evidence attached and a recommendation at
+the end — written in ASD-STE100 Simplified Technical English. A question the
+reader has to go research before answering is a question you have not finished
+writing.
 
 ### What the document is made of
 
@@ -86,8 +87,8 @@ answering is a question you have not finished writing.
   someone who has not read the conversation understands it. Expand a name or an
   abbreviation the first time it appears — "`readTrustDocument`, the function
   that loads a project's trust file" — and spell out what a term means rather
-  than assuming it is shared. Keep the
-  question itself prose, with any identifier supporting it.
+  than assuming it is shared. Keep the question itself prose, with any
+  identifier supporting it.
 - **Bring the subject onto the page**: quote what is being decided — the code in
   a `<pre>`, the competing options in a table, the numbers that matter. Beside
   the quoted code, a `path:line` is a useful citation; on its own it is an
