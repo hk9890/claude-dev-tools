@@ -894,17 +894,24 @@ async function testSavedCopyIsInert() {
     ]);
     const savedPath = path.join(tmpDir, 'saved.html');
     await download.saveAs(savedPath);
-    // Search the executable content only. The template explains this mechanism
-    // in HTML comments that necessarily name the very things being stripped, and
-    // a comment cannot ping anything.
+    // Assert on what survived inside <script> blocks, which is the actual
+    // invariant: Save drops every script mentioning CSRF_TOKEN, and a script is
+    // the only thing that could ping. Subtracting the comments first and
+    // searching the remainder would be looser in both directions — the template
+    // explains this mechanism in comments that necessarily name the very things
+    // being stripped, and stripping comments by regex is an incomplete
+    // sanitizer besides.
     const saved = fs.readFileSync(savedPath, 'utf8');
-    const savedCode = saved.replace(/<!--[\s\S]*?-->/g, '');
+    const scriptBodies = Array.from(
+      saved.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi),
+      (m) => m[1]
+    ).join('\n');
 
-    if (savedCode.indexOf('CSRF_TOKEN') === -1) ok('the saved copy carries no CSRF token');
-    else                                         fail('the saved copy still contains CSRF_TOKEN');
+    if (scriptBodies.indexOf('CSRF_TOKEN') === -1) ok('no surviving script carries the CSRF token');
+    else                                            fail('a script in the saved copy still references CSRF_TOKEN');
 
-    if (savedCode.indexOf('hvHeartbeat') === -1) ok('the saved copy carries no heartbeat code');
-    else                                          fail('the saved copy still contains the heartbeat — it would ping a dead host');
+    if (scriptBodies.indexOf('hvHeartbeat') === -1) ok('no surviving script carries the heartbeat');
+    else                                             fail('the saved copy still runs the heartbeat — it would ping a dead host');
 
     // And prove it by opening the saved file with no server behind it at all.
     const offline = await ctx.newPage();
