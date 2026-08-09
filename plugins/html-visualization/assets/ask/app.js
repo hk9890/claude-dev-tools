@@ -297,5 +297,26 @@ if (typeof document !== 'undefined') {
       });
     }
 
+    // ── Liveness heartbeat ──────────────────────────────────────────────────
+    // Proves to the server that this page is still open, and tells the page as
+    // soon as the server is not. Without it, an ask form left open past the
+    // server's life looks completely normal until Submit is pressed and fails —
+    // after the answers have been filled in.
+
+    if (typeof hvHeartbeat === 'function') {
+      hvHeartbeat({
+        controls: function () { return [submitBtn]; },
+        // The same JSON the Copy feedback button produces, so a stranded answer
+        // set pastes into Claude in the one format the skill already reads.
+        collectWork: function () {
+          try {
+            return JSON.stringify(buildCurrentPayload(), null, 2);
+          } catch (e) {
+            return '';
+          }
+        },
+      });
+    }
+
   }); // end DOMContentLoaded
 } // end if (typeof document !== 'undefined')

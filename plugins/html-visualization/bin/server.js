@@ -5,11 +5,13 @@
  * Shared by every mode of the html-visualize workflow (ask, feedback, visualize, …).
  *
  * Usage:
- *   node server.js <html-file> [--port N] [--timeout-sec N] [--no-wait] [--host NAME]...
+ *   node server.js <html-file> --mode ask|feedback|visualize
+ *                  [--port N] [--grace-sec N] [--host NAME]...
  *
  * Binds every interface on a random port (or --port N), serves the HTML document
- * at GET /, shared assets at GET /assets/*, accepts authenticated feedback at
- * POST /submit, writes feedback JSON and exits 0 on first successful submit.
+ * at GET /, shared assets at GET /assets/*, answers a liveness heartbeat at
+ * GET /ping, accepts authenticated feedback at POST /submit, writes feedback
+ * JSON and exits 0 on first successful submit.
  *
  * The bind is all-interfaces so the page is reachable from another machine —
  * a laptop opening a page served by a remote dev box over SSH, addressed by the
@@ -28,14 +30,30 @@
  * a box reached through an SSH tunnel), the same port on loopback still serves
  * the page — see the fallback guidance in references/serve.md.
  *
- * With --no-wait: serves the page and returns immediately (prints only the URL
- * line, no Feedback file line). POST /submit is still accepted for a one-shot
- * submit/close round-trip:
- *   - Non-empty freeform field: writes feedback file, exits 0 (harness re-invokes
- *     Claude which reads the file).
- *   - Empty/missing freeform, or any plain close: exits 0 silently, no file
- *     written (Claude is not re-invoked — normal expected outcome).
- * Timeout (default 1800s) exits 0 silently — same as an empty close.
+ * Lifetime is driven by the page, not by a clock. The served page sends an
+ * authenticated GET /ping every 30s (every 1s while a feedback Apply round is in
+ * flight); the server exits once no valid ping has arrived for --grace-sec
+ * (default 900). The clock starts at startup, so a link nobody ever opens dies
+ * on the same rule as a page that was opened and then abandoned.
+ *
+ * Only a ping carrying the CSRF token counts. Without that gate any port scanner
+ * touching /ping would hold the server open forever, and there is no fixed
+ * timeout left to backstop it.
+ *
+ * POST /bye is the tab-close beacon. It does not exit the process — it expires
+ * the liveness clock, so the next sweep (10s) exits unless another tab has pinged
+ * in the meantime. That is what makes closing one of two open tabs safe.
+ *
+ * --mode selects what an abandoned page means:
+ *   - visualize: the submit was always optional, so abandonment exits 0 silently.
+ *   - ask, feedback: the round-trip was the point, so abandonment exits 2 with no
+ *     feedback file, and Claude reports the page was closed without a submit.
+ *
+ * POST /submit is one-shot in every mode:
+ *   - visualize with a non-empty freeform field: writes feedback file, exits 0
+ *     (the harness re-invokes Claude, which reads the file).
+ *   - visualize with empty/missing freeform: exits 0 silently, no file written.
+ *   - ask and feedback: every submit writes a file by design.
  *
  * "Non-empty freeform" means payload.freeform is a string with length > 0.
  * Trimming is the UI's responsibility; the server checks the raw value.
@@ -59,24 +77,29 @@ const crypto = require('node:crypto');
 
 const args = process.argv.slice(2);
 
+const USAGE = 'Usage: node server.js <html-file> --mode ask|feedback|visualize '
+            + '[--port N] [--grace-sec N] [--host NAME]...';
+
+const MODES = ['ask', 'feedback', 'visualize'];
+
 if (args.length === 0 || args[0] === '--help') {
-  console.error('Usage: node server.js <html-file> [--port N] [--timeout-sec N] [--no-wait] [--host NAME]...');
+  console.error(USAGE);
   process.exit(1);
 }
 
 let htmlFile = null;
 let listenPort = 0;
-let timeoutSec = 1800;
-let noWait = false;
+let graceSec = 900;
+let mode = null;
 const extraHosts = [];
 
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '--port' && args[i + 1]) {
     listenPort = parseInt(args[++i], 10);
-  } else if (args[i] === '--timeout-sec' && args[i + 1]) {
-    timeoutSec = parseInt(args[++i], 10);
-  } else if (args[i] === '--no-wait') {
-    noWait = true;
+  } else if (args[i] === '--grace-sec' && args[i + 1]) {
+    graceSec = parseInt(args[++i], 10);
+  } else if (args[i] === '--mode' && args[i + 1]) {
+    mode = args[++i];
   } else if (args[i] === '--host' && args[i + 1]) {
     extraHosts.push(args[++i]);
   } else if (!args[i].startsWith('--')) {
@@ -88,6 +111,29 @@ if (!htmlFile) {
   console.error('Error: <html-file> argument is required');
   process.exit(1);
 }
+
+// --mode is required rather than defaulted: it decides whether abandoning the
+// page is silent or is reported to Claude, and guessing wrong in either
+// direction is worse than refusing to start.
+if (!mode) {
+  console.error('Error: --mode is required (one of: ' + MODES.join(', ') + ')');
+  console.error(USAGE);
+  process.exit(1);
+}
+if (!MODES.includes(mode)) {
+  console.error(`Error: --mode value is not a mode: ${mode} (expected one of: ${MODES.join(', ')})`);
+  process.exit(1);
+}
+
+if (!Number.isFinite(graceSec) || graceSec <= 0) {
+  console.error('Error: --grace-sec must be a positive number of seconds');
+  process.exit(1);
+}
+
+// visualize is the one mode whose submit was always optional, so it is the one
+// mode where closing the page without submitting is a normal ending rather than
+// something Claude should report.
+const submitOptional = mode === 'visualize';
 
 // Resolve to absolute path
 htmlFile = path.resolve(htmlFile);
@@ -108,7 +154,52 @@ const feedbackFile = path.join(path.dirname(htmlFile), `${htmlBasename}.feedback
 
 // ── CSRF token ─────────────────────────────────────────────────────────────
 
-const csrfToken = crypto.randomBytes(32).toString('base64url');
+// Persisted beside the HTML rather than minted per process. Feedback mode
+// restarts this server on the same port for every Apply round, and a fresh token
+// each round would invalidate the one already injected into the open tab: its
+// pings would 403, the new server would credit no liveness, and it would count
+// down to exit with a live page sitting in front of it.
+//
+// Mode 0600 because the token is now at rest in a temp directory, where the
+// default umask would otherwise leave it world-readable. It still only proves a
+// request came from the served page, not who sent it.
+const csrfFile = path.join(path.dirname(htmlFile), '.csrf');
+
+function loadOrMintToken() {
+  try {
+    const existing = fs.readFileSync(csrfFile, 'utf8').trim();
+    if (existing) return existing;
+  } catch (_) {
+    // No token yet — first serve for this directory. Mint one below.
+  }
+  const minted = crypto.randomBytes(32).toString('base64url');
+  try {
+    fs.writeFileSync(csrfFile, minted, { encoding: 'utf8', mode: 0o600 });
+    // writeFileSync honours `mode` only when it creates the file, so an existing
+    // file with looser bits would otherwise keep them.
+    fs.chmodSync(csrfFile, 0o600);
+  } catch (err) {
+    console.error(`[html-visualization] Warning: could not persist the CSRF token to ${csrfFile}: ${err.message}`);
+    console.error('[html-visualization] Continuing with a process-local token; an open tab will need a manual reload after a re-serve.');
+  }
+  return minted;
+}
+
+const csrfToken = loadOrMintToken();
+
+// ── Generation ─────────────────────────────────────────────────────────────
+
+// The served document's mtime in milliseconds, handed to the page at load and
+// reported by GET /ping so an open tab can tell it has been regenerated.
+//
+// Claude used to author a unique fb-generation value into the HTML itself, and a
+// reused value silently meant the tab never reloaded. The filesystem already
+// tracks exactly this fact, so the server reads it rather than trusting the
+// document to carry it.
+function currentGeneration() {
+  const stat = fs.statSync(htmlFile, { throwIfNoEntry: false });
+  return stat ? String(stat.mtimeMs) : '0';
+}
 
 // ── Host allow-list ────────────────────────────────────────────────────────
 
@@ -172,6 +263,59 @@ for (const name of extraHosts) {
 // ── State ──────────────────────────────────────────────────────────────────
 
 let accepted = false; // true after first valid POST /submit
+
+// Liveness clock. Seeded at startup so a link nobody ever opens expires on the
+// same rule as a page that was opened and then abandoned — one lifetime number,
+// no separate "never opened" case.
+let lastSeen = Date.now();
+
+// Set by POST /bye, cleared by any valid ping. Non-null means "a tab said it was
+// closing; exit at this time unless someone proves otherwise".
+let closingDeadline = null;
+
+// How often the liveness clock is checked. Capped at half the grace so a short
+// --grace-sec still expires promptly instead of waiting out a fixed sweep.
+const SWEEP_MS = Math.max(250, Math.min(10 * 1000, (graceSec * 1000) / 2));
+
+// How long a tab-close beacon leaves before exiting. This MUST stay longer than
+// the client's idle ping interval (30s): the beacon only says "one tab went
+// away", and the way a second, still-open tab objects is by pinging. Give it
+// less than a full ping interval and closing one of two tabs would reliably kill
+// the page in the other — the exact failure the beacon is routed through the
+// clock to avoid rather than exiting directly.
+//
+// Never longer than the grace itself, so it can only ever shorten a lifetime.
+//
+// HV_BEACON_WINDOW_MS overrides it for tests only. The window has to outlast the
+// ping interval in production, which makes "did the beacon fire, or did the page
+// simply go quiet?" untestable at any grace short enough to run in a suite —
+// they expire together. Nothing but the test suite sets this.
+const BEACON_WINDOW_MS = Number(process.env.HV_BEACON_WINDOW_MS)
+  || Math.min(35 * 1000, graceSec * 1000);
+
+const graceMs = graceSec * 1000;
+
+/**
+ * Exit if nobody is watching any more — either a tab announced it was closing
+ * and nothing has pinged since, or the pings simply stopped for the whole grace.
+ *
+ * Run both on the periodic sweep and, when a beacon arrives, on a timer armed
+ * for that beacon's own deadline: the sweep alone would leave a closed page's
+ * port open until the next tick, which is up to SWEEP_MS later than it needs to
+ * be for the one case where the page told us exactly when it was going.
+ */
+function checkLiveness() {
+  const closing = closingDeadline !== null && Date.now() >= closingDeadline;
+  const silent  = Date.now() - lastSeen >= graceMs;
+  if (!closing && !silent) return;
+  const why = closing ? 'the page was closed' : `no heartbeat for ${graceSec}s`;
+  if (submitOptional) {
+    console.log(`[html-visualization] Exiting 0 — ${why}.`);
+    process.exit(0);
+  }
+  console.error(`[html-visualization] Exiting non-zero — ${why} without a submit.`);
+  process.exit(2);
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -256,12 +400,20 @@ function guessContentType(filePath) {
 }
 
 /**
- * Inject the CSRF token into the HTML document.
- * Inserts <script>const CSRF_TOKEN = "...";</script> right before </head>
+ * Inject the per-serve constants into the HTML document, right before </head>
  * or at the top of <body>, or at the very top if neither is found.
+ *
+ * All three live in one <script> block on purpose: visualize mode's Save button
+ * strips every script that mentions CSRF_TOKEN when it clones the DOM, so
+ * bundling them here keeps the heartbeat constants out of a saved offline copy
+ * too. A saved page that kept them would ping a host that is long gone.
  */
-function injectToken(html, token) {
-  const snippet = `<script>const CSRF_TOKEN = "${token}";</script>`;
+function injectConstants(html, token, generation) {
+  const snippet = '<script>'
+    + `const CSRF_TOKEN = ${JSON.stringify(token)};`
+    + `const HV_GENERATION = ${JSON.stringify(generation)};`
+    + `const HV_MODE = ${JSON.stringify(mode)};`
+    + '</script>';
   if (html.includes('</head>')) {
     return html.replace('</head>', `${snippet}\n</head>`);
   } else if (html.includes('<body')) {
@@ -287,7 +439,11 @@ async function handleRequest(req, res) {
       jsonResponse(res, 500, { error: 'could not read HTML file' });
       return;
     }
-    const injected = injectToken(html, csrfToken);
+    // Serving the page deliberately does not credit liveness: GET / is
+    // unauthenticated so the document is reachable, which means anything that
+    // can reach the port could otherwise hold the server open by fetching it.
+    // Only an authenticated ping counts.
+    const injected = injectConstants(html, csrfToken, currentGeneration());
     const body = Buffer.from(injected, 'utf8');
     res.writeHead(200, {
       'Content-Type': 'text/html; charset=utf-8',
@@ -321,7 +477,64 @@ async function handleRequest(req, res) {
     return;
   }
 
-  // POST /submit — accept feedback (one-shot in both blocking and --no-wait mode)
+  // GET /ping — liveness heartbeat, and the current generation so an open tab
+  // can notice it has been regenerated.
+  //
+  // Token-gated: with no fixed timeout left to backstop it, an open endpoint
+  // here would let any scanner or monitoring probe on the network hold the
+  // server alive forever just by touching it.
+  if (req.method === 'GET' && pathname === '/ping') {
+    const headerToken = req.headers['x-csrf-token'] || '';
+    if (!timingSafeEqual(headerToken, csrfToken)) {
+      jsonResponse(res, 403, { error: 'forbidden' });
+      return;
+    }
+    lastSeen = Date.now();
+    // A live tab overrides another tab's close beacon.
+    closingDeadline = null;
+    jsonResponse(res, 200, { ok: true, generation: currentGeneration() });
+    return;
+  }
+
+  // POST /bye — the tab-close beacon, sent by navigator.sendBeacon on pagehide.
+  //
+  // sendBeacon cannot set request headers, so the token travels in the body.
+  //
+  // This deliberately does not exit the process. It shortens the liveness clock
+  // and lets the sweep decide, so closing one of two open tabs cannot take the
+  // page away from the other — any tab still alive re-arms the clock with its
+  // next ping. The window has to exceed the client's idle ping interval for that
+  // to actually work; see BEACON_WINDOW_MS.
+  if (req.method === 'POST' && pathname === '/bye') {
+    let rawBody = '';
+    try {
+      rawBody = await readBody(req);
+    } catch (_) {
+      // Unreadable body cannot carry a valid token; fall through to the 403.
+    }
+    let beaconToken = '';
+    try {
+      const parsed = JSON.parse(rawBody);
+      if (parsed && typeof parsed === 'object' && typeof parsed.token === 'string') {
+        beaconToken = parsed.token;
+      }
+    } catch (_) {
+      // Malformed beacon body — treated as an unauthenticated request.
+    }
+    if (!timingSafeEqual(beaconToken, csrfToken)) {
+      jsonResponse(res, 403, { error: 'forbidden' });
+      return;
+    }
+    const deadline = Date.now() + BEACON_WINDOW_MS;
+    // Never push out a close another tab already scheduled.
+    if (closingDeadline === null || deadline < closingDeadline) closingDeadline = deadline;
+    // Check at the deadline itself rather than waiting for the next sweep.
+    setTimeout(checkLiveness, BEACON_WINDOW_MS + 50).unref();
+    jsonResponse(res, 200, { ok: true });
+    return;
+  }
+
+  // POST /submit — accept feedback (one-shot in every mode)
   if (req.method === 'POST' && pathname === '/submit') {
     // 410 if already submitted
     if (accepted) {
@@ -420,10 +633,10 @@ async function handleRequest(req, res) {
     // Mark as accepted immediately to block duplicate submits
     accepted = true;
 
-    // In --no-wait mode: check for a non-empty freeform message.
+    // In visualize mode: check for a non-empty freeform message.
     // Non-empty means payload.freeform is a string with length > 0 (UI handles trimming).
     // Empty/missing freeform means the user just closed the page — exit silently, no file.
-    if (noWait) {
+    if (submitOptional) {
       const hasFreeform = typeof payload.freeform === 'string' && payload.freeform.length > 0;
 
       if (!hasFreeform) {
@@ -503,22 +716,15 @@ server.listen(listenPort, () => {
   // machine; a local browser resolves it too.
   const url = `http://${os.hostname()}:${port}/`;
   console.log(`[html-visualization] URL: ${url}`);
-  if (!noWait) {
+  if (!submitOptional) {
     console.log(`[html-visualization] Feedback file: ${feedbackFile}`);
   }
 
-  // Timeout handler
-  const timeoutMs = timeoutSec * 1000;
-  setTimeout(() => {
-    if (noWait) {
-      console.log(`[html-visualization] Display timeout reached after ${timeoutSec}s. Exiting.`);
-      process.exit(0);
-    } else {
-      console.error(`[html-visualization] Timeout: no submission received after ${timeoutSec}s. Exiting non-zero.`);
-      process.exit(2);
-    }
+  // Liveness sweep. The page proves it is still open by pinging; once the pings
+  // stop for --grace-sec there is nobody watching, and no reason to keep a port
+  // open on every interface.
   // .unref() prevents the timer from keeping the event loop alive on its own.
   // The listening socket already keeps the event loop running; if something
   // closes the server early the timer won't ghost the process.
-  }, timeoutMs).unref();
+  setInterval(checkLiveness, SWEEP_MS).unref();
 });

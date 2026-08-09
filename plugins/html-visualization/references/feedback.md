@@ -6,7 +6,7 @@ then applies the comments and can re-render the updated document so the user
 iterates until satisfied.
 
 The shared serve procedure (pre-flight, temp dir, server startup, URL surfacing,
-cleanup, the `.port` + `fb-generation` contract) lives in `references/serve.md` —
+cleanup, the `.port` / `.csrf` and generation contract) lives in `references/serve.md` —
 Cycle C (Apply loop). This file covers the feedback-specific content authoring and
 read-back.
 
@@ -101,18 +101,15 @@ destination path — see `references/serve.md` — "Authoring files into the tem
 directory".
 
 The template contains example blocks — replace them with the real content. Also
-replace the `<title>`, the header `<h1>`, the `.subtitle`, and the `fb-generation`
-meta placeholder. Keep the page structure, freeform section, action row, and state
-sections exactly as in the template.
+replace the `<title>`, the header `<h1>`, and the `.subtitle` placeholders. Keep
+the page structure, freeform section, action row, and state sections exactly as
+in the template.
 
 ### 2c. Render the content
 
 Render the content inside `<div id="content">` per the markup contract in
 `"$(cat "$HTML_DIR/.plugin-root")/references/feedback-markup.md"`. Key rules:
 
-- Set `<meta name="fb-generation" content="...">` to a fresh, unique value (e.g.
-  the output of `date +%s%N`). It MUST differ on every regeneration — see the
-  `.port` + `fb-generation` contract in `references/serve.md`.
 - Replace the `<h1>` / `<title>` and `.subtitle` placeholders.
 - Render the content as semantic HTML — headings, paragraphs, lists, tables,
   `<blockquote>`, `<pre><code>`.
@@ -125,7 +122,7 @@ Render the content inside `<div id="content">` per the markup contract in
   or their order.
 
 Consult `"$(cat "$HTML_DIR/.plugin-root")/references/feedback-markup.md"`
-for the full vocabulary (block rules, required IDs, the `fb-generation` meta).
+for the full vocabulary (block rules, required IDs).
 
 ### 2d. Use HTML to render the content well
 
@@ -167,7 +164,7 @@ link with the message:
 > apply your comments and refresh the page, or **Submit & finish** when you're done.
 > Anyone who can reach this port can open the page, so mind the network you are on.
 
-**If the user says the link does not open**, do not wait out the timeout — see
+**If the user says the link does not open**, do not wait out the grace — see
 "When the printed hostname does not resolve" in `references/serve.md`: offer
 `http://localhost:PORT/` on the same port when they are on an SSH tunnel, and
 otherwise kill the server and take the feedback in chat.
@@ -238,8 +235,8 @@ Then branch on `action`:
 
 ### `action: "apply"` — iterate
 
-1. Regenerate `$HTML_DIR/review.html` from the updated content with a **fresh
-   `fb-generation` value** — see `references/serve.md` Cycle C for the contract.
+1. Regenerate `$HTML_DIR/review.html` from the updated content. Rewriting the
+   file is all it takes — see `references/serve.md` Cycle C for the contract.
 2. Re-serve on the same port — see `references/serve.md` Cycle C (Apply rounds).
 3. Tell the user briefly, e.g. "Applied your 3 comments — the review page will
    refresh automatically." You do not need to resend the link.

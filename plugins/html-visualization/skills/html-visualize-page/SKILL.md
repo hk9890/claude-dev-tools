@@ -17,7 +17,7 @@ $ARGUMENTS
 Work from that directly; do not ask the user to restate it.
 
 Load and follow [`../../references/visualize.md`](../../references/visualize.md) —
-build the HTML page from the intent above, serve it non-blocking with `--no-wait`,
+build the HTML page from the intent above, serve it non-blocking with `--mode visualize`,
 and continue immediately after surfacing the URL. It carries the visualize-specific
 authoring and rendering choices, and points on to the shared serve procedure and
 authoring guidelines.

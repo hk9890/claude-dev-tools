@@ -38,7 +38,6 @@ Every document must have this top-level structure:
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Review — [descriptive title]</title>
-  <meta name="fb-generation" content="[a fresh unique value per generation]">
   <link rel="stylesheet" href="/assets/feedback/style.css">
 </head>
 <body>
@@ -64,17 +63,15 @@ Every document must have this top-level structure:
 </html>
 ```
 
-**Do NOT** add `<script>const CSRF_TOKEN = "...";</script>` manually — the server
-injects it before `</head>`.
+**Do NOT** add the `<script>const CSRF_TOKEN = "…";</script>` block manually —
+the server injects it, along with the generation and the mode, before `</head>`.
 
-### The `fb-generation` meta
+### Auto-reload after an Apply round
 
-`<meta name="fb-generation" content="...">` carries a value that MUST be
-**different every time Claude generates or regenerates the file** (e.g. the
-output of `date +%s%N`). After an "Apply & preview" round, `app.js` polls the
-re-served page and reloads as soon as it sees a `fb-generation` value different
-from the one it loaded with. If the value is stale (reused), the page never
-auto-reloads.
+Nothing in the document drives this. The server reports the served file's mtime
+as its generation, and the page reloads as soon as a ping comes back with one
+that differs from the one it loaded with. Regenerating the file is the entire
+protocol — there is no value to write, and none to reuse by accident.
 
 ---
 
@@ -157,8 +154,6 @@ author them.**
 
 Before finalising a feedback-mode document:
 
-- [ ] `<meta name="fb-generation">` is present with a value different from any
-      previous generation of this file.
 - [ ] All content is inside `<div id="content">`, rendered as semantic HTML.
 - [ ] Every commentable block is a direct child of `#content` with a unique
       `data-block-id` (printable ASCII, no whitespace).

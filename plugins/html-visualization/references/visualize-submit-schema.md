@@ -45,7 +45,7 @@ feedback file and exit 0, re-invoking Claude.
 |---|---|
 | `freeform` is a non-empty string | Writes `<basename>.feedback.json`, exits 0 → harness re-invokes Claude |
 | `freeform` is `""` or missing | Exits 0 silently — no feedback file written, Claude not re-invoked |
-| Timeout (default 1800 s) with no submit | Exits 0 silently — no feedback file written, Claude not re-invoked |
+| Tab closed, or no heartbeat for `--grace-sec` (default 900 s) | Exits 0 silently — no feedback file written, Claude not re-invoked |
 
 "Non-empty" is checked on the raw string value; trimming is the UI's responsibility.
 

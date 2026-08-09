@@ -204,8 +204,8 @@ to the user as a markdown link with the message:
 > continue as soon as you submit. Anyone who can reach this port can open the
 > form, so mind the network you are on.
 
-**If the user says the link does not open**, do not wait out the timeout — Cycle A
-blocks for 1800 s and then exits 2, which is the worst place to discover a dead
+**If the user says the link does not open**, do not wait out the grace — an
+unopened form exits 2 after 900 s, which is the worst place to discover a dead
 URL. See "When the printed hostname does not resolve" in `references/serve.md`:
 offer `http://localhost:PORT/` on the same port when they are on an SSH tunnel,
 and otherwise kill the server and ask the questions in chat.

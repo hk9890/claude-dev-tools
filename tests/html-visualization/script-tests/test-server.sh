@@ -11,11 +11,11 @@
 #   - POST /submit passes arbitrary JSON-object fields through verbatim
 #   - POST /submit with a non-object JSON body returns 400
 #   - POST /submit after already submitted returns 410
-#   - Timeout with no submit exits non-zero
-#   - --no-wait: URL printed but no Feedback file line
-#   - --no-wait: empty/missing freeform submit → 200, exit 0, no feedback file (silent close)
-#   - --no-wait: non-empty freeform submit → 200, exit 0, feedback file written
-#   - --no-wait --timeout-sec N: server exits 0 on timeout
+#   - An abandoned page (no heartbeat) exits non-zero in ask/feedback mode
+#   - visualize mode: URL printed but no Feedback file line
+#   - visualize mode: empty/missing freeform submit → 200, exit 0, no feedback file (silent close)
+#   - visualize mode: non-empty freeform submit → 200, exit 0, feedback file written
+#   - visualize mode --grace-sec N: server exits 0 when the page never pings
 #   - startup URL names the machine hostname; server answers on a non-loopback address
 #   - the printed URL is fetchable as printed (skipped where the hostname does not resolve)
 #   - Origin is validated against the request's Host header, not a fixed loopback origin
@@ -61,6 +61,14 @@ skip() {
 start_server() {
   local html_file="$1"
   shift
+
+  # --mode is required by the server. Every case below that does not name one
+  # predates the flag and assumed the blocking behaviour ask and feedback share,
+  # so default to that rather than editing two dozen call sites.
+  case " $* " in
+    *" --mode "*) ;;
+    *) set -- "$@" --mode ask ;;
+  esac
 
   local log_file
   log_file=$(mktemp)
@@ -574,7 +582,7 @@ test_timeout_exits_nonzero() {
   tmp_html=$(mktemp --suffix=.html)
   make_html "$tmp_html"
 
-  start_server "$tmp_html" --timeout-sec 1
+  start_server "$tmp_html" --grace-sec 1
 
   # Wait for server to exit on timeout
   local exit_code=0
@@ -688,13 +696,13 @@ test_correct_origin_allowed() {
   ok "correct origin: POST /submit with correct Origin returns 200"
 }
 
-# 15. --no-wait: startup prints URL but NOT a "Feedback file:" line
+# 15. --mode visualize: startup prints URL but NOT a "Feedback file:" line
 test_no_wait_no_feedback_line() {
   local tmp_html
   tmp_html=$(mktemp --suffix=.html)
   make_html "$tmp_html"
 
-  start_server "$tmp_html" --no-wait
+  start_server "$tmp_html" --mode visualize
 
   local log_content
   log_content=$(cat "$SERVER_LOG")
@@ -703,25 +711,25 @@ test_no_wait_no_feedback_line() {
   rm -f "$tmp_html"
 
   if ! printf '%s' "$log_content" | grep -qE 'URL: http://[^/]+:[0-9]+/'; then
-    fail "no-wait startup: URL not printed to stdout"
+    fail "visualize startup: URL not printed to stdout"
     return
   fi
-  ok "no-wait startup: URL printed to stdout"
+  ok "visualize startup: URL printed to stdout"
 
   if printf '%s' "$log_content" | grep -q 'Feedback file:'; then
-    fail "no-wait startup: Feedback file line should NOT be printed in --no-wait mode"
+    fail "visualize startup: Feedback file line should NOT be printed in visualize mode"
     return
   fi
-  ok "no-wait startup: Feedback file line not printed in --no-wait mode"
+  ok "visualize startup: Feedback file line not printed in visualize mode"
 }
 
-# 16. --no-wait: empty/missing freeform submit → 200, exit 0, no feedback file written
+# 16. --mode visualize: empty/missing freeform submit → 200, exit 0, no feedback file written
 test_no_wait_empty_close_exits_zero_no_file() {
   local tmp_html
   tmp_html=$(mktemp --suffix=.html)
   make_html "$tmp_html"
 
-  start_server "$tmp_html" --no-wait
+  start_server "$tmp_html" --mode visualize
 
   # Get the token from the served HTML
   local html token
@@ -729,13 +737,13 @@ test_no_wait_empty_close_exits_zero_no_file() {
   token=$(extract_token_from_html "$html")
 
   if [[ -z "$token" ]]; then
-    fail "no-wait empty close: could not extract CSRF_TOKEN from GET /"
+    fail "visualize empty close: could not extract CSRF_TOKEN from GET /"
     kill_server
     rm -f "$tmp_html"
     return
   fi
 
-  # Compute expected feedback file path manually (server doesn't print it in --no-wait)
+  # Compute expected feedback file path manually (server doesn't print it in --mode visualize)
   local html_base html_dir expected_feedback
   html_base="$(basename "$tmp_html" .html)"
   html_dir="$(dirname "$tmp_html")"
@@ -758,32 +766,32 @@ test_no_wait_empty_close_exits_zero_no_file() {
   rm -f "$tmp_html"
 
   if [[ "$status" != "200" ]]; then
-    fail "no-wait empty close: expected 200, got $status"
+    fail "visualize empty close: expected 200, got $status"
     return
   fi
-  ok "no-wait empty close: POST /submit returns 200"
+  ok "visualize empty close: POST /submit returns 200"
 
   if [[ "$exit_code" -ne 0 ]]; then
-    fail "no-wait empty close: expected exit 0, got $exit_code"
+    fail "visualize empty close: expected exit 0, got $exit_code"
     return
   fi
-  ok "no-wait empty close: server exits 0"
+  ok "visualize empty close: server exits 0"
 
   if [[ -f "$expected_feedback" ]]; then
-    fail "no-wait empty close: feedback file should NOT be written, but found $expected_feedback"
+    fail "visualize empty close: feedback file should NOT be written, but found $expected_feedback"
     rm -f "$expected_feedback"
     return
   fi
-  ok "no-wait empty close: no feedback file written"
+  ok "visualize empty close: no feedback file written"
 }
 
-# 16b. --no-wait: non-empty freeform submit → 200, exit 0, feedback file written
+# 16b. --mode visualize: non-empty freeform submit → 200, exit 0, feedback file written
 test_no_wait_nonempty_submit_writes_feedback() {
   local tmp_html
   tmp_html=$(mktemp --suffix=.html)
   make_html "$tmp_html"
 
-  start_server "$tmp_html" --no-wait
+  start_server "$tmp_html" --mode visualize
 
   # Get the token from the served HTML
   local html token
@@ -791,13 +799,13 @@ test_no_wait_nonempty_submit_writes_feedback() {
   token=$(extract_token_from_html "$html")
 
   if [[ -z "$token" ]]; then
-    fail "no-wait non-empty submit: could not extract CSRF_TOKEN from GET /"
+    fail "visualize non-empty submit: could not extract CSRF_TOKEN from GET /"
     kill_server
     rm -f "$tmp_html"
     return
   fi
 
-  # Compute expected feedback file path manually (server doesn't print it in --no-wait)
+  # Compute expected feedback file path manually (server doesn't print it in --mode visualize)
   local html_base html_dir expected_feedback
   html_base="$(basename "$tmp_html" .html)"
   html_dir="$(dirname "$tmp_html")"
@@ -820,24 +828,24 @@ test_no_wait_nonempty_submit_writes_feedback() {
   rm -f "$tmp_html"
 
   if [[ "$status" != "200" ]]; then
-    fail "no-wait non-empty submit: expected 200, got $status"
+    fail "visualize non-empty submit: expected 200, got $status"
     rm -f "$expected_feedback" 2>/dev/null
     return
   fi
-  ok "no-wait non-empty submit: POST /submit returns 200"
+  ok "visualize non-empty submit: POST /submit returns 200"
 
   if [[ "$exit_code" -ne 0 ]]; then
-    fail "no-wait non-empty submit: expected exit 0, got $exit_code"
+    fail "visualize non-empty submit: expected exit 0, got $exit_code"
     rm -f "$expected_feedback" 2>/dev/null
     return
   fi
-  ok "no-wait non-empty submit: server exits 0"
+  ok "visualize non-empty submit: server exits 0"
 
   if [[ ! -f "$expected_feedback" ]]; then
-    fail "no-wait non-empty submit: feedback file not written at $expected_feedback"
+    fail "visualize non-empty submit: feedback file not written at $expected_feedback"
     return
   fi
-  ok "no-wait non-empty submit: feedback file written"
+  ok "visualize non-empty submit: feedback file written"
 
   # Verify feedback file content
   local freeform submitted_at
@@ -847,25 +855,25 @@ test_no_wait_nonempty_submit_writes_feedback() {
   rm -f "$expected_feedback"
 
   if [[ "$freeform" != "Great visualization, please add a legend." ]]; then
-    fail "no-wait non-empty submit: feedback freeform expected message, got '$freeform'"
+    fail "visualize non-empty submit: feedback freeform expected message, got '$freeform'"
     return
   fi
-  ok "no-wait non-empty submit: freeform value verbatim in feedback file"
+  ok "visualize non-empty submit: freeform value verbatim in feedback file"
 
   if [[ "$submitted_at" == "MISSING" ]]; then
-    fail "no-wait non-empty submit: submittedAt missing from feedback file"
+    fail "visualize non-empty submit: submittedAt missing from feedback file"
     return
   fi
-  ok "no-wait non-empty submit: submittedAt present in feedback file"
+  ok "visualize non-empty submit: submittedAt present in feedback file"
 }
 
-# 17. --no-wait --timeout-sec 1: server exits with code 0 on timeout
+# 17. --mode visualize --grace-sec 1: server exits with code 0 on timeout
 test_no_wait_timeout_exits_zero() {
   local tmp_html
   tmp_html=$(mktemp --suffix=.html)
   make_html "$tmp_html"
 
-  start_server "$tmp_html" --no-wait --timeout-sec 1
+  start_server "$tmp_html" --mode visualize --grace-sec 1
 
   local exit_code=0
   wait "$SERVER_PID" 2>/dev/null || exit_code=$?
@@ -874,10 +882,10 @@ test_no_wait_timeout_exits_zero() {
   rm -f "$tmp_html"
 
   if [[ "$exit_code" -ne 0 ]]; then
-    fail "no-wait timeout: expected exit 0, got $exit_code"
+    fail "visualize abandon: expected exit 0, got $exit_code"
     return
   fi
-  ok "no-wait timeout: server exits 0 after timeout (exit $exit_code)"
+  ok "visualize abandon: server exits 0 when the page never pings (exit $exit_code)"
 }
 
 # 18. The server is reachable on a non-loopback address (all-interfaces bind).
@@ -936,7 +944,7 @@ test_origin_matches_host_header() {
   # --host: devbox.example is not a name this machine answers as, so the Host
   # allow-list refuses it by default. Allow-listing it is what puts this test
   # back on the Origin check it exists to exercise.
-  start_server "$tmp_html" --timeout-sec 10 --host devbox.example
+  start_server "$tmp_html" --grace-sec 10 --host devbox.example
 
   local html token
   html=$(curl -s --max-time 10 "$BASE_URL/")
@@ -1018,7 +1026,7 @@ test_tls_forwarder_origin_allowed() {
 
   # A forwarder's public host is not derivable from this machine, so it reaches
   # the allow-list only via --host. That is the documented cost of the pin.
-  start_server "$tmp_html" --timeout-sec 10 --host "$fwd_host"
+  start_server "$tmp_html" --grace-sec 10 --host "$fwd_host"
 
   local html token
   html=$(curl -s --max-time 10 "$BASE_URL/")
@@ -1171,7 +1179,7 @@ test_default_hosts_allowed() {
     tmp_html=$(mktemp --suffix=.html)
     make_html "$tmp_html"
 
-    start_server "$tmp_html" --timeout-sec 10
+    start_server "$tmp_html" --grace-sec 10
 
     local html token
     html=$(curl -s --max-time 10 "$BASE_URL/")
