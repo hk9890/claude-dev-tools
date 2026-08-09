@@ -21,7 +21,7 @@ standing in, so supplying that place comes first.
 sentence, short sentences, active voice, present tense.
 
 **The project's own words.** Speak the **ubiquitous language** the project already has —
-the domain terms in whichever of `CONTEXT.md`, `AGENTS.md`, `CLAUDE.md` or the README it
+the domain terms in whichever of `AGENTS.md`, `CLAUDE.md`, the README or a `CONTEXT.md` it
 keeps, and the names its own identifiers use. A term the user coined beats one you coined.
 
 **Every name resolves in place.** Say what the thing is. A label carries the reader only
@@ -46,6 +46,8 @@ point rather than shorten a name.
 Every re-pitch ends on one line naming what the cap cost, then the command for the page
 where the room is — "I left out the migration path and the rollback story. For the long
 form:", followed by the command in full.
+
+## Offering the page
 
 Offer the page, never open it. Whether the 400 words landed is the one thing you cannot
 tell from here, and a page built for a re-pitch that already worked is exactly the noise

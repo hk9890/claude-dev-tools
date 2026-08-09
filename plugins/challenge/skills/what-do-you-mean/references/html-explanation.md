@@ -3,13 +3,14 @@
 The brief for an explanation rendered as a browser page, reached when 400 words of chat
 could not carry the point.
 
-`html-visualize-feedback` owns the HTML, the serving, the Apply loop and the visual rules;
-this file owns only what an *explanation* must contain and how it is cut into blocks.
-Follow both.
+`html-visualize-feedback` owns the mechanics — the HTML, the serving, the Apply loop and
+the visual rules. This file owns what an *explanation* must contain, how it is cut into
+blocks, and what applying a comment means when the content is an explanation. Follow both.
 
 Feedback mode is the right surface because an explanation that lands halfway leaves
 questions, and this one lets the user put each question on the exact sentence that raised
-it. The page is a document to mark up, not a page to admire.
+it. The page is a document to mark up: every part of it is somewhere the user can put a
+question.
 
 ## What carries over
 
@@ -25,7 +26,7 @@ The page is the same re-pitch in layers, so the reader stops as soon as it lands
 
 1. **The answer** — the point in one or two sentences, above everything else. A reader who
    stops here has what the chat message failed to deliver.
-2. **The re-pitch** — the 400 words the chat already carried, as the first section.
+2. **The re-pitch** — the 400 words the chat already carried, unchanged, under the answer.
 3. **What the cap cost** — the points the closing line named as dropped, one section each.
    This is the reason the page exists; give it the most room.
 4. **The names** — a two-column table of every label this conversation has used against
@@ -50,14 +51,17 @@ wrong, so apply it where it landed: rewrite that block until the question could 
 from it, then re-render. The user is done when nothing is left to ask, and the page they
 finish on is one that would have landed the first time.
 
-## Reach for a picture
+## Structure goes in a table, not a picture
+
+Feedback mode renders ordinary semantic HTML — headings, paragraphs, lists, tables,
+`<blockquote>`, `<pre><code>` — and carries no diagram integration. A comment anchors to
+selected text, so a picture is the one thing on the page the user cannot ask a question
+about.
 
 Where the confusion is structural — how things connect, what order they happen in, which
-layer a thing lives in — a diagram retires paragraphs. Name the shape you want and let
-`html-visualize-feedback` pick the rendering.
-
-Where the confusion is a *claim* rather than a shape, prose is the right form and a diagram
-is decoration.
+layer a thing lives in — carry it in a table or an ordered list, one row per relation.
+Both hold selectable text, so every part of the structure stays something the user can
+point at.
 
 ## Done when
 
