@@ -1011,7 +1011,8 @@ if (typeof agent === 'function') {
     `differently — a confirmed defect with an obvious fix is settled, and needs no question. "open" when a competent person could answer ` +
     `differently: it trades one cost against another, picks between conventions the project already uses, or is big enough that "not now" ` +
     `is a real answer. A proposal resting on a finding that was observed once and not reproduced is open, not settled. ` +
-    `Every open proposal MUST also carry question (what the human is being asked, in plain language, understandable without having watched ` +
+    `Every open proposal MUST also carry question (what the human is being asked, in ASD-STE100 Simplified Technical English — one idea per ` +
+    `sentence, every identifier and abbreviation expanded — so it is understandable without having watched ` +
     `the run), options (the answers they can pick between), and recommendation (which one you would take and the tradeoff that decided it). ` +
     `Leave those three off settled proposals.\n` +
     `4. checked: one line per flow actually exercised, saying what was established about it. This is the honest counterweight to not_checked.\n` +

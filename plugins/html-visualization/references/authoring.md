@@ -7,6 +7,12 @@ can take in at a glance and act on without effort.
   orient a reader who has none of the chat context. The user should be able to
   open, read, and understand the page — or bookmark and share it — on its own.
 
+- **Write it in ASD-STE100 Simplified Technical English.** One meaning per word,
+  one idea per sentence, short sentences, active voice, present tense. Spell out
+  every abbreviation and acronym the first time it appears, and say what a thing
+  is rather than the label the chat gave it — a reader who was not in the
+  conversation cannot look up `option A`, `#412`, or "the second approach".
+
 - **Lead with what matters; keep it scannable.** Put the most important content
   first. Use headings, whitespace, and visual hierarchy so the user finds the
   point without hunting. One long undifferentiated wall of text is hard to

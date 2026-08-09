@@ -610,7 +610,8 @@ if (typeof agent === 'function') {
     `API or a name people type, picks one convention over another the repo also uses, trades one cost against another, ` +
     `or is large enough that "not now" is a real answer. When you can argue it either way it is settled: asking about ` +
     `a bug wastes the developer's attention. For every OPEN action also fill \`question\` (what is being decided, in ` +
-    `plain English a reader outside this review understands, expanding any identifier it names), \`options\` (the real ` +
+    `ASD-STE100 Simplified Technical English — one idea per sentence, every identifier and abbreviation expanded — so ` +
+    `a reader outside this review understands it), \`options\` (the real ` +
     `alternatives, including "leave it as is" wherever that is one), and \`recommendation\` (which option you would ` +
     `pick and the tradeoff that decided it).\n` +
     `6. Carry the architecture dimension's candidates into architecture_candidates, ordered by what you would tackle ` +

@@ -1119,8 +1119,9 @@ if (typeof agent === 'function') {
     `a verify-confirmed survivor with an obvious missing assertion is settled, and needs no question. "open" when a competent person could answer ` +
     `differently: it trades one cost against another, picks between conventions the suite already uses, or is big enough that "not now" is a real ` +
     `answer. Anything resting on a finding with candidate=true is open by construction — a possible equivalent mutant or a legitimate latency ` +
-    `contract is exactly the call a human has to make. Every open proposal MUST also carry question (what the human is being asked, in plain ` +
-    `language, understandable without having watched the audit), options (the answers they can pick between), and recommendation (which one you ` +
+    `contract is exactly the call a human has to make. Every open proposal MUST also carry question (what the human is being asked, in ` +
+    `ASD-STE100 Simplified Technical English — one idea per sentence, every identifier and abbreviation expanded — so it is understandable ` +
+    `without having watched the audit), options (the answers they can pick between), and recommendation (which one you ` +
     `would take and the tradeoff that decided it). Leave those three off settled proposals.\n` +
     `4. components table: per component kill_rate, flakes, brittle, slice_wall_s, audited.\n` +
     `5. untested_churn: copy the derived list above through unchanged, in the order given. Present it as what it is — churn-weighted, not risk-ranked: it ranks by how often a file changes and how much of it is untested, neither of which says how dangerous the gap is. No severity, no findings built from it, and it changes no score.\n` +
