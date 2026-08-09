@@ -22,8 +22,8 @@ them.
 Every question goes through the `AskUserQuestion` tool. Your own recommendation leads the
 options, its `label` ending in `(Recommended)`.
 
-- A frontier wider than one call goes out as back-to-back calls before you recompute — those
-  calls are still one round.
+- 12-char `header`, 4 questions, 4 options; otherwise ask in prose.
+- A frontier past four goes out as back-to-back calls, still one round.
 - Each `header` names the decision its question settles ("Auth model", "Rollout").
 - Each option is a design choice the user could commit to, and its `description` says what
   choosing it commits them to.
