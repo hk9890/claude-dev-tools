@@ -8,28 +8,21 @@ Single source of truth for the server lifecycle used by all three modes of the
 
 ---
 
-## How long a server lives
+## The heartbeat
 
-The page decides, not a clock. Every served page sends an authenticated
-`GET /ping` — every 30 s normally, every second while a feedback Apply round is
-in flight — and the server exits once no valid ping has arrived for
-`--grace-sec` (default 900 s). Closing the tab sends a beacon that brings the
-exit forward to about 35 s.
+A served page holds its server open by **heartbeat**: while the tab is open the
+page keeps pinging, and the server exits once the heartbeat stops for
+`--grace-sec` (default 900 s). Closing the tab ends it promptly.
 
-Three consequences worth knowing before reading the cycles below:
+Two things follow that change what you do:
 
-- **A link nobody opens expires on the same rule.** The clock starts at startup,
-  so there is no separate "never opened" case — and a link from far back in the
-  scrollback may be dead. Re-serve rather than explaining why it broke.
-- **The page notices too.** A failed ping puts the page into a disconnected
-  state: it disables its submit controls, says it can no longer reach Claude,
-  and offers to copy whatever the user typed to the clipboard. That is why an
-  expired page is a recoverable annoyance rather than lost work.
-- **Only an authenticated ping counts.** `GET /` is unauthenticated so the
-  document stays reachable, and it deliberately does *not* refresh the clock.
-
-You never poll or manage this. It matters only because it decides what an exit
-means, which is [what an exit code tells you](#what-an-exit-code-means).
+- **A link expires whether or not anyone opened it.** The heartbeat clock starts
+  at startup, so a link from far back in the scrollback may be dead. Re-serve it
+  rather than explaining why it broke.
+- **The page knows before the user does.** Once the heartbeat fails, the page
+  disables its own submit controls, says it can no longer reach Claude, and
+  offers the user's typed text back on the clipboard. An expired page costs a
+  re-serve, not the user's work.
 
 ## What an exit code means
 
@@ -39,7 +32,7 @@ means, which is [what an exit code tells you](#what-an-exit-code-means).
 |---|---|
 | `0` with a feedback file | The user submitted. Read the file. |
 | `0`, no feedback file | **visualize only** — the user closed the page, or sent an empty message. The normal ending; say nothing. |
-| `2` | **ask and feedback** — the page was closed, or went quiet, without a submit. Tell the user, and offer to re-serve or continue in chat. |
+| `2` | **ask and feedback** — the page was closed, or its heartbeat stopped, without a submit. Tell the user, and offer to re-serve or continue in chat. |
 | `1` | The server refused to start. The message on stderr says why; do not retry blindly. |
 
 ---
@@ -113,7 +106,7 @@ from a previous invocation.
 **Feedback mode only**: this directory is created **once** and reused for every
 Apply round of the same skill invocation. It is deleted only after a final Submit.
 All per-invocation files — the HTML document, the feedback JSON, and the `.port`
-file — live here.
+and `.csrf` files — live here.
 
 ---
 
@@ -164,10 +157,9 @@ FEEDBACK_FILE="$HTML_DIR/feedback.feedback.json"
 This path is deterministic (the server derives `<html-dir>/<basename-without-ext>.feedback.json`);
 record it when you start the server so you can read it back without globbing.
 
-**Abandoned form**: if the user closes the page, or it goes quiet for
-`--grace-sec`, the server exits **code 2 and writes no feedback file**. If the
-server exited non-zero or the feedback file does not exist, nobody answered the
-form — tell the user, then offer to re-serve it or take the questions in chat.
+**Abandoned form**: a closed or heartbeat-less page exits **2 with no feedback
+file** — read that result off [the exit-code table](#what-an-exit-code-means).
+Treat a missing feedback file the same way, whatever the exit code.
 
 **Optional flags**: `--port N` (fixed port), `--grace-sec N` (default 900 s),
 `--host NAME` (see [Host allow-list](#host-allow-list)).
@@ -201,7 +193,7 @@ happens:
 |---|---|
 | User types a non-empty message and clicks **Send** | Writes `<basename>.feedback.json`, exits 0 → harness re-invokes Claude with the feedback file |
 | User clicks **Send** with an empty or whitespace-only message | Exits 0 silently — no feedback file written, Claude is not re-invoked (the UI trims, so blank input cannot reach the non-empty check) |
-| User closes the tab, or the page goes quiet for `--grace-sec` | Exits 0 silently — no feedback file, Claude is not re-invoked. Closing the tab beacons the server down in about 35 s rather than idling out the grace |
+| User closes the tab, or the heartbeat stops for `--grace-sec` | Exits 0 silently — no feedback file, Claude is not re-invoked |
 
 All three paths exit 0. The only path that produces a feedback file (and a harness
 re-invocation of Claude) is a non-empty `freeform` field in the POST payload.
@@ -249,10 +241,8 @@ The feedback file path is deterministic:
 FEEDBACK_FILE="$HTML_DIR/review.feedback.json"
 ```
 
-**Abandoned round**: like Cycle A, a round whose page is closed or goes quiet for
-`--grace-sec` exits **code 2 and writes no feedback file**. If the server exited
-non-zero or the feedback file does not exist, the round was abandoned — tell the
-user, then offer to re-serve or continue in chat.
+**Abandoned round**: an abandoned round exits **2 with no feedback file**, as in
+Cycle A — see [the exit-code table](#what-an-exit-code-means).
 
 #### Apply rounds (iterate)
 
@@ -264,8 +254,7 @@ After each `action: "apply"` response:
    round could otherwise be misread as fresh feedback if a later round times
    out.
 2. Regenerate `$HTML_DIR/review.html` from the updated content. Rewriting the
-   file is the whole protocol — its mtime is the generation the server reports,
-   so there is no value to author and none to accidentally reuse.
+   file is the whole protocol: its mtime is the generation the server reports.
 3. Re-serve on the **same port** (`run_in_background: true`):
    ```bash
    node "$(cat "$HTML_DIR/.plugin-root")/bin/server.js" "$HTML_DIR/review.html" --mode feedback --port "$(cat "$HTML_DIR/.port")"
@@ -291,11 +280,10 @@ After each `action: "apply"` response:
   counts down to exit with a live page in front of it.
 - **`--host NAME`**: not persisted anywhere — if the first round needed one, every
   Apply re-serve must repeat it. See [Host allow-list](#host-allow-list).
-- **Generation**: the served file's mtime, injected into the page by the server
-  and reported by `GET /ping`. Rewriting `review.html` advances it, and the open
-  tab reloads on the next ping. Nothing goes in the document, so there is no
-  value for Claude to author — the old `fb-generation` meta is gone, along with
-  the failure where reusing its value left the tab on a stale page for good.
+- **Generation**: the served file's mtime, which the server injects into the
+  page and reports on the heartbeat. Rewriting `review.html` advances it and the
+  open tab reloads itself. The document carries nothing — write the file and the
+  reload follows.
 
 ---
 
@@ -401,7 +389,7 @@ If neither address is reachable, fall back per the active mode:
 
 | Mode | Fallback |
 |---|---|
-| ask (Cycle A) | Do not leave the user staring at a dead link while the server waits out its grace. Kill the server, then ask the questions in chat. |
+| ask (Cycle A) | Kill the server and ask the questions in chat, rather than leaving the user on a dead link until the heartbeat runs out. |
 | feedback (Cycle C) | Kill the server and take the feedback in chat, or write `review.html` to a path the user names so they can open it directly (comments still need the server, so chat is usually the better half). |
 | visualize (Cycle B) | Offer to save the HTML to a user-specified path — the page is self-contained and opens as a `file://` URL; only **Send** needs the server. |
 
@@ -433,17 +421,16 @@ files and the `review.html` you just re-served.
 
 ### visualize mode (Cycle B)
 
-Closing the tab is now enough: the page beacons the server down in about 35 s, so
-a page the user is finished with gives its port back on its own. Nothing needs
-killing in the normal case, and only the directory is left behind:
+Closing the tab is enough — the page gives its port back on its own, so nothing
+needs killing in the normal case and only the directory is left behind:
 
 ```bash
 rm -rf "$HTML_DIR"   # optional; the server exits on its own once the page is gone
 ```
 
 Kill it explicitly only when the user says they are done while the tab is still
-open — a page nobody is looking at still counts as watched, because the tab is
-still pinging:
+open: an open tab keeps its heartbeat going, so the server has no way to tell
+that nobody is looking at it.
 
 ```bash
 kill "$SERVER_PID" 2>/dev/null   # the background process from Step 3

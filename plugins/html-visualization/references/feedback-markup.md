@@ -68,10 +68,9 @@ the server injects it, along with the generation and the mode, before `</head>`.
 
 ### Auto-reload after an Apply round
 
-Nothing in the document drives this. The server reports the served file's mtime
-as its generation, and the page reloads as soon as a ping comes back with one
-that differs from the one it loaded with. Regenerating the file is the entire
-protocol — there is no value to write, and none to reuse by accident.
+The server reports the served file's mtime as its generation, and the page
+reloads as soon as a heartbeat comes back carrying a different one. Rewriting
+the file is the entire protocol; the document itself carries nothing.
 
 ---
 

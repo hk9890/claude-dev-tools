@@ -1,8 +1,7 @@
 # visualize mode
 
 Render an HTML visualization — a diagram, chart, data summary, interactive demo,
-or any rich visual — serve it non-blocking with `--mode visualize`, and continue
-immediately. The user opens the page in a browser to view it. Every visualize page
+or any rich visual — serve it non-blocking, and continue immediately. The user opens the page in a browser to view it. Every visualize page
 has an always-on footer with a "Message to Claude" textarea and **Send** / **Save**
 buttons; the user may optionally send a message back, but Claude does not wait for
 it.
