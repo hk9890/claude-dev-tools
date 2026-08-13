@@ -30,8 +30,10 @@ options, its `label` ending in `(Recommended)`.
 - Write both in ASD-STE100 Simplified Technical English, every identifier and abbreviation
   expanded — the user reads the picker cold.
 
-An answer typed as prose — into the free-text field, or as a message — settles its decision as
-firmly as a pick. Take it and recompute the frontier from it.
+An answer typed as prose — into the free-text field the tool puts on every question, or as a
+message — settles its decision as firmly as a pick. Take it and recompute the frontier from it.
+The field is always there; an option that rejects the question is not. Where the premise may be
+wrong — the call is not the user's, or is not a call at all — spend one option on saying so.
 
 ## Facts and decisions
 
