@@ -100,6 +100,13 @@ writing.
 - **Draw it when the shape is the point**: what depends on what, what moves
   where, what happens in which order — a diagram settles these faster than a
   paragraph. Step 2c has the integration.
+- **Leave a way out of the option list**: your options are a guess at the
+  answers. Every choice question therefore ends with the escape option — "None
+  of these — my answer is in the field below" (`value="none"`; `.approaches-none`
+  in an approaches widget) — and every choice question carries the always-visible
+  free-text field that `.annotatable` injects. The reader who wants a different
+  answer, or who rejects the question itself, then has one, instead of leaving
+  the widget empty and hoping you read it as disagreement.
 - **Recommend by marking the option**: on every question you can form a view on,
   put `.is-recommended` on the option you would pick, with the tradeoff that
   decided it behind its why button. The reader sees which one is advised without
@@ -144,9 +151,12 @@ contract in
 - Every widget `<div>` must have `data-qid` (your question slug), `data-qtype`
   (`text`|`radio`|`checkbox`|`approaches`), and `class="widget widget-<type>"`.
 - Add `annotatable` and `data-anchor-id="<qid>"` to every `radio`/`checkbox`/
-  `approaches` widget — this gives that question an always-visible free-text note
-  field. Do NOT add it to `text` widgets; their `<textarea>` is already the
+  `approaches` widget — this gives that question an always-visible free-text
+  answer field. Do NOT add it to `text` widgets; their `<textarea>` is already the
   free-text field.
+- End every `radio` and `checkbox` option list with the escape option, and give
+  every single-mode `approaches` widget its `.approaches-none` — see "The escape
+  option" in `ask-markup.md`.
 - Do NOT add `<script>const CSRF_TOKEN = "...";</script>` — the server injects it.
 - The `/assets/ask/style.css` link and the `/assets/shared/submit.js` +
   `/assets/ask/app.js` scripts are correct as-is; do not change the paths or
@@ -246,8 +256,14 @@ How to interpret each field:
 |---|---|
 | `verdict` | Overall user decision. `approve` → proceed as planned. `approve-with-changes` → incorporate feedback then proceed. `reject` → rethink; discuss alternatives. `""` (empty) → no verdict given; do not assume approval (see below). |
 | `answers` | Map from `data-qid` slug to answer value. Text → string. Radio → selected value string, or `null` if unanswered. Checkbox → array of selected values (may be `[]`). Approaches column → per-column key `<qid>-<approach-id>` with value `"approve"`, `"reject"`, or `null` if unanswered. |
-| `comments` | Per-question free-text notes. Each has `anchor` (`#<qid>`) and `text`. Treat as the user's free-text answer or comment for that specific question. |
+| `comments` | Per-question free text. Each has `anchor` (`#<qid>`) and `text`. This is the user's answer to that question in their own words — read it before, not after, the option they picked. |
+| `"none"` / `"neither"` | The escape option: the user rejected the whole option list. Their answer is the `comments` entry for that `anchor`; where there is none, the question is unanswered and the option list was wrong. |
 | `freeform` | Free-text field. May be empty string. If non-empty, treat as general feedback. |
+
+Where a question's comment contradicts the option picked beside it, **the
+comment wins** — the user wrote prose because the option was not what they
+meant. Say which answers you took from prose rather than from the pick, so a
+misreading is visible to them.
 
 After reading the feedback, continue the original task:
 

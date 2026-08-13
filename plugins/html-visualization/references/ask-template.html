@@ -47,7 +47,7 @@
       data-qid    : unique question ID
       data-qtype  : "radio"
       Each option : <input type="radio"> with name=data-qid and value=<option-value>
-      .annotatable + data-anchor-id : adds an always-visible free-text note field
+      .annotatable + data-anchor-id : adds an always-visible free-text answer field
 
       This example carries the FULL stack — see ask-markup.md for the reading
       order it follows. Evidence and the why panel are used where the question
@@ -89,6 +89,13 @@
           <input type="radio" name="q-priority" value="low">
           <span>Low — backlog is fine</span>
         </label>
+        <!-- The escape option. Required, last, never .is-recommended: without it
+             a reader who wants none of the above can only leave the widget
+             empty, which reads as a question they never reached. -->
+        <label class="radio-option">
+          <input type="radio" name="q-priority" value="none">
+          <span>None of these — my answer is in the field below</span>
+        </label>
       </div>
     </div>
 
@@ -117,7 +124,7 @@
       data-qtype  : "checkbox"
       Each option : <input type="checkbox"> with name=data-qid and value=<option-value>
       Answer value: array of all checked values (may be empty [])
-      .annotatable + data-anchor-id : adds an always-visible free-text note field
+      .annotatable + data-anchor-id : adds an always-visible free-text answer field
     -->
     <div class="widget widget-checkbox annotatable"
          data-qid="q-concerns"
@@ -139,6 +146,11 @@
           <input type="checkbox" name="q-concerns" value="complexity">
           <span>Added complexity</span>
         </label>
+        <!-- The escape option — required here too. -->
+        <label class="checkbox-option">
+          <input type="checkbox" name="q-concerns" value="none">
+          <span>None of these — my answer is in the field below</span>
+        </label>
       </div>
     </div>
 
@@ -157,10 +169,10 @@
                          nothing. See ask-markup.md for that variant.
       .approach-col    : one column; MUST carry data-approach-id="<col-id>"
       .approach-choice : the column's radio — name = data-qid, value = approach id
-      .approaches-none : "neither", same radio group; include it wherever declining
-                         both is a real answer
+      .approaches-none : the escape option — "neither", same radio group. Required,
+                         exactly as the radio and checkbox escape option is
       Answer in payload: answers["q-approach"] = "a" | "b" | "neither" | null
-      .annotatable + data-anchor-id : adds an always-visible free-text note field
+      .annotatable + data-anchor-id : adds an always-visible free-text answer field
     -->
     <div class="widget widget-approaches annotatable"
          data-qid="q-approach"
@@ -201,7 +213,7 @@
 
       </div>
       <label class="approaches-none">
-        <input type="radio" name="q-approach" value="neither"> Neither — [Claude: say what happens then]
+        <input type="radio" name="q-approach" value="neither"> Neither — my answer is in the field below
       </label>
     </div>
 

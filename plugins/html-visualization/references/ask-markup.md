@@ -115,6 +115,26 @@ Available in ask mode exactly as in visualize mode; the integration is documente
 | `.checkbox-options` | `<div>` wrapping checkbox options | `.widget-checkbox` |
 | `.checkbox-option` | `<label>` for one checkbox option (contains `<input type="checkbox">` + `<span>` for text — do NOT nest a second `<label>`) | `.checkbox-options` |
 
+#### The escape option
+
+The last option of every `.widget-radio` and `.widget-checkbox` is an escape
+option — `value="none"`, and text that sends the reader to the answer field:
+
+```html
+<label class="radio-option">
+  <input type="radio" name="q-priority" value="none">
+  <span>None of these — my answer is in the field below</span>
+</label>
+```
+
+It is not optional and it is not a filler choice. Your options are a guess at
+the answers, and the reader who wants a different one, or who rejects the
+question itself, otherwise has to leave the widget empty — which is
+indistinguishable from a question they never reached. Never mark it
+`.is-recommended`.
+
+The `.widget-approaches` equivalent is `.approaches-none`, below.
+
 ### Verdict widget classes
 
 | Class | Element | Purpose |
@@ -145,19 +165,19 @@ Two mutually exclusive options in independent mode let the user approve both and
 | `.approach-col` | `<div>` for one column | One approach; **must** carry `data-approach-id`. |
 | `.approach-header` | `<div>` inside `.approach-col` | Column heading (approach name). |
 | `.approach-choice` | `<label>` inside `.approach-col` | **Single mode.** The column's radio — `name` is the widget's `data-qid`, `value` is the column's `data-approach-id`. |
-| `.approaches-none` | `<label>` after `.approaches-grid` | **Single mode.** "Neither" — same `name`, its own `value` (e.g. `"neither"`). Include it whenever declining both is a real answer, so it is distinguishable from a question the user never reached. |
+| `.approaches-none` | `<label>` after `.approaches-grid` | **Single mode.** The escape option — same `name`, `value="neither"`, text sending the reader to the answer field. Required, for the reason the radio and checkbox escape option is: without it, declining every column is indistinguishable from a question the user never reached. |
 | `.approach-verdict` | `<div>` inside `.approach-col` | **Independent mode.** Per-column approve/reject radio pair, `name="<qid>-<approach-id>"`. |
 
-### Per-question note classes
+### Per-question free-text classes
 
-Every widget carrying `.annotatable` gets an **always-visible** free-text note field, injected by `app.js`. This guarantees the user can always write something in on a question, alongside its structured answer. Each non-empty note becomes one entry in the `comments` array of the submit payload, with `anchor` set to `#<data-anchor-id>`.
+Every widget carrying `.annotatable` gets an **always-visible** free-text field, injected by `app.js` under the heading "Answer in your own words". It is the reader's answer channel, not a margin note: paired with the escape option above, it is how a question gets a real answer that your option list did not contain. Each non-empty entry becomes one item in the `comments` array of the submit payload, with `anchor` set to `#<data-anchor-id>`.
 
 | Class | Element | Purpose |
 |---|---|---|
-| `.annotatable` | A choice-style `.widget` (`radio` / `checkbox` / `approaches`) | Marks the widget to receive an always-visible note field. Do NOT add it to `.widget-text` — that widget's `<textarea>` already *is* the free-text field. |
-| `.widget-note` | `<div>` (injected by `app.js`) | Wraps the note label and textarea. Do NOT author manually. |
-| `.widget-note-label` | `<label>` (injected by `app.js`) | Label shown above the note textarea. Do NOT author manually. |
-| `.widget-note-input` | `<textarea>` (injected by `app.js`) | The free-text note field. Do NOT author manually. |
+| `.annotatable` | A choice-style `.widget` (`radio` / `checkbox` / `approaches`) | Marks the widget to receive an always-visible free-text field. Do NOT add it to `.widget-text` — that widget's `<textarea>` already *is* the free-text field. |
+| `.widget-note` | `<div>` (injected by `app.js`) | Wraps the label and textarea. Do NOT author manually. |
+| `.widget-note-label` | `<label>` (injected by `app.js`) | Label shown above the textarea. Do NOT author manually. |
+| `.widget-note-input` | `<textarea>` (injected by `app.js`) | The free-text field. Do NOT author manually. |
 
 ### Submit / state classes
 
@@ -241,7 +261,7 @@ The verdict is **optional**: if the user submits without selecting one, the payl
     </div>
   </div>
   <label class="approaches-none">
-    <input type="radio" name="q-approach" value="neither"> Neither — leave it as it is
+    <input type="radio" name="q-approach" value="neither"> Neither — my answer is in the field below
   </label>
 </div>
 ```
@@ -268,11 +288,12 @@ Before finalising an ask-mode document:
 - [ ] Every `.widget` has a `data-qtype` matching its input type.
 - [ ] Every question is answerable from the page alone — the thing being decided is quoted, drawn, or explained on it.
 - [ ] Every question with options marks one `.is-recommended`, or genuinely has no basis for a recommendation and says so in a panel.
-- [ ] Every `.widget-approaches` whose options are mutually exclusive carries `data-choice="single"`, with one shared radio group and a `.approaches-none` where declining both is real.
+- [ ] Every `.widget-radio` and `.widget-checkbox` ends with the escape option (`value="none"`, never `.is-recommended`).
+- [ ] Every `.widget-approaches` whose options are mutually exclusive carries `data-choice="single"`, with one shared radio group and the `.approaches-none` escape option.
 - [ ] Every `popovertarget` names a `[popover]` element that exists on the page, and no two panels share an `id`.
 - [ ] No input is pre-checked — including the recommended one.
 - [ ] Every `<pre class="mermaid">` sits inside a `.vis-mermaid-wrap` with a `.hv-zoom-btn`, and the page carries the module block from `mermaid.md` once.
-- [ ] Every `radio` / `checkbox` / `approaches` widget has `.annotatable` and a `data-anchor-id` equal to its `data-qid`, so it gets an always-visible note field.
+- [ ] Every `radio` / `checkbox` / `approaches` widget has `.annotatable` and a `data-anchor-id` equal to its `data-qid`, so it gets an always-visible free-text answer field.
 - [ ] `.widget-text` widgets are NOT `.annotatable` (the textarea is already free text).
 - [ ] Every `.approach-col` has `data-approach-id`; the radio `name` matches `<data-qid>-<data-approach-id>`.
 - [ ] The verdict section contains all three radio options with the exact values above.
