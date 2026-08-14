@@ -6,7 +6,7 @@
  *
  * DOM wiring (only runs when document is available):
  *   - Collects answers from .widget[data-qid] elements.
- *   - Renders an always-visible free-text note field on each .annotatable widget.
+ *   - Renders an always-visible free-text answer field on each .annotatable widget.
  *   - Submits, copies and reports errors through the globals defined in
  *     /assets/shared/submit.js, which the page loads before this file:
  *     hvSubmit, hvCopy, hvShowError, hvClearError.
@@ -16,7 +16,7 @@
  *   data-qid       — question ID; non-empty, printable ASCII, no whitespace
  *   data-qtype     — text | radio | checkbox | approaches
  *   data-anchor-id — base value used as CSS selector anchor (#<value>)
- *   .annotatable   — widget that gets an always-visible free-text note field
+ *   .annotatable   — widget that gets an always-visible free-text answer field
  */
 
 'use strict';
@@ -181,8 +181,10 @@ if (typeof document !== 'undefined') {
     }
 
     // ── Per-question note wiring ────────────────────────────────────────────
-    // Every .annotatable widget gets an always-visible free-text note field,
-    // so the user can write something in alongside any structured answer.
+    // Every .annotatable widget gets an always-visible free-text field. It is
+    // labelled as an answer, not as a note: the options never cover every case,
+    // and a user who writes their real answer here must not read the field as
+    // an optional afterthought to a pick they did not want to make.
 
     function setupAnnotatable(el) {
       // Derive anchor selector from data-anchor-id or element id
@@ -198,13 +200,13 @@ if (typeof document !== 'undefined') {
       var label = document.createElement('label');
       label.className = 'widget-note-label';
       label.setAttribute('for', 'note-' + anchorId);
-      label.textContent = 'Add a note (optional)';
+      label.textContent = 'Answer in your own words';
 
       var ta = document.createElement('textarea');
       ta.className = 'widget-note-input';
       ta.id = 'note-' + anchorId;
       ta.setAttribute('data-note-anchor', '#' + anchorId);
-      ta.placeholder = 'Add a note or comment on this question…';
+      ta.placeholder = 'Write your own answer here, or add a note on this question…';
 
       noteWrap.appendChild(label);
       noteWrap.appendChild(ta);
