@@ -105,9 +105,17 @@ nolines='{"files": [{"path": "x", "covered_ranges": [], "uncovered_ranges": []}]
 dup='{"files": [{"path": "x", "covered_ranges": [[1, 1]], "uncovered_ranges": []}, {"path": "./x", "covered_ranges": [[2, 2]], "uncovered_ranges": []}]}'
 nofiles='{"coverage": 1}'
 emptyfiles='{"files": []}'
+# A Windows producer emits drive-letter paths, and the guard rejects them the same way it
+# rejects a POSIX absolute path. Only the POSIX form was ever driven, so the drive-letter
+# half of the guard ran unasserted: a mutation audit moved its length bound from 2 to 3 and
+# nothing failed. 'windrive' is the bare "C:" that pins that bound — at length 3 the guard
+# stops seeing it and hands back "C:" as though it were a relative path.
+windrive='{"files": [{"path": "C:", "covered_ranges": [[1, 1]], "uncovered_ranges": []}]}'
+winpath='{"files": [{"path": "C:/x", "covered_ranges": [[1, 1]], "uncovered_ranges": []}]}'
 
 for pair in "abs:$abs" "dotdot:$dotdot" "badrange:$badrange" "nonint:$nonint" \
             "zerostart:$zerostart" "nolines:$nolines" "dup:$dup" \
+            "windrive:$windrive" "winpath:$winpath" \
             "nofiles:$nofiles" "emptyfiles:$emptyfiles"; do
   name="${pair%%:*}"; body="${pair#*:}"
   printf '%s' "$body" > "$DIR/$name.json"
