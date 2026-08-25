@@ -141,9 +141,15 @@ more:
 
 | The throw | What it proves | How the report reads it |
 |---|---|---|
-| a test fails naming `TT-REACH` | the line executes | a blind spot: the tests run this code and pin none of the behavior the mutation changed |
-| the slice stays green | no test executes the line | untested code — the fix is a new test, never a stronger one |
-| it will not compile, or a broad `catch` could swallow it | nothing | `inconclusive`, and it stays in the pessimistic half of the score |
+| a test fails | the line executes | a blind spot: the tests run this code and pin none of the behavior the mutation changed |
+| the slice stays green, and a control throw on a line the tests do reach turns it red | no test executes the line | untested code — the fix is a new test, never a stronger one |
+| it will not compile, or the control throw stays green too | nothing | `inconclusive`, and it stays in the pessimistic half of the score |
+
+The marker is a convenience, not the signal. Plenty of harnesses never echo it — a browser
+runner with no `pageerror` handler, anything that swallows a subprocess's stderr — so a red
+selector is what counts. The **control probe** is what makes a *green* selector mean
+something: without it, "no test reaches this line" and "this harness cannot surface a throw
+at all" look identical, and they are opposite findings.
 
 A killed mutant costs no probe: the kill already proved its line runs. The extra runs
 therefore scale with the number of survivors — which is to say, with how weak the suite

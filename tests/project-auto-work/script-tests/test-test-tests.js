@@ -539,6 +539,18 @@ async function main() {
   truthy('reachability: an undecidable probe is inconclusive rather than guessed',
     withCoverage.prompts.some((p, i) => withCoverage.labels[i].startsWith('worker:') &&
       /reached="inconclusive"/.test(p)));
+  // Found by the first real run of this protocol against this repo: two browser-side probes
+  // went red without the marker ever appearing, because test-browser.js registers no
+  // pageerror handler. The worker improvised correctly; the prompt must not need it to.
+  truthy('reachability: a red selector counts even when the runner never echoes the marker',
+    withCoverage.prompts.some((p, i) => withCoverage.labels[i].startsWith('worker:') &&
+      /marker is nowhere in the output/.test(p)));
+  // And the green case is the one that needs proof: without a control throw on a line the
+  // tests do reach, "no test runs this line" and "this harness swallows throws" are the
+  // same observation, and they are opposite findings.
+  truthy('reachability: a green selector needs a control probe before it means unreached',
+    withCoverage.prompts.some((p, i) => withCoverage.labels[i].startsWith('worker:') &&
+      /CONTROL probe/.test(p) && /Control ALSO stays green/.test(p)));
   truthy('reachability: kill_rate excludes the sites no test reaches',
     withCoverage.prompts.some((p, i) => withCoverage.labels[i] === 'synthesis' &&
       /Survivors with reached="no" leave BOTH halves/.test(p)));
