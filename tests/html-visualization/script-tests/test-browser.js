@@ -991,6 +991,116 @@ async function testApplyGapShowsNoBanner() {
   }
 }
 
+// ── Test 11: the /submit dispatch, all four arms ───────────────────────────
+//
+// hvSubmit resolves a request into exactly one of four handlers. A mutation audit
+// proved that only one of them — accepted() — was ever executed by this suite: a
+// throw placed on the 410 condition left the whole run green, while the same throw
+// one arm up on the 200 condition turned it red. So every page could report "your
+// feedback landed" after a 403 or a 500 and nothing here would notice.
+//
+// The arms are driven in this order deliberately. Once a real submit lands, the
+// server answers 410 forever, so the mocked failures have to run first.
+
+async function testSubmitDispatch() {
+  console.log('\n--- test: /submit dispatch arms ---');
+  let browser = null, srv = null, tmpDir = null;
+
+  // Call hvSubmit in the page and resolve with the name of the handler it ran.
+  // A 3 s guard turns "no handler fired at all" into a failure rather than a hang.
+  const arm = (page) => page.evaluate(() => new Promise((resolve) => {
+    const done = setTimeout(() => resolve('none'), 3000);
+    const settle = (name) => { clearTimeout(done); resolve(name); };
+    hvSubmit({ answers: {}, freeform: '' }, {
+      accepted:         () => settle('accepted'),
+      alreadySubmitted: () => settle('alreadySubmitted'),
+      failed:           (status, error) => settle('failed:' + status + ':' + error),
+      unreachable:      () => settle('unreachable'),
+    });
+  }));
+
+  try {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hv-test-dispatch-'));
+    const htmlFile = path.join(tmpDir, 'ask.html');
+    fs.writeFileSync(htmlFile, fs.readFileSync(ASK_TMPL, 'utf8'));
+
+    srv = await startServer(htmlFile, ['--mode', 'ask']);
+    await waitForPort(srv.port);
+
+    browser = await chromium.launch({ headless: true });
+    const page = await (await browser.newContext()).newPage();
+    await page.goto(srv.baseUrl + '/', { waitUntil: 'networkidle' });
+
+    // failed(): a server error, with the message pulled out of the JSON body.
+    await page.route('**/submit', (route) => route.fulfill({
+      status: 500,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: 'boom' }),
+    }));
+    const failedArm = await arm(page);
+    if (failedArm === 'failed:500:boom') {
+      ok('submit dispatch: a 500 runs failed() with the status and the server message');
+    } else {
+      fail('submit dispatch: expected failed:500:boom, got ' + failedArm);
+    }
+
+    // failed() again, this time with a body that is not JSON — the reader has its own
+    // fallback, and a page that showed "undefined" to the user would still be green.
+    await page.route('**/submit', (route) => route.fulfill({
+      status: 400, contentType: 'text/plain', body: 'not json',
+    }));
+    const badBodyArm = await arm(page);
+    if (badBodyArm === 'failed:400:unknown error') {
+      ok('submit dispatch: an unreadable error body falls back to "unknown error"');
+    } else {
+      fail('submit dispatch: expected failed:400:unknown error, got ' + badBodyArm);
+    }
+
+    // unreachable(): the request never completes. This must stay distinct from
+    // failed() — the submit did not land, so the page may offer a retry.
+    await page.route('**/submit', (route) => route.abort());
+    const unreachableArm = await arm(page);
+    if (unreachableArm === 'unreachable') {
+      ok('submit dispatch: an aborted request runs unreachable(), not failed()');
+    } else {
+      fail('submit dispatch: expected unreachable, got ' + unreachableArm);
+    }
+
+    // accepted(): the real server, no interception.
+    await page.unroute('**/submit');
+    const acceptedArm = await arm(page);
+    if (acceptedArm === 'accepted') {
+      ok('submit dispatch: a 200 runs accepted()');
+    } else {
+      fail('submit dispatch: expected accepted, got ' + acceptedArm);
+    }
+
+    // alreadySubmitted(): the same page submitting twice. This is the real 410 the
+    // server returns once a submit has landed, not a mocked one.
+    const secondArm = await arm(page);
+    if (secondArm === 'alreadySubmitted') {
+      ok('submit dispatch: a second submit runs alreadySubmitted() on the real 410');
+    } else {
+      fail('submit dispatch: expected alreadySubmitted, got ' + secondArm);
+    }
+
+    // The 410 must not overwrite what the first submit stored.
+    let payload = null;
+    try { payload = JSON.parse(fs.readFileSync(srv.feedbackFile, 'utf8')); } catch (_) {}
+    if (payload) ok('submit dispatch: the first submit is still the one on disk');
+    else         fail('submit dispatch: no feedback file after the accepted submit');
+
+    await browser.close(); browser = null;
+
+  } catch (err) {
+    fail('submit dispatch: unexpected error — ' + err.message);
+    if (browser) { try { await browser.close(); } catch (_) {} }
+  } finally {
+    killServer(srv);
+    if (tmpDir) { try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {} }
+  }
+}
+
 // ── Main ───────────────────────────────────────────────────────────────────
 
 (async () => {
@@ -1004,6 +1114,7 @@ async function testApplyGapShowsNoBanner() {
   await testTabCloseEndsServer();
   await testSavedCopyIsInert();
   await testApplyGapShowsNoBanner();
+  await testSubmitDispatch();
 
   console.log('\nResults: ' + PASS + ' passed, ' + FAIL + ' failed');
   if (FAIL > 0) {
