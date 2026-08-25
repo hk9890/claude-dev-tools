@@ -1215,6 +1215,94 @@ async function testApproachesIndependent() {
   }
 }
 
+// ── Test 13: one inline comment is enough to Apply ─────────────────────────
+//
+// hasContent() gates the Apply button on "at least one comment OR some freeform
+// text". Both existing feedback tests enable Apply by typing into #freeform-input
+// and neither ever adds an inline comment, so the comment arm ran on every Apply
+// and was asserted by nothing: a mutation audit moved its bound from > 0 to > 1
+// and the suite stayed green. At > 1 the smallest real review a user can send —
+// one comment, no freeform — leaves Apply dead with no explanation.
+
+// Drive the page's own comment flow: select a block the way a mouse drag would,
+// let the floating button appear, then write and save. Nothing is reached into.
+async function addInlineComment(page, text) {
+  await page.evaluate(() => {
+    const block = document.querySelector('#content [data-block-id]');
+    if (!block) throw new Error('no commentable block in the rendered document');
+    const range = document.createRange();
+    range.selectNodeContents(block);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+  });
+  await page.locator('.fb-float-btn').waitFor({ state: 'visible', timeout: 3000 });
+  await page.click('.fb-float-btn');
+  await page.locator('.fb-comment-text').waitFor({ state: 'visible', timeout: 3000 });
+  await page.fill('.fb-comment-text', text);
+  await page.click('.fb-save');
+}
+
+async function testSingleCommentEnablesApply() {
+  console.log('\n--- test: one comment, no freeform, enables Apply ---');
+  let browser = null, srv = null, tmpDir = null;
+
+  try {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hv-test-onecomment-'));
+    const htmlFile = path.join(tmpDir, 'review.html');
+    fs.writeFileSync(htmlFile, fs.readFileSync(FB_TMPL, 'utf8'), 'utf8');
+
+    srv = await startServer(htmlFile, ['--mode', 'feedback']);
+    await waitForPort(srv.port);
+
+    browser = await chromium.launch({ headless: true });
+    const page = await (await browser.newContext()).newPage();
+    await page.goto(srv.baseUrl + '/', { waitUntil: 'networkidle' });
+
+    // The precondition the boundary is measured against: with nothing said at all,
+    // Apply is a no-op round-trip and stays disabled.
+    if (await page.locator('#apply-btn').isDisabled()) {
+      ok('one comment: Apply starts disabled with an empty review');
+    } else {
+      fail('one comment: Apply was enabled before anything was said');
+    }
+
+    await addInlineComment(page, 'the one thing I want changed');
+
+    const commentCount = await page.evaluate(() =>
+      document.querySelectorAll('#content .fb-highlight, #content [data-comment-id]').length);
+    ok('one comment: the comment was saved (highlights: ' + commentCount + ')');
+
+    // The freeform box must stay empty — otherwise this test drives the same arm
+    // the existing two already cover and pins nothing new.
+    const freeform = await page.evaluate(() => {
+      const ta = document.getElementById('freeform-input');
+      return ta ? ta.value : null;
+    });
+    if (freeform === '') {
+      ok('one comment: the freeform box is still empty, so only the comment arm applies');
+    } else {
+      fail('one comment: freeform is ' + JSON.stringify(freeform) + ' — the wrong arm is under test');
+    }
+
+    if (!(await page.locator('#apply-btn').isDisabled())) {
+      ok('one comment: a single inline comment enables Apply');
+    } else {
+      fail('one comment: Apply stayed disabled with one comment and no freeform text');
+    }
+
+    await browser.close(); browser = null;
+
+  } catch (err) {
+    fail('one comment: unexpected error — ' + err.message);
+    if (browser) { try { await browser.close(); } catch (_) {} }
+  } finally {
+    killServer(srv);
+    if (tmpDir) { try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {} }
+  }
+}
+
 // ── Main ───────────────────────────────────────────────────────────────────
 
 (async () => {
@@ -1230,6 +1318,7 @@ async function testApproachesIndependent() {
   await testApplyGapShowsNoBanner();
   await testSubmitDispatch();
   await testApproachesIndependent();
+  await testSingleCommentEnablesApply();
 
   console.log('\nResults: ' + PASS + ' passed, ' + FAIL + ' failed');
   if (FAIL > 0) {
