@@ -1,13 +1,13 @@
 export const meta = {
   name: 'test-tests',
-  description: 'Empirical test-suite strength audit: baseline → grouping → coverage-truth and isolation probes → per-component mutation/no-op/rerun/delay probes → verify → synthesis',
-  whenToUse: 'Launched by the /project-auto-work:test-tests skill. Proves whether a test suite detects bugs (mutation kill rate), stays quiet on non-bugs, is flake-free, runs fast, and whether its unit tests are really isolated and its coverage report tells the truth. Reports and proposes; never keeps an edit.',
+  description: 'Empirical test-suite strength audit: baseline → grouping → coverage-truth and isolation probes → per-component mutation/reachability/no-op/rerun/delay probes → verify → synthesis',
+  whenToUse: 'Launched by the /project-auto-work:test-tests skill. Proves whether a test suite detects bugs (mutation kill rate), stays quiet on non-bugs, is flake-free, runs fast, and whether its unit tests are really isolated. It measures for itself which lines the tests execute, so a coverage report is an optional input, never a prerequisite. Reports and proposes; never keeps an edit.',
   phases: [
-    { title: 'Baseline', detail: 'test command, clean run, coverage, unit split, workspace probe' },
+    { title: 'Baseline', detail: 'test command, clean run, optional coverage, unit split, workspace probe' },
     { title: 'Grouping', detail: 'components: prod slice + tests + selector + churn' },
     { title: 'Hermeticity', detail: 'same slice twice in parallel — safe to parallelize?' },
-    { title: 'Probes', detail: 'coverage-truth mutants + unit-isolation denial run' },
-    { title: 'Workers', detail: 'per component: reruns, mutants, no-ops, delays, integrity' },
+    { title: 'Probes', detail: 'coverage-truth mutants (only where the repo has a coverage command) + unit-isolation denial run' },
+    { title: 'Workers', detail: 'per component: reruns, mutants, reachability probes, no-ops, delays, integrity' },
     { title: 'Verify', detail: 'refute survivors as equivalent mutants (level=high|ultra only)' },
     { title: 'Synthesis', detail: 'scores, verdict, findings, proposals, checked/not-checked' },
   ],
@@ -34,6 +34,10 @@ const LEVELS = ['low', 'medium', 'high', 'ultra']
 // environment denied. Both are per AUDIT, not per component — "does the coverage command
 // under-report" and "are the unit tests isolated" are properties of the repository, and
 // paying for them per component would multiply the suite's own runtime for one answer.
+// T is spent only where the repository HAS a coverage command; without one there is no
+// claim to check, and the audit's own reachability probes cover the same ground per site.
+// The reachability probe itself takes no dial: it runs once per SURVIVING mutant at every
+// level, because a survivor nobody can interpret is not a measurement.
 const DIALS = {
   low:    { components: 3,  K: 3, M: 0, D: 0, R: 2, T: 0, denial: false, hermeticity: false, verify: false },
   medium: { components: 8,  K: 5, M: 2, D: 1, R: 3, T: 3, denial: true,  hermeticity: true,  verify: false },
@@ -126,7 +130,7 @@ function normalizeArgs(rawArgs) {
 // Which abort gate the measured baseline trips, or null to proceed. ORDER MATTERS: a
 // timed-out baseline reports green=false too, so the speed gate must be evaluated before
 // the red gate or every slow suite would be reported as a failing one.
-function baselineAbort(baseline, schemaRef) {
+function baselineAbort(baseline) {
   if (baseline.wall_s > 600) {
     return {
       reason: 'suite too slow to audit — the baseline run did not finish within the 600 s cap',
@@ -144,27 +148,31 @@ function baselineAbort(baseline, schemaRef) {
       remediation: 'Fix or quarantine the failing tests so the suite is green, then re-run the audit. Name each failing test and the quarantine/skip mechanism this runner supports.',
     }
   }
-  if (!baseline.coverage.obtained || !baseline.coverage.summary_file) {
-    const noProducer = !baseline.coverage.producer_cmd
-    return {
-      reason: 'coverage summary unavailable — audit would mutate blind',
-      evidence:
-        `Command: ${baseline.test_cmd}\n` +
-        (noProducer
-          ? `No coverage-summary command is documented in this repo. The audit needs one that emits the neutral schema on stdout.\n` +
-            `How to enable: ${baseline.coverage.how_to_enable || '(agent found no route)'}`
-          : `Coverage command: ${baseline.coverage.producer_cmd}\n` +
-            `Its output did not conform to the coverage-summary schema:\n${baseline.coverage.validation_errors || '(no validator output captured)'}`),
-      remediation:
-        `The repository must expose a command that emits a coverage summary as JSON on stdout, conforming to the schema at ${schemaRef} ` +
-        `(a "files" array of {repo-relative path, covered_ranges, uncovered_ranges}), documented where the test command is documented. ` +
-        (noProducer
-          ? 'Add and document that command, then re-run.'
-          : 'Fix the command so its output conforms (the validator errors above pinpoint what to change), then re-run.'),
-    }
-  }
+  // Coverage is deliberately NOT a gate. The audit measures reachability itself, one throw
+  // probe per surviving mutant, so a repo with no coverage command is fully auditable — it
+  // only loses the site-ranking hint and the coverage-truth probe, and both absences are
+  // reported rather than hidden.
   return null
 }
+
+// Reachability as the workers measured it. A KILLED mutant proves its line executes; a
+// SURVIVED one is followed by a throw probe at the same site, and only that settles whether
+// the survivor is a blind assertion or code no test runs at all. Pure so the ratio the
+// verdict cap keys on is testable without an audit run.
+function reachabilitySummary(workers) {
+  const mutants = (workers || []).filter(w => w && w.audited).flatMap(w => w.mutants || [])
+  const unreached = mutants.filter(m => m && m.reached === 'no').length
+  const inconclusive = mutants.filter(m => m && m.reached === 'inconclusive').length
+  // `sites`, not `probed`: it counts every mutation site at an audited component, killed
+  // mutants included. Only survivors earn a throw probe, so "probed" would read as the
+  // smaller number and make the cap's share look larger than it is.
+  return { sites: mutants.length, unreached, inconclusive, reached: mutants.length - unreached - inconclusive }
+}
+
+// kill_rate excludes sites no test reaches, so a suite that executes almost nothing can post
+// a perfect rate over a handful of sites. Past this share of all mutation sites the top
+// verdict is off the table and the headline has to say why.
+const UNREACHED_CAP_RATIO = 1 / 3
 
 // Guard the score's denominator, not just the component count. kill_rate is killed over
 // total mutants across AUDITED components; that is 0/0 whenever no audited component
@@ -214,7 +222,14 @@ function notCheckedList({ level, dial, baseline, components, workerResults, skip
     ...(dial.hermeticity ? [] : ['hermeticity probe — skipped at level=low; workers were serialized instead']),
     ...(dial.M === 0 ? ['specificity (no-op probes) — skipped at level=low'] : []),
     ...(dial.D === 0 ? ['delay injection — skipped at level=low'] : []),
-    ...(dial.T === 0 ? ['coverage-truth probe — skipped at level=low; the coverage report was taken on trust'] : []),
+    ...(dial.T === 0 ? ['coverage-truth probe — skipped at level=low; any coverage report the repo has was taken on trust'] : []),
+    // An absent coverage report costs the audit a site-ranking hint and the coverage-truth
+    // probe, nothing more — but a reader who is not told will assume both happened.
+    // The condition must match the orchestration's `coverageOn` exactly: obtained=true with
+    // no summary_file leaves nothing to read, so the audit skips both and this must say so.
+    ...(baseline.coverage && baseline.coverage.obtained && baseline.coverage.summary_file
+      ? []
+      : ['repository coverage report — no mutation site was ranked by one and no untested_churn was derived; reachability was measured per site instead']),
     ...(dial.denial ? [] : ['unit-isolation denial probe — skipped at level=low']),
     // A probe that was budgeted but could not run says so with its own reason: a missing
     // measurement must not read as a passing one.
@@ -237,6 +252,9 @@ const BASELINE_SCHEMA = {
     red_details: { type: 'string' },
     wall_s: { type: 'number' },
     slow_tests: { type: 'string' },
+    // OPTIONAL. obtained=false is a normal outcome: it costs the audit the site-ranking
+    // hint and the coverage-truth probe, and nothing else. The audit proves reachability
+    // for itself, per site, with a throw probe.
     coverage: {
       type: 'object',
       properties: {
@@ -300,9 +318,11 @@ const COMPONENTS_SCHEMA = {
         required: ['name', 'prod_paths', 'test_selector'],
       },
     },
-    // Uncovered code in the most-churned production files. Derived, not probed: both
-    // inputs are already on disk, so this costs no suite run — and it is churn-ranked,
-    // never risk-ranked, which is why it carries no severity downstream.
+    // Uncovered code in the most-churned production files, taken from the REPOSITORY'S OWN
+    // coverage report. Derived, not probed: both inputs are already on disk, so this costs
+    // no suite run — and it is churn-ranked, never risk-ranked, which is why it carries no
+    // severity downstream. Empty when the repo exposes no coverage command; the audit's own
+    // proven-unreached sites are the measured counterpart, and those do carry findings.
     untested_churn: {
       type: 'array',
       items: {
@@ -422,8 +442,15 @@ const WORKER_SCHEMA = {
           outcome: { type: 'string', enum: ['KILLED', 'SURVIVED'] },
           killed_by: { type: 'string' },
           implication: { type: 'string' },
+          // What replaces the coverage report, measured per site instead of trusted. A KILLED
+          // mutant carries 'yes' for free — a test failed on it, so the line ran. A SURVIVED
+          // one earns its value from a throw probe at the same site: 'yes' makes it a blind
+          // assertion, 'no' makes it untested code, 'inconclusive' means the probe could not
+          // decide (the throw broke the build, or a broad catch could have swallowed it).
+          reached: { type: 'string', enum: ['yes', 'no', 'inconclusive'] },
+          reach_evidence: { type: 'string' },
         },
-        required: ['file', 'line', 'diff', 'operator', 'stated_behavior_change', 'outcome'],
+        required: ['file', 'line', 'diff', 'operator', 'stated_behavior_change', 'outcome', 'reached'],
       },
     },
     noops: {
@@ -480,6 +507,7 @@ const REPORT_SCHEMA = {
         flaky_tests: { type: 'integer' },
         timing_sensitive: { type: 'integer' },
         coverage_truth_kills: { type: 'integer' },
+        unreached_sites: { type: 'integer' },
         mislabelled_unit_tests: { type: 'integer' },
         suite_wall_s: { type: 'number' },
       },
@@ -535,9 +563,10 @@ const REPORT_SCHEMA = {
         required: ['name', 'audited'],
       },
     },
-    // Derived from the coverage summary and git churn, never probed — so it is a section
-    // of the report, not a finding: in a report where every finding is backed by a probe
-    // that ran, a severity here would break that contract.
+    // Derived from the REPOSITORY'S OWN coverage report and git churn, never probed — so it
+    // is a section of the report, not a finding: in a report where every finding is backed
+    // by a probe that ran, a severity here would break that contract. Empty when the repo
+    // exposes no coverage command.
     untested_churn: {
       type: 'array',
       items: {
@@ -561,7 +590,7 @@ const REPORT_SCHEMA = {
 // tests/project-auto-work/script-tests use this). Assigned before the orchestration below
 // so it is reached whichever path that takes.
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { normalizeArgs, dialFor, baselineAbort, scoreabilityAbort, notCheckedList, findingSignals, LEVELS, DIALS, FINDINGS_CAP }
+  module.exports = { normalizeArgs, dialFor, baselineAbort, scoreabilityAbort, notCheckedList, findingSignals, reachabilitySummary, LEVELS, DIALS, FINDINGS_CAP, UNREACHED_CAP_RATIO }
 }
 
 // ---------------------------------------------------------------------------
@@ -595,7 +624,7 @@ if (typeof agent === 'function') {
       `Rules: verdict is '${reason.startsWith('suite is red') ? 'untrustworthy' : 'not-auditable'}'. ` +
       `One finding on axis '${reason.startsWith('suite is red') ? 'reliability' : 'auditability'}' (severity blocker, candidate false) carrying the evidence verbatim. ` +
       `Each proposal is one concrete action with its exact command or edit where derivable from the evidence ` +
-      `(e.g. the coverage invocation to add, the failing test to quarantine, the slow tests to exclude from the audited command), ` +
+      `(e.g. the failing test to quarantine, the slow tests to exclude from the audited command), ` +
       `with decision "settled" (the audit cannot happen until it is done, so there is nothing to weigh). ` +
       `checked describes the little that WAS done; not_checked lists every audit axis that never ran.`,
       { label: 'abort-report', phase: 'Synthesis', schema: REPORT_SCHEMA }
@@ -628,15 +657,16 @@ if (typeof agent === 'function') {
     `If it is RED, capture the failing tests' names and output excerpt in red_details, set green=false, and still attempt steps 4-7 cheaply if possible; accuracy of red_details matters most.\n` +
     `Also capture per-test timings if the runner offers them cheaply (a timing/durations flag or reporter it already has); summarize the slowest tests in slow_tests. ` +
     `If the runner offers no per-test timing output, record that fact in slow_tests and MOVE ON — do not dig for it.\n\n` +
-    `3. COVERAGE: this audit does NOT parse coverage formats. The repository must provide a command that emits a coverage summary as JSON on stdout, ` +
+    `3. COVERAGE — OPTIONAL, and a short search. The audit measures for itself which lines the tests execute, so a repo with no coverage report is fully auditable; ` +
+    `what a report buys is a ranking hint for mutation sites and a claim the audit can then check. It never gates the run, and this audit does NOT parse coverage formats.\n` +
+    `DISCOVER, the same way you found the test command and only from the project's OWN docs (testing/contributor/agent docs, README, task files), a command that emits a coverage summary as JSON on stdout ` +
     `in the neutral schema documented at ${schemaRef} (a "files" array of {repo-relative path, covered_ranges, uncovered_ranges}). ` +
-    `DISCOVER that command the same way you found the test command — from the project's OWN docs (testing/contributor/agent docs, README, task files); ` +
-    `record it in producer_cmd and where you found it in producer_source. Do not invent one the repo does not document, and never install anything.\n` +
-    `Run it (wrapped in \`timeout 590\`), capture stdout to ${scratchDir}/coverage_raw.json, then validate + normalize:\n` +
+    `Record it in producer_cmd and where you found it in producer_source. Do not invent one the repo does not document, never install anything, and do not go hunting: if the documented sources do not name one, that is the answer.\n` +
+    `Where one exists, run it (wrapped in \`timeout 590\`), capture stdout to ${scratchDir}/coverage_raw.json, then validate + normalize:\n` +
     `   ${validateTool} ${scratchDir}/coverage_raw.json --repo-root ${repoRoot} > ${scratchDir}/coverage_summary.json\n` +
     `CONTRACT: obtained=true is valid ONLY if the validator exits 0 AND ${scratchDir}/coverage_summary.json exists — then fill summary_file and pct (the summary's totals.pct).\n` +
-    `If the repo documents NO such command, set obtained=false and put into how_to_enable exactly what to add (a command emitting the schema at ${schemaRef}, and where to document it).\n` +
-    `If a command exists but the validator REJECTS its output (exit 3), set obtained=false, record the command in producer_cmd, and put the validator's stderr verbatim into validation_errors.\n\n` +
+    `If the repo documents NO such command, set obtained=false and put into how_to_enable exactly what to add (a command emitting the schema at ${schemaRef}, and where to document it). The audit continues without it.\n` +
+    `If a command exists but the validator REJECTS its output (exit 3), set obtained=false, record the command in producer_cmd, and put the validator's stderr verbatim into validation_errors. The audit continues without it.\n\n` +
     `4. RUNNER FEATURES: record the runner's native order-shuffle flag if one exists (only a flag/plugin that is ALREADY available — never install one) ` +
     `in shuffle_flag, and the test-filter syntax (however this runner selects a subset — a path, a name filter, a package pattern) in filter_syntax. ` +
     `Set can_slice=true only after PROVING it by actually running one small subset.\n\n` +
@@ -668,11 +698,15 @@ if (typeof agent === 'function') {
 
   if (!baseline) return { error: 'baseline agent failed', repoRoot, level }
 
+  // The repo's coverage report, where it has one, is an input this audit ranks sites with
+  // and then checks — never one it depends on. Everything downstream branches on this flag.
+  const coverageOn = !!(baseline.coverage && baseline.coverage.obtained && baseline.coverage.summary_file)
+
   log(`Baseline: cmd="${baseline.test_cmd}" green=${baseline.green} wall=${baseline.wall_s}s ` +
-      `coverage=${baseline.coverage.obtained ? ((baseline.coverage.pct != null ? baseline.coverage.pct : '?') + '%') : 'NONE'} ` +
+      `coverage=${coverageOn ? ((baseline.coverage.pct != null ? baseline.coverage.pct : '?') + '%') : 'none (optional — reachability is measured per site)'} ` +
       `worktree_ok=${baseline.worktree_ok} can_slice=${baseline.can_slice}`)
 
-  const gate = baselineAbort(baseline, schemaRef)
+  const gate = baselineAbort(baseline)
   if (gate) return await abortReport(gate.reason, gate.evidence, gate.remediation)
 
   // ── Phase 2 — Grouping into components
@@ -683,9 +717,11 @@ if (typeof agent === 'function') {
     `You are the grouping agent of a test-suite strength audit of ${repoRoot}. Read-only: do not modify anything.\n\n` +
     `Baseline facts (measured, do not re-derive): test command \`${baseline.test_cmd}\`, full-suite wall ${baseline.wall_s}s, ` +
     `filter syntax: ${baseline.filter_syntax || 'unknown'}, slowest tests: ${baseline.slow_tests || 'n/a'}.\n` +
-    `Per-file coverage summary: read ${scratchDir}/coverage_summary.json (already normalized).\n\n` +
+    (coverageOn
+      ? `Per-file coverage summary — the REPOSITORY'S OWN claim, an optional input this audit does not trust and will check: read ${scratchDir}/coverage_summary.json (already normalized).\n\n`
+      : `This repo exposes no conforming coverage command, which is fine: the audit measures reachability itself, one probe per site. Group from the code and the tests alone.\n\n`) +
     `Partition the codebase into COMPONENTS: a component is a cohesive production-code slice plus the tests that exercise it, ` +
-    `derived from directory structure, naming conventions, and the coverage summary. Do NOT rely on per-test coverage (not portable).\n` +
+    `derived from directory structure, naming conventions${coverageOn ? ', and the coverage summary' : ''}. Do NOT rely on per-test coverage (not portable).\n` +
     `Rules:\n` +
     `- SMALL-REPO RULE (check this FIRST): if the suite runs in under ~60 s AND has fewer than ~20 test files, return exactly ONE component covering the whole suite ` +
     `(test_selector = the full command, churn_rank = 1 — skip the churn computation entirely). ` +
@@ -695,15 +731,19 @@ if (typeof agent === 'function') {
     `It MUST be portable: executed with the repo root (or a fresh worktree of it) as the working directory — so use repo-relative paths only, ` +
     `never absolute paths and never a leading \`cd\`. It will be validated before use.\n` +
     `- est_runtime_s: your estimate of the selector's wall time (from baseline timings where possible).\n` +
-    `- coverage_pct: the component's aggregate line coverage computed from the per-file summary entries of its prod_paths — ` +
-    `never totals.pct (the totals may include test helpers/fixtures and would skew the figure).\n` +
+    (coverageOn
+      ? `- coverage_pct: the component's aggregate line coverage computed from the per-file summary entries of its prod_paths — ` +
+        `never totals.pct (the totals may include test helpers/fixtures and would skew the figure). It is the repo's claim, not a measurement of this audit's.\n`
+      : `- coverage_pct: omit it. There is no coverage summary, and a figure guessed from file names would be read as measured.\n`) +
     `- churn_rank: 1 = most-churned. Compute from \`git -C ${repoRoot} log --since="6 months ago" --name-only --pretty=format:\` file-change counts aggregated per component.\n\n` +
-    `ALSO PRODUCE untested_churn: up to 10 production files that carry uncovered lines, each with its uncovered_ranges from the summary, uncovered_lines (the total those ranges span), and churn_commits. ` +
-    `Both inputs are already in your hands — the per-file coverage summary and the churn counts you just computed — so this is a join, not new work.\n` +
-    `ORDER BY churn_commits × uncovered_lines, largest first. Ordering on churn alone puts a hot file with ONE uncovered line above a rarely-touched file with five hundred, and the top of a ten-item list is the part anyone reads. ` +
-    `The product keeps a file that changes constantly ahead of a dormant one while still ranking by how much is actually untested.\n` +
-    `Report it as exactly what it is: CHURN-WEIGHTED, never risk-ranked. How often a file changes and how much of it is untested are both counts; neither says how dangerous the gap is, and the report labels it that way. ` +
-    `Empty array when every file carrying churn is fully covered.\n\n` +
+    (coverageOn
+      ? `ALSO PRODUCE untested_churn: up to 10 production files that carry uncovered lines, each with its uncovered_ranges from the summary, uncovered_lines (the total those ranges span), and churn_commits. ` +
+        `Both inputs are already in your hands — the per-file coverage summary and the churn counts you just computed — so this is a join, not new work.\n` +
+        `ORDER BY churn_commits × uncovered_lines, largest first. Ordering on churn alone puts a hot file with ONE uncovered line above a rarely-touched file with five hundred, and the top of a ten-item list is the part anyone reads. ` +
+        `The product keeps a file that changes constantly ahead of a dormant one while still ranking by how much is actually untested.\n` +
+        `Report it as exactly what it is: the REPOSITORY'S OWN coverage claim, CHURN-WEIGHTED, never risk-ranked, and unverified by this audit. How often a file changes and how much of it is untested are both counts; neither says how dangerous the gap is, and the report labels it that way. ` +
+        `Empty array when every file carrying churn is fully covered.\n\n`
+      : `untested_churn: return an EMPTY array. It is a join over a coverage summary, and there is none — a list of files you believe are untested would be a guess, and this audit reports only what it measured. The workers prove per site which lines no test reaches.\n\n`) +
     `Return the components list ordered by churn_rank (most-churned first), untested_churn, plus a short rationale.`,
     { label: 'grouping', phase: 'Grouping', schema: COMPONENTS_SCHEMA }
   )
@@ -827,12 +867,22 @@ if (typeof agent === 'function') {
     phase('Probes')
   }
 
-  if (dial.T > 0) {
+  if (dial.T > 0 && !coverageOn) {
+    // The probe exists to catch a coverage command that under-reports; this repo exposes
+    // none, so there is no claim to check. The per-site reachability probes settle the same
+    // question where it actually bites, and this is a skip with a reason, not a silent gap.
+    coverageTruth = {
+      ran: false,
+      integrity_ok: true,
+      skipped_reason: 'the repository exposes no conforming coverage-summary command, so there is no coverage claim to check',
+    }
+    log(`Coverage-truth probe: skipped — ${coverageTruth.skipped_reason}`)
+  } else if (dial.T > 0) {
     coverageTruth = await agent(
       `You are the coverage-truth probe of a test-suite audit of ${repoRoot}.\n` +
-      `The audit chooses every mutation site from this repo's own coverage command. Your job is to find out whether that command LIES.\n\n` +
+      `This repo has a coverage command, and the audit used it to RANK its mutation sites. Your job is to find out whether that command LIES.\n\n` +
       `${workspaceProtocol('truth', 'integrity_ok=false and ran=false')}\n\n` +
-      `Coverage summary (normalized): read ${scratchDir}/coverage_summary.json. Its uncovered_ranges are your targets — the exact opposite of what the component workers mutate.\n` +
+      `Coverage summary (normalized): read ${scratchDir}/coverage_summary.json. Its uncovered_ranges are your targets — the lines the summary claims no test runs.\n` +
       `Full test command: ${baseline.test_cmd} (this is "your selector" in the workspace protocol above).\n` +
       `Components and their production paths: ${JSON.stringify(components.map(c => ({ name: c.name, prod_paths: c.prod_paths, coverage_pct: c.coverage_pct })))}\n\n` +
       `Apply ${dial.T} mutants on lines the summary calls UNCOVERED. Choose the ${dial.T} sites where the summary is MOST LIKELY WRONG, and state that suspicion in why_suspected for each:\n` +
@@ -840,7 +890,7 @@ if (typeof agent === 'function') {
       `  - an uncovered range sitting INSIDE a function whose other lines are covered;\n` +
       `  - a component whose coverage_pct looks implausibly low against test files that clearly exercise it.\n` +
       `Use the same operators as the audit's other mutants and keep each diff small. For each: apply → run the full test command → record outcome → revert per the protocol.\n\n` +
-      `WHAT THE OUTCOMES MEAN: a KILLED mutant is the finding — a test executed a line the coverage command reported as uncovered, so the coverage data the whole audit was drawn from under-reports. Record killed_by. ` +
+      `WHAT THE OUTCOMES MEAN: a KILLED mutant is the finding — a test executed a line the coverage command reported as uncovered, so the data that ranked this audit's sites under-reports. Record killed_by. ` +
       `A SURVIVED mutant restates what the summary already said and is worth nothing; still record it so the report can say how many sites were probed, and expect most of them.\n` +
       `Set ran=true only if the protocol completed and the integrity gate passed.`,
       { label: 'coverage-truth', phase: 'Probes', schema: COVERAGE_TRUTH_SCHEMA }
@@ -914,9 +964,10 @@ if (typeof agent === 'function') {
       `Component: ${comp.name}\nProduction paths: ${JSON.stringify(comp.prod_paths)}\n` +
       `Test selector (run tests with exactly this): ${comp.test_selector}\n` +
       `Suite facts: filter syntax ${baseline.filter_syntax || 'n/a'}; shuffle flag ${baseline.shuffle_flag || 'none'}.\n` +
-      `Coverage detail per file (mutate ONLY inside covered ranges):\n` +
-      `  read ${scratchDir}/coverage_summary.json — one normalized document, plain JSON. Find each production file by its repo-relative path in the "files" array; ` +
-      `its covered_ranges are the only mutable lines, uncovered_ranges are off-limits.\n\n` +
+      (coverageOn
+        ? `Coverage hint — a RANKING preference, never a filter: read ${scratchDir}/coverage_summary.json, one normalized document, plain JSON. Find each production file by its repo-relative path in the "files" array. ` +
+          `Prefer sites inside covered_ranges: a line the tests already reach yields its answer in one run. But this is the repository's own claim and this audit does not trust it — a line in uncovered_ranges is a legal target, and step 3b settles which lines actually run.\n\n`
+        : `No coverage report is available for this repo, and none is needed: step 3b measures reachability directly, per site. Choose sites from the code and the tests themselves.\n\n`) +
       `${workspaceInstructions}\n\n` +
       `Never install anything. Every command within the 600 s cap. ` +
       `Tee every selector/suite run to a log file under ${scratchDir} and extract failures/details from the log — NEVER re-run the suite just to re-read its output. ` +
@@ -928,11 +979,23 @@ if (typeof agent === 'function') {
         ? `run the selector ${Math.max(1, dial.R - 1)} more time(s) as-is, plus ONE run with the shuffle flag (${baseline.shuffle_flag}) using a FIXED seed you record`
         : `run the selector ${dial.R} more times`}. ` +
       `Any test whose outcome differs across runs is a flake: record {test, symptom (what differed, and the shuffle seed/order if the shuffled run exposed it)}.\n\n` +
-      `3. SENSITIVITY — ${dial.K} mutants. Pick sites on COVERED lines only (check the coverage detail), preferring branch-dense, recently-churned production code; one mutant per site; spread across files where possible. ` +
+      `3. SENSITIVITY — ${dial.K} mutants. Pick sites anywhere in this component's production paths, preferring branch-dense, recently-churned code whose functions or classes this component's own test files name — a symbol the tests call by name is the likeliest to be executed. One mutant per site; spread across files where possible. ` +
       `Operators, with the name to record for each: negate a condition (negate-condition); flip a comparison, < ↔ <= or == ↔ != (flip-comparison); ±1 on a boundary constant (boundary-constant); delete a guard clause/early return (delete-guard); swap same-typed arguments (swap-args); replace a constant with 0, 1, "" or a null-equivalent (replace-constant); && ↔ || (logic-operator); delete a statement whose result is unused (delete-statement); return a constant instead of the computed value (return-constant).\n` +
-      `BOUNDARY RULE: the edge cases that break in production — an empty collection, a single item, the maximum, the line between valid and invalid — live in comparisons, size and limit constants, and empty/null guards. Where this component's COVERED code contains any of those constructs, at least ONE mutant must be boundary-class: flip-comparison, boundary-constant, delete-guard, or replace-constant. A mix drawn only from the other operators leaves every boundary unprobed, and a suite that pins no edge case would score clean on it. Where the covered code genuinely holds no such construct, record that in notes.\n` +
+      `BOUNDARY RULE: the edge cases that break in production — an empty collection, a single item, the maximum, the line between valid and invalid — live in comparisons, size and limit constants, and empty/null guards. Where this component's production code contains any of those constructs, at least ONE mutant must be boundary-class: flip-comparison, boundary-constant, delete-guard, or replace-constant. A mix drawn only from the other operators leaves every boundary unprobed, and a suite that pins no edge case would score clean on it. Where the code genuinely holds no such construct, record that in notes.\n` +
       `RULE: before applying each mutant, STATE the behavior change you believe it introduces (e.g. "empty input now passes validation"). If you cannot state one, pick a different site — never apply an edit with no statable behavior change.\n` +
       `For each mutant: apply (keep the diff ≤ ~15 lines) → run the selector → record operator (exactly one of the names above) and outcome KILLED (with killed_by = the failing test) or SURVIVED (with implication = what broken behavior would ship undetected) → revert per the workspace protocol.\n\n` +
+      `3b. REACHABILITY — one probe per SURVIVING mutant, and none for the others. This is what lets this audit run without trusting a coverage report, so do not skip it.\n` +
+      `A survivor has two innocent explanations: no test executes that line, or the mutation changes nothing observable. This step removes the first.\n` +
+      `A KILLED mutant needs no probe and must not get one — a test failed on it, so the line demonstrably ran: record reached="yes" with the killing test as reach_evidence and spend no run on it.\n` +
+      `For each SURVIVOR: at the SAME site, in place of the mutant, apply the most lethal one-line edit the language allows — throw an exception carrying the marker string TT-REACH ` +
+      `(Python \`raise Exception("TT-REACH")\`, JavaScript \`throw new Error("TT-REACH")\`, Go \`panic("TT-REACH")\`, Java \`throw new RuntimeException("TT-REACH")\`, Ruby \`raise "TT-REACH"\`). Run the selector once, then revert per the workspace protocol. Read the outcome:\n` +
+      `  - a test FAILED and the output names TT-REACH → reached="yes". The tests execute this line and assert nothing the mutation breaks: a real blind spot. reach_evidence = the failing test.\n` +
+      `  - a test FAILED but the marker is nowhere in the output → still reached="yes", and this is COMMON: a browser harness with no pageerror handler, or any runner that swallows a subprocess's stderr, never echoes it. Read the red selector as the signal, and say in reach_evidence that the marker was not surfaced and which test went red.\n` +
+      `  - the selector stayed GREEN → run a CONTROL probe before you conclude anything. Put the same throw on a neighbouring line the tests certainly DO reach — the sibling branch of the same conditional, the statement above it — and run the selector again. ` +
+      `Control turns the selector RED → the harness does surface a throw from here, so the green result is real: reached="no". No test executes this line at all. That is UNTESTED CODE, not a weak assertion, and the report must say so — the fix is a new test, never a stronger one. reach_evidence = "selector green with a throw at the site; control throw at <line> turned it red". ` +
+      `Control ALSO stays green → the harness swallows throws in this file and the probe can decide nothing: reached="inconclusive". Skipping the control makes "no test reaches it" and "nothing here can ever fail" look identical, and they are opposite findings.\n` +
+      `  - the edit did not compile or parse (an unreachable-statement or missing-return error is the common one), or the site sits inside a catch/rescue/recover broad enough to swallow the throw → reached="inconclusive", with which of the two it was in reach_evidence. ` +
+      `Never guess: a build error proves nothing about the tests, and a swallowed throw looks exactly like an unreached line.\n\n` +
       (dial.M > 0
         ? `4. SPECIFICITY — ${dial.M} no-op edits from this whitelist ONLY: rename a local variable (function scope; skip if reflection/dynamic access nearby); extract a local constant/variable; insert an unused local statement; whitespace-only reformat of one function. ` +
           `NEVER: statement reordering, non-local renames, arithmetic rewrites. For each: apply → run → any failing test is a brittle candidate (record broke=true + broken_tests + the diff) → revert.\n\n`
@@ -949,7 +1012,10 @@ if (typeof agent === 'function') {
 
   const verifierStage = async (workerResult, comp) => {
     if (!workerResult || !dial.verify || !workerResult.audited) return workerResult
-    const survivors = (workerResult.mutants || []).filter(m => m.outcome === 'SURVIVED')
+    // A survivor the reachability probe proved unreached is not an equivalence question:
+    // no test runs the line, and the audit MEASURED that rather than arguing it. Sending it
+    // to a refuter spends an agent to risk dropping a proven finding on a reading of code.
+    const survivors = (workerResult.mutants || []).filter(m => m.outcome === 'SURVIVED' && m.reached !== 'no')
     const brittle = (workerResult.noops || []).filter(n => n.broke)
     if (survivors.length === 0 && brittle.length === 0) return workerResult
 
@@ -958,10 +1024,14 @@ if (typeof agent === 'function') {
         agent(
           `Adversarial verification in a test-suite audit of ${repoRoot}. Read-only.\n` +
           `A mutant SURVIVED (no test failed). Try to REFUTE the finding by proving the mutant is EQUIVALENT ` +
-          `(no observable behavior change) or sits in dead/unreachable code.\n` +
+          `(no observable behavior change)${m.reached === 'yes' ? '' : ' or sits in dead/unreachable code'}.\n` +
           `File: ${m.file}:${m.line} (repo-relative — resolve it against ${repoRoot}; the worker's workspace no longer exists)\n` +
-          `Diff:\n${m.diff}\nWorker's claimed behavior change: ${m.stated_behavior_change}\n\n` +
-          `Read the surrounding code. refuted=true ONLY if you can concretely argue equivalence or unreachability (state the argument in reason). ` +
+          `Diff:\n${m.diff}\nWorker's claimed behavior change: ${m.stated_behavior_change}\n` +
+          `MEASURED reachability at this site: ${m.reached || 'not measured'}${m.reach_evidence ? ` — ${m.reach_evidence}` : ''}.\n` +
+          (m.reached === 'yes'
+            ? `The audit already PROVED a test executes this line: a throw at the same site failed a test. "Nothing reaches it" is therefore not available to you — equivalence is the only refutation left.\n`
+            : '') +
+          `\nRead the surrounding code. refuted=true ONLY if you can concretely argue ${m.reached === 'yes' ? 'equivalence' : 'equivalence or unreachability'} (state the argument in reason). ` +
           `If the claimed behavior change is real and observable, refuted=false.`,
           { label: `verify-mutant:${comp.name}`, phase: 'Verify', schema: VERIFY_SCHEMA }
         ).then(v => ({ kind: 'mutant', item: m, v }))),
@@ -1085,6 +1155,7 @@ if (typeof agent === 'function') {
 
   const truthKills = ((coverageTruth && coverageTruth.mutants) || []).filter(m => m.outcome === 'KILLED')
   const untestedChurn = (grouping && grouping.untested_churn) || []
+  const reach = reachabilitySummary(workers)
 
   const report = await agent(
     `Assemble the final test-suite strength report for ${repoRoot}. Be adversarial and honest; a strong verdict must be earned.\n\n` +
@@ -1095,21 +1166,32 @@ if (typeof agent === 'function') {
     `${coverageTruth ? JSON.stringify(coverageTruth, null, 2) : '(not run at this level)'}\n\n` +
     `UNIT-ISOLATION DENIAL PROBE (the declared unit slice run with its external environment taken away):\n` +
     `${denial ? JSON.stringify(denial, null, 2) : '(not run at this level)'}\n\n` +
-    `UNTESTED CODE, CHURN-WEIGHTED (derived from the coverage summary and git churn — nothing was probed to produce it):\n` +
+    `REACHABILITY (every mutation site at an audited component, classified by what the run proved — a killed mutant proves its own line runs, and each survivor earned one throw probe. This is what replaces a trusted coverage report):\n` +
+    `${JSON.stringify(reach, null, 2)}\n` +
+    `${coverageOn ? 'The repo also exposes a coverage command; it ranked candidate sites and was itself probed above.' : 'This repo exposes NO coverage command. That cost the audit a site-ranking hint and the coverage-truth probe, nothing else — every reachability figure above was measured by this run.'}\n\n` +
+    `UNTESTED CODE, CHURN-WEIGHTED (the REPOSITORY'S OWN coverage report joined with git churn — nothing was probed to produce it, and this audit did not verify it):\n` +
     `${JSON.stringify(untestedChurn, null, 2)}\n\n` +
     `PER-COMPONENT WORKER RECORDS${dial.verify ? ' (survivors already adversarially verified; refuted findings dropped, see notes)' : ''}:\n${JSON.stringify(workers, null, 2)}\n\n` +
     `NOT-CHECKED LIST (include verbatim, plus anything you notice is missing):\n${JSON.stringify(notChecked, null, 2)}\n\n` +
     `Build the report:\n` +
-    `1. scores: kill_rate = killed / total mutants across AUDITED components — the coverage-truth mutants are NOT part of this ratio, they measure the coverage command rather than the tests; ` +
-    `brittle_breaks = no-ops that broke tests; flaky_tests = distinct flaky tests; timing_sensitive = distinct tests broken by delay injection; ` +
+    `1. scores: kill_rate = killed / (killed + survivors whose reached is "yes" or "inconclusive") across AUDITED components. ` +
+    `Survivors with reached="no" leave BOTH halves of that ratio: no test executes those lines, so they measure missing tests rather than weak ones, and counting them would report a coverage gap as an assertion gap. ` +
+    `An "inconclusive" survivor stays in the denominator — the pessimistic reading, because the audit could not prove the line is unreached. ` +
+    `The coverage-truth mutants are NOT part of this ratio either; they measure the coverage command rather than the tests. ` +
+    `unreached_sites = mutation sites with reached="no"; brittle_breaks = no-ops that broke tests; flaky_tests = distinct flaky tests; timing_sensitive = distinct tests broken by delay injection; ` +
     `coverage_truth_kills = KILLED coverage-truth mutants; mislabelled_unit_tests = distinct tests in the denial probe's failures; suite_wall_s = baseline wall.\n` +
-    `2. findings: one per proven weakness. axis: sensitivity (survived mutant), specificity (brittle break), reliability (flake), timing (test broken by delay injection), speed (slow suite/tests), ` +
+    `2. findings: one per proven weakness. axis: sensitivity — TWO kinds, which must never be merged because their fixes are opposite: ` +
+    `(a) a mutant that SURVIVED with reached="yes" or "inconclusive" — the tests run this code and do not pin the behavior the mutation changed, so the fix is a stronger assertion; ` +
+    `(b) a mutant that SURVIVED with reached="no" — no test executes the line at all, so the observation reads "no test reaches <file>:<line>" and the fix is a new test. Its evidence is the throw probe that left the suite green, and it is never candidate=true: unreachability here was measured, not argued. ` +
+    `Then: specificity (brittle break), reliability (flake), timing (test broken by delay injection), speed (slow suite/tests), ` +
     `isolation (a "unit" test that failed once its external environment was denied — name the test and the resource it reached for; major when several share one resource, minor for an isolated case), ` +
-    `auditability (a KILLED coverage-truth mutant: the coverage command under-reports, so every mutation site in this audit was drawn from data that is provably incomplete — severity major, candidate false, evidence = the diff and the test that killed it). ` +
+    `auditability (a KILLED coverage-truth mutant: the repo's coverage command under-reports, and any site it ranked was ranked from data that is provably incomplete — severity major, candidate false, evidence = the diff and the test that killed it` +
+    `${coverageOn ? '' : '; and, on this run, that the repo exposes no coverage-summary command at all — severity minor, candidate false, evidence = the baseline how_to_enable text. The audit did not need it, so it is not a blocker; it is the one axis the missing command touches'}). ` +
     `Each carries the concrete evidence (the diff or run-log excerpt), an implication stating what broken behavior would ship undetected or what the weakness costs, and candidate: ` +
     `${dial.verify
       ? 'false for verify-confirmed survivors and brittle breaks — EXCEPT items flagged verify_failed=true (their verify agent failed), which stay candidate=true; '
-      : 'true for ALL survivors and brittle breaks (no verify pass ran); '}` +
+      : 'true for surviving mutants with reached="yes" or "inconclusive", and for brittle breaks (no verify pass ran, so equivalence stays possible); '}` +
+    `a survivor with reached="no" is candidate=false at EVERY level — the throw probe measured that no test runs the line, and there is nothing left for a human to weigh; ` +
     `delay-injection findings are ALWAYS candidate=true (a latency contract may be legitimate). Dedupe: the same weakness surfaced twice is ONE finding with the strongest evidence.\n` +
     `Severity rubric: blocker = a core behavior could be fully inverted/removed undetected or a test is proven vacuous; major = a meaningful branch, bound, or computation is unpinned, or a proven flake/brittle break; minor = a narrow edge case or an inefficiency. ` +
     `Timing findings: major when multiple tests share the timing dependence, minor for an isolated test.\n` +
@@ -1124,11 +1206,16 @@ if (typeof agent === 'function') {
     `without having watched the audit), options (the answers they can pick between), and recommendation (which one you ` +
     `would take and the tradeoff that decided it). Leave those three off settled proposals.\n` +
     `4. components table: per component kill_rate, flakes, brittle, slice_wall_s, audited.\n` +
-    `5. untested_churn: copy the derived list above through unchanged, in the order given. Present it as what it is — churn-weighted, not risk-ranked: it ranks by how often a file changes and how much of it is untested, neither of which says how dangerous the gap is. No severity, no findings built from it, and it changes no score.\n` +
-    `6. checked: one compact prose line — components audited, mutants applied and which operator classes they covered, no-ops, delays, reruns, coverage pct, probes run, mode.\n` +
+    `5. untested_churn: copy the derived list above through unchanged, in the order given. Present it as what it is — the REPOSITORY'S OWN coverage claim, unverified by this audit, churn-weighted and not risk-ranked: it ranks by how often a file changes and how much of it is untested, neither of which says how dangerous the gap is. No severity, no findings built from it, and it changes no score. ` +
+    `The proven-unreached sites are its audited counterpart, and those DO carry findings.` +
+    `${coverageOn ? '' : ' This run had no coverage report, so the list is empty — say that in the section rather than leaving it blank.'}\n` +
+    `6. checked: one compact prose line — components audited, mutants applied and which operator classes they covered, reachability probes run and what they proved, no-ops, delays, reruns, whether a coverage report was available at all, probes run, mode.\n` +
     `7. verdict: untrustworthy = baseline flaky enough to distrust results; strong = kill_rate >= 0.75 across audited components AND zero flakes AND zero brittle breaks AND suite < ~120 s — must be EARNED; weak = kill_rate low or vacuous tests proven; else adequate.\n` +
     `${truthKills.length
-      ? `COVERAGE CAP (binding): ${truthKills.length} coverage-truth mutant(s) were killed, so this repo's coverage command demonstrably under-reports. Every mutation site was chosen from that data, which makes kill_rate a figure measured on a provably incomplete sample. The verdict therefore CANNOT be 'strong' — cap it at 'adequate' or lower — and the headline must say the coverage source is unreliable.\n`
+      ? `COVERAGE CAP (binding): ${truthKills.length} coverage-truth mutant(s) were killed, so this repo's coverage command demonstrably under-reports. It ranked this audit's mutation sites and it produced untested_churn, so the sample was steered by data now proven incomplete — it pulled the run toward code the report called covered, which is exactly where the report was wrong. kill_rate is still measured on sites proven reachable, but it is a rate over a biased sample of them. The verdict therefore CANNOT be 'strong' — cap it at 'adequate' or lower — and the headline must say the coverage source is unreliable.\n`
+      : ''}` +
+    `${reach.sites > 0 && reach.unreached >= reach.sites * UNREACHED_CAP_RATIO
+      ? `REACHABILITY CAP (binding): ${reach.unreached} of the ${reach.sites} mutation sites are run by NO test — proven, not inferred: a throw at each of those sites left the suite green. kill_rate excludes them, so it is a rate over the code the tests actually execute and says nothing about the rest. The verdict therefore CANNOT be 'strong' — cap it at 'adequate' or lower — and the headline must give the share of mutation sites that no test reaches.\n`
       : ''}` +
     `${cappedComponents.length
       ? `FINDINGS CAP (binding): the audit stopped taking on new components after reaching ${FINDINGS_CAP} findings, so ${cappedComponents.length} component(s) were never mutated (${cappedComponents.join(', ')}). kill_rate is a rate over the components that DID run — the headline must say the audit was capped, or the score reads as covering the whole suite.\n`
@@ -1151,6 +1238,7 @@ if (typeof agent === 'function') {
         worktree_ok: baseline.worktree_ok, dirty_tree: baseline.dirty_tree,
       },
       components: grouping.components,
+      reachability: reach,
       untested_churn: untestedChurn,
       coverage_truth: coverageTruth,
       denial,

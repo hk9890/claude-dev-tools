@@ -1,11 +1,23 @@
 # Coverage-summary contract
 
-The `test-tests` audit mutates production code and checks that the suite fails. To
-do that safely it must know which lines the tests actually execute — so it needs
-line coverage. **The audit never parses coverage formats itself.** Instead, the
-**target repository provides a command** that emits a coverage summary as JSON on
-stdout, in the neutral schema below. This is what keeps the plugin
-technology-independent: every format-specific detail lives in the repo, not here.
+The `test-tests` audit mutates production code and checks that the suite fails.
+Which lines the tests execute is measured by the audit itself, one throw probe per
+surviving mutant, so **this contract is optional**: a repository with no coverage
+command is fully auditable and loses only what is listed below.
+
+**The audit never parses coverage formats itself.** Where the target repository
+provides a command emitting a coverage summary as JSON on stdout in the neutral
+schema below, every format-specific detail stays in the repo, not here.
+
+## What a conforming command buys
+
+- **Site ranking.** Mutation sites inside `covered_ranges` are preferred, so more of
+  the run lands on code the tests already reach. It is a preference, never a filter —
+  an uncovered line is still a legal target.
+- **`untested_churn`.** The report's pointer list of uncovered production code
+  weighted by git churn. Empty without a coverage command.
+- **The coverage-truth probe.** From `medium` up, a few mutants land on lines the
+  summary calls uncovered. One killed there proves the command under-reports.
 
 ## The contract
 
@@ -15,9 +27,8 @@ technology-independent: every format-specific detail lives in the repo, not here
    file the repo maintains; the audit only needs a runnable command.
 2. The audit discovers that command, runs it, and pipes the output through
    `scripts/validate-coverage-summary.py`, which validates conformance and emits a
-   normalized summary. Non-conforming output is treated as *coverage unavailable*
-   and the audit aborts with a remediation report — it never mutates on coverage it
-   could not validate.
+   normalized summary. Non-conforming output is treated as *coverage unavailable*:
+   the run continues without it, and says so in `not_checked`.
 
 ## Schema (what the command must emit)
 
@@ -63,8 +74,10 @@ fix those and re-run.
 
 ## If you have no such command yet
 
-Write a small one for your stack: run your suite with coverage, take whatever
-coverage artifact your toolchain already produces, and translate it to the schema
-above. It is a pure data transform — no dependency on this plugin — and once
-documented, every future audit reuses it. The audit's abort report points here when
-the command is missing or its output does not conform.
+Nothing breaks. The audit runs, measures reachability per site, and reports the
+missing command under `not_checked`.
+
+To add one anyway: run your suite with coverage, take whatever coverage artifact your
+toolchain already produces, and translate it to the schema above. It is a pure data
+transform — no dependency on this plugin — and once documented, every future audit
+reuses it.

@@ -1,6 +1,6 @@
 ---
 name: test-tests
-description: "Empirical test-suite strength audit — proves whether the tests detect injected bugs (mutation kill rate), stay quiet on non-bugs, are flake-free under reruns/shuffle/delays, run fast, are really isolated from external services, and whether the repo's own coverage report tells the truth. Reports findings and proposals; never keeps an edit."
+description: "Empirical test-suite strength audit — proves whether the tests detect injected bugs (mutation kill rate), stay quiet on non-bugs, are flake-free under reruns/shuffle/delays, run fast, and are really isolated from external services. It measures for itself which lines the tests execute, so no coverage report is needed. Reports findings and proposals; never keeps an edit."
 user-invocable: true
 disable-model-invocation: true
 argument-hint: "[low|medium|high|ultra] [html-viz] [path]"
@@ -26,7 +26,8 @@ Nothing is ever committed, no test is written, nothing is installed.
    If no level token is given, ask with `AskUserQuestion` (header "Level"):
    - `low` — the highest-churn components, a few mutants each. Quick signal.
    - `medium` (recommended) — all components (capped), plus no-op and delay probes and
-     the two audit-wide probes (coverage-truth, unit isolation). The standard audit.
+     the two audit-wide probes: unit isolation, and coverage-truth where the repository
+     has a coverage command at all. The standard audit.
    - `high` — the deepest dials, plus an adversarial pass that refutes equivalent
      mutants. The trustworthy-numbers audit.
 
@@ -38,7 +39,9 @@ Nothing is ever committed, no test is written, nothing is installed.
    At every level, one rerun uses the runner's native order-shuffle flag (fixed
    seed) when one exists.
 
-   Wall time is dominated by the suite's own speed in every tier.
+   Wall time is dominated by the suite's own speed in every tier, and a weak suite
+   costs more of it than a strong one: every mutant that survives earns one extra
+   run, the reachability probe that makes it readable.
 
 2. `SKILL_DIR` is the **base directory for this skill**, given at the top of this file when
    the skill loads. It is absolute and install-correct — build every path below from it.
@@ -65,15 +68,16 @@ Nothing is ever committed, no test is written, nothing is installed.
    The workflow measures six axes — sensitivity (mutants must be killed),
    specificity (no-op edits must not break tests), reliability (reruns, shuffle,
    delay injection), speed, isolation (unit tests must survive losing their external
-   environment), auditability (the repo's coverage report must tell the truth) — and
+   environment), auditability (what the repository lets an audit verify) — and
    aborts *with a remediation report* rather than guessing. It aborts when:
 
    - the suite is too slow to finish inside the cap
    - the suite is red
-   - the repository exposes no conforming coverage-summary command
-     (see [Coverage comes from the repository](#coverage-comes-from-the-repository))
    - no component could be grouped for audit
    - no audited component produced a mutant, leaving nothing scoreable
+
+   A missing coverage report is **not** on that list — see
+   [Reachability is measured, not read](#reachability-is-measured-not-read).
 
    The report then tells the user exactly how to make the repo auditable.
 
@@ -123,23 +127,62 @@ findings — still run the step-5 integrity check. When the error carries `got`,
 run never started and `got.keys` lists the arguments that actually arrived — surface
 it, since that is what shows a misspelled key.
 
-## Coverage comes from the repository
+## Reachability is measured, not read
 
-This audit never parses coverage formats — that is what keeps the plugin
-technology-independent. The target repository must expose a command, discovered from
-its own docs like the test command, that emits a coverage summary as JSON on stdout
+A mutant has two outcomes and only one of them explains itself. A **killed** mutant proves
+two things at once: a test executes that line, and it asserts something the mutation breaks.
+A **surviving** mutant proves neither — the line may be code no test runs, or the edit may
+change nothing observable.
+
+So the audit measures the difference rather than reading it out of a coverage report. For
+each survivor, and only for a survivor, it puts the most lethal one-line edit the language
+allows at the same site — a throw carrying the marker `TT-REACH` — and runs the slice once
+more:
+
+| The throw | What it proves | How the report reads it |
+|---|---|---|
+| a test fails | the line executes | a blind spot: the tests run this code and pin none of the behavior the mutation changed |
+| the slice stays green, and a control throw on a line the tests do reach turns it red | no test executes the line | untested code — the fix is a new test, never a stronger one |
+| it will not compile, or the control throw stays green too | nothing | `inconclusive`, and it stays in the pessimistic half of the score |
+
+The marker is a convenience, not the signal. Plenty of harnesses never echo it — a browser
+runner with no `pageerror` handler, anything that swallows a subprocess's stderr — so a red
+selector is what counts. The **control probe** is what makes a *green* selector mean
+something: without it, "no test reaches this line" and "this harness cannot surface a throw
+at all" look identical, and they are opposite findings.
+
+A killed mutant costs no probe: the kill already proved its line runs. The extra runs
+therefore scale with the number of survivors — which is to say, with how weak the suite
+turns out to be.
+
+`kill_rate` is then a rate over sites the tests demonstrably reach. Sites proven unreached
+leave the ratio and become findings of their own kind, because "write a test" and "fix a
+blind test" are opposite repairs. Inconclusive sites stay in the denominator: the audit
+could not prove them absent, and the pessimistic reading is the honest one.
+
+A throw needs no instrumentation, no coverage tooling and no install, and it behaves the
+same in any language. That is what keeps the audit portable now that nothing is read on
+trust.
+
+## The coverage report is an optional input
+
+Where the repository documents a command that emits a coverage summary as JSON on stdout,
 conforming to [`references/coverage-summary-schema.md`](references/coverage-summary-schema.md)
-(a `files` array of repo-relative path + covered/uncovered line ranges). The workflow
-runs it, validates the output with `scripts/validate-coverage-summary.py`, and mutates
-covered lines. No conforming command → the audit aborts with a remediation report
-telling the user what command to add and how to document it. All format-specific work
-lives in the repo, never here.
+(a `files` array of repo-relative path + covered/uncovered line ranges), the workflow runs
+it, validates it with `scripts/validate-coverage-summary.py`, and spends it on two things:
+ranking candidate mutation sites, so more of the run lands on code the tests already reach,
+and `untested_churn`. It is never a filter — a line the report calls uncovered is still a
+legal target, and the throw probe settles the question either way.
 
-That command is also the one thing the audit would otherwise take entirely on trust, so
+No such command is a normal outcome, not a fault. The audit loses the ranking hint and the
+coverage-truth probe, says so in `not_checked`, and runs to a full report. It never parses
+coverage formats: all format-specific work stays in the repository.
+
+Where a command does exist it is the one input the audit would otherwise take on trust, so
 from `medium` up it gets probed: a few mutants land on lines the summary calls *uncovered*,
 chosen where the summary is most likely wrong — code driven by subprocess or real-service
-tests, uncovered ranges inside otherwise-covered functions. A mutant killed there proves
-the command under-reports, and every mutation site in the run was drawn from that data.
+tests, uncovered ranges inside otherwise-covered functions. A mutant killed there proves the
+command under-reports.
 
 ## The unit/integration split comes from the repository too
 
@@ -167,22 +210,29 @@ file names.
 
 The verdict (`strong` | `adequate` | `weak` | `untrustworthy` | `not-auditable` — the
 last is an abort report with remediation proposals) and its scoring thresholds are
-computed by the workflow; relay them as returned. Below `high`, surviving mutants are
-labeled `candidate: true` — possible equivalent mutants, presented with their diff,
-never as proof. Delay-injection findings are always candidates: a test failing under
-an added delay may be brittle or may encode a legitimate latency contract — the user
-decides.
+computed by the workflow; relay them as returned. Below `high`, a surviving mutant the
+probe proved *reachable* is labeled `candidate: true` — a possible equivalent mutant,
+presented with its diff, never as proof. A survivor proven *unreached* is never a candidate
+at any level: nothing there was argued, it was measured. Delay-injection findings are always
+candidates: a test failing under an added delay may be brittle or may encode a legitimate
+latency contract — the user decides.
 
-One cap sits outside that scoring: a killed coverage-truth mutant makes `strong`
-unreachable and the headline must say the coverage source is unreliable — `kill_rate` was
-measured on sites drawn from data the run just proved incomplete. A *surviving*
-coverage-truth mutant restates what the coverage summary already said and is never
-reported as a finding.
+Two caps sit outside that scoring, and each puts `strong` out of reach:
 
-The report also carries `untested_churn`: uncovered production code ranked by
-churn × uncovered lines, joined from data already on disk. It costs no suite run, carries
-no severity, and changes no score — it is churn-weighted, not risk-ranked. Relay it as the
-pointer list it is.
+- **Reachability** — where a third or more of the *mutation sites* are run by no test,
+  `kill_rate` is a rate over the little the tests execute. The headline must give the share
+  no test reaches.
+- **Coverage truth** — a killed coverage-truth mutant means the repository's coverage
+  command under-reports, so any site it ranked was ranked from data proven incomplete. The
+  headline must say the coverage source is unreliable. A *surviving* coverage-truth mutant
+  restates what the summary already said and is never reported as a finding.
+
+The report also carries `untested_churn`: the repository's own coverage claim joined with
+git churn and ranked by churn × uncovered lines. The audit does not verify it and builds no
+finding on it — it costs no suite run, carries no severity, changes no score, and is
+churn-weighted rather than risk-ranked. It is empty where the repo has no coverage command.
+Relay it as the unverified pointer list it is; the proven-unreached sites among the findings
+are its audited counterpart.
 
 ## Not covered
 

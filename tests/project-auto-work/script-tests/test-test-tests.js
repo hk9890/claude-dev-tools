@@ -21,6 +21,10 @@
 //     score", and abstains when any axis carries a measurement
 //   - notCheckedList names every axis that did not run, including a probe that was
 //     budgeted but could not run — silence there would read as a passing measurement
+//   - a repository with no coverage report is still auditable: no gate trips, the
+//     coverage-truth probe skips with a reason, and the absence is disclosed
+//   - reachabilitySummary counts what the throw probes proved, and a suite that runs
+//     almost none of the probed code cannot reach the top verdict
 //   - the two audit-wide probes (coverage-truth, unit-isolation denial) are spawned once
 //     per audit, are level-gated, and a killed coverage-truth mutant caps the verdict
 //   - the bad-args bailout returns the diagnostic error object without spawning agents
@@ -96,9 +100,10 @@ async function main() {
     pipeline: throwIfCalled('pipeline'),
   });
 
-  const { normalizeArgs, dialFor, baselineAbort, scoreabilityAbort, notCheckedList, findingSignals, DIALS } = helpers;
+  const { normalizeArgs, dialFor, baselineAbort, scoreabilityAbort, notCheckedList, findingSignals,
+    reachabilitySummary, DIALS, UNREACHED_CAP_RATIO } = helpers;
 
-  const required = { normalizeArgs, dialFor, baselineAbort, scoreabilityAbort, notCheckedList, findingSignals };
+  const required = { normalizeArgs, dialFor, baselineAbort, scoreabilityAbort, notCheckedList, findingSignals, reachabilitySummary };
   const missingExport = Object.keys(required).filter((k) => typeof required[k] !== 'function');
   if (missingExport.length) {
     bad('test-tests.js exposes its pure helpers', `missing or not a function: ${missingExport.join(', ')}`);
@@ -179,12 +184,12 @@ async function main() {
     DIALS.high, normalizeArgs({ repoRoot: '/r', scriptsDir: '/s', level: 'ultra' }).dial);
 
   // ── baselineAbort ────────────────────────────────────────────────────────────
-  eq('baselineAbort: a healthy baseline proceeds', null, baselineAbort(healthyBaseline(), '/schema.md'));
+  eq('baselineAbort: a healthy baseline proceeds', null, baselineAbort(healthyBaseline()));
 
   // THE ordering regression: a suite killed by the 600 s timeout reports wall_s=601 AND
   // green=false. Evaluated in the wrong order it would be reported as a failing suite,
   // sending the user to debug tests that never actually ran.
-  const timedOut = baselineAbort({ ...healthyBaseline(), wall_s: 601, green: false }, '/schema.md');
+  const timedOut = baselineAbort({ ...healthyBaseline(), wall_s: 601, green: false });
   truthy('baselineAbort: a timed-out baseline reports "too slow", not "red" (gate ordering)',
     timedOut && /too slow/.test(timedOut.reason), `got ${timedOut && timedOut.reason}`);
   truthy('baselineAbort: the slow abort says the pass/fail state is unknown',
@@ -192,35 +197,50 @@ async function main() {
   truthy('baselineAbort: the slow abort carries the slowest tests as remediation input',
     timedOut && timedOut.remediation.includes('slowest tests'));
 
-  const red = baselineAbort({ ...healthyBaseline(), green: false, red_details: 'test_foo failed' }, '/schema.md');
+  // The cap the gate is written against, driven exactly. Off by one either way is a real
+  // misdiagnosis: `>= 600` turns away a suite that lands on the documented cap, and a
+  // timed-out baseline reports green=false too, so it would fall through to the red gate and
+  // be reported as a failing suite — what the gate-ordering comment says must never happen.
+  eq('baselineAbort: a baseline at exactly the 600 s cap proceeds', null,
+    baselineAbort({ ...healthyBaseline(), wall_s: 600 }));
+  truthy('baselineAbort: one second past the cap aborts as too slow',
+    /too slow/.test((baselineAbort({ ...healthyBaseline(), wall_s: 601, green: false }) || {}).reason || ''));
+
+  const red = baselineAbort({ ...healthyBaseline(), green: false, red_details: 'test_foo failed' });
   truthy('baselineAbort: a red suite aborts as unauditable', red && /suite is red/.test(red.reason));
   truthy('baselineAbort: the red abort carries the failing tests', red && red.evidence.includes('test_foo failed'));
   // abortReport keys the verdict off this prefix ('untrustworthy' vs 'not-auditable').
   truthy('baselineAbort: the red reason keeps the prefix the verdict is keyed on',
     red && red.reason.startsWith('suite is red'));
 
-  const noCoverage = baselineAbort(
-    { ...healthyBaseline(), coverage: { obtained: false, how_to_enable: 'add `make coverage`' } }, '/schema.md');
-  truthy('baselineAbort: no coverage command aborts rather than mutating blind',
-    noCoverage && /mutate blind/.test(noCoverage.reason));
-  truthy('baselineAbort: the no-producer branch quotes how to enable coverage',
-    noCoverage && noCoverage.evidence.includes('add `make coverage`'));
-  truthy('baselineAbort: the no-producer branch tells the user to add the command',
-    noCoverage && /Add and document that command/.test(noCoverage.remediation));
+  // Coverage is an optional INPUT, not a gate: the audit proves reachability per site with
+  // its own throw probes, so a repo with no coverage command is fully auditable. Each of
+  // these three shapes used to abort the run before the first mutant was ever applied.
+  eq('baselineAbort: no coverage command does not abort — reachability is measured, not read',
+    null, baselineAbort({ ...healthyBaseline(), coverage: { obtained: false, how_to_enable: 'add `make coverage`' } }));
+  eq('baselineAbort: a coverage payload the validator rejected does not abort either',
+    null, baselineAbort({ ...healthyBaseline(), coverage: { obtained: false, producer_cmd: 'make cov', validation_errors: 'line 3: bad range' } }));
+  eq('baselineAbort: obtained=true with no summary file does not abort',
+    null, baselineAbort({ ...healthyBaseline(), coverage: { obtained: true, producer_cmd: 'make cov' } }));
 
-  const badCoverage = baselineAbort(
-    { ...healthyBaseline(), coverage: { obtained: false, producer_cmd: 'make cov', validation_errors: 'line 3: bad range' } },
-    '/schema.md');
-  truthy('baselineAbort: a rejected coverage payload quotes the validator errors',
-    badCoverage && badCoverage.evidence.includes('line 3: bad range'));
-  truthy('baselineAbort: the rejected-payload branch tells the user to fix the command',
-    badCoverage && /Fix the command so its output conforms/.test(badCoverage.remediation));
-  truthy('baselineAbort: the coverage abort cites the schema reference it was given',
-    badCoverage && badCoverage.remediation.includes('/schema.md'));
+  // ── reachabilitySummary ──────────────────────────────────────────────────────
+  // What the throw probes proved, and the denominator the verdict cap keys on.
+  const mut = (over) => ({ file: 'src/a.js', line: 1, diff: 'd', operator: 'negate-condition',
+    stated_behavior_change: 'b', outcome: 'SURVIVED', reached: 'yes', ...over });
 
-  // obtained=true with no summary file is the same blind-mutation hazard.
-  truthy('baselineAbort: obtained=true without a summary file still aborts',
-    baselineAbort({ ...healthyBaseline(), coverage: { obtained: true, producer_cmd: 'make cov' } }, '/s.md'));
+  eq('reachabilitySummary: an empty run counts nothing',
+    { sites: 0, unreached: 0, inconclusive: 0, reached: 0 }, reachabilitySummary([]));
+  eq('reachabilitySummary: each outcome lands in its own bucket',
+    { sites: 4, unreached: 1, inconclusive: 1, reached: 2 },
+    reachabilitySummary([{ audited: true, mutants: [
+      mut({ outcome: 'KILLED' }), mut({}), mut({ reached: 'no' }), mut({ reached: 'inconclusive' })] }]));
+  // A component that never completed the protocol proves nothing about what the tests run.
+  eq('reachabilitySummary: an unaudited component contributes nothing',
+    { sites: 0, unreached: 0, inconclusive: 0, reached: 0 },
+    reachabilitySummary([{ audited: false, mutants: [mut({ reached: 'no' })] }]));
+  // A range assertion passes for every value in the range, so it pins nothing: the ratio
+  // decides whether a suite can be called strong, and moving it would fail no test.
+  eq('reachabilitySummary: the cap ratio is exactly one third', 1 / 3, UNREACHED_CAP_RATIO);
 
   // ── scoreabilityAbort ────────────────────────────────────────────────────────
   const worker = (over) => ({ component: 'core', audited: true, mutants: [], noops: [], delays: [], flakes: [], ...over });
@@ -302,6 +322,20 @@ async function main() {
   truthy('notCheckedList: names the skipped denial probe', has('unit-isolation denial probe'));
   truthy('notCheckedList: warns that worktree mode audits HEAD, not the dirty tree',
     has('uncommitted working-tree changes'));
+  // A coverage report the repo does not have is no longer a blocker, but its absence still
+  // has to be said: unmentioned, the reader assumes sites were ranked by one.
+  truthy('notCheckedList: an absent coverage report is disclosed, not hidden',
+    notCheckedList({ ...baseNotChecked, baseline: { ...healthyBaseline(), coverage: { obtained: false } } })
+      .some((s) => /repository coverage report/.test(s)));
+  truthy('notCheckedList: a repo WITH coverage says nothing about a missing report',
+    !lowList.some((s) => /repository coverage report/.test(s)));
+  // obtained=true with no summary_file leaves nothing to read, so the orchestration treats
+  // coverage as absent. This list has to agree with it: the shape used to abort the run, so
+  // it only became reachable when coverage stopped being a gate, and a silent skip here
+  // would read as a ranking hint the audit never had.
+  truthy('notCheckedList: obtained=true with no summary file counts as no coverage report',
+    notCheckedList({ ...baseNotChecked, baseline: { ...healthyBaseline(), coverage: { obtained: true, producer_cmd: 'make cov' } } })
+      .some((s) => /repository coverage report/.test(s)));
 
   // A probe that was BUDGETED but could not run is the dangerous case: with nothing said,
   // its absence from the findings reads as a clean measurement.
@@ -379,6 +413,9 @@ async function main() {
           component: opts.label.slice('worker:'.length), audited: true, integrity_ok: true,
           mutants: Array.from({ length: survivors }, (_, i) => ({
             file: 'src/a.js', line: i + 1, diff: 'd', stated_behavior_change: 'b', outcome: 'SURVIVED',
+            reached: Array.isArray(agentOver.__workerReached)
+              ? (agentOver.__workerReached[i] || 'yes')
+              : (agentOver.__workerReached || 'yes'),
           })),
           noops: [], delays: [], flakes: [],
         };
@@ -468,6 +505,106 @@ async function main() {
     0, shallow.labels.filter((l) => l.startsWith('verify-mutant:')).length);
   eq('orchestration: the shallow run still reports', 'adequate',
     shallow.ret && shallow.ret.report && shallow.ret.report.verdict);
+
+  // ── a repository with no coverage report ─────────────────────────────────────
+  // The change this whole design turns on: coverage used to gate the audit, so a repo
+  // without a conforming command got a remediation report and no measurement at all.
+  const noCoverageBaseline = {
+    ...healthyBaseline(),
+    coverage: { obtained: false, how_to_enable: 'add a command emitting the neutral schema' },
+  };
+  const bare = await runAudit({ level: 'medium' }, { baseline: noCoverageBaseline });
+  eq('no-coverage: the audit runs to a report instead of aborting', undefined, bare.ret && bare.ret.aborted);
+  eq('no-coverage: components are still worked', 1, bare.labels.filter((l) => l.startsWith('worker:')).length);
+  // Nothing to check against: the probe exists to catch a coverage command that
+  // under-reports, and there is no command. Spending a suite run on it would prove nothing.
+  eq('no-coverage: no coverage-truth agent is spawned', 0, bare.labels.filter((l) => l === 'coverage-truth').length);
+  truthy('no-coverage: the skipped coverage-truth probe carries its reason into synthesis',
+    bare.prompts.some((p) => /no conforming coverage-summary command/.test(p)));
+  truthy('no-coverage: the absence reaches the report as not-checked',
+    bare.ret.raw.not_checked.some((s) => /repository coverage report/.test(s)));
+  // The worker must be told to measure rather than to look for a summary file that is
+  // not there — a prompt that still points at coverage_summary.json would strand it.
+  truthy('no-coverage: the worker prompt sends the agent to measure reachability directly',
+    bare.prompts.some((p, i) => bare.labels[i].startsWith('worker:') && /No coverage report is available/.test(p)));
+  truthy('no-coverage: the worker prompt does not point at a coverage summary that does not exist',
+    !bare.prompts.some((p, i) => bare.labels[i].startsWith('worker:') && /coverage_summary\.json/.test(p)));
+  // A guessed list of untested files would be read as measured. There is none to guess from.
+  truthy('no-coverage: grouping is told to return an empty untested_churn rather than guess',
+    bare.prompts.some((p, i) => bare.labels[i] === 'grouping' && /return an EMPTY array/.test(p)));
+
+  // With a coverage report the hint is offered — as a ranking preference, never a filter.
+  const withCoverage = await runAudit({ level: 'medium' });
+  truthy('coverage present: the worker gets the summary as a ranking hint, not a filter',
+    withCoverage.prompts.some((p, i) => withCoverage.labels[i].startsWith('worker:') &&
+      /RANKING preference, never a filter/.test(p)));
+
+  // ── the reachability probe ───────────────────────────────────────────────────
+  // Every survivor costs one extra run, and that run is what makes the survivor readable.
+  truthy('reachability: the worker is told to probe survivors and not killed mutants',
+    withCoverage.prompts.some((p, i) => withCoverage.labels[i].startsWith('worker:') &&
+      /one probe per SURVIVING mutant/.test(p) && /A KILLED mutant needs no probe/.test(p)));
+  truthy('reachability: a green selector under a throw is reported as untested code, not a weak test',
+    withCoverage.prompts.some((p, i) => withCoverage.labels[i].startsWith('worker:') &&
+      /UNTESTED CODE, not a weak assertion/.test(p)));
+  // A throw that will not compile, or one a broad catch could swallow, decides nothing.
+  truthy('reachability: an undecidable probe is inconclusive rather than guessed',
+    withCoverage.prompts.some((p, i) => withCoverage.labels[i].startsWith('worker:') &&
+      /reached="inconclusive"/.test(p)));
+  // Found by the first real run of this protocol against this repo: two browser-side probes
+  // went red without the marker ever appearing, because test-browser.js registers no
+  // pageerror handler. The worker improvised correctly; the prompt must not need it to.
+  truthy('reachability: a red selector counts even when the runner never echoes the marker',
+    withCoverage.prompts.some((p, i) => withCoverage.labels[i].startsWith('worker:') &&
+      /marker is nowhere in the output/.test(p)));
+  // And the green case is the one that needs proof: without a control throw on a line the
+  // tests do reach, "no test runs this line" and "this harness swallows throws" are the
+  // same observation, and they are opposite findings.
+  truthy('reachability: a green selector needs a control probe before it means unreached',
+    withCoverage.prompts.some((p, i) => withCoverage.labels[i].startsWith('worker:') &&
+      /CONTROL probe/.test(p) && /Control ALSO stays green/.test(p)));
+  truthy('reachability: kill_rate excludes the sites no test reaches',
+    withCoverage.prompts.some((p, i) => withCoverage.labels[i] === 'synthesis' &&
+      /Survivors with reached="no" leave BOTH halves/.test(p)));
+
+  // A perfect kill_rate over the few sites the tests DO reach is not strength.
+  const mostlyUnreached = await runAudit({ level: 'medium' }, { __workerReached: 'no' });
+  truthy('reachability: a suite that runs almost none of the probed code cannot be strong',
+    mostlyUnreached.prompts.some((p, i) => mostlyUnreached.labels[i] === 'synthesis' &&
+      /REACHABILITY CAP \(binding\)/.test(p)));
+  truthy('reachability: the cap makes the headline give the share no test reaches',
+    mostlyUnreached.prompts.some((p) => /share of mutation sites that no test reaches/.test(p)));
+  // "probed" would read as survivors only, which is the smaller number: the same share
+  // would then look larger than it is. The denominator is every mutation site.
+  truthy('reachability: the cap names its denominator as mutation sites, not probes',
+    mostlyUnreached.prompts.some((p) => /of the 1 mutation sites are run by NO test/.test(p)));
+  truthy('reachability: a reached suite is not capped',
+    !withCoverage.prompts.some((p) => /REACHABILITY CAP/.test(p)));
+  eq('reachability: the measured counts are returned raw for the relay',
+    { sites: 1, unreached: 1, inconclusive: 0, reached: 0 }, mostlyUnreached.ret.raw.reachability);
+
+  // The cap's exact boundary, from both sides. `>=` is the intended comparison, so one
+  // unreached site in three must fire it and one in four must not — and the arithmetic has to
+  // survive binary floating point, where a third of three sites is the awkward case.
+  const capAtBoundary = await runAudit({ level: 'medium' }, {
+    __workerSurvivors: 3, __workerReached: ['no', 'yes', 'yes'],
+  });
+  truthy('cap boundary: exactly one third unreached fires the reachability cap',
+    capAtBoundary.prompts.some((p, i) => capAtBoundary.labels[i] === 'synthesis' &&
+      /REACHABILITY CAP \(binding\)/.test(p)),
+    'one unreached of three did not trip the cap');
+  const capBelowBoundary = await runAudit({ level: 'medium' }, {
+    __workerSurvivors: 4, __workerReached: ['no', 'yes', 'yes', 'yes'],
+  });
+  truthy('cap boundary: one unreached in four stays under the cap',
+    !capBelowBoundary.prompts.some((p, i) => capBelowBoundary.labels[i] === 'synthesis' &&
+      /REACHABILITY CAP \(binding\)/.test(p)),
+    'one unreached of four tripped the cap');
+
+  // Refuting a proven-unreached survivor would spend an agent to argue away a measurement.
+  const unreachedDeep = await runAudit({ level: 'ultra' }, { __workerReached: 'no' });
+  eq('reachability: a proven-unreached survivor is not sent to the equivalent-mutant refuter',
+    0, unreachedDeep.labels.filter((l) => l.startsWith('verify-mutant:')).length);
 
   // ── the audit-wide probes ────────────────────────────────────────────────────
   const declaredSplit = {
