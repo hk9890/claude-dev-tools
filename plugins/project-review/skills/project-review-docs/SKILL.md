@@ -1,6 +1,6 @@
 ---
 name: project-review-docs
-description: "Read-only audit of a project's docs for accuracy, staleness, gaps, misplaced content, and whether agents can and do actually use them — runs a multi-agent workflow, reports fixes, never edits."
+description: "Read-only audit of a project's docs for accuracy, staleness, gaps, misplaced content, and whether agents can and do actually use them; runs a multi-agent workflow, reports fixes, never edits."
 user-invocable: true
 disable-model-invocation: true
 argument-hint: "[low|medium|high|ultra] [html-viz] [path]"

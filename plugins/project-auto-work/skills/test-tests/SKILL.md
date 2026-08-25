@@ -1,6 +1,6 @@
 ---
 name: test-tests
-description: "Empirical test-suite strength audit — proves whether the tests detect injected bugs (mutation kill rate), stay quiet on non-bugs, are flake-free under reruns/shuffle/delays, run fast, and are really isolated from external services. It measures for itself which lines the tests execute, so no coverage report is needed. Reports findings and proposals; never keeps an edit."
+description: "Empirical test-suite strength audit: proves whether the tests detect injected bugs (mutation kill rate), stay quiet on non-bugs, are flake-free under reruns/shuffle/delays, run fast, and are really isolated from external services. It measures for itself which lines the tests execute, so no coverage report is needed. Reports findings and proposals; never keeps an edit."
 user-invocable: true
 disable-model-invocation: true
 argument-hint: "[low|medium|high|ultra] [html-viz] [path]"

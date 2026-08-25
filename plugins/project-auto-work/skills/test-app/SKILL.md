@@ -1,6 +1,6 @@
 ---
 name: test-app
-description: "Exploratory application testing — launches the application, actually uses it, and judges what happened against the project's own user-facing docs and monitoring data. Reports findings, questions and proposals; writes no code and fixes nothing."
+description: "Exploratory application testing: launches the application, actually uses it, and judges what happened against the project's own user-facing docs and monitoring data. Reports findings, questions and proposals; writes no code and fixes nothing."
 user-invocable: true
 disable-model-invocation: true
 argument-hint: "[low|medium|high|ultra] [html-viz] [focus-or-doc]"

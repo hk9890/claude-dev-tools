@@ -1,6 +1,6 @@
 ---
 name: project-exec-init
-description: "Set up the project's agent-facing doc set — write the steering files plus the topic docs the repo has earned."
+description: "Set up the project's agent-facing doc set: write the steering files plus the topic docs the repo has earned."
 user-invocable: true
 disable-model-invocation: true
 ---

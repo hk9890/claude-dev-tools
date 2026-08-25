@@ -1,6 +1,6 @@
 ---
 name: project-review-codebase
-description: "Read-only review of production and test code across three dimensions — consistency, structure, architecture — via a multi-agent workflow that dedupes findings across dimensions and writes a standalone Markdown report with Mermaid diagrams; reports fixes, never edits."
+description: "Read-only review of production and test code across three dimensions (consistency, structure, architecture) via a multi-agent workflow that dedupes findings across dimensions and writes a standalone Markdown report with Mermaid diagrams; reports fixes, never edits."
 user-invocable: true
 disable-model-invocation: true
 argument-hint: "[low|medium|high|ultra] [html-viz] [what-to-review]"

@@ -1,7 +1,7 @@
 ---
 name: html-visualize-feedback
-description: "Render a document, draft, or plan as a browser HTML page the user marks up with inline comments — feedback mode of the html-visualize workflow."
-when_to_use: "Use when the user explicitly asks to review a document, draft, plan, proposal, or set of options as a rendered browser page they attach inline comments to. Triggers on 'let me comment on this document in the browser', 'render that plan so I can mark it up'. Naming the browser surface is the trigger — having something to review on its own is not, so take that feedback in chat. Not for a batch of open questions or approve/reject decisions (`html-visualization:html-visualize-ask`); for a page the user only reads, point them at `/html-visualization:html-visualize-page`."
+description: "Render a document, draft, or plan as a browser HTML page the user marks up with inline comments: feedback mode of the html-visualize workflow."
+when_to_use: "Use when the user explicitly asks to review a document, draft, plan, proposal, or set of options as a rendered browser page they attach inline comments to. Triggers on 'let me comment on this document in the browser', 'render that plan so I can mark it up'. Naming the browser surface is the trigger; having something to review on its own is not, so take that feedback in chat. Not for a batch of open questions or approve/reject decisions (`html-visualization:html-visualize-ask`); for a page the user only reads, point them at `/html-visualization:html-visualize-page`."
 argument-hint: "[content-to-review]"
 ---
 

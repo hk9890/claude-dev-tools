@@ -1,6 +1,6 @@
 ---
 name: what-do-you-mean
-description: "That last message did not land — re-pitch it in 400 words."
+description: "That last message did not land: re-pitch it in 400 words."
 user-invocable: true
 disable-model-invocation: true
 argument-hint: "[what-did-not-land]"

@@ -1,7 +1,7 @@
 ---
 name: grill
 description: "Grill a plan, design, or decision before committing to it."
-when_to_use: "Use when open questions remain — decisions nobody has made, assumptions never put to the user — before the work is committed to. Triggers on 'grill', 'stress-test this plan'. Fits a knot of decisions, not a single clarification — ask that one directly."
+when_to_use: "Use when open questions remain (decisions nobody has made, assumptions never put to the user) before the work is committed to. Triggers on 'grill', 'stress-test this plan'. Fits a knot of decisions, not a single clarification: ask that one directly."
 argument-hint: "[what-to-grill]"
 ---
 

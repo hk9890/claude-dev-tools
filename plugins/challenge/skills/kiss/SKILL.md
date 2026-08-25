@@ -1,6 +1,6 @@
 ---
 name: kiss
-description: "KISS — challenge accidental complexity in whatever is in front of you and propose the simpler form."
+description: "KISS: challenge accidental complexity in whatever is in front of you and propose the simpler form."
 user-invocable: true
 disable-model-invocation: true
 argument-hint: "[what-to-challenge]"
