@@ -11,16 +11,48 @@
      <script>const CSRF_TOKEN = "...";</script>
      Do NOT add this manually — the server inserts it before </head>. -->
 
-<div class="page-chrome">
+<!-- ── Top bar ───────────────────────────────────────────────────────────
+  Fixed chrome. .hv-topbar-title takes the same string as the <h1> below.
+  Leave .hv-topbar-meta EMPTY — app.js fills it with the real host, which a
+  hand-written value gets wrong the first time the port moves.
+-->
+<div class="hv-topbar">
+  <span class="hv-topbar-mode">Ask</span>
+  <span class="hv-topbar-title">[Claude: replace with document title]</span>
+  <span class="hv-topbar-meta"></span>
+</div>
 
-  <!-- ── Page header ────────────────────────────────────────────────────── -->
-  <header class="page-header">
-    <h1>[Claude: replace with document title]</h1>
-    <p class="subtitle">[Claude: replace with a one-sentence description of what the user is reviewing]</p>
-  </header>
+<div class="hv-shell">
 
-  <!-- ── Main form ─────────────────────────────────────────────────────── -->
-  <div id="main-form">
+  <!-- ── Rail ──────────────────────────────────────────────────────────────
+    Leave the list and the count EMPTY. app.js builds one entry per question
+    from the widgets below, numbers them, fills a dot as each is answered and
+    drives the progress bar. Nothing here is authored by hand — a hand-written
+    index goes stale the moment a question is inserted above it.
+  -->
+  <aside class="hv-rail">
+    <span class="hv-rail-title hv-meta">Questions</span>
+    <div class="hv-rail-list"></div>
+    <div class="hv-rail-progress">
+      <div class="hv-rail-track"><div class="hv-rail-fill"></div></div>
+      <span class="hv-rail-count hv-meta"></span>
+    </div>
+  </aside>
+
+  <main class="hv-main">
+
+    <!-- ── Page header ────────────────────────────────────────────────── -->
+    <header class="page-header">
+      <span class="hv-meta">[Claude: 2–4 words naming what this set of questions is about — e.g. "Cache layer · 3 decisions"]</span>
+      <h1>[Claude: replace with document title]</h1>
+      <p class="subtitle">[Claude: replace with a one-sentence description of what the user is deciding]</p>
+    </header>
+
+    <!-- ── Main form ─────────────────────────────────────────────────────
+      Do NOT number the questions yourself and do NOT add a .widget-index
+      line — app.js generates both, along with the keycap on every option.
+    -->
+    <div id="main-form">
 
     <!-- ── EXAMPLE 1: Text question ────────────────────────────────────── -->
     <!--
@@ -49,6 +81,10 @@
       Each option : <input type="radio"> with name=data-qid and value=<option-value>
       .annotatable + data-anchor-id : adds an always-visible free-text answer field
 
+      Options are keyed 1–9 in document order by app.js, and the key really
+      selects. Keep an option list short enough to key: past nine, the tail
+      carries no cap and can only be clicked.
+
       This example carries the FULL stack — see ask-markup.md for the reading
       order it follows. Evidence and the why panel are used where the question
       needs them; one option is marked .is-recommended on every question you can
@@ -66,19 +102,20 @@
       <span class="widget-hint">[Claude: one line orienting the reader — what this affects]</span>
 
       <!-- Evidence: quote what is being decided so nobody has to go look it up.
-           <pre>, <table>, and .vis-mermaid-wrap are all styled — see ask-markup.md. -->
+           <pre>, <table>, and .vis-mermaid-wrap are all styled — see ask-markup.md.
+           Evidence takes the whole content column, not the reading measure: a
+           wrapped line of code is a different line of code. -->
       <pre><code>[Claude: the code, config, or data under discussion]</code></pre>
 
       <div class="radio-options">
         <!-- The recommended option. Marked, NOT pre-selected. -->
         <label class="radio-option is-recommended">
           <input type="radio" name="q-priority" value="high">
-          <span>High — needs immediate attention
-            <span class="recommended-mark">
-              <span class="hv-pill">Recommended</span>
-              <button class="hv-info-btn" type="button" popovertarget="q-priority-rec"
-                      aria-label="Why this option">?</button>
-            </span>
+          <span>High — needs immediate attention</span>
+          <span class="recommended-mark">
+            <span class="hv-pill">Recommended</span>
+            <button class="hv-info-btn" type="button" popovertarget="q-priority-rec"
+                    aria-label="Why this option">?</button>
           </span>
         </label>
         <label class="radio-option">
@@ -100,7 +137,8 @@
     </div>
 
     <!-- The two panels for the widget above. Siblings of the widget, never
-         nested inside it. Each id matches its opener's popovertarget. -->
+         nested inside it. Each id matches its opener's popovertarget.
+         Pressing ? opens the FIRST panel of the question you are looking at. -->
     <div id="q-priority-why" popover class="hv-popover">
       <h3>Why this matters</h3>
       <p>[Claude: background in ASD-STE100 Simplified Technical English — what happens today, why this is a
@@ -125,6 +163,7 @@
       Each option : <input type="checkbox"> with name=data-qid and value=<option-value>
       Answer value: array of all checked values (may be empty [])
       .annotatable + data-anchor-id : adds an always-visible free-text answer field
+      Keys 1–9 TOGGLE a checkbox option rather than replacing the selection.
     -->
     <div class="widget widget-checkbox annotatable"
          data-qid="q-concerns"
@@ -173,6 +212,10 @@
                          exactly as the radio and checkbox escape option is
       Answer in payload: answers["q-approach"] = "a" | "b" | "neither" | null
       .annotatable + data-anchor-id : adds an always-visible free-text answer field
+
+      The columns carry no keycap: the column heading already names the choice,
+      and a cap inside a bordered column competes with it. The escape option
+      below the grid does carry one.
     -->
     <div class="widget widget-approaches annotatable"
          data-qid="q-approach"
@@ -196,7 +239,7 @@
             </span>
           </div>
           <p>[Claude: what it does.]</p>
-          <p><strong>Cost:</strong> [Claude: what it costs — state this honestly.]</p>
+          <p><strong>Cost</strong> [Claude: what it costs — state this honestly.]</p>
           <label class="approach-choice">
             <input type="radio" name="q-approach" value="a"> Pick this one
           </label>
@@ -205,7 +248,7 @@
         <div class="approach-col" data-approach-id="b">
           <div class="approach-header">[Claude: name of approach B]</div>
           <p>[Claude: what it does.]</p>
-          <p><strong>Cost:</strong> [Claude: what it costs.]</p>
+          <p><strong>Cost</strong> [Claude: what it costs.]</p>
           <label class="approach-choice">
             <input type="radio" name="q-approach" value="b"> Pick this one
           </label>
@@ -213,7 +256,8 @@
 
       </div>
       <label class="approaches-none">
-        <input type="radio" name="q-approach" value="neither"> Neither — my answer is in the field below
+        <input type="radio" name="q-approach" value="neither">
+        <span>Neither — my answer is in the field below</span>
       </label>
     </div>
 
@@ -236,7 +280,8 @@
       .verdict-section wraps the overall verdict widget.
       .widget-verdict  : the widget; DO NOT add data-qid (not a Q&A question).
       Verdict radio values MUST be exactly: "approve" | "approve-with-changes" | "reject"
-      The verdict is OPTIONAL — the user may submit without selecting one.
+      The verdict is OPTIONAL — the user may submit without selecting one, so it
+      gets a rail entry and a dot but is not counted in the progress total.
     -->
     <div class="verdict-section">
       <h2>Overall verdict</h2>
@@ -274,28 +319,41 @@
                 placeholder="Any other thoughts, context, or concerns not captured above…"></textarea>
     </div>
 
-    <!-- ── Submit row ─────────────────────────────────────────────────── -->
-    <div class="submit-row">
-      <button type="button" id="submit-btn" class="submit-btn">Submit feedback</button>
-      <button type="button" id="copy-btn" class="copy-btn">Copy feedback</button>
-    </div>
+    <!-- The error sits ABOVE the action bar: the bar is sticky, so anything
+         after it renders below the fold of that bar and is never seen. -->
     <div id="submit-error" class="submit-error" style="display:none;"></div>
 
-  </div><!-- /#main-form -->
+    <!-- ── Action bar ─────────────────────────────────────────────────────
+      Sticky at the foot of the column and INSIDE #main-form, so a successful
+      submit takes it away with the form instead of leaving a dead Submit
+      button over the confirmation. Leave .hv-status-hint and the data-hv-mod
+      keycap EMPTY — app.js writes the right modifier for the platform.
+    -->
+    <div class="submit-row">
+      <button type="button" id="submit-btn" class="submit-btn">
+        <span class="hv-btn-label">Submit feedback</span>
+        <kbd class="hv-key" data-hv-mod></kbd>
+      </button>
+      <button type="button" id="copy-btn" class="copy-btn">Copy feedback</button>
+      <span class="hv-status-hint"></span>
+    </div>
 
-  <!-- ── Success state (shown after 200 response) ─────────────────────── -->
-  <div id="state-submitted" class="state-submitted">
-    <h2>Feedback submitted</h2>
-    <p>Thank you. Claude has received your feedback and will continue.</p>
-  </div>
+    </div><!-- /#main-form -->
 
-  <!-- ── Already-submitted state (shown after 410 response) ───────────── -->
-  <div id="state-already-submitted" class="state-already-submitted">
-    <h2>Already submitted</h2>
-    <p>This feedback form has already been submitted. Claude has your earlier response.</p>
-  </div>
+    <!-- ── Success state (shown after 200 response) ─────────────────────── -->
+    <div id="state-submitted" class="state-submitted">
+      <h2>Feedback submitted</h2>
+      <p>Claude has your answers and is carrying on. You can close this tab.</p>
+    </div>
 
-</div><!-- /.page-chrome -->
+    <!-- ── Already-submitted state (shown after 410 response) ───────────── -->
+    <div id="state-already-submitted" class="state-already-submitted">
+      <h2>Already submitted</h2>
+      <p>This form was submitted once already. Claude has that earlier answer — this tab cannot send a second one.</p>
+    </div>
+
+  </main>
+</div><!-- /.hv-shell -->
 
 <script src="/assets/shared/submit.js"></script>
 <script src="/assets/shared/overlay.js"></script>

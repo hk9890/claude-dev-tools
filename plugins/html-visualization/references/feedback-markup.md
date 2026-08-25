@@ -41,27 +41,44 @@ Every document must have this top-level structure:
   <link rel="stylesheet" href="/assets/feedback/style.css">
 </head>
 <body>
-  <div class="page-chrome">
-    <header class="page-header">
-      <h1>…</h1>
-      <p class="subtitle">…</p>
-      <span id="comment-count" class="comment-count"></span>
-    </header>
-    <div id="feedback-doc">
-      <div id="content"> … commentable blocks … </div>
-      <div class="freeform-section"> … #freeform-input … </div>
-      <div class="submit-row"> … #apply-btn, #submit-btn, #copy-btn … </div>
-      <div id="submit-error" class="submit-error" style="display:none;"></div>
-    </div>
-    <div id="state-applying" class="state-applying"> … </div>
-    <div id="state-submitted" class="state-submitted"> … </div>
-    <div id="state-already-submitted" class="state-already-submitted"> … </div>
+  <div class="hv-topbar">                     <!-- mode, title, host -->
+    <span class="hv-topbar-mode">Review</span>
+    <span class="hv-topbar-title">…</span>
+    <span class="hv-topbar-meta"></span>      <!-- app.js fills this -->
+  </div>
+  <div class="hv-shell">
+    <aside class="hv-rail">                   <!-- app.js fills the list -->
+      <span class="hv-rail-title hv-meta">Comments</span>
+      <div class="hv-rail-list"></div>
+      <span class="hv-rail-empty">Select any text in the document to comment on it.</span>
+    </aside>
+    <main class="hv-main">
+      <header class="page-header">
+        <span class="hv-meta">…</span>
+        <h1>…</h1>
+        <p class="subtitle">…</p>
+        <span id="comment-count" class="comment-count"></span>
+      </header>
+      <div id="feedback-doc">
+        <div id="content"> … commentable blocks … </div>
+        <div class="freeform-section"> … #freeform-input … </div>
+        <div id="submit-error" class="submit-error" style="display:none;"></div>
+        <div class="submit-row"> … #apply-btn, #submit-btn, #copy-btn … </div>
+      </div>
+      <div id="state-applying" class="state-applying"> … </div>
+      <div id="state-submitted" class="state-submitted"> … </div>
+      <div id="state-already-submitted" class="state-already-submitted"> … </div>
+    </main>
   </div>
   <script src="/assets/shared/submit.js"></script>
+  <script src="/assets/shared/heartbeat.js"></script>
   <script src="/assets/feedback/app.js"></script>
 </body>
 </html>
 ```
+
+`#submit-error` sits BEFORE `.submit-row`: the action bar is sticky, so an
+error rendered after it lands below that bar and is never seen.
 
 **Do NOT** add the `<script>const CSRF_TOKEN = "…";</script>` block manually —
 the server injects it, along with the generation and the mode, before `</head>`.
@@ -137,15 +154,28 @@ These `id` values are hard-wired in `app.js` and must be present exactly once:
 
 ## Visual classes (do not rename)
 
-`page-chrome`, `page-header`, `subtitle`, `comment-count`, `freeform-section`,
-`submit-row`, `apply-btn`, `submit-btn`, `copy-btn`, `submit-error`,
-`state-applying`, `state-submitted`, `state-already-submitted` — defined across
-`assets/shared/chrome.css` and `assets/feedback/style.css`. Use them exactly as
-in `feedback-template.html`.
+`hv-topbar`, `hv-shell`, `hv-rail`, `hv-main`, `hv-meta`, `page-header`,
+`subtitle`, `comment-count`, `freeform-section`, `submit-row`, `apply-btn`,
+`submit-btn`, `copy-btn`, `submit-error`, `state-applying`, `state-submitted`,
+`state-already-submitted` — defined across `assets/shared/chrome.css` and
+`assets/feedback/style.css`. Use them exactly as in `feedback-template.html`.
 
 The comment UI classes (`fb-float-btn`, `fb-comment-editor`, `fb-comment-card`,
-`fb-quote`, `fb-highlight`, …) are injected by `app.js` at runtime. **Do not
-author them.**
+`fb-card-meta`, `fb-block-marker`, `fb-quote`, `fb-highlight`, …) are injected
+by `app.js` at runtime, along with every `.hv-rail-item`. **Do not author
+them.**
+
+### Naming blocks
+
+`data-block-id` is shown to the reader — it appears on the comment card next to
+the comment's number. Name a block after what it holds (`b-intro`, `b-tradeoff`)
+rather than by position (`b-3`), which goes wrong the moment a block moves.
+
+### The Apply chord
+
+`Cmd`/`Ctrl` + `Enter` presses **Apply & preview**, not Submit: Apply is the
+move a reviewer makes over and over, and Submit is the one that cannot be taken
+back. The status line in the action bar says so.
 
 ---
 

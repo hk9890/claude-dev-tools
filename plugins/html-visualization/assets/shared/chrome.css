@@ -1,12 +1,19 @@
 /* chrome.css — page chrome shared by the ask and feedback modes.
  *
- * Theme: "Editorial" — warm paper, ink text, a single terracotta accent,
- * a serif display face paired with a refined sans body. Light + dark.
+ * Theme: "Console" — see tokens.css. The shell is three fixed parts and one
+ * fluid one: a sticky top bar naming the mode, a sticky left rail carrying the
+ * index and progress, the content column, and a sticky action bar at the foot
+ * of that column.
+ *
+ * The rail is why the shell exists. Both modes used to render one full-width
+ * column, which put a question's label and its radio a screen apart on a wide
+ * display and gave the reader no way to tell how much was left. The rail takes
+ * the width the measure gives back and spends it on orientation.
  *
  * Imported by assets/ask/style.css and assets/feedback/style.css, which then
  * add their own rules; equal-specificity mode rules come after this import and
- * therefore win. Declarations the two modes genuinely disagree on (page
- * measure, freeform spacing, button colour) are left out of the rules below and
+ * therefore win. Declarations the two modes genuinely disagree on (reading
+ * measure, document surface, button colour) are left out of the rules below and
  * are set by each mode.
  *
  * Design tokens come from tokens.css, imported here so a mode stylesheet needs
@@ -15,6 +22,18 @@
  * The class names, ids and data-attributes below are a contract with
  * assets/ask/app.js and assets/feedback/app.js — restyle freely, but do not
  * rename them here without also changing those files.
+ *
+ * Shell vocabulary:
+ *   .hv-topbar        — sticky bar naming the mode, the document and the host
+ *   .hv-shell         — the rail + content grid
+ *   .hv-rail          — sticky index column (built by each mode's app.js)
+ *   .hv-rail-item     — one index entry: keycap, label, state dot
+ *   .hv-main          — the content column
+ *   .hv-measure       — caps a text block at the reading measure
+ *   .hv-key           — a keycap; the same element in the rail, on an option
+ *                       and inside a button
+ *   body.hv-submitted — set by app.js once the form is gone, so the rail and
+ *                       the action bar go with it
  */
 
 @import "/assets/shared/tokens.css";
@@ -32,24 +51,28 @@ body {
   font-family: var(--hv-font-body);
   font-size: 16px;
   color: var(--hv-text);
-  background:
-    radial-gradient(1200px 620px at 100% -8%, rgba(var(--hv-accent-rgb),.06), transparent 62%),
-    radial-gradient(900px 520px at -5% 8%, rgba(169,120,26,.05), transparent 60%),
-    var(--hv-bg);
-  background-attachment: fixed;
+  background: var(--hv-bg);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
 ::selection {
   background: var(--hv-accent-tint);
-  color: var(--hv-text);
+  color: var(--hv-accent-deep);
+}
+
+:focus-visible {
+  outline: 2px solid var(--hv-accent);
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 /* ── Motion ───────────────────────────────────────────────────────────────── */
+/* One load reveal, short. Console should feel instant; anything longer reads as
+   the page thinking, which is the opposite of the point. */
 
 @keyframes rise {
-  from { opacity: 0; transform: translateY(12px); }
+  from { opacity: 0; transform: translateY(4px); }
   to   { opacity: 1; transform: none; }
 }
 
@@ -58,83 +81,320 @@ body {
     animation-duration: 0.001ms !important;
     animation-delay: 0ms !important;
     transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
-/* ── Page chrome ──────────────────────────────────────────────────────────── */
+html {
+  scroll-behavior: smooth;
+  /* The rail scrolls to a question; the top bar must not cover its heading. */
+  scroll-padding-top: 84px;
+}
 
-.page-chrome {
+/* ── Machine strings ──────────────────────────────────────────────────────── */
+/* Mono is not decoration here: it marks every string the tool produced, as
+   against the sans strings a person is meant to read. */
+
+.hv-meta {
+  font-family: var(--hv-font-mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--hv-faint);
+}
+
+/* ── Keycap ───────────────────────────────────────────────────────────────── */
+
+.hv-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border: 1px solid var(--hv-border-strong);
+  border-radius: var(--hv-radius-sm);
+  background: var(--hv-surface-2);
+  color: var(--hv-muted);
+  font-family: var(--hv-font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+/* Inside a filled button the cap has to sit on the accent, not on the field. */
+.submit-btn .hv-key,
+.apply-btn .hv-key {
+  border-color: rgba(var(--hv-ink-rgb), 0.28);
+  background: rgba(var(--hv-ink-rgb), 0.14);
+  color: inherit;
+  opacity: 0.75;
+}
+
+/* ── Top bar ──────────────────────────────────────────────────────────────── */
+
+.hv-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 40px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--hv-border);
+  background: var(--hv-surface-3);
+  font-family: var(--hv-font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+}
+
+.hv-topbar-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--hv-accent);
+}
+
+.hv-topbar-mode::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--hv-accent);
+}
+
+.hv-topbar-title {
+  color: var(--hv-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hv-topbar-meta {
+  margin-left: auto;
+  color: var(--hv-faint);
+  white-space: nowrap;
+}
+
+/* ── Shell ────────────────────────────────────────────────────────────────── */
+
+.hv-shell {
+  display: grid;
+  grid-template-columns: var(--hv-rail) minmax(0, 1fr);
+  gap: var(--hv-gutter);
+  align-items: start;
   max-width: var(--hv-page);
   margin: 0 auto;
-  padding: 40px 22px 64px;
+  padding: 0 24px;
 }
+
+.hv-main {
+  min-width: 0;
+  padding: 34px 0 0;
+}
+
+/* Caps prose at the reading measure while leaving wide children — tables,
+   diagrams, the approaches grid — the whole content track. */
+.hv-measure {
+  max-width: var(--hv-measure);
+}
+
+/* ── Rail ─────────────────────────────────────────────────────────────────── */
+
+.hv-rail {
+  position: sticky;
+  top: 68px;
+  padding: 34px 0 40px;
+  animation: rise 0.28s ease both;
+}
+
+body.hv-submitted .hv-rail {
+  display: none;
+}
+
+/* Hiding the rail is not enough: the grid still reserves its track, and the
+   content column drops into that 236px slot. The confirmation then renders in
+   a narrow strip against the left edge. */
+body.hv-submitted .hv-shell {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+
+.hv-rail-title {
+  display: block;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--hv-border);
+  margin-bottom: 6px;
+}
+
+.hv-rail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hv-rail-item {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) 8px;
+  align-items: start;
+  gap: 11px;
+  padding: 9px 8px 9px 0;
+  border: none;
+  border-radius: var(--hv-radius-sm);
+  background: none;
+  color: var(--hv-muted);
+  font-family: inherit;
+  font-size: 0.88rem;
+  line-height: 1.35;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.12s ease, background 0.12s ease;
+}
+
+.hv-rail-item:hover {
+  background: var(--hv-surface);
+  color: var(--hv-text);
+}
+
+.hv-rail-item.is-current {
+  color: var(--hv-text);
+}
+
+.hv-rail-item.is-current .hv-rail-num {
+  color: var(--hv-accent);
+}
+
+/* The rail badge is the question's NUMBER, not a shortcut. Only the option rows
+   carry real keycaps, and the two must not look alike. */
+.hv-rail-num {
+  line-height: 1.5;
+  font-family: var(--hv-font-mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--hv-faint);
+  transition: color 0.12s ease;
+}
+
+.hv-rail-label {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+/* Answered state. A ring that fills — visible at 8px, which a tick is not. */
+.hv-rail-dot {
+  margin-top: 6px;
+  width: 7px;
+  height: 7px;
+  border: 1px solid var(--hv-border-strong);
+  border-radius: 50%;
+  transition: background 0.14s ease, border-color 0.14s ease;
+}
+
+.hv-rail-item.is-answered .hv-rail-dot {
+  background: var(--hv-ok);
+  border-color: var(--hv-ok);
+}
+
+.hv-rail-progress {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--hv-border);
+}
+
+.hv-rail-track {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--hv-border);
+  overflow: hidden;
+}
+
+.hv-rail-fill {
+  width: 0%;
+  height: 100%;
+  background: var(--hv-accent);
+  transition: width 0.24s ease;
+}
+
+.hv-rail-count {
+  display: block;
+  margin-top: 9px;
+}
+
+/* ── Page header ──────────────────────────────────────────────────────────── */
 
 .page-header {
-  position: relative;
-  padding-bottom: 20px;
+  padding-bottom: 22px;
   border-bottom: 1px solid var(--hv-border);
-  animation: rise 0.5s ease both;
+  animation: rise 0.3s ease both;
 }
 
-.page-header::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  bottom: -1px;
-  width: 58px;
-  height: 3px;
-  background: var(--hv-accent);
-  border-radius: 2px;
+.page-header .hv-meta {
+  display: block;
+  margin-bottom: 12px;
 }
 
 .page-header h1 {
-  margin: 0 0 7px;
+  margin: 0 0 10px;
+  max-width: 26ch;
   font-family: var(--hv-font-display);
-  font-size: 2.1rem;
-  font-weight: 600;
-  line-height: 1.14;
-  letter-spacing: -0.018em;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.16;
+  letter-spacing: -0.022em;
   color: var(--hv-text);
 }
 
 .page-header .subtitle {
-  font-family: var(--hv-font-display);
-  font-style: italic;
-  font-size: 1.08rem;
-  line-height: 1.45;
+  margin: 0;
+  max-width: var(--hv-measure);
+  font-size: 1.02rem;
+  line-height: 1.6;
   color: var(--hv-muted);
 }
 
 /* ── Freeform section ─────────────────────────────────────────────────────── */
 
 .freeform-section {
-  background: var(--hv-surface);
-  border: 1px solid var(--hv-border);
-  border-radius: var(--hv-radius);
-  padding: 22px 26px;
-  box-shadow: var(--hv-shadow);
+  padding: 30px 0 4px 20px;
+  margin-left: -20px;
+  border-top: 1px solid var(--hv-border);
 }
 
 .freeform-section h2 {
-  font-family: var(--hv-font-display);
-  font-size: 1.3rem;
-  font-weight: 600;
-  letter-spacing: -0.015em;
-  color: var(--hv-text);
+  font-family: var(--hv-font-mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--hv-faint);
 }
 
 .freeform-section textarea {
   width: 100%;
   padding: 11px 13px;
   border: 1px solid var(--hv-border);
-  border-radius: 8px;
+  border-radius: var(--hv-radius-sm);
   font-family: inherit;
   font-size: 0.95rem;
-  line-height: 1.55;
+  line-height: 1.6;
   resize: vertical;
   color: var(--hv-text);
   background: var(--hv-surface-2);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  transition: border-color 0.12s ease, background 0.12s ease;
 }
 
 .freeform-section textarea::placeholder { color: var(--hv-faint); }
@@ -143,17 +403,47 @@ body {
   outline: none;
   border-color: var(--hv-accent);
   background: var(--hv-surface);
-  box-shadow: 0 0 0 3px var(--hv-accent-tint);
 }
 
-/* ── Submit row ───────────────────────────────────────────────────────────── */
+/* ── Action bar ───────────────────────────────────────────────────────────── */
+/* Sticky at the foot of the content column, and INSIDE the form — so hiding the
+   form after a submit takes the bar with it and no dead Submit button is left
+   floating over the confirmation. */
 
 .submit-row {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   flex-wrap: wrap;
-  margin-top: 22px;
+  margin-top: 28px;
+  padding: 14px 0 18px;
+  border-top: 1px solid var(--hv-border);
+  background: var(--hv-bg);
+}
+
+/* Content must not appear to end at the bar; it fades under it. */
+.submit-row::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -20px;
+  height: 20px;
+  background: linear-gradient(to bottom, transparent, var(--hv-bg));
+  pointer-events: none;
+}
+
+.hv-status-hint {
+  margin-left: auto;
+  font-family: var(--hv-font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--hv-faint);
+  white-space: nowrap;
 }
 
 /* .apply-btn (feedback mode only) sits next to .submit-btn in the same row and
@@ -161,100 +451,187 @@ body {
    mode sets. */
 .submit-btn,
 .apply-btn {
-  color: #fff;
-  border: none;
-  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid transparent;
+  border-radius: var(--hv-radius-sm);
   font-family: inherit;
-  font-size: 0.97rem;
+  font-size: 0.93rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+  transition: background 0.12s ease, border-color 0.12s ease, opacity 0.12s ease;
 }
 
 /* The pressed state is per mode: it has to come after that mode's :hover rule
    to win, and the hover colours differ. */
 .submit-btn:disabled,
 .apply-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: default;
-  box-shadow: none;
 }
 
 .copy-btn {
-  padding: 11px 21px;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 16px;
   background: transparent;
   color: var(--hv-muted);
   border: 1px solid var(--hv-border);
-  border-radius: 8px;
+  border-radius: var(--hv-radius-sm);
   font-family: inherit;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.13s ease, border-color 0.13s ease, color 0.13s ease;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
 }
 
 .copy-btn:hover {
-  background: var(--hv-surface);
-  border-color: var(--hv-accent);
+  border-color: var(--hv-border-strong);
   color: var(--hv-text);
 }
 
 .copy-btn.copied {
-  color: var(--hv-ok-deep);
+  color: var(--hv-ok);
   border-color: var(--hv-ok);
-  background: var(--hv-ok-tint);
 }
 
 .submit-error {
   color: var(--hv-bad-deep);
   background: var(--hv-bad-tint);
   border: 1px solid var(--hv-bad);
-  border-radius: 8px;
-  padding: 10px 14px;
+  border-radius: var(--hv-radius-sm);
+  padding: 11px 14px;
   font-size: 0.9rem;
+  line-height: 1.55;
   margin-top: 14px;
   width: 100%;
 }
 
 /* ── Post-submit states ───────────────────────────────────────────────────── */
+/* Left-aligned with a status rule, not a centred card: the page has just become
+   a receipt, and a receipt reads top-left like everything else here. */
 
 .state-submitted,
 .state-already-submitted {
   display: none;
+  max-width: var(--hv-measure);
   border-radius: var(--hv-radius);
-  padding: 34px 30px;
-  text-align: center;
-  margin-top: 24px;
-  box-shadow: var(--hv-shadow);
-  animation: rise 0.45s ease both;
+  border: 1px solid var(--hv-border);
+  border-left-width: 2px;
+  background: var(--hv-surface);
+  padding: 24px 26px;
+  margin: 34px 0 60px;
+  animation: rise 0.3s ease both;
 }
 
-.state-submitted {
-  background: var(--hv-ok-tint);
-  border: 1px solid var(--hv-ok);
-}
-
-.state-already-submitted {
-  background: var(--hv-warn-tint);
-  border: 1px solid var(--hv-warn);
-}
+.state-submitted { border-left-color: var(--hv-ok); }
+.state-already-submitted { border-left-color: var(--hv-warn); }
 
 .state-submitted h2,
 .state-already-submitted h2 {
   margin: 0 0 8px;
   font-family: var(--hv-font-display);
-  font-size: 1.4rem;
-  font-weight: 600;
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--hv-text);
 }
 
-.state-submitted h2 { color: var(--hv-ok-deep); }
-.state-already-submitted h2 { color: var(--hv-warn-deep); }
+.state-submitted h2::before,
+.state-already-submitted h2::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 10px;
+  border-radius: 50%;
+  vertical-align: middle;
+}
+
+.state-submitted h2::before { background: var(--hv-ok); }
+.state-already-submitted h2::before { background: var(--hv-warn); }
 
 .state-submitted p,
 .state-already-submitted p {
   margin: 0;
   font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--hv-muted);
 }
 
-.state-submitted p { color: var(--hv-ok-deep); }
-.state-already-submitted p { color: var(--hv-warn-deep); }
+/* ── Narrow: the rail folds into a strip ──────────────────────────────────── */
+
+@media (max-width: 1120px) {
+  .hv-shell {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .hv-rail {
+    position: sticky;
+    top: 40px;
+    z-index: 25;
+    padding: 0;
+    margin: 0 -24px;
+    border-bottom: 1px solid var(--hv-border);
+    background: var(--hv-bg);
+  }
+
+  .hv-rail-title,
+  .hv-rail-progress {
+    display: none;
+  }
+
+  .hv-rail-list {
+    flex-direction: row;
+    gap: 4px;
+    padding: 8px 24px;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .hv-rail-item {
+    grid-template-columns: 18px auto 8px;
+    flex: 0 0 auto;
+    padding: 7px 11px;
+    border: 1px solid var(--hv-border);
+    background: var(--hv-surface);
+  }
+
+  .hv-rail-label {
+    display: block;
+    max-width: 26ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .hv-rail-item { align-items: center; }
+  .hv-rail-dot { margin-top: 0; }
+
+  .hv-main {
+    padding-top: 26px;
+  }
+}
+
+@media (max-width: 680px) {
+  .hv-topbar { padding: 0 16px; gap: 10px; }
+  .hv-topbar-meta { display: none; }
+
+  .hv-shell { padding: 0 16px; }
+  .hv-rail { margin: 0 -16px; }
+  .hv-rail-list { padding: 8px 16px; }
+
+  .page-header h1 { font-size: 1.6rem; }
+
+  .submit-row > .submit-btn,
+  .submit-row > .apply-btn,
+  .submit-row > .copy-btn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  .hv-status-hint { display: none; }
+}

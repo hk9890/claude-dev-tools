@@ -1,7 +1,16 @@
 /* tokens.css — shared design tokens for all html-visualization modes.
  *
- * Theme: "Editorial" — warm paper, ink text, a single terracotta accent,
- * a serif display face paired with a refined sans body. Light + dark.
+ * Theme: "Console" — the pages are part of the toolchain, not documents about
+ * it. A cool near-black ground, one amber accent, and a strict two-face type
+ * system: MONO carries everything the machine says (question numbers, type
+ * tags, counters, keycaps, the status line), SANS carries everything a person
+ * reads (questions, prose, options, buttons). Dark is the designed-for scheme;
+ * the light block below is a full counterpart, not an afterthought.
+ *
+ * No webfonts. references/visualize-template.html must render from file:// with
+ * no network, and the served modes must look identical offline — so both font
+ * stacks name faces a developer machine is likely to have and fall back to the
+ * system UI and system mono faces.
  *
  * IMPORTANT: This file has TWO delivery paths:
  *   1. Linked via @import — used by assets/shared/chrome.css, which
@@ -18,81 +27,96 @@
 /* ── Design tokens ────────────────────────────────────────────────────────── */
 
 :root {
-  color-scheme: light dark;
+  color-scheme: dark light;
 
-  /* Backgrounds */
-  --hv-bg:       #f4efe3;
-  --hv-surface:  #fffdf7;
-  --hv-surface-2:#faf5e9;
+  /* Backgrounds — ground, raised panel, inset field, recessed chrome */
+  --hv-bg:        #0d1012;
+  --hv-surface:   #15191c;
+  --hv-surface-2: #1a1f23;
+  --hv-surface-3: #0a0c0e;
 
   /* Text */
-  --hv-text:     #2a251d;
-  --hv-muted:    #6c6353;
-  --hv-faint:    #9a9078;
+  --hv-text:  #dde4e8;
+  --hv-muted: #8e989f;
+  --hv-faint: #6b757c;
 
-  /* Borders */
-  --hv-border:   #e2dac6;
-  --hv-border-soft: #ece5d4;
+  /* Rules */
+  --hv-border:        #242a2f;
+  --hv-border-soft:   #1c2125;
+  --hv-border-strong: #39424a;
 
-  /* Accent — terracotta */
-  --hv-accent:      #b1492a;
-  --hv-accent-deep: #8d3a20;
-  --hv-accent-tint: #f2e2d8;
-  /* RGB triplet for use in rgba() — matches --hv-accent light value */
-  --hv-accent-rgb: 177, 73, 42;
+  /* Accent — amber */
+  --hv-accent:      #eda344;
+  --hv-accent-deep: #f7bb69;
+  --hv-accent-tint: #2e2418;
+  /* RGB triplet for use in rgba() — matches --hv-accent */
+  --hv-accent-rgb: 237, 163, 68;
+  /* Text that sits ON a filled accent surface. Amber is a light accent, so this
+     is the ground colour, not white — the pair flips in the light scheme. */
+  --hv-on-accent: #0d1012;
 
   /* Semantic colours */
-  --hv-ok:    #51762f;  --hv-ok-tint:   #e7efd9;  --hv-ok-deep:   #3d5b21;
-  --hv-warn:  #a9781a;  --hv-warn-tint: #f4eccd;  --hv-warn-deep: #846010;
-  --hv-bad:   #a33324;  --hv-bad-tint:  #f3e0da;  --hv-bad-deep:  #7e271b;
+  --hv-ok:    #72c48c;  --hv-ok-tint:   #16261c;  --hv-ok-deep:   #8fd6a5;
+  --hv-warn:  #e2b25e;  --hv-warn-tint: #2a2317;  --hv-warn-deep: #eec27f;
+  --hv-bad:   #f18f7a;  --hv-bad-tint:  #2c1a17;  --hv-bad-deep:  #f7ac9a;
 
   /* RGB triplets for use in rgba() */
-  --hv-ok-rgb:  81, 118, 47;
-  --hv-ink-rgb: 42, 32, 14;
+  --hv-ok-rgb:  114, 196, 140;
+  --hv-ink-rgb: 0, 0, 0;
 
-  /* Elevation */
-  --hv-shadow:    0 1px 2px rgba(42,32,14,.05), 0 7px 22px -10px rgba(42,32,14,.16);
-  --hv-shadow-lg: 0 2px 4px rgba(42,32,14,.06), 0 16px 38px -14px rgba(42,32,14,.26);
-  --hv-radius: 11px;
+  /* Elevation — on a dark ground a rule reads as depth and a shadow does not,
+     so the shadows stay shallow and the borders do the work. */
+  --hv-shadow:    0 1px 2px rgba(0,0,0,.34), 0 8px 24px -14px rgba(0,0,0,.6);
+  --hv-shadow-lg: 0 2px 6px rgba(0,0,0,.44), 0 22px 48px -20px rgba(0,0,0,.75);
+  --hv-radius: 6px;
+  --hv-radius-sm: 4px;
 
-  /* Page measure — one value across ask, feedback and visualize. The three modes
-     used to disagree (760 / 840 / 900), which left a wide screen mostly empty and
-     made the same content sit at a different width depending on which mode
-     rendered it. */
-  --hv-page: 1360px;
+  /* Layout. --hv-page is the outer chrome width; the rail and the reading
+     measure divide it. A question is ~12 words wide, so a 1440px column of
+     option rows put the label and its control a screen apart — the measure
+     exists to stop that. */
+  --hv-page:    1320px;
+  --hv-rail:    236px;
+  --hv-gutter:  52px;
+  --hv-measure: 74ch;
 
-  /* Typography */
-  --hv-font-display: "Charter", "Bitstream Charter", "Sitka Text", "Iowan Old Style", Cambria, Georgia, serif;
-  --hv-font-body: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --hv-font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  /* Typography — mono for machine strings, sans for human ones. */
+  --hv-font-body: "Public Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --hv-font-display: var(--hv-font-body);
+  --hv-font-mono: "JetBrains Mono", "IBM Plex Mono", "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, "DejaVu Sans Mono", monospace;
 }
 
-@media (prefers-color-scheme: dark) {
+@media (prefers-color-scheme: light) {
   :root {
-    --hv-bg:       #15130e;
-    --hv-surface:  #211e16;
-    --hv-surface-2:#1b1812;
+    --hv-bg:        #f3f5f7;
+    --hv-surface:   #ffffff;
+    --hv-surface-2: #eaeef1;
+    --hv-surface-3: #e6ebee;
 
-    --hv-text:     #ece5d6;
-    --hv-muted:    #a89d86;
-    --hv-faint:    #7c735e;
+    --hv-text:  #11161a;
+    --hv-muted: #54606a;
+    --hv-faint: #6f7c88;
 
-    --hv-border:   #352f23;
-    --hv-border-soft: #2a251c;
+    --hv-border:        #d4dadf;
+    --hv-border-soft:   #e3e8ec;
+    --hv-border-strong: #b3bcc4;
 
-    --hv-accent:      #e3895f;
-    --hv-accent-deep: #efa17c;
-    --hv-accent-tint: #3a291f;
-    --hv-accent-rgb: 227, 137, 95;
+    /* Amber cannot survive a light ground at the same lightness — the hue is
+       kept and the lightness dropped, which lands on ochre. */
+    --hv-accent:      #8f5906;
+    --hv-accent-deep: #6f4404;
+    --hv-accent-tint: #f7ecd9;
+    --hv-accent-rgb: 143, 89, 6;
+    --hv-on-accent: #ffffff;
 
-    --hv-ok:    #95bd6c;  --hv-ok-tint:   #2a331f;  --hv-ok-deep:   #abce84;
-    --hv-warn:  #d8aa50;  --hv-warn-tint: #352c16;  --hv-warn-deep: #e8bf6c;
-    --hv-bad:   #e3897a;  --hv-bad-tint:  #382220;  --hv-bad-deep:  #ed9f90;
+    --hv-ok:    #2c7a4b;  --hv-ok-tint:   #e2f0e7;  --hv-ok-deep:   #1e5c37;
+    --hv-warn:  #8a6414;  --hv-warn-tint: #f5ecd8;  --hv-warn-deep: #6b4c0c;
+    --hv-bad:   #a83f2c;  --hv-bad-tint:  #f7e3de;  --hv-bad-deep:  #85301f;
 
-    --hv-ok-rgb:  149, 189, 108;
-    --hv-ink-rgb: 0, 0, 0;
+    --hv-ok-rgb:  44, 122, 75;
+    --hv-ink-rgb: 17, 22, 26;
 
-    --hv-shadow:    0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.7);
-    --hv-shadow-lg: 0 2px 6px rgba(0,0,0,.5), 0 18px 40px -16px rgba(0,0,0,.8);
+    --hv-shadow:    0 1px 2px rgba(17,22,26,.05), 0 8px 24px -14px rgba(17,22,26,.18);
+    --hv-shadow-lg: 0 2px 6px rgba(17,22,26,.07), 0 22px 48px -20px rgba(17,22,26,.24);
   }
 }
