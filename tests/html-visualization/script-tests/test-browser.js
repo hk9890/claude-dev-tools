@@ -74,6 +74,33 @@ process.env.PLAYWRIGHT_BROWSERS_PATH = path.join(os.homedir(), '.cache', 'ms-pla
 
 const { chromium } = require(playwrightDir);
 
+// ── Uncaught page errors ───────────────────────────────────────────────────
+//
+// Nothing here used to watch for exceptions thrown INSIDE the page, so a broken
+// asset was invisible unless it happened to break a DOM state some assertion
+// looked at. A mutation audit found several page-script paths that ran unasserted
+// for exactly that reason. Wrapping launch once wires every page every test opens,
+// rather than asking fifteen call sites to remember.
+
+const pageErrors = [];
+let currentTest = '(startup)';
+
+const rawLaunch = chromium.launch.bind(chromium);
+chromium.launch = async function (...launchArgs) {
+  const browser = await rawLaunch(...launchArgs);
+  const rawNewContext = browser.newContext.bind(browser);
+  browser.newContext = async function (...ctxArgs) {
+    const ctx = await rawNewContext(...ctxArgs);
+    ctx.on('page', (page) => {
+      page.on('pageerror', (err) => {
+        pageErrors.push({ test: currentTest, message: String((err && err.message) || err) });
+      });
+    });
+    return ctx;
+  };
+  return browser;
+};
+
 // ── Paths ──────────────────────────────────────────────────────────────────
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..');
@@ -991,19 +1018,348 @@ async function testApplyGapShowsNoBanner() {
   }
 }
 
+// ── Test 11: the /submit dispatch, all four arms ───────────────────────────
+//
+// hvSubmit resolves a request into exactly one of four handlers. A mutation audit
+// proved that only one of them — accepted() — was ever executed by this suite: a
+// throw placed on the 410 condition left the whole run green, while the same throw
+// one arm up on the 200 condition turned it red. So every page could report "your
+// feedback landed" after a 403 or a 500 and nothing here would notice.
+//
+// The arms are driven in this order deliberately. Once a real submit lands, the
+// server answers 410 forever, so the mocked failures have to run first.
+
+async function testSubmitDispatch() {
+  console.log('\n--- test: /submit dispatch arms ---');
+  let browser = null, srv = null, tmpDir = null;
+
+  // Call hvSubmit in the page and resolve with the name of the handler it ran.
+  // A 3 s guard turns "no handler fired at all" into a failure rather than a hang.
+  const arm = (page) => page.evaluate(() => new Promise((resolve) => {
+    const done = setTimeout(() => resolve('none'), 3000);
+    const settle = (name) => { clearTimeout(done); resolve(name); };
+    hvSubmit({ answers: {}, freeform: '' }, {
+      accepted:         () => settle('accepted'),
+      alreadySubmitted: () => settle('alreadySubmitted'),
+      failed:           (status, error) => settle('failed:' + status + ':' + error),
+      unreachable:      () => settle('unreachable'),
+    });
+  }));
+
+  try {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hv-test-dispatch-'));
+    const htmlFile = path.join(tmpDir, 'ask.html');
+    fs.writeFileSync(htmlFile, fs.readFileSync(ASK_TMPL, 'utf8'));
+
+    srv = await startServer(htmlFile, ['--mode', 'ask']);
+    await waitForPort(srv.port);
+
+    browser = await chromium.launch({ headless: true });
+    const page = await (await browser.newContext()).newPage();
+    await page.goto(srv.baseUrl + '/', { waitUntil: 'networkidle' });
+
+    // failed(): a server error, with the message pulled out of the JSON body.
+    await page.route('**/submit', (route) => route.fulfill({
+      status: 500,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: 'boom' }),
+    }));
+    const failedArm = await arm(page);
+    if (failedArm === 'failed:500:boom') {
+      ok('submit dispatch: a 500 runs failed() with the status and the server message');
+    } else {
+      fail('submit dispatch: expected failed:500:boom, got ' + failedArm);
+    }
+
+    // failed() again, this time with a body that is not JSON — the reader has its own
+    // fallback, and a page that showed "undefined" to the user would still be green.
+    await page.route('**/submit', (route) => route.fulfill({
+      status: 400, contentType: 'text/plain', body: 'not json',
+    }));
+    const badBodyArm = await arm(page);
+    if (badBodyArm === 'failed:400:unknown error') {
+      ok('submit dispatch: an unreadable error body falls back to "unknown error"');
+    } else {
+      fail('submit dispatch: expected failed:400:unknown error, got ' + badBodyArm);
+    }
+
+    // unreachable(): the request never completes. This must stay distinct from
+    // failed() — the submit did not land, so the page may offer a retry.
+    await page.route('**/submit', (route) => route.abort());
+    const unreachableArm = await arm(page);
+    if (unreachableArm === 'unreachable') {
+      ok('submit dispatch: an aborted request runs unreachable(), not failed()');
+    } else {
+      fail('submit dispatch: expected unreachable, got ' + unreachableArm);
+    }
+
+    // accepted(): the real server, no interception.
+    await page.unroute('**/submit');
+    const acceptedArm = await arm(page);
+    if (acceptedArm === 'accepted') {
+      ok('submit dispatch: a 200 runs accepted()');
+    } else {
+      fail('submit dispatch: expected accepted, got ' + acceptedArm);
+    }
+
+    // alreadySubmitted(): the same page submitting twice. This is the real 410 the
+    // server returns once a submit has landed, not a mocked one.
+    const secondArm = await arm(page);
+    if (secondArm === 'alreadySubmitted') {
+      ok('submit dispatch: a second submit runs alreadySubmitted() on the real 410');
+    } else {
+      fail('submit dispatch: expected alreadySubmitted, got ' + secondArm);
+    }
+
+    // The 410 must not overwrite what the first submit stored.
+    let payload = null;
+    try { payload = JSON.parse(fs.readFileSync(srv.feedbackFile, 'utf8')); } catch (_) {}
+    if (payload) ok('submit dispatch: the first submit is still the one on disk');
+    else         fail('submit dispatch: no feedback file after the accepted submit');
+
+    await browser.close(); browser = null;
+
+  } catch (err) {
+    fail('submit dispatch: unexpected error — ' + err.message);
+    if (browser) { try { await browser.close(); } catch (_) {} }
+  } finally {
+    killServer(srv);
+    if (tmpDir) { try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {} }
+  }
+}
+
+// ── Test 12: approaches widget, independent (per-column) mode ──────────────
+//
+// The ask page reads an approaches widget two ways. data-choice="single" puts the
+// columns in one radio group and stores one answer; without it each column carries
+// its own verdict and the payload gets one key per column. The shipped template only
+// demonstrates the single-choice mode, so the independent branch had no test at all:
+// a mutation audit widened the mode test from AND to OR — making every approaches
+// widget read as single-choice — and the suite stayed green.
+//
+// The fixture injects an independent widget rather than adding one to the shipped
+// template: the template is the product's worked example, and this is a test input.
+
+const INDEPENDENT_WIDGET = `
+    <div class="widget widget-approaches annotatable"
+         data-qid="q-indep"
+         data-qtype="approaches"
+         data-anchor-id="q-indep"
+         id="q-indep">
+      <span class="widget-label">Independent evaluation</span>
+      <div class="approaches-grid">
+        <div class="approach-col" data-approach-id="x">
+          <div class="approach-header">Option X</div>
+          <label class="approach-choice"><input type="radio" name="q-indep-x" value="approve"> Approve</label>
+          <label class="approach-choice"><input type="radio" name="q-indep-x" value="reject"> Reject</label>
+        </div>
+        <div class="approach-col" data-approach-id="y">
+          <div class="approach-header">Option Y</div>
+          <label class="approach-choice"><input type="radio" name="q-indep-y" value="approve"> Approve</label>
+          <label class="approach-choice"><input type="radio" name="q-indep-y" value="reject"> Reject</label>
+        </div>
+      </div>
+    </div>
+`;
+
+async function testApproachesIndependent() {
+  console.log('\n--- test: approaches widget in independent mode ---');
+  let browser = null, srv = null, tmpDir = null;
+
+  try {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hv-test-indep-'));
+    const htmlFile = path.join(tmpDir, 'ask.html');
+    const tmpl = fs.readFileSync(ASK_TMPL, 'utf8');
+
+    // Anchor the injection on a marker the template owns. If it ever moves, this test
+    // must fail loudly rather than silently serve a page with no independent widget.
+    const ANCHOR = '<div id="q-approach-why" popover';
+    if (!tmpl.includes(ANCHOR)) {
+      fail('independent: the ask template no longer carries the q-approach-why anchor — fixture not built');
+      return;
+    }
+    fs.writeFileSync(htmlFile, tmpl.replace(ANCHOR, INDEPENDENT_WIDGET + '    ' + ANCHOR));
+
+    srv = await startServer(htmlFile, ['--mode', 'ask']);
+    await waitForPort(srv.port);
+
+    browser = await chromium.launch({ headless: true });
+    const page = await (await browser.newContext()).newPage();
+    await page.goto(srv.baseUrl + '/', { waitUntil: 'networkidle' });
+
+    if (await page.locator('#q-indep .approach-col[data-approach-id]').count() === 2) {
+      ok('independent: the fixture serves a two-column independent widget');
+    } else {
+      fail('independent: the injected widget did not reach the page');
+    }
+
+    // The point of the mode: the columns are NOT exclusive, so one can be approved
+    // while the other is rejected. In single-choice mode this pair is unreachable.
+    await page.check('#q-indep .approach-col[data-approach-id="x"] input[value="approve"]');
+    await page.check('#q-indep .approach-col[data-approach-id="y"] input[value="reject"]');
+
+    const stillChecked = await page.evaluate(() =>
+      document.querySelectorAll('#q-indep input[type="radio"]:checked').length);
+    if (stillChecked === 2) {
+      ok('independent: both columns hold a verdict at once');
+    } else {
+      fail('independent: expected 2 verdicts to coexist, saw ' + stillChecked);
+    }
+
+    await page.click('#submit-btn');
+    await page.waitForTimeout(600);
+
+    let payload = null;
+    try { payload = JSON.parse(fs.readFileSync(srv.feedbackFile, 'utf8')); } catch (_) {}
+
+    if (!payload) {
+      fail('independent: no feedback file written on submit');
+    } else {
+      const a = payload.answers || {};
+      if (a['q-indep-x'] === 'approve' && a['q-indep-y'] === 'reject') {
+        ok('independent: the payload carries one key per column, each with its verdict');
+      } else {
+        fail('independent: expected q-indep-x=approve and q-indep-y=reject, got '
+             + JSON.stringify({ x: a['q-indep-x'], y: a['q-indep-y'] }));
+      }
+      // The half that catches the widened branch: reading this widget as single-choice
+      // collapses both columns into one key and drops a verdict the user gave.
+      if (!('q-indep' in a)) {
+        ok('independent: no single-choice key collapses the two columns');
+      } else {
+        fail('independent: answers["q-indep"] present — the widget was read as single-choice');
+      }
+    }
+
+    await browser.close(); browser = null;
+
+  } catch (err) {
+    fail('independent: unexpected error — ' + err.message);
+    if (browser) { try { await browser.close(); } catch (_) {} }
+  } finally {
+    killServer(srv);
+    if (tmpDir) { try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {} }
+  }
+}
+
+// ── Test 13: one inline comment is enough to Apply ─────────────────────────
+//
+// hasContent() gates the Apply button on "at least one comment OR some freeform
+// text". Both existing feedback tests enable Apply by typing into #freeform-input
+// and neither ever adds an inline comment, so the comment arm ran on every Apply
+// and was asserted by nothing: a mutation audit moved its bound from > 0 to > 1
+// and the suite stayed green. At > 1 the smallest real review a user can send —
+// one comment, no freeform — leaves Apply dead with no explanation.
+
+// Drive the page's own comment flow: select a block the way a mouse drag would,
+// let the floating button appear, then write and save. Nothing is reached into.
+async function addInlineComment(page, text) {
+  await page.evaluate(() => {
+    const block = document.querySelector('#content [data-block-id]');
+    if (!block) throw new Error('no commentable block in the rendered document');
+    const range = document.createRange();
+    range.selectNodeContents(block);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+  });
+  await page.locator('.fb-float-btn').waitFor({ state: 'visible', timeout: 3000 });
+  await page.click('.fb-float-btn');
+  await page.locator('.fb-comment-text').waitFor({ state: 'visible', timeout: 3000 });
+  await page.fill('.fb-comment-text', text);
+  await page.click('.fb-save');
+}
+
+async function testSingleCommentEnablesApply() {
+  console.log('\n--- test: one comment, no freeform, enables Apply ---');
+  let browser = null, srv = null, tmpDir = null;
+
+  try {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hv-test-onecomment-'));
+    const htmlFile = path.join(tmpDir, 'review.html');
+    fs.writeFileSync(htmlFile, fs.readFileSync(FB_TMPL, 'utf8'), 'utf8');
+
+    srv = await startServer(htmlFile, ['--mode', 'feedback']);
+    await waitForPort(srv.port);
+
+    browser = await chromium.launch({ headless: true });
+    const page = await (await browser.newContext()).newPage();
+    await page.goto(srv.baseUrl + '/', { waitUntil: 'networkidle' });
+
+    // The precondition the boundary is measured against: with nothing said at all,
+    // Apply is a no-op round-trip and stays disabled.
+    if (await page.locator('#apply-btn').isDisabled()) {
+      ok('one comment: Apply starts disabled with an empty review');
+    } else {
+      fail('one comment: Apply was enabled before anything was said');
+    }
+
+    await addInlineComment(page, 'the one thing I want changed');
+
+    const commentCount = await page.evaluate(() =>
+      document.querySelectorAll('#content .fb-highlight, #content [data-comment-id]').length);
+    ok('one comment: the comment was saved (highlights: ' + commentCount + ')');
+
+    // The freeform box must stay empty — otherwise this test drives the same arm
+    // the existing two already cover and pins nothing new.
+    const freeform = await page.evaluate(() => {
+      const ta = document.getElementById('freeform-input');
+      return ta ? ta.value : null;
+    });
+    if (freeform === '') {
+      ok('one comment: the freeform box is still empty, so only the comment arm applies');
+    } else {
+      fail('one comment: freeform is ' + JSON.stringify(freeform) + ' — the wrong arm is under test');
+    }
+
+    if (!(await page.locator('#apply-btn').isDisabled())) {
+      ok('one comment: a single inline comment enables Apply');
+    } else {
+      fail('one comment: Apply stayed disabled with one comment and no freeform text');
+    }
+
+    await browser.close(); browser = null;
+
+  } catch (err) {
+    fail('one comment: unexpected error — ' + err.message);
+    if (browser) { try { await browser.close(); } catch (_) {} }
+  } finally {
+    killServer(srv);
+    if (tmpDir) { try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {} }
+  }
+}
+
 // ── Main ───────────────────────────────────────────────────────────────────
 
+// Name each test as it runs, so an uncaught page error can say where it came from.
+async function run(name, fn) {
+  currentTest = name;
+  await fn();
+}
+
 (async () => {
-  await testVisualize();
-  await testVisualizeSubmitTrims();
-  await testFeedbackApplyLoop();
-  await testMissingSharedClient();
-  await testApproachesSingleChoice();
-  await testHeartbeatIsSent();
-  await testDisconnectedBanner();
-  await testTabCloseEndsServer();
-  await testSavedCopyIsInert();
-  await testApplyGapShowsNoBanner();
+  await run('visualize', testVisualize);
+  await run('visualize Send trims', testVisualizeSubmitTrims);
+  await run('feedback Apply-loop', testFeedbackApplyLoop);
+  await run('missing shared client', testMissingSharedClient);
+  await run('approaches single-choice', testApproachesSingleChoice);
+  await run('heartbeat', testHeartbeatIsSent);
+  await run('disconnected banner', testDisconnectedBanner);
+  await run('tab close ends server', testTabCloseEndsServer);
+  await run('saved copy is inert', testSavedCopyIsInert);
+  await run('apply gap', testApplyGapShowsNoBanner);
+  await run('submit dispatch', testSubmitDispatch);
+  await run('approaches independent', testApproachesIndependent);
+  await run('single comment enables Apply', testSingleCommentEnablesApply);
+
+  // One assertion for the whole run: no page anywhere threw. A test that provokes an
+  // exception on purpose would need an explicit exemption here — there is none today.
+  if (pageErrors.length === 0) {
+    ok('no uncaught exceptions in any page');
+  } else {
+    for (const e of pageErrors) fail('uncaught page error in ' + e.test + ': ' + e.message);
+  }
 
   console.log('\nResults: ' + PASS + ' passed, ' + FAIL + ' failed');
   if (FAIL > 0) {

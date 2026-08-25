@@ -239,7 +239,7 @@ async function main() {
   // orchestration block — the code the seam was added for — would never execute: a
   // variable dropped from its destructure throws a ReferenceError only on the first
   // agent call, and every assertion above would still pass.
-  const runReview = async (level) => {
+  const runReview = async (level, over = {}) => {
     const labels = [];
     const prompts = [];
     const agent = async (prompt, opts = {}) => {
@@ -249,13 +249,15 @@ async function main() {
         return {
           dimension: opts.label.split(':')[1],
           verdict: 'minor issues',
-          findings: [{
+          findings: over.findings || [{
             severity: 'major', location: 'a.js:1', observation: 'o',
             evidence: 'e', why_it_matters: 'w', recommended_action: 'r',
           }],
         };
       }
-      if (opts.label.startsWith('verify:')) return { refuted: false, reason: '' };
+      if (opts.label.startsWith('verify:')) {
+        return over.verify ? over.verify(prompt) : { refuted: false, reason: '' };
+      }
       return {
         verdict: 'minor issues', headline: 'h', findings: [],
         recommended_actions: [], report_markdown: '# report',
@@ -290,6 +292,37 @@ async function main() {
     deep.prompts.some((p) => p.includes('Repo root: /repo')));
   truthy('orchestration: the scope reaches the dimension prompts',
     deep.prompts.some((p) => p.includes('the api layer')));
+
+  // ── the ultra refutation filter ──────────────────────────────────────────────
+  // The kept list IS the ultra rung's product: users pay for the extra pass to get findings
+  // that survived an attempt to disprove them. A mutation audit inverted the filter — keep
+  // what was refuted, drop what survived — and this suite stayed green, because it counted
+  // verify: labels and dimension totals and never once looked at which findings came back.
+  // The stub also had every verdict come back refuted:false, so the two lists could not be
+  // told apart even in principle.
+  const mixed = await runReview('ultra', {
+    findings: [
+      { severity: 'major', location: 'a.js:1', observation: 'survives-refutation',
+        evidence: 'e', why_it_matters: 'w', recommended_action: 'r' },
+      { severity: 'minor', location: 'b.js:2', observation: 'is-refuted',
+        evidence: 'e', why_it_matters: 'w', recommended_action: 'r' },
+    ],
+    // The verifier prompt carries `Claim: <observation>`, so the stub can refute one and
+    // clear the other — which is what makes the two lists distinguishable.
+    verify: (prompt) => (/is-refuted/.test(prompt)
+      ? { refuted: true, reason: 'the cited evidence does not hold up' }
+      : { refuted: false, reason: '' }),
+  });
+  const dim = (mixed.ret && mixed.ret.raw && mixed.ret.raw.dimensions[0]) || {};
+  eq('ultra: only the findings that survived refutation are reported',
+    ['survives-refutation'], (dim.findings || []).map((f) => f.observation));
+  // Both halves must be asserted. Checking only the kept list still passes when the filter
+  // is inverted AND the refuted list happens to be empty; checking only the refuted list
+  // says nothing about what reached the report.
+  eq('ultra: a refuted finding moves to the refuted list rather than vanishing',
+    ['is-refuted'], (dim.refuted || []).map((r) => r.observation));
+  eq('ultra: the refuted entry carries the verifier reason',
+    'the cited evidence does not hold up', ((dim.refuted || [])[0] || {}).reason);
 
   const shallow = await runReview('high');
   eq('orchestration: below ultra nothing is refuted', 0, shallow.labels.filter((l) => l.startsWith('verify:')).length);

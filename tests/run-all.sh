@@ -39,6 +39,7 @@ else
 fi
 
 CURRENT_PLUGIN=""
+TIMINGS=()
 
 for test_script in "${TEST_SCRIPTS[@]}"; do
   plugin="$(basename "$(dirname "$(dirname "$test_script")")")"
@@ -50,20 +51,35 @@ for test_script in "${TEST_SCRIPTS[@]}"; do
   name="$(basename "$test_script")"
   printf '\n=== %s ===\n' "$name"
   code=0
+  # Wall time per suite. The runner exposed no timing at all, so "the suite is slow"
+  # could not be traced to a suite without running them one at a time by hand.
+  started=$SECONDS
   bash "$test_script" || code=$?
+  elapsed=$((SECONDS - started))
   if [[ "$code" -eq 0 ]]; then
-    printf 'SUITE PASS: %s\n' "$name"
+    printf 'SUITE PASS: %s (%ds)\n' "$name" "$elapsed"
     PASS=$((PASS + 1))
   elif [[ "$code" -eq 77 ]]; then
     printf 'SUITE SKIP: %s (optional prerequisite absent)\n' "$name"
     SKIP=$((SKIP + 1))
   else
-    printf 'SUITE FAIL: %s (exit %d)\n' "$name" "$code"
+    printf 'SUITE FAIL: %s (exit %d, %ds)\n' "$name" "$code" "$elapsed"
     FAIL=$((FAIL + 1))
   fi
+  TIMINGS+=("$elapsed $name")
 done
 
 printf '\n========== %s test summary ==========\n' "${PLUGIN:-marketplace}"
 printf '%d suite(s) passed, %d suite(s) failed, %d suite(s) skipped\n' "$PASS" "$FAIL" "$SKIP"
+
+# Slowest first, so the four suites that carry most of the wall time are named rather
+# than left to be found by bisecting the run.
+if [[ "${#TIMINGS[@]}" -gt 0 ]]; then
+  printf 'slowest suites:'
+  printf '%s\n' "${TIMINGS[@]}" | sort -rn | head -4 | while read -r secs suite; do
+    printf ' %s (%ss)' "$suite" "$secs"
+  done
+  printf '\n'
+fi
 
 [[ "$FAIL" -eq 0 ]] || exit 1

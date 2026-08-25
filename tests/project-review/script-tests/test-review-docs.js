@@ -358,7 +358,7 @@ async function main() {
 
   const runAudit = async (over = {}) => {
     // promptIndex is a stub override for the history script, not a workflow argument.
-    const { promptIndex: promptOverride, ...argOver } = over;
+    const { promptIndex: promptOverride, taskTier, ...argOver } = over;
     const labels = [];
     const prompts = [];
     const agent = async (prompt, opts = {}) => {
@@ -380,7 +380,7 @@ async function main() {
       if (opts.label.startsWith('read:') || opts.label.startsWith('use-case:')) {
         return { file: 'docs/CODING.md', findings: [{ category: 'accuracy', severity: 'major', observation: 'o', evidence: 'e', recommended_action: 'r' }] };
       }
-      if (opts.label.startsWith('gen:')) return { task: 't', expected: 'e', tier: 'A' };
+      if (opts.label.startsWith('gen:')) return { task: 't', expected: 'e', tier: taskTier || 'A' };
       if (opts.label.startsWith('do:')) return { completed: true, answer: 'a', docs_consulted: [] };
       if (opts.label.startsWith('grade:')) return { route: 'docs/A.md', verdict: 'routed-and-succeeded', attribution: 'doc' };
       return { verdict: 'minor gaps', headline: 'h', findings: [] };
@@ -402,6 +402,34 @@ async function main() {
 
   const deep = await runAudit({ level: 'ultra' });
   eq('orchestration: ultra runs every deduped route', 4, deep.labels.filter((l) => l.startsWith('gen:')).length);
+
+  // ── the tier-C safety gate ───────────────────────────────────────────────────
+  // Stage 2 hands the generated task to a COLD agent that runs commands in the user's live
+  // repository. The only thing between a task classified destructive — tag, push, publish,
+  // delete, prod — and that agent is one guard. A mutation audit deleted the guard whole and
+  // this suite stayed green, because the stub above always classified the task tier A, so
+  // the gate had never once been driven with the input it exists for.
+  const tierC = await runAudit({ level: 'ultra', taskTier: 'C' });
+  eq('tier-C: no action agent is spawned for a destructive task',
+    0, tierC.labels.filter((l) => l.startsWith('do:')).length);
+  // Grading is short-circuited too: the skipped record is built in code, so an agent here
+  // would mean the run reached the grader with no trace file to read.
+  eq('tier-C: no grader agent is spawned either',
+    0, tierC.labels.filter((l) => l.startsWith('grade:')).length);
+  // The route must still appear in the report. Dropping it silently would read as a route
+  // that passed rather than one nobody was allowed to run.
+  eq('tier-C: every skipped route is still graded into the report',
+    4, (tierC.ret.raw.execution || []).length);
+  const skipped = (tierC.ret.raw.execution || [])[0] || {};
+  eq('tier-C: the verdict is inconclusive, not a pass', 'inconclusive', skipped.verdict);
+  eq('tier-C: nothing is attributed to the documentation', 'none', skipped.attribution);
+  truthy('tier-C: the record says why it was not executed',
+    /tier-C \(destructive\) — not executed/.test(skipped.finding || ''), skipped.finding);
+
+  // The control: a tier-A task DOES reach the action agent, so the assertions above pin the
+  // guard rather than a run that was never going to execute anything.
+  eq('tier-A: a safe task still reaches the action agent',
+    4, deep.labels.filter((l) => l.startsWith('do:')).length);
   eq('orchestration: the report is returned', 'minor gaps', deep.ret && deep.ret.report && deep.ret.report.verdict);
   eq('orchestration: the level is echoed in raw', 'ultra', deep.ret && deep.ret.raw.level);
   eq('orchestration: the pre-cap route total is reported', 4, deep.ret && deep.ret.raw.routes_total);
