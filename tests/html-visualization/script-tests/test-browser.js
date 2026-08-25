@@ -74,6 +74,33 @@ process.env.PLAYWRIGHT_BROWSERS_PATH = path.join(os.homedir(), '.cache', 'ms-pla
 
 const { chromium } = require(playwrightDir);
 
+// ── Uncaught page errors ───────────────────────────────────────────────────
+//
+// Nothing here used to watch for exceptions thrown INSIDE the page, so a broken
+// asset was invisible unless it happened to break a DOM state some assertion
+// looked at. A mutation audit found several page-script paths that ran unasserted
+// for exactly that reason. Wrapping launch once wires every page every test opens,
+// rather than asking fifteen call sites to remember.
+
+const pageErrors = [];
+let currentTest = '(startup)';
+
+const rawLaunch = chromium.launch.bind(chromium);
+chromium.launch = async function (...launchArgs) {
+  const browser = await rawLaunch(...launchArgs);
+  const rawNewContext = browser.newContext.bind(browser);
+  browser.newContext = async function (...ctxArgs) {
+    const ctx = await rawNewContext(...ctxArgs);
+    ctx.on('page', (page) => {
+      page.on('pageerror', (err) => {
+        pageErrors.push({ test: currentTest, message: String((err && err.message) || err) });
+      });
+    });
+    return ctx;
+  };
+  return browser;
+};
+
 // ── Paths ──────────────────────────────────────────────────────────────────
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..');
@@ -1305,20 +1332,34 @@ async function testSingleCommentEnablesApply() {
 
 // ── Main ───────────────────────────────────────────────────────────────────
 
+// Name each test as it runs, so an uncaught page error can say where it came from.
+async function run(name, fn) {
+  currentTest = name;
+  await fn();
+}
+
 (async () => {
-  await testVisualize();
-  await testVisualizeSubmitTrims();
-  await testFeedbackApplyLoop();
-  await testMissingSharedClient();
-  await testApproachesSingleChoice();
-  await testHeartbeatIsSent();
-  await testDisconnectedBanner();
-  await testTabCloseEndsServer();
-  await testSavedCopyIsInert();
-  await testApplyGapShowsNoBanner();
-  await testSubmitDispatch();
-  await testApproachesIndependent();
-  await testSingleCommentEnablesApply();
+  await run('visualize', testVisualize);
+  await run('visualize Send trims', testVisualizeSubmitTrims);
+  await run('feedback Apply-loop', testFeedbackApplyLoop);
+  await run('missing shared client', testMissingSharedClient);
+  await run('approaches single-choice', testApproachesSingleChoice);
+  await run('heartbeat', testHeartbeatIsSent);
+  await run('disconnected banner', testDisconnectedBanner);
+  await run('tab close ends server', testTabCloseEndsServer);
+  await run('saved copy is inert', testSavedCopyIsInert);
+  await run('apply gap', testApplyGapShowsNoBanner);
+  await run('submit dispatch', testSubmitDispatch);
+  await run('approaches independent', testApproachesIndependent);
+  await run('single comment enables Apply', testSingleCommentEnablesApply);
+
+  // One assertion for the whole run: no page anywhere threw. A test that provokes an
+  // exception on purpose would need an explicit exemption here — there is none today.
+  if (pageErrors.length === 0) {
+    ok('no uncaught exceptions in any page');
+  } else {
+    for (const e of pageErrors) fail('uncaught page error in ' + e.test + ': ' + e.message);
+  }
 
   console.log('\nResults: ' + PASS + ' passed, ' + FAIL + ' failed');
   if (FAIL > 0) {
