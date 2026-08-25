@@ -1,6 +1,6 @@
 ---
 name: keep-awake-inspect
-description: "Inspect and diagnose the keep-awake-linux plugin — state, log, inhibitors, recent activity."
+description: "Inspect and diagnose the keep-awake-linux plugin: state, log, inhibitors, recent activity."
 user-invocable: true
 disable-model-invocation: true
 ---

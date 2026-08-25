@@ -1,6 +1,6 @@
 ---
 name: tasks-create
-description: "Turn this conversation — a review, a plan, a spec — into a set of filed tasks with real blocking edges, approved before anything is written."
+description: "Turn this conversation (a review, a plan, a spec) into a set of filed tasks with real blocking edges, approved before anything is written."
 user-invocable: true
 disable-model-invocation: true
 argument-hint: "[scope]"

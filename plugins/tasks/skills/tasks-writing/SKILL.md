@@ -1,7 +1,7 @@
 ---
 name: tasks-writing
-description: "The standard a task follows before it is filed — which type carries it, what each body section owns, and a worked example of every type."
-when_to_use: "Use when writing, splitting, or repairing the text of a task, issue, or ticket — its type, priority, body, or acceptance criteria. Triggers on 'write a task', 'acceptance criteria', 'is this ticket clear enough'. Also loaded by name when another skill needs the standard. Not for project docs (`instruction-writing:writing-project-docs`) or skills (`instruction-writing:writing-skills`); to file a whole conversation as a task set, point the user at `/tasks:tasks-create`."
+description: "The standard a task follows before it is filed: which type carries it, what each body section owns, and a worked example of every type."
+when_to_use: "Use when writing, splitting, or repairing the text of a task, issue, or ticket: its type, priority, body, or acceptance criteria. Triggers on 'write a task', 'acceptance criteria', 'is this ticket clear enough'. Also loaded by name when another skill needs the standard. Not for project docs (`instruction-writing:writing-project-docs`) or skills (`instruction-writing:writing-skills`); to file a whole conversation as a task set, point the user at `/tasks:tasks-create`."
 argument-hint: "[task-or-draft]"
 ---
 
