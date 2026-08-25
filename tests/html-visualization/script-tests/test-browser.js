@@ -1101,6 +1101,120 @@ async function testSubmitDispatch() {
   }
 }
 
+// ── Test 12: approaches widget, independent (per-column) mode ──────────────
+//
+// The ask page reads an approaches widget two ways. data-choice="single" puts the
+// columns in one radio group and stores one answer; without it each column carries
+// its own verdict and the payload gets one key per column. The shipped template only
+// demonstrates the single-choice mode, so the independent branch had no test at all:
+// a mutation audit widened the mode test from AND to OR — making every approaches
+// widget read as single-choice — and the suite stayed green.
+//
+// The fixture injects an independent widget rather than adding one to the shipped
+// template: the template is the product's worked example, and this is a test input.
+
+const INDEPENDENT_WIDGET = `
+    <div class="widget widget-approaches annotatable"
+         data-qid="q-indep"
+         data-qtype="approaches"
+         data-anchor-id="q-indep"
+         id="q-indep">
+      <span class="widget-label">Independent evaluation</span>
+      <div class="approaches-grid">
+        <div class="approach-col" data-approach-id="x">
+          <div class="approach-header">Option X</div>
+          <label class="approach-choice"><input type="radio" name="q-indep-x" value="approve"> Approve</label>
+          <label class="approach-choice"><input type="radio" name="q-indep-x" value="reject"> Reject</label>
+        </div>
+        <div class="approach-col" data-approach-id="y">
+          <div class="approach-header">Option Y</div>
+          <label class="approach-choice"><input type="radio" name="q-indep-y" value="approve"> Approve</label>
+          <label class="approach-choice"><input type="radio" name="q-indep-y" value="reject"> Reject</label>
+        </div>
+      </div>
+    </div>
+`;
+
+async function testApproachesIndependent() {
+  console.log('\n--- test: approaches widget in independent mode ---');
+  let browser = null, srv = null, tmpDir = null;
+
+  try {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hv-test-indep-'));
+    const htmlFile = path.join(tmpDir, 'ask.html');
+    const tmpl = fs.readFileSync(ASK_TMPL, 'utf8');
+
+    // Anchor the injection on a marker the template owns. If it ever moves, this test
+    // must fail loudly rather than silently serve a page with no independent widget.
+    const ANCHOR = '<div id="q-approach-why" popover';
+    if (!tmpl.includes(ANCHOR)) {
+      fail('independent: the ask template no longer carries the q-approach-why anchor — fixture not built');
+      return;
+    }
+    fs.writeFileSync(htmlFile, tmpl.replace(ANCHOR, INDEPENDENT_WIDGET + '    ' + ANCHOR));
+
+    srv = await startServer(htmlFile, ['--mode', 'ask']);
+    await waitForPort(srv.port);
+
+    browser = await chromium.launch({ headless: true });
+    const page = await (await browser.newContext()).newPage();
+    await page.goto(srv.baseUrl + '/', { waitUntil: 'networkidle' });
+
+    if (await page.locator('#q-indep .approach-col[data-approach-id]').count() === 2) {
+      ok('independent: the fixture serves a two-column independent widget');
+    } else {
+      fail('independent: the injected widget did not reach the page');
+    }
+
+    // The point of the mode: the columns are NOT exclusive, so one can be approved
+    // while the other is rejected. In single-choice mode this pair is unreachable.
+    await page.check('#q-indep .approach-col[data-approach-id="x"] input[value="approve"]');
+    await page.check('#q-indep .approach-col[data-approach-id="y"] input[value="reject"]');
+
+    const stillChecked = await page.evaluate(() =>
+      document.querySelectorAll('#q-indep input[type="radio"]:checked').length);
+    if (stillChecked === 2) {
+      ok('independent: both columns hold a verdict at once');
+    } else {
+      fail('independent: expected 2 verdicts to coexist, saw ' + stillChecked);
+    }
+
+    await page.click('#submit-btn');
+    await page.waitForTimeout(600);
+
+    let payload = null;
+    try { payload = JSON.parse(fs.readFileSync(srv.feedbackFile, 'utf8')); } catch (_) {}
+
+    if (!payload) {
+      fail('independent: no feedback file written on submit');
+    } else {
+      const a = payload.answers || {};
+      if (a['q-indep-x'] === 'approve' && a['q-indep-y'] === 'reject') {
+        ok('independent: the payload carries one key per column, each with its verdict');
+      } else {
+        fail('independent: expected q-indep-x=approve and q-indep-y=reject, got '
+             + JSON.stringify({ x: a['q-indep-x'], y: a['q-indep-y'] }));
+      }
+      // The half that catches the widened branch: reading this widget as single-choice
+      // collapses both columns into one key and drops a verdict the user gave.
+      if (!('q-indep' in a)) {
+        ok('independent: no single-choice key collapses the two columns');
+      } else {
+        fail('independent: answers["q-indep"] present — the widget was read as single-choice');
+      }
+    }
+
+    await browser.close(); browser = null;
+
+  } catch (err) {
+    fail('independent: unexpected error — ' + err.message);
+    if (browser) { try { await browser.close(); } catch (_) {} }
+  } finally {
+    killServer(srv);
+    if (tmpDir) { try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {} }
+  }
+}
+
 // ── Main ───────────────────────────────────────────────────────────────────
 
 (async () => {
@@ -1115,6 +1229,7 @@ async function testSubmitDispatch() {
   await testSavedCopyIsInert();
   await testApplyGapShowsNoBanner();
   await testSubmitDispatch();
+  await testApproachesIndependent();
 
   console.log('\nResults: ' + PASS + ' passed, ' + FAIL + ' failed');
   if (FAIL > 0) {
