@@ -91,8 +91,8 @@ there, produce the same Markdown file, and state that the workflow did not run.
 ## Not covered
 
 Documentation accuracy and staleness → `project-review-docs`; empirical test-suite
-strength — mutation kill rate, flakiness, unit-test isolation, whether the coverage
-report is honest → `project-auto-work:test-tests`, which proves what this skill can
+strength — mutation kill rate, flakiness, unit-test isolation, which lines the tests
+actually execute → `project-auto-work:test-tests`, which proves what this skill can
 only read; pure formatting → linters. Challenging a single design decision
 interactively is `challenge:kiss` — the architecture dimension here is
 its audit-mode counterpart, not a replacement.
