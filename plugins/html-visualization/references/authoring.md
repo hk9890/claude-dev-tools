@@ -23,4 +23,12 @@ can take in at a glance and act on without effort.
   busy page is harder to read, not easier.
 
 - **Legible everywhere.** The page must read cleanly in light and dark mode and
-  at any screen width. The user opens it wherever they open it.
+  at any screen width. The user opens it wherever they open it. The theme is
+  dark-first — that is what the tokens are tuned for — but every token has a
+  light counterpart and the page follows the reader's system setting.
+
+- **Let the measure do its work.** Running text is capped at a reading measure;
+  tables, code blocks and diagrams take the full column. Do not fight this by
+  putting prose inside a card to make it narrower, or a diagram inside a
+  paragraph to make it wider. Put each thing at the level where it belongs and
+  the widths come out right.

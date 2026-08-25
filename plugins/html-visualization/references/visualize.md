@@ -86,9 +86,16 @@ Then author `$HTML_DIR/visualization.html` **with the Write tool**, directly at
 the destination path — see `references/serve.md` — "Authoring files into the temp
 directory".
 
-The template has a content area, an inline `<style>` block with light/dark colour
-tokens, and one structural placeholder section. Remove all placeholder comments
-and fill in the real content.
+The template has a sticky top bar, a content area, an inline `<style>` block
+with dark/light colour tokens, and one structural placeholder section. Remove
+all placeholder comments and fill in the real content.
+
+**The reading measure.** A `<p>`, `<ul>`, `<ol>`, `<h2>`, `<h3>` or
+`<blockquote>` that is a direct child of `.vis-content` is capped at a
+comfortable line length; a `.vis-card`, `.vis-table-wrap`, `.vis-svg-wrap` or
+`.vis-mermaid-wrap` takes the full column. Put running text at the top level
+rather than wrapping it in a card — a card gives prose padding it does not need
+and takes away the measure it does.
 
 ### 2c. Fill in the content
 

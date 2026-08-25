@@ -13,98 +13,142 @@
      HV_GENERATION is the served file's mtime, so an Apply round's auto-reload
      needs nothing written into this document. -->
 
-<div class="page-chrome">
+<!-- ── Top bar ───────────────────────────────────────────────────────────
+  Fixed chrome. .hv-topbar-title takes the same string as the <h1> below.
+  Leave .hv-topbar-meta EMPTY — app.js fills it with the real host.
+-->
+<div class="hv-topbar">
+  <span class="hv-topbar-mode">Review</span>
+  <span class="hv-topbar-title">[Claude: replace with document title]</span>
+  <span class="hv-topbar-meta"></span>
+</div>
 
-  <!-- ── Page header ────────────────────────────────────────────────────── -->
-  <header class="page-header">
-    <h1>[Claude: replace with document title]</h1>
-    <p class="subtitle">[Claude: one sentence — what this is and what kind of feedback you want]</p>
-    <span id="comment-count" class="comment-count"></span>
-  </header>
+<div class="hv-shell">
 
-  <!-- ── Feedback document (hidden after submit) ─────────────────────────── -->
-  <div id="feedback-doc">
+  <!-- ── Rail ──────────────────────────────────────────────────────────────
+    Leave the list EMPTY. app.js rebuilds it on every comment change: one
+    numbered entry per comment, matching the number in the document gutter and
+    on the card, and clicking one jumps to that card.
+  -->
+  <aside class="hv-rail">
+    <span class="hv-rail-title hv-meta">Comments</span>
+    <div class="hv-rail-list"></div>
+    <span class="hv-rail-empty">Select any text in the document to comment on it.</span>
+  </aside>
 
-    <!-- ── Content ───────────────────────────────────────────────────────
-      Render the content as semantic HTML inside #content.
+  <main class="hv-main">
 
-      Every commentable unit is a DIRECT CHILD of #content and carries a
-      unique data-block-id (printable ASCII, no whitespace).
+    <!-- ── Page header ────────────────────────────────────────────────── -->
+    <header class="page-header">
+      <span class="hv-meta">[Claude: 2–4 words naming what this document is — e.g. "Design note · draft 2"]</span>
+      <h1>[Claude: replace with document title]</h1>
+      <p class="subtitle">[Claude: one sentence — what this is and what kind of feedback you want]</p>
+      <span id="comment-count" class="comment-count"></span>
+    </header>
 
-      To comment, the user selects any text inside a block — a floating 💬
-      button appears at the selection. The comment is anchored to the block
-      and quotes the selected text. To comment on a whole block, the user
-      selects all of its text.
+    <!-- ── Feedback document (hidden after submit) ─────────────────────── -->
+    <div id="feedback-doc">
 
-      A whole list is one block (put data-block-id on the <ul>/<ol>, not on
-      each <li>).
+      <!-- ── Content ───────────────────────────────────────────────────────
+        Render the content as semantic HTML inside #content.
 
-      Replace the example blocks below with the real content.
-    -->
-    <div id="content">
+        Every commentable unit is a DIRECT CHILD of #content and carries a
+        unique data-block-id (printable ASCII, no whitespace). The id is shown
+        on the comment card, so name blocks after what they hold — "b-intro",
+        not "b-3".
 
-      <h2 data-block-id="b-title">[Claude: a heading from the content — start
-        in-content headings at h2; the page h1 above is the document title]</h2>
+        To comment, the user selects any text inside a block — a floating
+        Comment button appears at the selection. The comment is anchored to the
+        block and quotes the selected text. To comment on a whole block, the
+        user selects all of its text.
 
-      <p data-block-id="b-intro">
-        [Claude: a paragraph of the content. Keep one paragraph per block so a
-        comment lands on a specific passage.]
-      </p>
+        A whole list is one block (put data-block-id on the <ul>/<ol>, not on
+        each <li>).
 
-      <h3 data-block-id="b-section">[Claude: a sub-section heading]</h3>
+        Prose inside #content is capped at a reading measure; a <pre>, a
+        <table> or a diagram that is a direct child runs the full width.
 
-      <p data-block-id="b-body">
-        [Claude: another paragraph. Use real HTML — headings, lists, tables,
-        code blocks, blockquotes — so the content reads the way it should.]
-      </p>
+        Replace the example blocks below with the real content.
+      -->
+      <div id="content">
 
-      <ul data-block-id="b-list">
-        <li>[Claude: a list item]</li>
-        <li>[Claude: another list item]</li>
-      </ul>
+        <h2 data-block-id="b-title">[Claude: a heading from the content — start
+          in-content headings at h2; the page h1 above is the document title]</h2>
 
-    </div><!-- /#content -->
+        <p data-block-id="b-intro">
+          [Claude: a paragraph of the content. Keep one paragraph per block so a
+          comment lands on a specific passage.]
+        </p>
 
-    <!-- ── Freeform section ────────────────────────────────────────────── -->
-    <div class="freeform-section">
-      <h2>Overall comments</h2>
-      <textarea id="freeform-input" name="freeform"
-                placeholder="Any feedback that is not tied to a specific block — overall direction, tone, what is missing…"></textarea>
+        <h3 data-block-id="b-section">[Claude: a sub-section heading]</h3>
+
+        <p data-block-id="b-body">
+          [Claude: another paragraph. Use real HTML — headings, lists, tables,
+          code blocks, blockquotes — so the content reads the way it should.]
+        </p>
+
+        <ul data-block-id="b-list">
+          <li>[Claude: a list item]</li>
+          <li>[Claude: another list item]</li>
+        </ul>
+
+      </div><!-- /#content -->
+
+      <!-- ── Freeform section ────────────────────────────────────────────── -->
+      <div class="freeform-section">
+        <h2>Overall comments</h2>
+        <textarea id="freeform-input" name="freeform"
+                  placeholder="Any feedback that is not tied to a specific block — overall direction, tone, what is missing…"></textarea>
+      </div>
+
+      <!-- The error sits ABOVE the action bar: the bar is sticky, so anything
+           after it renders below the fold of that bar and is never seen. -->
+      <div id="submit-error" class="submit-error" style="display:none;"></div>
+
+      <!-- ── Action bar ─────────────────────────────────────────────────────
+        Apply & preview  — sends the feedback; Claude updates the document and
+                           re-serves it; this page auto-reloads with the result.
+                           Bound to Cmd/Ctrl+Enter — the repeatable move.
+        Submit & finish  — the final round; Claude applies the feedback and stops.
+
+        Sticky at the foot of the column and INSIDE #feedback-doc, so a submit
+        takes it away with the document. Leave .hv-status-hint and the
+        data-hv-mod keycap EMPTY — app.js writes the platform's modifier.
+      -->
+      <div class="submit-row">
+        <button type="button" id="apply-btn" class="apply-btn">
+          <span class="hv-btn-label">Apply &amp; preview</span>
+          <kbd class="hv-key" data-hv-mod></kbd>
+        </button>
+        <button type="button" id="submit-btn" class="submit-btn">
+          <span class="hv-btn-label">Submit &amp; finish</span>
+        </button>
+        <button type="button" id="copy-btn" class="copy-btn">Copy feedback</button>
+        <span class="hv-status-hint"></span>
+      </div>
+
+    </div><!-- /#feedback-doc -->
+
+    <!-- ── Applying state (shown after an Apply round; auto-reloads) ───────── -->
+    <div id="state-applying" class="state-applying">
+      <h2>Applying your feedback</h2>
+      <p>Claude is rewriting the document. This page reloads on its own when the new version is served.</p>
     </div>
 
-    <!-- ── Action row ─────────────────────────────────────────────────────
-      Apply & preview  — sends the feedback; Claude updates the document and
-                         re-serves it; this page auto-reloads with the result.
-      Submit & finish  — the final round; Claude applies the feedback and stops.
-    -->
-    <div class="submit-row">
-      <button type="button" id="apply-btn" class="apply-btn">Apply &amp; preview</button>
-      <button type="button" id="submit-btn" class="submit-btn">Submit &amp; finish</button>
-      <button type="button" id="copy-btn" class="copy-btn">Copy feedback</button>
+    <!-- ── Success state (shown after a final Submit) ─────────────────────── -->
+    <div id="state-submitted" class="state-submitted">
+      <h2>Feedback submitted</h2>
+      <p>Claude has your comments and is applying them. You can close this tab.</p>
     </div>
-    <div id="submit-error" class="submit-error" style="display:none;"></div>
 
-  </div><!-- /#feedback-doc -->
+    <!-- ── Already-submitted state (shown after a 410 response) ───────────── -->
+    <div id="state-already-submitted" class="state-already-submitted">
+      <h2>Already submitted</h2>
+      <p>This document was submitted once already. Claude has that earlier feedback — this tab cannot send more.</p>
+    </div>
 
-  <!-- ── Applying state (shown after an Apply round; auto-reloads) ───────── -->
-  <div id="state-applying" class="state-applying">
-    <h2>Applying your feedback…</h2>
-    <p>Claude is updating the document. This page will refresh automatically when the new version is ready.</p>
-  </div>
-
-  <!-- ── Success state (shown after a final Submit) ─────────────────────── -->
-  <div id="state-submitted" class="state-submitted">
-    <h2>Feedback submitted</h2>
-    <p>Thank you. Claude has received your comments and will apply them.</p>
-  </div>
-
-  <!-- ── Already-submitted state (shown after a 410 response) ───────────── -->
-  <div id="state-already-submitted" class="state-already-submitted">
-    <h2>Already submitted</h2>
-    <p>This document has already been submitted. Claude has your earlier feedback.</p>
-  </div>
-
-</div><!-- /.page-chrome -->
+  </main>
+</div><!-- /.hv-shell -->
 
 <script src="/assets/shared/submit.js"></script>
 <script src="/assets/shared/heartbeat.js"></script>

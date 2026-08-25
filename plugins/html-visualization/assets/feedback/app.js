@@ -169,8 +169,11 @@ if (typeof document !== 'undefined') {
 
     // ── Floating comment button driven by text selection ────────────────────
 
-    var floatBtn = el('button', 'fb-float-btn', '💬 Comment');
+    var floatBtn = el('button', 'fb-float-btn');
     floatBtn.type = 'button';
+    floatBtn.innerHTML =
+      '<svg viewBox="0 0 16 16" aria-hidden="true">' +
+      '<path d="M2.5 3.5h11v8h-6l-3 2.5v-2.5h-2z"/></svg><span>Comment</span>';
     floatBtn.style.display = 'none';
     document.body.appendChild(floatBtn);
 
@@ -348,6 +351,9 @@ if (typeof document !== 'undefined') {
         if (c.parentNode) c.parentNode.removeChild(c);
       });
       blocks.forEach(function (b) { b.classList.remove('has-comment'); });
+      Array.prototype.forEach.call(
+        document.querySelectorAll('.fb-block-marker'),
+        function (m) { if (m.parentNode) m.parentNode.removeChild(m); });
 
       var byBlock = {};
       var order = [];
@@ -356,25 +362,69 @@ if (typeof document !== 'undefined') {
         byBlock[c.blockId].push(c);
       });
 
+      var number = 0;
       order.forEach(function (blockId) {
         var block = blockById(blockId);
         if (!block) return;
         block.classList.add('has-comment');
+
+        var marker = el('span', 'fb-block-marker', String(number + 1));
+        marker.setAttribute('aria-hidden', 'true');
+        block.insertBefore(marker, block.firstChild);
+
         var ref = block;
         byBlock[blockId].forEach(function (c) {
-          var card = buildCard(c);
+          number += 1;
+          c.number = number;
+          var card = buildCard(c, number);
           ref.insertAdjacentElement('afterend', card);
           ref = card;
         });
       });
 
+      renderRail();
       updateCommentCount();
       updateActionButtons();
     }
 
-    function buildCard(comment) {
+    // ── Rail: the comment index ─────────────────────────────────────────────
+    // A review of any length is a list of comments, and the page had no list of
+    // them — you found your own earlier comment by scrolling for it.
+
+    var railList = document.querySelector('.hv-rail-list');
+    var railEmpty = document.querySelector('.hv-rail-empty');
+
+    function renderRail() {
+      if (!railList) return;
+      railList.textContent = '';
+      if (railEmpty) {
+        railEmpty.style.display = commentState.length ? 'none' : '';
+      }
+      commentState.forEach(function (c, i) {
+        var item = el('button', 'hv-rail-item');
+        item.type = 'button';
+        item.appendChild(el('span', 'hv-rail-num', String(c.number || i + 1)));
+        var body = (c.text || '').replace(/\s+/g, ' ').trim();
+        item.appendChild(el('span', 'hv-rail-label', body || c.blockId));
+        item.appendChild(el('span', 'hv-rail-dot'));
+        item.classList.add('is-answered');
+        item.addEventListener('click', function () {
+          var card = document.getElementById('fb-card-' + c.id);
+          if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+        railList.appendChild(item);
+      });
+    }
+
+    function buildCard(comment, number) {
       var card = el('div', 'fb-comment-card');
       card.setAttribute('data-comment-id', comment.id);
+      card.id = 'fb-card-' + comment.id;
+
+      var meta = el('div', 'fb-card-meta');
+      meta.appendChild(el('span', 'fb-card-num', 'Comment ' + number));
+      meta.appendChild(el('span', null, comment.blockId));
+      card.appendChild(meta);
 
       if (comment.quote) {
         card.appendChild(el('div', 'fb-quote', '“' + comment.quote + '”'));
@@ -410,6 +460,7 @@ if (typeof document !== 'undefined') {
       countEl.textContent = n === 0
         ? 'No comments yet'
         : n + (n === 1 ? ' comment' : ' comments');
+      countEl.classList.toggle('has-any', n > 0);
     }
     updateCommentCount();
 
@@ -491,7 +542,10 @@ if (typeof document !== 'undefined') {
     function setBusy(on, label) {
       if (applyBtn) applyBtn.disabled = on || !hasContent();
       if (submitBtn) submitBtn.disabled = on;
-      if (on && label && submitBtn) submitBtn.textContent = label;
+      if (on && label && submitBtn) {
+        var lbl = submitBtn.querySelector('.hv-btn-label');
+        if (lbl) lbl.textContent = label; else submitBtn.textContent = label;
+      }
     }
 
     function sendFeedback(action) {
@@ -503,6 +557,7 @@ if (typeof document !== 'undefined') {
       hvSubmit(buildFeedbackPayload(buildCurrentState(action)), {
         accepted: function () {
           if (feedbackDoc) hide(feedbackDoc);
+          document.body.classList.add('hv-submitted');
           if (action === 'apply') {
             if (stateApplying) stateApplying.style.display = 'block';
             beginApplying();
@@ -512,6 +567,7 @@ if (typeof document !== 'undefined') {
         },
         alreadySubmitted: function () {
           if (feedbackDoc) hide(feedbackDoc);
+          document.body.classList.add('hv-submitted');
           if (stateAlreadySubmitted) stateAlreadySubmitted.style.display = 'block';
         },
         failed: function (status, errorText) {
@@ -530,6 +586,42 @@ if (typeof document !== 'undefined') {
 
     if (applyBtn) applyBtn.addEventListener('click', function () { sendFeedback('apply'); });
     if (submitBtn) submitBtn.addEventListener('click', function () { sendFeedback('submit'); });
+
+    // ── Keyboard and platform strings ───────────────────────────────────────
+    // The chord goes to Apply, not to Submit: Apply is the move you make over
+    // and over, and Submit is the one you cannot take back.
+
+    var IS_APPLE = (function () {
+      var plat = (navigator.userAgentData && navigator.userAgentData.platform) ||
+                 navigator.platform || '';
+      return /mac|iphone|ipad|ipod/i.test(plat);
+    }());
+    var MOD_LABEL = IS_APPLE ? '⌘' : 'Ctrl';
+
+    document.addEventListener('keydown', function (ev) {
+      if (ev.key !== 'Enter' || ev.altKey) return;
+      if (IS_APPLE ? !ev.metaKey : !ev.ctrlKey) return;
+      if (applyBtn && !applyBtn.disabled) {
+        ev.preventDefault();
+        applyBtn.click();
+      }
+    });
+
+    Array.prototype.forEach.call(document.querySelectorAll('[data-hv-mod]'), function (node) {
+      node.textContent = MOD_LABEL + '\u21b5';
+    });
+
+    var statusHint = document.querySelector('.hv-status-hint');
+    if (statusHint) {
+      statusHint.textContent = 'select text to comment · ' + MOD_LABEL + '\u21b5 apply';
+    }
+
+    // The host is a fact the page can read; a hand-written one goes stale the
+    // first time the port moves. Empty on file:// — a saved copy has no host.
+    var topbarMeta = document.querySelector('.hv-topbar-meta');
+    if (topbarMeta && !topbarMeta.textContent.trim()) {
+      topbarMeta.textContent = location.host || '';
+    }
 
     // ── Auto-reload after Apply ─────────────────────────────────────────────
     // An Apply round deliberately takes the server away: it exits on the submit,

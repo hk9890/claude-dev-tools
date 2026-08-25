@@ -6,12 +6,15 @@
  * dismissal, focus handling and the top-layer stacking come from the browser —
  * no JavaScript, and it works in a page saved to disk.
  *
+ * Theme: "Console". The opener is a keycap carrying `?`, the same element the
+ * rail and the option rows use — so the page teaches one affordance, not three.
+ *
  * Imported by chrome.css, so ask and feedback get it through their single
  * import. visualize-template.html must stay self-contained for file:// use and
  * therefore carries a verbatim inline copy of this file — keep both in sync.
  *
  * Vocabulary:
- *   .hv-info-btn      — the small round button that opens a panel
+ *   .hv-info-btn      — the small keycap that opens a panel
  *   .hv-pill          — a short inline badge, e.g. "Recommended"
  *   .hv-popover       — the panel itself; always carries the `popover` attribute
  *   .hv-popover-wide  — panel variant sized for a diagram
@@ -27,92 +30,109 @@
   justify-content: center;
   width: 18px;
   height: 18px;
-  margin-left: 6px;
+  margin-left: 8px;
   padding: 0;
   vertical-align: middle;
-  border: 1px solid var(--hv-accent);
-  border-radius: 50%;
-  background: transparent;
-  color: var(--hv-accent);
-  font-family: var(--hv-font-body);
-  font-size: 0.72rem;
-  font-weight: 700;
+  border: 1px solid var(--hv-border-strong);
+  border-radius: 3px;
+  background: var(--hv-surface-2);
+  color: var(--hv-muted);
+  font-family: var(--hv-font-mono);
+  font-size: 0.68rem;
+  font-weight: 500;
   line-height: 1;
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
 }
 
 .hv-info-btn:hover,
 .hv-info-btn:focus-visible {
-  background: var(--hv-accent);
-  color: var(--hv-surface);
+  border-color: var(--hv-accent);
+  color: var(--hv-accent);
 }
 
 /* ── Inline badge ─────────────────────────────────────────────────────────── */
 
 .hv-pill {
-  display: inline-block;
-  padding: 1px 7px;
-  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border: 1px solid var(--hv-ok);
+  border-radius: 3px;
   background: var(--hv-ok-tint);
   color: var(--hv-ok-deep);
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-family: var(--hv-font-mono);
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
+  line-height: 1.5;
   vertical-align: middle;
+  white-space: nowrap;
 }
 
 /* ── The panel ────────────────────────────────────────────────────────────── */
 
 .hv-popover {
-  width: min(560px, calc(100vw - 32px));
-  max-height: min(70vh, 620px);
+  width: min(580px, calc(100vw - 32px));
+  max-height: min(72vh, 640px);
   overflow-y: auto;
-  padding: 20px 22px;
-  border: 1px solid var(--hv-border);
+  padding: 22px 24px;
+  border: 1px solid var(--hv-border-strong);
   border-radius: var(--hv-radius);
   background: var(--hv-surface);
   color: var(--hv-text);
   box-shadow: var(--hv-shadow-lg);
   font-family: var(--hv-font-body);
-  font-size: 0.94rem;
-  line-height: 1.6;
+  font-size: 0.95rem;
+  line-height: 1.65;
 }
 
 .hv-popover::backdrop {
-  background: rgba(var(--hv-ink-rgb), 0.42);
+  background: rgba(0, 0, 0, 0.58);
 }
 
 .hv-popover h3 {
-  margin: 0 0 10px;
-  font-family: var(--hv-font-display);
-  font-size: 1.12rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--hv-text);
+  margin: 0 0 14px;
+  font-family: var(--hv-font-mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--hv-accent);
 }
 
 .hv-popover > :last-child { margin-bottom: 0; }
 
-.hv-popover p { margin: 0 0 10px; }
+.hv-popover p { margin: 0 0 12px; color: var(--hv-text); }
+
+.hv-popover code {
+  font-family: var(--hv-font-mono);
+  font-size: 0.86em;
+  padding: 1px 5px;
+  border: 1px solid var(--hv-border);
+  border-radius: 3px;
+  background: var(--hv-surface-2);
+}
 
 .hv-popover-close {
   display: block;
-  margin: 14px 0 0 auto;
-  padding: 6px 14px;
+  margin: 18px 0 0 auto;
+  padding: 7px 14px;
   border: 1px solid var(--hv-border);
-  border-radius: 7px;
-  background: var(--hv-surface-2);
+  border-radius: var(--hv-radius-sm);
+  background: transparent;
   color: var(--hv-muted);
   font-family: inherit;
-  font-size: 0.84rem;
+  font-size: 0.85rem;
   cursor: pointer;
+  transition: border-color 0.12s ease, color 0.12s ease;
 }
 
 .hv-popover-close:hover {
-  border-color: var(--hv-accent);
-  color: var(--hv-accent);
+  border-color: var(--hv-border-strong);
+  color: var(--hv-text);
 }
 
 /* Diagram variant: as much of the viewport as the browser will give it, since
@@ -182,25 +202,26 @@
   right: 10px;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 5px 11px;
+  gap: 6px;
+  padding: 5px 10px;
   border: 1px solid var(--hv-border);
-  border-radius: 999px;
-  background: var(--hv-surface);
+  border-radius: var(--hv-radius-sm);
+  background: var(--hv-surface-2);
   color: var(--hv-muted);
-  font-family: var(--hv-font-body);
-  font-size: 0.73rem;
-  font-weight: 600;
-  letter-spacing: 0.01em;
+  font-family: var(--hv-font-mono);
+  font-size: 0.64rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   line-height: 1;
   cursor: pointer;
-  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+  transition: border-color 0.12s ease, color 0.12s ease;
 }
 
 /* Corner-arrows glyph, so the control reads as "enlarge" before the label is read. */
 .hv-zoom-btn::before {
   content: "⤢";
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   line-height: 1;
 }
 
@@ -208,5 +229,4 @@
 .hv-zoom-btn:focus-visible {
   border-color: var(--hv-accent);
   color: var(--hv-accent);
-  background: var(--hv-surface-2);
 }

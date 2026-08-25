@@ -2,33 +2,45 @@
  * UI, the Apply button and its panel, and this mode's overrides on the shared
  * page chrome.
  *
- * Shared chrome (page layout, header, freeform section, submit row, post-submit
- * panels) and the design tokens come from /assets/shared/chrome.css. Rules here
- * follow that import, so they win at equal specificity. The reading face and
- * wider measure below are what set this mode apart: the user is reading a
- * document, not filling in a form.
+ * Theme: "Console". The document is the one place on these pages where a person
+ * reads several hundred words in a row, and a dark ground is the weakest case
+ * for that — so the document gets the raised surface, a real reading measure,
+ * and looser leading than anything else in the plugin. Everything around it
+ * stays chrome.
+ *
+ * Comments read as a numbered apparatus, not as sticky notes: the block keeps a
+ * numbered marker in the gutter, the card below it carries the same number, and
+ * the rail lists them so a long review can be walked without scrolling for it.
+ *
+ * Shared chrome (shell, top bar, rail, header, freeform section, action bar,
+ * post-submit panels) and the design tokens come from /assets/shared/chrome.css.
+ * Rules here follow that import, so they win at equal specificity.
  *
  * This file is CSS-only chrome. assets/feedback/app.js reads the class names,
  * ids and data-attributes below as a contract — restyle freely, but do not
  * rename them here without also changing app.js.
  *
  * Vocabulary:
- *   .page-chrome        — outer page layout (max-width container)
- *   .page-header        — top header with title + subtitle
+ *   .hv-topbar          — sticky mode bar (shared; see chrome.css)
+ *   .hv-shell           — rail + content grid (shared)
+ *   .hv-rail            — comment index, built by app.js
+ *   .hv-main            — the content column
  *   #feedback-doc       — wrapper hidden after a successful submit
  *   #content            — the rendered content; commentable blocks live here
  *   [data-block-id]     — one commentable block of content
- *   .fb-float-btn       — floating 💬 button shown at a text selection
+ *   .fb-float-btn       — floating "Comment" button shown at a text selection
  *   .fb-highlight       — inline <mark> on a commented phrase
  *   .has-comment        — block that currently has at least one comment
+ *   .fb-block-marker    — the number in the gutter of a commented block
  *   .fb-comment-editor  — inline editor for adding/updating a comment
  *   .fb-comment-card    — a saved comment, rendered after its block
+ *   .fb-card-meta       — mono "COMMENT 2 · b-intro" line at the top of a card
  *   .fb-quote           — the quoted selection inside an editor/card
  *   .fb-anchor-note     — hint shown in the editor when no text was selected
  *   .fb-comment-body    — the comment text inside a card
  *   .comment-count      — running count of comments in the header
  *   .freeform-section   — wraps the global free-text textarea
- *   .submit-row         — wraps the apply, submit, and copy buttons
+ *   .submit-row         — the sticky action bar
  *   .apply-btn          — "Apply & preview" button (iterative round-trip)
  *   .state-applying     — panel shown while Claude applies an Apply round
  *   .state-submitted / .state-already-submitted — post-submit panels
@@ -47,57 +59,81 @@ body {
 }
 
 .page-header .subtitle {
-  margin: 0 0 12px;
+  margin: 0 0 14px;
 }
 
 .comment-count {
   display: inline-block;
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  color: var(--hv-accent);
+  padding: 4px 11px;
+  border: 1px solid var(--hv-border);
+  border-radius: var(--hv-radius-sm);
+  background: var(--hv-surface);
+  font-family: var(--hv-font-mono);
+  font-size: 0.66rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--hv-faint);
+}
+
+.comment-count.has-any {
+  border-color: var(--hv-accent);
   background: var(--hv-accent-tint);
-  border: 1px solid var(--hv-accent);
-  border-radius: 999px;
-  padding: 3px 13px;
+  color: var(--hv-accent);
 }
 
 #feedback-doc {
-  animation: rise 0.5s ease 0.08s both;
+  animation: rise 0.3s ease 0.04s both;
 }
 
 /* ── Content document ─────────────────────────────────────────────────────── */
+/* The panel takes the whole content track so a table or a code block has room;
+   the PROSE inside it is capped at a measure. Setting the panel itself to the
+   measure would leave a hard-edged column with dead space beside it. */
 
 #content {
+  position: relative;
   background: var(--hv-surface);
   border: 1px solid var(--hv-border);
   border-radius: var(--hv-radius);
-  padding: 36px 42px;
-  box-shadow: var(--hv-shadow);
-  font-family: var(--hv-font-display);
-  font-size: 1.06rem;
-  line-height: 1.7;
+  padding: 40px 44px;
+  font-size: 1.05rem;
+  line-height: 1.75;
+  color: var(--hv-text);
 }
 
 #content > * {
+  max-width: 72ch;
   margin-top: 0;
+}
+
+/* Wide material is not prose and must not be measured like it. */
+#content > pre,
+#content > table,
+#content > .vis-mermaid-wrap,
+#content > .vis-compare,
+#content > .fb-comment-card,
+#content > .fb-comment-editor {
+  max-width: none;
 }
 
 #content h1, #content h2, #content h3, #content h4 {
   font-family: var(--hv-font-display);
   color: var(--hv-text);
-  line-height: 1.25;
-  letter-spacing: -0.015em;
-  margin: 1.5em 0 0.5em;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  margin: 1.7em 0 0.55em;
 }
 
-#content h1 { font-size: 1.7rem; font-weight: 600; }
-#content h2 { font-size: 1.38rem; font-weight: 600; }
-#content h3 { font-size: 1.15rem; font-weight: 600; }
-#content h4 { font-size: 1.0rem;  font-weight: 700; }
+#content > :first-child { margin-top: 0; }
+
+#content h1 { font-size: 1.6rem; font-weight: 700; }
+#content h2 { font-size: 1.32rem; font-weight: 700; }
+#content h3 { font-size: 1.1rem;  font-weight: 700; }
+#content h4 { font-size: 0.98rem; font-weight: 700; }
 
 #content p {
-  margin: 0 0 1em;
+  margin: 0 0 1.05em;
 }
 
 #content a {
@@ -109,36 +145,33 @@ body {
 #content strong { font-weight: 700; }
 
 #content ul, #content ol {
-  margin: 0 0 1em;
-  padding-left: 1.5em;
+  margin: 0 0 1.05em;
+  padding-left: 1.4em;
 }
 
 #content li {
-  margin: 0.28em 0;
+  margin: 0.3em 0;
 }
 
 #content li::marker { color: var(--hv-accent); }
 
 #content blockquote {
-  margin: 0 0 1em;
-  padding: 6px 18px;
-  border-left: 3px solid var(--hv-accent);
-  background: var(--hv-surface-2);
-  border-radius: 0 6px 6px 0;
+  margin: 0 0 1.05em;
+  padding: 2px 0 2px 20px;
+  border-left: 2px solid var(--hv-accent);
   color: var(--hv-muted);
-  font-style: italic;
 }
 
 #content pre {
-  margin: 0 0 1em;
-  padding: 15px 17px;
-  background: var(--hv-surface-2);
+  margin: 0 0 1.05em;
+  padding: 16px 18px;
+  background: var(--hv-surface-3);
   border: 1px solid var(--hv-border);
-  border-radius: 8px;
+  border-radius: var(--hv-radius);
   overflow-x: auto;
   font-family: var(--hv-font-mono);
-  font-size: 0.86rem;
-  line-height: 1.55;
+  font-size: 0.85rem;
+  line-height: 1.65;
 }
 
 #content code {
@@ -148,33 +181,35 @@ body {
 
 #content :not(pre) > code {
   background: var(--hv-surface-2);
-  border: 1px solid var(--hv-border-soft);
+  border: 1px solid var(--hv-border);
   padding: 1px 5px;
-  border-radius: 4px;
+  border-radius: 3px;
 }
 
 #content table {
   border-collapse: collapse;
-  margin: 0 0 1em;
+  margin: 0 0 1.05em;
   width: 100%;
-  font-family: var(--hv-font-body);
   font-size: 0.92rem;
 }
 
 #content th, #content td {
-  border: 1px solid var(--hv-border);
-  padding: 8px 11px;
+  border-bottom: 1px solid var(--hv-border);
+  padding: 10px 12px;
   text-align: left;
+  vertical-align: top;
 }
 
 #content th {
-  background: var(--hv-surface-2);
-  font-weight: 600;
+  font-family: var(--hv-font-mono);
+  font-size: 0.64rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--hv-faint);
 }
 
-#content tbody tr:nth-child(even) td {
-  background: var(--hv-surface-2);
-}
+#content tbody tr:last-child td { border-bottom: none; }
 
 /* ── Floating comment button + inline highlight ───────────────────────────── */
 /* .fb-float-btn is appended to <body> by app.js and positioned at the user's
@@ -183,90 +218,134 @@ body {
 .fb-float-btn {
   position: absolute;
   z-index: 50;
-  padding: 7px 13px;
-  font-family: var(--hv-font-body);
-  font-size: 0.82rem;
-  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  font-family: var(--hv-font-mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   line-height: 1;
-  color: #fff;
+  color: var(--hv-on-accent);
   background: var(--hv-accent);
   border: none;
-  border-radius: 8px;
-  box-shadow: 0 4px 14px -2px rgba(var(--hv-ink-rgb),.4);
+  border-radius: var(--hv-radius-sm);
+  box-shadow: var(--hv-shadow-lg);
   cursor: pointer;
-  transition: background 0.13s ease, transform 0.13s ease;
+  transition: background 0.12s ease;
 }
 
 .fb-float-btn:hover {
   background: var(--hv-accent-deep);
-  transform: translateY(-1px);
+}
+
+.fb-float-btn svg {
+  width: 13px;
+  height: 13px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* Inline highlight on a commented phrase (best effort — see app.js).
-   Uses amber, distinct from the terracotta .has-comment block wash it sits
-   inside, so the quoted phrase stays legible against the tinted block. */
+   Amber-toned, distinct from the accent rule on the block it sits inside. */
 mark.fb-highlight {
   background: var(--hv-warn-tint);
-  color: inherit;
+  color: var(--hv-warn-deep);
   box-shadow: inset 0 -2px 0 var(--hv-warn);
   border-radius: 2px;
   padding: 0 2px;
 }
 
+/* A commented block keeps its number in the gutter, so the card below and the
+   rail entry both have something to point at. */
 #content [data-block-id].has-comment {
+  position: relative;
+  box-shadow: -20px 0 0 -18px var(--hv-accent);
+  transition: box-shadow 0.16s ease;
+}
+
+.fb-block-marker {
+  position: absolute;
+  left: -32px;
+  top: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 3px;
   background: var(--hv-accent-tint);
-  border-radius: 4px;
-  box-shadow: -14px 0 0 0 var(--hv-accent-tint), -16px 0 0 0 var(--hv-accent);
-  transition: background 0.2s ease, box-shadow 0.2s ease;
+  color: var(--hv-accent);
+  font-family: var(--hv-font-mono);
+  font-size: 0.64rem;
+  font-weight: 500;
+  line-height: 1;
 }
 
 /* ── Comment editor ───────────────────────────────────────────────────────── */
 
 .fb-comment-editor,
 .fb-comment-card {
-  margin: 12px 0 18px;
-  border-radius: 9px;
-  padding: 15px 17px;
-  animation: rise 0.3s ease both;
+  margin: 14px 0 20px;
+  border-radius: var(--hv-radius);
+  padding: 16px 18px;
+  animation: rise 0.22s ease both;
 }
 
 .fb-comment-editor {
-  background: var(--hv-surface);
-  border: 2px solid var(--hv-accent);
-  box-shadow: var(--hv-shadow-lg);
+  background: var(--hv-surface-2);
+  border: 1px solid var(--hv-accent);
 }
 
-.fb-quote {
-  font-family: var(--hv-font-display);
-  font-style: italic;
-  font-size: 0.92rem;
-  color: var(--hv-muted);
-  border-left: 3px solid var(--hv-accent);
-  padding: 3px 13px;
+.fb-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin-bottom: 11px;
-  background: var(--hv-surface-2);
-  border-radius: 0 5px 5px 0;
+  font-family: var(--hv-font-mono);
+  font-size: 0.64rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--hv-faint);
+}
+
+.fb-card-meta .fb-card-num { color: var(--hv-accent); }
+
+.fb-quote {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--hv-muted);
+  border-left: 2px solid var(--hv-border-strong);
+  padding: 2px 0 2px 12px;
+  margin-bottom: 12px;
 }
 
 .fb-anchor-note {
-  font-size: 0.82rem;
+  font-size: 0.84rem;
   color: var(--hv-faint);
-  margin-bottom: 11px;
+  margin-bottom: 12px;
 }
 
 .fb-comment-text {
   width: 100%;
-  min-height: 74px;
-  padding: 10px 12px;
+  min-height: 78px;
+  padding: 11px 13px;
   border: 1px solid var(--hv-border);
-  border-radius: 7px;
+  border-radius: var(--hv-radius-sm);
   font-family: var(--hv-font-body);
   font-size: 0.93rem;
-  line-height: 1.5;
+  line-height: 1.55;
   resize: vertical;
   color: var(--hv-text);
-  background: var(--hv-surface-2);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  background: var(--hv-bg);
+  transition: border-color 0.12s ease;
 }
 
 .fb-comment-text::placeholder { color: var(--hv-faint); }
@@ -274,61 +353,56 @@ mark.fb-highlight {
 .fb-comment-text:focus {
   outline: none;
   border-color: var(--hv-accent);
-  background: var(--hv-surface);
-  box-shadow: 0 0 0 3px var(--hv-accent-tint);
 }
 
 .fb-editor-actions,
 .fb-card-actions {
   display: flex;
-  gap: 10px;
-  margin-top: 11px;
+  gap: 9px;
+  margin-top: 12px;
 }
 
 .fb-save {
-  padding: 8px 19px;
+  padding: 8px 17px;
   background: var(--hv-accent);
-  color: #fff;
+  color: var(--hv-on-accent);
   border: none;
-  border-radius: 7px;
+  border-radius: var(--hv-radius-sm);
   font-family: var(--hv-font-body);
   font-size: 0.87rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.13s ease, transform 0.12s ease;
+  transition: background 0.12s ease;
 }
 
 .fb-save:hover {
   background: var(--hv-accent-deep);
-  transform: translateY(-1px);
 }
 
 .fb-cancel,
 .fb-edit,
 .fb-delete {
-  padding: 7px 15px;
+  padding: 7px 14px;
   background: transparent;
   color: var(--hv-muted);
   border: 1px solid var(--hv-border);
-  border-radius: 7px;
+  border-radius: var(--hv-radius-sm);
   font-family: var(--hv-font-body);
-  font-size: 0.83rem;
+  font-size: 0.84rem;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+  transition: border-color 0.12s ease, color 0.12s ease;
 }
 
 .fb-cancel:hover,
 .fb-edit:hover {
-  background: var(--hv-surface-2);
-  border-color: var(--hv-accent);
+  border-color: var(--hv-border-strong);
   color: var(--hv-text);
 }
 
 .fb-delete:hover {
-  background: var(--hv-bad-tint);
   border-color: var(--hv-bad);
-  color: var(--hv-bad-deep);
+  color: var(--hv-bad);
 }
 
 /* ── Saved comment card ───────────────────────────────────────────────────── */
@@ -337,25 +411,30 @@ mark.fb-highlight {
   position: relative;
   background: var(--hv-surface-2);
   border: 1px solid var(--hv-border);
-  border-left: 3px solid var(--hv-accent);
-  box-shadow: var(--hv-shadow);
+  border-left: 2px solid var(--hv-accent);
 }
 
 .fb-comment-body {
   font-size: 0.93rem;
-  line-height: 1.55;
+  line-height: 1.6;
   color: var(--hv-text);
   white-space: pre-wrap;
+}
+
+/* ── Rail: the comment index ──────────────────────────────────────────────── */
+
+.hv-rail-empty {
+  display: block;
+  padding: 14px 0 0;
+  font-size: 0.86rem;
+  line-height: 1.55;
+  color: var(--hv-faint);
 }
 
 /* ── Freeform section ─────────────────────────────────────────────────────── */
 
 .freeform-section {
-  margin: 20px 0;
-}
-
-.freeform-section h2 {
-  margin: 0 0 12px;
+  margin-top: 30px;
 }
 
 .freeform-section textarea {
@@ -367,67 +446,62 @@ mark.fb-highlight {
    Submit — the final round: a finishing green. */
 
 .apply-btn {
-  padding: 12px 26px;
+  padding: 10px 20px;
   background: var(--hv-accent);
-  box-shadow: 0 6px 16px -8px rgba(var(--hv-accent-rgb),.7);
+  color: var(--hv-on-accent);
 }
 
 .apply-btn:hover:not(:disabled) {
   background: var(--hv-accent-deep);
-  transform: translateY(-1px);
-  box-shadow: 0 10px 22px -8px rgba(var(--hv-accent-rgb),.75);
 }
 
 .submit-btn {
-  padding: 12px 26px;
+  padding: 10px 20px;
   background: var(--hv-ok);
-  box-shadow: 0 6px 16px -8px rgba(var(--hv-ok-rgb),.7);
+  color: var(--hv-on-accent);
 }
 
 .submit-btn:hover:not(:disabled) {
   background: var(--hv-ok-deep);
-  transform: translateY(-1px);
-  box-shadow: 0 10px 22px -8px rgba(var(--hv-ok-rgb),.75);
 }
-
-.apply-btn:active:not(:disabled),
-.submit-btn:active:not(:disabled) { transform: translateY(0); }
 
 /* ── Applying state ───────────────────────────────────────────────────────── */
 
 .state-applying {
   display: none;
+  max-width: var(--hv-measure);
   border-radius: var(--hv-radius);
-  padding: 34px 30px;
-  text-align: center;
-  margin-top: 24px;
-  box-shadow: var(--hv-shadow);
-  animation: rise 0.45s ease both;
-  background: var(--hv-accent-tint);
-  border: 1px solid var(--hv-accent);
+  border: 1px solid var(--hv-border);
+  border-left: 2px solid var(--hv-accent);
+  background: var(--hv-surface);
+  padding: 24px 26px;
+  margin: 34px 0 60px;
+  animation: rise 0.3s ease both;
 }
 
 .state-applying h2 {
   margin: 0 0 8px;
   font-family: var(--hv-font-display);
-  font-size: 1.4rem;
-  font-weight: 600;
-  color: var(--hv-accent-deep);
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--hv-text);
 }
 
 .state-applying p {
   margin: 0;
   font-size: 0.95rem;
-  color: var(--hv-accent-deep);
+  line-height: 1.6;
+  color: var(--hv-muted);
 }
 
 /* The applying panel shows a quiet pulsing cue while Claude works. */
-.state-applying h2::after {
+.state-applying h2::before {
   content: "";
   display: inline-block;
-  width: 7px;
-  height: 7px;
-  margin-left: 8px;
+  width: 8px;
+  height: 8px;
+  margin-right: 10px;
   border-radius: 50%;
   background: var(--hv-accent);
   vertical-align: middle;
@@ -441,15 +515,21 @@ mark.fb-highlight {
 
 /* ── Responsive tweaks ────────────────────────────────────────────────────── */
 
-@media (max-width: 620px) {
-  .page-chrome { padding: 26px 15px 44px; }
-  .page-header h1 { font-size: 1.7rem; }
-  #content { padding: 22px 20px; font-size: 1.02rem; }
+@media (max-width: 900px) {
+  #content { padding: 26px 24px; font-size: 1rem; }
 
-  .apply-btn,
-  .submit-btn,
-  .copy-btn {
-    width: 100%;
-    text-align: center;
+  /* The gutter is gone at this width; the marker moves inside the block. */
+  .fb-block-marker {
+    position: static;
+    display: inline-flex;
+    margin-right: 8px;
+    vertical-align: 2px;
+  }
+
+  #content [data-block-id].has-comment {
+    box-shadow: none;
+    border-left: 2px solid var(--hv-accent);
+    padding-left: 12px;
+    margin-left: -14px;
   }
 }

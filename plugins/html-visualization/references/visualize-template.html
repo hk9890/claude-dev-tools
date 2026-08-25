@@ -20,256 +20,340 @@
   -->
 
   <style>
-    /* ── Theme: "Editorial" ─────────────────────────────────────────────────
-      Warm paper, ink text, a single terracotta accent, a serif display face
-      paired with a refined sans body. Light + dark. This is a neutral scaffold
-      — keep the tokens, retheme the accent if the content calls for it, but do
-      not let the chrome shout over the visualization itself.
+    /* ── Design tokens ───────────────────────────────────────────────────
+       VERBATIM copy of the :root and @media blocks in
+       assets/shared/tokens.css. This template must render from file://
+       with no network, so it cannot @import them. Regenerate both copies
+       together — hako-private/build-visualize-style.py does it. */
 
-      IMPORTANT — TWO COPIES: These :root and @media blocks are a verbatim
-      inline copy of assets/shared/tokens.css. This template must remain
-      fully self-contained (file:// compatible), so it cannot @import that
-      file. Keep both in sync whenever you edit tokens.
-    */
     :root {
-      color-scheme: light dark;
+      color-scheme: dark light;
 
-      /* Backgrounds */
-      --hv-bg:       #f4efe3;
-      --hv-surface:  #fffdf7;
-      --hv-surface-2:#faf5e9;
+      /* Backgrounds — ground, raised panel, inset field, recessed chrome */
+      --hv-bg:        #0d1012;
+      --hv-surface:   #15191c;
+      --hv-surface-2: #1a1f23;
+      --hv-surface-3: #0a0c0e;
 
       /* Text */
-      --hv-text:     #2a251d;
-      --hv-muted:    #6c6353;
-      --hv-faint:    #9a9078;
+      --hv-text:  #dde4e8;
+      --hv-muted: #8e989f;
+      --hv-faint: #6b757c;
 
-      /* Borders */
-      --hv-border:   #e2dac6;
-      --hv-border-soft: #ece5d4;
+      /* Rules */
+      --hv-border:        #242a2f;
+      --hv-border-soft:   #1c2125;
+      --hv-border-strong: #39424a;
 
-      /* Accent — terracotta */
-      --hv-accent:      #b1492a;
-      --hv-accent-deep: #8d3a20;
-      --hv-accent-tint: #f2e2d8;
-      --hv-accent-rgb: 177, 73, 42;
+      /* Accent — amber */
+      --hv-accent:      #eda344;
+      --hv-accent-deep: #f7bb69;
+      --hv-accent-tint: #2e2418;
+      /* RGB triplet for use in rgba() — matches --hv-accent */
+      --hv-accent-rgb: 237, 163, 68;
+      /* Text that sits ON a filled accent surface. Amber is a light accent, so this
+         is the ground colour, not white — the pair flips in the light scheme. */
+      --hv-on-accent: #0d1012;
 
       /* Semantic colours */
-      --hv-ok:    #51762f;  --hv-ok-tint:   #e7efd9;  --hv-ok-deep:   #3d5b21;
-      --hv-warn:  #a9781a;  --hv-warn-tint: #f4eccd;  --hv-warn-deep: #846010;
-      --hv-bad:   #a33324;  --hv-bad-tint:  #f3e0da;  --hv-bad-deep:  #7e271b;
+      --hv-ok:    #72c48c;  --hv-ok-tint:   #16261c;  --hv-ok-deep:   #8fd6a5;
+      --hv-warn:  #e2b25e;  --hv-warn-tint: #2a2317;  --hv-warn-deep: #eec27f;
+      --hv-bad:   #f18f7a;  --hv-bad-tint:  #2c1a17;  --hv-bad-deep:  #f7ac9a;
 
       /* RGB triplets for use in rgba() */
-      --hv-ok-rgb:  81, 118, 47;
-      --hv-ink-rgb: 42, 32, 14;
+      --hv-ok-rgb:  114, 196, 140;
+      --hv-ink-rgb: 0, 0, 0;
 
-      /* Elevation */
-      --hv-shadow: 0 1px 2px rgba(42,32,14,.05), 0 7px 22px -10px rgba(42,32,14,.16);
-      --hv-shadow-lg: 0 2px 4px rgba(42,32,14,.06), 0 16px 38px -14px rgba(42,32,14,.26);
-      --hv-radius: 11px;
+      /* Elevation — on a dark ground a rule reads as depth and a shadow does not,
+         so the shadows stay shallow and the borders do the work. */
+      --hv-shadow:    0 1px 2px rgba(0,0,0,.34), 0 8px 24px -14px rgba(0,0,0,.6);
+      --hv-shadow-lg: 0 2px 6px rgba(0,0,0,.44), 0 22px 48px -20px rgba(0,0,0,.75);
+      --hv-radius: 6px;
+      --hv-radius-sm: 4px;
 
-      /* Page measure — one value across ask, feedback and visualize. */
-      --hv-page: 1360px;
+      /* Layout. --hv-page is the outer chrome width; the rail and the reading
+         measure divide it. A question is ~12 words wide, so a 1440px column of
+         option rows put the label and its control a screen apart — the measure
+         exists to stop that. */
+      --hv-page:    1320px;
+      --hv-rail:    236px;
+      --hv-gutter:  52px;
+      --hv-measure: 74ch;
 
-      /* Typography */
-      --hv-font-display: "Charter", "Bitstream Charter", "Sitka Text", "Iowan Old Style", Cambria, Georgia, serif;
-      --hv-font-body: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-      --hv-font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      /* Typography — mono for machine strings, sans for human ones. */
+      --hv-font-body: "Public Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      --hv-font-display: var(--hv-font-body);
+      --hv-font-mono: "JetBrains Mono", "IBM Plex Mono", "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, "DejaVu Sans Mono", monospace;
     }
 
-    @media (prefers-color-scheme: dark) {
+    @media (prefers-color-scheme: light) {
       :root {
-        --hv-bg:       #15130e;
-        --hv-surface:  #211e16;
-        --hv-surface-2:#1b1812;
+        --hv-bg:        #f3f5f7;
+        --hv-surface:   #ffffff;
+        --hv-surface-2: #eaeef1;
+        --hv-surface-3: #e6ebee;
 
-        --hv-text:     #ece5d6;
-        --hv-muted:    #a89d86;
-        --hv-faint:    #7c735e;
+        --hv-text:  #11161a;
+        --hv-muted: #54606a;
+        --hv-faint: #6f7c88;
 
-        --hv-border:   #352f23;
-        --hv-border-soft: #2a251c;
+        --hv-border:        #d4dadf;
+        --hv-border-soft:   #e3e8ec;
+        --hv-border-strong: #b3bcc4;
 
-        --hv-accent:      #e3895f;
-        --hv-accent-deep: #efa17c;
-        --hv-accent-tint: #3a291f;
-        --hv-accent-rgb: 227, 137, 95;
+        /* Amber cannot survive a light ground at the same lightness — the hue is
+           kept and the lightness dropped, which lands on ochre. */
+        --hv-accent:      #8f5906;
+        --hv-accent-deep: #6f4404;
+        --hv-accent-tint: #f7ecd9;
+        --hv-accent-rgb: 143, 89, 6;
+        --hv-on-accent: #ffffff;
 
-        --hv-ok:    #95bd6c;  --hv-ok-tint:   #2a331f;  --hv-ok-deep:   #abce84;
-        --hv-warn:  #d8aa50;  --hv-warn-tint: #352c16;  --hv-warn-deep: #e8bf6c;
-        --hv-bad:   #e3897a;  --hv-bad-tint:  #382220;  --hv-bad-deep:  #ed9f90;
+        --hv-ok:    #2c7a4b;  --hv-ok-tint:   #e2f0e7;  --hv-ok-deep:   #1e5c37;
+        --hv-warn:  #8a6414;  --hv-warn-tint: #f5ecd8;  --hv-warn-deep: #6b4c0c;
+        --hv-bad:   #a83f2c;  --hv-bad-tint:  #f7e3de;  --hv-bad-deep:  #85301f;
 
-        --hv-ok-rgb:  149, 189, 108;
-        --hv-ink-rgb: 0, 0, 0;
+        --hv-ok-rgb:  44, 122, 75;
+        --hv-ink-rgb: 17, 22, 26;
 
-        --hv-shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.7);
-        --hv-shadow-lg: 0 2px 6px rgba(0,0,0,.5), 0 18px 40px -16px rgba(0,0,0,.8);
+        --hv-shadow:    0 1px 2px rgba(17,22,26,.05), 0 8px 24px -14px rgba(17,22,26,.18);
+        --hv-shadow-lg: 0 2px 6px rgba(17,22,26,.07), 0 22px 48px -20px rgba(17,22,26,.24);
       }
     }
 
-    /* ── Base ───────────────────────────────────────────────────────────── */
+    /* ── Page-mode chrome ────────────────────────────────────────────────
+       Verbatim-shared pieces above and below this block; everything between
+       is page mode's own. It is the one read-only mode, so it has no rail and
+       no keyboard layer — just the top bar, a measured column, and the
+       message footer. */
+
     *, *::before, *::after { box-sizing: border-box; }
 
     body {
       margin: 0;
-      padding: 0;
-      background:
-        radial-gradient(1200px 620px at 100% -8%, rgba(var(--hv-accent-rgb),.06), transparent 62%),
-        radial-gradient(900px 520px at -5% 8%, rgba(169,120,26,.05), transparent 60%),
-        var(--hv-bg);
-      background-attachment: fixed;
-      color: var(--hv-text);
       font-family: var(--hv-font-body);
       font-size: 16px;
-      line-height: 1.6;
+      line-height: 1.65;
+      color: var(--hv-text);
+      background: var(--hv-bg);
       -webkit-font-smoothing: antialiased;
       text-rendering: optimizeLegibility;
     }
 
-    ::selection { background: rgba(var(--hv-accent-rgb),.18); }
+    ::selection { background: var(--hv-accent-tint); color: var(--hv-accent-deep); }
 
-    /* ── Motion: a quiet staggered entrance ─────────────────────────────── */
-    @keyframes vis-rise {
-      from { opacity: 0; transform: translateY(12px); }
-      to   { opacity: 1; transform: none; }
+    :focus-visible {
+      outline: 2px solid var(--hv-accent);
+      outline-offset: 2px;
+      border-radius: 2px;
     }
 
-    .page-header { animation: vis-rise 0.5s ease both; }
-    .vis-content > * { animation: vis-rise 0.5s ease both; }
-    .vis-content > *:nth-child(1) { animation-delay: 0.08s; }
-    .vis-content > *:nth-child(2) { animation-delay: 0.16s; }
-    .vis-content > *:nth-child(3) { animation-delay: 0.24s; }
-    .vis-content > *:nth-child(n+4) { animation-delay: 0.32s; }
+    a { color: var(--hv-accent); text-underline-offset: 2px; }
+    a:hover { color: var(--hv-accent-deep); }
 
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
         animation-duration: 0.001ms !important;
-        animation-delay: 0ms !important;
         transition-duration: 0.001ms !important;
       }
+    }
+
+    /* ── Machine strings ─────────────────────────────────────────────────
+       Mono marks every string the tool produced, sans every string a person
+       is meant to read. The same split as the served modes. */
+    .hv-meta {
+      font-family: var(--hv-font-mono);
+      font-size: 0.68rem;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--hv-faint);
+    }
+
+    /* ── Top bar ─────────────────────────────────────────────────────────── */
+    .hv-topbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      height: 40px;
+      padding: 0 24px;
+      border-bottom: 1px solid var(--hv-border);
+      background: var(--hv-surface-3);
+      font-family: var(--hv-font-mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.08em;
+    }
+
+    .hv-topbar-mode {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--hv-accent);
+    }
+
+    .hv-topbar-mode::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--hv-accent);
+    }
+
+    .hv-topbar-title {
+      color: var(--hv-muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .hv-topbar-meta {
+      margin-left: auto;
+      color: var(--hv-faint);
+      white-space: nowrap;
     }
 
     /* ── Page layout ────────────────────────────────────────────────────── */
     .page-chrome {
       max-width: var(--hv-page);
       margin: 0 auto;
-      padding: 2.5rem 1.5rem 4rem;
+      padding: 40px 24px 72px;
     }
 
     /* ── Header ─────────────────────────────────────────────────────────── */
     .page-header {
-      position: relative;
-      margin-bottom: 2rem;
-      padding-bottom: 1.25rem;
+      padding-bottom: 22px;
       border-bottom: 1px solid var(--hv-border);
+      margin-bottom: 32px;
     }
 
-    .page-header::after {
-      content: "";
-      position: absolute;
-      left: 0;
-      bottom: -1px;
-      width: 58px;
-      height: 3px;
-      background: var(--hv-accent);
-      border-radius: 2px;
-    }
+    .page-header .hv-meta { display: block; margin-bottom: 12px; }
 
     .page-header h1 {
-      margin: 0 0 0.45rem;
+      margin: 0 0 10px;
+      max-width: 26ch;
       font-family: var(--hv-font-display);
-      font-size: 2.1rem;
-      font-weight: 600;
-      line-height: 1.14;
-      letter-spacing: -0.018em;
+      font-size: 2rem;
+      font-weight: 700;
+      line-height: 1.16;
+      letter-spacing: -0.022em;
+      color: var(--hv-text);
     }
 
     .page-header .subtitle {
       margin: 0;
-      font-family: var(--hv-font-display);
-      font-style: italic;
-      font-size: 1.08rem;
+      max-width: var(--hv-measure);
+      font-size: 1.02rem;
+      line-height: 1.6;
       color: var(--hv-muted);
     }
 
     /* ── Main content area ──────────────────────────────────────────────── */
-    .vis-content {
-      /* Add any extra layout rules here for your visualization */
+    /* Prose is capped at a reading measure; a card, a table or a diagram is
+       not prose and takes the full column. Without the cap a paragraph runs
+       the whole 1320px and nobody finds the next line. */
+    .vis-content > p,
+    .vis-content > ul,
+    .vis-content > ol,
+    .vis-content > h2,
+    .vis-content > h3,
+    .vis-content > blockquote {
+      max-width: var(--hv-measure);
     }
+
+    .vis-content > h2,
+    .vis-content > h3 {
+      font-family: var(--hv-font-display);
+      letter-spacing: -0.018em;
+      color: var(--hv-text);
+      margin: 2em 0 0.6em;
+    }
+
+    .vis-content > h2 { font-size: 1.32rem; font-weight: 700; }
+    .vis-content > h3 { font-size: 1.1rem;  font-weight: 700; }
+    .vis-content > :first-child { margin-top: 0; }
 
     /* ── Card: a bordered surface useful for grouping sections ─────────── */
     .vis-card {
       background: var(--hv-surface);
       border: 1px solid var(--hv-border);
       border-radius: var(--hv-radius);
-      padding: 1.35rem 1.6rem;
-      margin-bottom: 1.5rem;
-      box-shadow: var(--hv-shadow);
+      padding: 22px 24px;
+      margin-bottom: 18px;
     }
 
     .vis-card h2 {
-      margin: 0 0 0.75rem;
-      font-family: var(--hv-font-display);
-      font-size: 1.2rem;
-      font-weight: 600;
-      letter-spacing: -0.012em;
+      margin: 0 0 14px;
+      font-family: var(--hv-font-mono);
+      font-size: 0.68rem;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--hv-faint);
     }
+
+    .vis-card > p { max-width: var(--hv-measure); }
+    .vis-card > :last-child { margin-bottom: 0; }
 
     /* ── Tables ─────────────────────────────────────────────────────────── */
     .vis-table-wrap {
       background: var(--hv-surface);
       border: 1px solid var(--hv-border);
       border-radius: var(--hv-radius);
-      box-shadow: var(--hv-shadow);
       overflow: hidden;
       overflow-x: auto;
-      margin-bottom: 1.5rem;
+      margin-bottom: 18px;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.92rem;
+      font-size: 0.93rem;
     }
 
     caption {
       text-align: left;
-      font-family: var(--hv-font-display);
-      font-size: 1.05rem;
-      font-weight: 600;
-      padding: 0.9rem 1rem 0.3rem;
-      color: var(--hv-text);
+      font-family: var(--hv-font-mono);
+      font-size: 0.68rem;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--hv-faint);
+      padding: 16px 20px 10px;
     }
 
     th, td {
       text-align: left;
-      padding: 0.6rem 1rem;
+      padding: 11px 20px;
       border-bottom: 1px solid var(--hv-border);
+      vertical-align: top;
     }
 
     th {
-      font-size: 0.78rem;
-      font-weight: 600;
-      letter-spacing: 0.04em;
+      font-family: var(--hv-font-mono);
+      font-size: 0.64rem;
+      font-weight: 500;
+      letter-spacing: 0.12em;
       text-transform: uppercase;
-      color: var(--hv-muted);
+      color: var(--hv-faint);
       background: var(--hv-surface-2);
-    }
-
-    tbody tr:nth-child(even) td {
-      background: var(--hv-surface-2);
+      white-space: nowrap;
     }
 
     tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: var(--hv-surface-2); }
 
     /* ── Inline SVG container ───────────────────────────────────────────── */
     .vis-svg-wrap {
       background: var(--hv-surface);
       border: 1px solid var(--hv-border);
       border-radius: var(--hv-radius);
-      box-shadow: var(--hv-shadow);
-      padding: 1.35rem 1.6rem;
-      margin-bottom: 1.5rem;
+      padding: 22px 24px;
+      margin-bottom: 18px;
     }
 
     .vis-svg-wrap svg {
@@ -288,9 +372,8 @@
       background: var(--hv-surface);
       border: 1px solid var(--hv-border);
       border-radius: var(--hv-radius);
-      box-shadow: var(--hv-shadow);
-      padding: 1.35rem 1.6rem;
-      margin-bottom: 1.5rem;
+      padding: 22px 24px;
+      margin-bottom: 18px;
       overflow-x: auto;
     }
 
@@ -336,101 +419,106 @@
 
     .vis-mermaid-label {
       display: block;
-      margin-bottom: 0.5rem;
-      font-size: 0.72rem;
-      font-weight: 600;
-      letter-spacing: 0.08em;
+      margin-bottom: 10px;
+      font-family: var(--hv-font-mono);
+      font-size: 0.64rem;
+      font-weight: 500;
+      letter-spacing: 0.12em;
       text-transform: uppercase;
-      color: var(--hv-muted);
+      color: var(--hv-faint);
     }
 
     /* ── Before/after comparison ────────────────────────────────────────── */
     /* Two diagrams side by side on wide screens, stacked on narrow ones. */
     .vis-compare {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 1rem;
-      margin-bottom: 1.5rem;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 14px;
+      margin-bottom: 18px;
     }
 
     .vis-compare > * { margin-bottom: 0; }
 
     /* ── Footer note ────────────────────────────────────────────────────── */
     .vis-note {
-      margin-top: 2rem;
-      font-size: 0.82rem;
-      color: var(--hv-muted);
+      max-width: var(--hv-measure);
+      margin-top: 34px;
+      padding-top: 14px;
       border-top: 1px solid var(--hv-border);
-      padding-top: 0.75rem;
-    }
-
-    /* ── Narrow screens ─────────────────────────────────────────────────── */
-    @media (max-width: 480px) {
-      .page-chrome { padding: 1.75rem 1rem 3rem; }
-      .page-header h1 { font-size: 1.7rem; }
-      .vis-card, .vis-svg-wrap { padding: 1rem 1.1rem; }
+      font-size: 0.86rem;
+      line-height: 1.6;
+      color: var(--hv-muted);
     }
 
     /* ── Feedback footer ────────────────────────────────────────────────── */
+    /* Page mode is read-only, so this is an offer rather than a task: it sits
+       at the end of the flow instead of following you down the page the way
+       ask and feedback mode's action bars do. */
     .vis-footer {
-      margin-top: 2.5rem;
-      padding-top: 1.25rem;
+      margin-top: 40px;
+      padding-top: 26px;
       border-top: 1px solid var(--hv-border);
     }
 
     .vis-footer-label {
       display: block;
-      margin-bottom: 0.45rem;
-      font-size: 0.82rem;
-      font-weight: 600;
-      letter-spacing: 0.03em;
+      margin-bottom: 10px;
+      font-family: var(--hv-font-mono);
+      font-size: 0.68rem;
+      font-weight: 500;
+      letter-spacing: 0.12em;
       text-transform: uppercase;
-      color: var(--hv-muted);
+      color: var(--hv-faint);
     }
 
     .vis-footer-textarea {
       display: block;
       width: 100%;
-      min-height: 72px;
-      padding: 0.6rem 0.75rem;
-      background: var(--hv-surface);
+      min-height: 92px;
+      padding: 12px 14px;
+      background: var(--hv-surface-2);
       color: var(--hv-text);
       border: 1px solid var(--hv-border);
-      border-radius: calc(var(--hv-radius) - 2px);
+      border-radius: var(--hv-radius-sm);
       font-family: var(--hv-font-body);
       font-size: 0.95rem;
-      line-height: 1.5;
+      line-height: 1.6;
       resize: vertical;
-      transition: border-color 0.15s;
+      transition: border-color 0.12s ease, background 0.12s ease;
     }
+
+    .vis-footer-textarea::placeholder { color: var(--hv-faint); }
 
     .vis-footer-textarea:focus {
       outline: none;
       border-color: var(--hv-accent);
-      box-shadow: 0 0 0 2px rgba(var(--hv-accent-rgb), 0.18);
+      background: var(--hv-surface);
     }
 
     .vis-footer-actions {
       display: flex;
-      gap: 0.6rem;
-      margin-top: 0.65rem;
+      gap: 10px;
+      margin-top: 14px;
       align-items: center;
     }
 
     .vis-btn {
-      padding: 0.42rem 1.1rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      padding: 10px 20px;
       font-family: var(--hv-font-body);
-      font-size: 0.9rem;
-      font-weight: 500;
-      border-radius: calc(var(--hv-radius) - 4px);
+      font-size: 0.92rem;
+      font-weight: 600;
+      border-radius: var(--hv-radius-sm);
       border: 1px solid transparent;
       cursor: pointer;
-      transition: background 0.12s, opacity 0.12s;
+      transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease, opacity 0.12s ease;
     }
 
     .vis-btn-send {
       background: var(--hv-accent);
-      color: #fff;
+      color: var(--hv-on-accent);
       border-color: var(--hv-accent);
     }
 
@@ -445,24 +533,41 @@
     }
 
     .vis-btn-save {
-      background: var(--hv-surface);
-      color: var(--hv-text);
+      background: transparent;
+      color: var(--hv-muted);
       border-color: var(--hv-border);
+      font-weight: 500;
     }
 
     .vis-btn-save:hover {
-      background: var(--hv-surface-2);
+      border-color: var(--hv-border-strong);
+      color: var(--hv-text);
     }
 
     .vis-footer-status {
-      font-size: 0.85rem;
-      color: var(--hv-muted);
-      margin-left: 0.25rem;
+      font-family: var(--hv-font-mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--hv-faint);
+      margin-left: 4px;
     }
 
-    /* ── Shared overlay primitive ────────────────────────────────────────── */
-    /* Verbatim copy of assets/shared/overlay.css — the served modes import that
-       file; this template inlines it to stay self-contained. Keep both in sync. */
+    /* ── Narrow screens ─────────────────────────────────────────────────── */
+    @media (max-width: 680px) {
+      .hv-topbar { padding: 0 16px; gap: 10px; }
+      .hv-topbar-meta { display: none; }
+      .page-chrome { padding: 28px 16px 48px; }
+      .page-header h1 { font-size: 1.6rem; }
+      .vis-card, .vis-svg-wrap, .vis-mermaid-wrap { padding: 16px 17px; }
+      th, td { padding: 10px 14px; }
+      .vis-footer-actions > .vis-btn { flex: 1 1 auto; justify-content: center; }
+    }
+
+    /* ── Shared overlay primitive ────────────────────────────────────────
+       VERBATIM copy of assets/shared/overlay.css — the served modes import
+       that file; this template inlines it to stay self-contained. Keep both
+       in sync. */
 
     /* ── The opener ───────────────────────────────────────────────────────────── */
 
@@ -472,92 +577,109 @@
       justify-content: center;
       width: 18px;
       height: 18px;
-      margin-left: 6px;
+      margin-left: 8px;
       padding: 0;
       vertical-align: middle;
-      border: 1px solid var(--hv-accent);
-      border-radius: 50%;
-      background: transparent;
-      color: var(--hv-accent);
-      font-family: var(--hv-font-body);
-      font-size: 0.72rem;
-      font-weight: 700;
+      border: 1px solid var(--hv-border-strong);
+      border-radius: 3px;
+      background: var(--hv-surface-2);
+      color: var(--hv-muted);
+      font-family: var(--hv-font-mono);
+      font-size: 0.68rem;
+      font-weight: 500;
       line-height: 1;
       cursor: pointer;
-      transition: background 0.15s ease, color 0.15s ease;
+      transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
     }
 
     .hv-info-btn:hover,
     .hv-info-btn:focus-visible {
-      background: var(--hv-accent);
-      color: var(--hv-surface);
+      border-color: var(--hv-accent);
+      color: var(--hv-accent);
     }
 
     /* ── Inline badge ─────────────────────────────────────────────────────────── */
 
     .hv-pill {
-      display: inline-block;
-      padding: 1px 7px;
-      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 2px 8px;
+      border: 1px solid var(--hv-ok);
+      border-radius: 3px;
       background: var(--hv-ok-tint);
       color: var(--hv-ok-deep);
-      font-size: 0.68rem;
-      font-weight: 700;
-      letter-spacing: 0.06em;
+      font-family: var(--hv-font-mono);
+      font-size: 0.62rem;
+      font-weight: 500;
+      letter-spacing: 0.12em;
       text-transform: uppercase;
+      line-height: 1.5;
       vertical-align: middle;
+      white-space: nowrap;
     }
 
     /* ── The panel ────────────────────────────────────────────────────────────── */
 
     .hv-popover {
-      width: min(560px, calc(100vw - 32px));
-      max-height: min(70vh, 620px);
+      width: min(580px, calc(100vw - 32px));
+      max-height: min(72vh, 640px);
       overflow-y: auto;
-      padding: 20px 22px;
-      border: 1px solid var(--hv-border);
+      padding: 22px 24px;
+      border: 1px solid var(--hv-border-strong);
       border-radius: var(--hv-radius);
       background: var(--hv-surface);
       color: var(--hv-text);
       box-shadow: var(--hv-shadow-lg);
       font-family: var(--hv-font-body);
-      font-size: 0.94rem;
-      line-height: 1.6;
+      font-size: 0.95rem;
+      line-height: 1.65;
     }
 
     .hv-popover::backdrop {
-      background: rgba(var(--hv-ink-rgb), 0.42);
+      background: rgba(0, 0, 0, 0.58);
     }
 
     .hv-popover h3 {
-      margin: 0 0 10px;
-      font-family: var(--hv-font-display);
-      font-size: 1.12rem;
-      font-weight: 600;
-      letter-spacing: -0.01em;
-      color: var(--hv-text);
+      margin: 0 0 14px;
+      font-family: var(--hv-font-mono);
+      font-size: 0.68rem;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--hv-accent);
     }
 
     .hv-popover > :last-child { margin-bottom: 0; }
 
-    .hv-popover p { margin: 0 0 10px; }
+    .hv-popover p { margin: 0 0 12px; color: var(--hv-text); }
+
+    .hv-popover code {
+      font-family: var(--hv-font-mono);
+      font-size: 0.86em;
+      padding: 1px 5px;
+      border: 1px solid var(--hv-border);
+      border-radius: 3px;
+      background: var(--hv-surface-2);
+    }
 
     .hv-popover-close {
       display: block;
-      margin: 14px 0 0 auto;
-      padding: 6px 14px;
+      margin: 18px 0 0 auto;
+      padding: 7px 14px;
       border: 1px solid var(--hv-border);
-      border-radius: 7px;
-      background: var(--hv-surface-2);
+      border-radius: var(--hv-radius-sm);
+      background: transparent;
       color: var(--hv-muted);
       font-family: inherit;
-      font-size: 0.84rem;
+      font-size: 0.85rem;
       cursor: pointer;
+      transition: border-color 0.12s ease, color 0.12s ease;
     }
 
     .hv-popover-close:hover {
-      border-color: var(--hv-accent);
-      color: var(--hv-accent);
+      border-color: var(--hv-border-strong);
+      color: var(--hv-text);
     }
 
     /* Diagram variant: as much of the viewport as the browser will give it, since
@@ -627,25 +749,26 @@
       right: 10px;
       display: inline-flex;
       align-items: center;
-      gap: 5px;
-      padding: 5px 11px;
+      gap: 6px;
+      padding: 5px 10px;
       border: 1px solid var(--hv-border);
-      border-radius: 999px;
-      background: var(--hv-surface);
+      border-radius: var(--hv-radius-sm);
+      background: var(--hv-surface-2);
       color: var(--hv-muted);
-      font-family: var(--hv-font-body);
-      font-size: 0.73rem;
-      font-weight: 600;
-      letter-spacing: 0.01em;
+      font-family: var(--hv-font-mono);
+      font-size: 0.64rem;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
       line-height: 1;
       cursor: pointer;
-      transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+      transition: border-color 0.12s ease, color 0.12s ease;
     }
 
     /* Corner-arrows glyph, so the control reads as "enlarge" before the label is read. */
     .hv-zoom-btn::before {
       content: "⤢";
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       line-height: 1;
     }
 
@@ -653,16 +776,28 @@
     .hv-zoom-btn:focus-visible {
       border-color: var(--hv-accent);
       color: var(--hv-accent);
-      background: var(--hv-surface-2);
     }
   </style>
 </head>
 <body>
 
+<!-- ── Top bar ─────────────────────────────────────────────────────────────
+  Fixed chrome, matching the ask and feedback modes. .hv-topbar-title takes the
+  same string as the <h1>. .hv-topbar-meta is optional here — page mode has no
+  app.js to fill it, so either write something durable (a dataset name, a
+  timestamp) or delete the span.
+-->
+<div class="hv-topbar">
+  <span class="hv-topbar-mode">Page</span>
+  <span class="hv-topbar-title">[Claude: replace with visualization title]</span>
+  <span class="hv-topbar-meta">[Claude: optional — a dataset name or timestamp; delete this span if there is nothing durable to put here]</span>
+</div>
+
 <div class="page-chrome">
 
   <!-- ── Page header ────────────────────────────────────────────────────── -->
   <header class="page-header">
+    <span class="hv-meta">[Claude: 2–4 words naming what this page is — e.g. "Dependency audit · 41 modules"]</span>
     <h1>[Claude: replace with visualization title]</h1>
     <p class="subtitle">[Claude: replace with a one-sentence description of what the user is viewing]</p>
   </header>
@@ -705,6 +840,12 @@
 
     CARD GROUP (for summary metrics, key-value data, or multi-panel layouts):
       Use <div class="vis-card"> per panel.
+
+    MEASURE: a <p>, <ul>, <ol>, <h2>, <h3> or <blockquote> that is a DIRECT
+    child of .vis-content is capped at the reading measure; cards, tables,
+    diagrams and SVG take the full column. Prose nested inside a .vis-card is
+    capped too. Put running text at the top level rather than in a card, or it
+    inherits the card's padding for no reason.
   -->
   <main class="vis-content">
 
@@ -717,10 +858,10 @@
       <svg viewBox="0 0 800 200" xmlns="http://www.w3.org/2000/svg"
            role="img" aria-label="[Claude: replace with a description of the diagram]">
         <!-- [Claude: replace with real SVG paths, shapes, and text] -->
-        <rect x="20" y="20" width="760" height="160" rx="8"
-              fill="var(--hv-surface)" stroke="var(--hv-border)" stroke-width="1.5"/>
+        <rect x="1" y="1" width="798" height="198" rx="6"
+              fill="var(--hv-surface-2)" stroke="var(--hv-border)" stroke-width="1"/>
         <text x="400" y="105" text-anchor="middle"
-              fill="var(--hv-muted)" font-family="system-ui, sans-serif" font-size="16">
+              fill="var(--hv-muted)" font-family="var(--hv-font-body)" font-size="15">
           [Claude: replace with real diagram content]
         </text>
       </svg>

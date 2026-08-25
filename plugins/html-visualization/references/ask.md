@@ -137,8 +137,15 @@ destination path — see `references/serve.md` — "Authoring files into the tem
 directory".
 
 The template contains example widgets — remove every example widget you do not
-need. Keep the page structure, header, verdict section, freeform section, and
-submit row exactly as in the template. Fill in the content per the markup
+need. Keep the page structure, top bar, rail, header, verdict section, freeform
+section, and action bar exactly as in the template.
+
+Four things are generated at load and must be left empty or absent in what you
+write: the `.hv-rail-list` and `.hv-rail-count` (the question index and
+progress), the `.hv-topbar-meta` (the host), the `.hv-status-hint` and
+`data-hv-mod` keycap (the platform's modifier), and the `.widget-index` line
+that numbers each question and tags its type. Numbering a question by hand goes
+stale the moment another is inserted above it. Fill in the content per the markup
 contract in
 `"$(cat "$HTML_DIR/.plugin-root")/references/ask-markup.md"`. Key rules:
 

@@ -1,19 +1,27 @@
 /* style.css — ask-mode styles: the question widgets, the verdict panel, and
  * this mode's overrides on the shared page chrome.
  *
- * Shared chrome (page layout, header, freeform section, submit row, post-submit
- * panels) and the design tokens come from /assets/shared/chrome.css. Rules here
- * follow that import, so they win at equal specificity.
+ * Theme: "Console". A question is a SECTION separated by a rule, not a card —
+ * cards inside a card inside a shell was three levels of frame around four
+ * words of text. What is boxed is what you click: the option rows. Each carries
+ * a keycap, and the key really selects it (assets/ask/app.js).
+ *
+ * Shared chrome (shell, top bar, rail, header, freeform section, action bar,
+ * post-submit panels) and the design tokens come from /assets/shared/chrome.css.
+ * Rules here follow that import, so they win at equal specificity.
  *
  * This file is CSS-only chrome. assets/ask/app.js reads the class names, ids
  * and data-attributes below as a contract — restyle freely, but do not expect
  * to rename them here without also changing app.js.
  *
  * Widget vocabulary:
- *   .page-chrome         — outer page layout (max-width container)
- *   .page-header         — top header with title + subtitle
- *   .page-footer         — bottom area containing .verdict-section and .submit-row
+ *   .hv-topbar           — sticky mode bar (shared; see chrome.css)
+ *   .hv-shell            — rail + content grid (shared)
+ *   .hv-rail             — question index and progress, built by app.js
+ *   .hv-main             — the content column
+ *   .page-header         — title block at the top of the content column
  *   .widget              — base class for every question widget
+ *   .widget-index        — mono "01 · SINGLE CHOICE" line, injected by app.js
  *   .widget-text         — free-text (textarea) question
  *   .widget-radio        — single-choice (radio button) question
  *   .widget-checkbox     — multi-choice (checkbox) question
@@ -21,6 +29,7 @@
  *   .widget-verdict      — overall verdict radio group (approve/approve-with-changes/reject)
  *   .widget-label        — <label> wrapping question text
  *   .widget-hint         — supplementary hint text below a label
+ *   .hv-key              — keycap on an option; app.js injects and binds it
  *   .is-recommended      — marks the recommended option / approach column
  *   .recommended-mark    — the "Recommended" pill + its why button, inside that option
  *   .widget-recommendation       — recommendation block, for a question with no options
@@ -40,7 +49,7 @@
  *   .approach-verdict    — independent-mode approve/reject within one column
  *   .verdict-section     — wraps the overall .widget-verdict
  *   .freeform-section    — wraps the global free-text textarea
- *   .submit-row          — wraps the submit button and copy-feedback button
+ *   .submit-row          — the sticky action bar
  *   .submit-btn          — the primary submit button
  *   .copy-btn            — "Copy feedback" fallback button
  *   .state-submitted     — shown after successful submit (hidden by default)
@@ -60,95 +69,99 @@
 /* ── Page chrome — ask-mode measures ──────────────────────────────────────── */
 
 body {
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
 .page-header {
-  margin-bottom: 30px;
+  margin-bottom: 8px;
 }
 
-.page-header .subtitle {
-  margin: 0;
-}
-
-/* Staggered entrance for the form body. Popover panels are excluded: they are
+/* Staggered entrance, short and capped. Popover panels are excluded: they are
    children of #main-form, and a popover restarts its animations each time it
    opens — so the panel would fade in from transparent every time, showing the
    page through it for half a second. */
 #main-form > *:not([popover]) {
-  animation: rise 0.5s ease both;
+  animation: rise 0.3s ease both;
 }
-#main-form > *:nth-child(1) { animation-delay: 0.06s; }
-#main-form > *:nth-child(2) { animation-delay: 0.12s; }
-#main-form > *:nth-child(3) { animation-delay: 0.18s; }
-#main-form > *:nth-child(4) { animation-delay: 0.24s; }
-#main-form > *:nth-child(5) { animation-delay: 0.30s; }
-#main-form > *:nth-child(6) { animation-delay: 0.36s; }
-#main-form > *:nth-child(n+7) { animation-delay: 0.42s; }
+#main-form > *:nth-child(1) { animation-delay: 0.03s; }
+#main-form > *:nth-child(2) { animation-delay: 0.06s; }
+#main-form > *:nth-child(3) { animation-delay: 0.09s; }
+#main-form > *:nth-child(4) { animation-delay: 0.12s; }
+#main-form > *:nth-child(n+5) { animation-delay: 0.15s; }
 
 /* ── Base widget ──────────────────────────────────────────────────────────── */
+/* A rule and vertical air, not a card. The left rule only appears on the
+   question you are working in — the shell's own way of saying "here". */
 
 .widget {
   position: relative;
-  background: var(--hv-surface);
-  border: 1px solid var(--hv-border);
-  border-radius: var(--hv-radius);
-  padding: 22px 26px;
-  margin-bottom: 18px;
-  box-shadow: var(--hv-shadow);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  padding: 30px 0 34px 20px;
+  margin-left: -20px;
+  border-top: 1px solid var(--hv-border);
+  box-shadow: inset 2px 0 0 -1px transparent;
+  transition: box-shadow 0.14s ease;
 }
 
 .widget:focus-within {
-  border-color: var(--hv-accent);
-  box-shadow: var(--hv-shadow-lg);
+  box-shadow: inset 2px 0 0 0 var(--hv-accent);
 }
+
+/* The first widget sits directly under the header rule; a second line there
+   reads as a mistake. */
+#main-form > .widget:first-of-type {
+  border-top: none;
+}
+
+.widget-index {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 12px;
+  font-family: var(--hv-font-mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.widget-index .widget-num { color: var(--hv-accent); font-weight: 700; }
+.widget-index .widget-kind { color: var(--hv-faint); }
 
 .widget-label {
   display: block;
+  max-width: var(--hv-measure);
   font-weight: 600;
-  font-size: 1.01rem;
-  letter-spacing: -0.01em;
+  font-size: 1.08rem;
+  letter-spacing: -0.012em;
   line-height: 1.4;
-  margin-bottom: 7px;
+  margin-bottom: 6px;
   color: var(--hv-text);
-}
-
-/* Editorial accent dash before each question. */
-.widget-label::before {
-  content: "";
-  display: inline-block;
-  width: 15px;
-  height: 2px;
-  margin: 0 9px 4px 0;
-  background: var(--hv-accent);
-  border-radius: 1px;
-  vertical-align: middle;
 }
 
 .widget-hint {
   display: block;
-  font-size: 0.875rem;
-  line-height: 1.45;
+  max-width: var(--hv-measure);
+  font-size: 0.92rem;
+  line-height: 1.6;
   color: var(--hv-muted);
-  margin: -1px 0 12px;
+  margin: 0 0 18px;
 }
 
 /* ── Text widget ──────────────────────────────────────────────────────────── */
 
 .widget-text textarea {
   width: 100%;
-  min-height: 96px;
-  padding: 11px 13px;
+  min-height: 104px;
+  padding: 12px 14px;
   border: 1px solid var(--hv-border);
-  border-radius: 8px;
+  border-radius: var(--hv-radius-sm);
   font-family: inherit;
   font-size: 0.95rem;
-  line-height: 1.55;
+  line-height: 1.6;
   resize: vertical;
   color: var(--hv-text);
   background: var(--hv-surface-2);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  transition: border-color 0.12s ease, background 0.12s ease;
 }
 
 .widget-text textarea::placeholder { color: var(--hv-faint); }
@@ -157,7 +170,6 @@ body {
   outline: none;
   border-color: var(--hv-accent);
   background: var(--hv-surface);
-  box-shadow: 0 0 0 3px var(--hv-accent-tint);
 }
 
 /* ── Radio + checkbox widgets ─────────────────────────────────────────────── */
@@ -166,27 +178,26 @@ body {
 .widget-checkbox .checkbox-options {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-top: 4px;
+  gap: 7px;
 }
 
 .widget-radio .radio-option,
 .widget-checkbox .checkbox-option {
-  display: flex;
-  align-items: flex-start;
-  gap: 11px;
-  padding: 10px 13px;
+  display: grid;
+  grid-template-columns: 20px 15px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 13px;
+  padding: 12px 15px;
   border: 1px solid var(--hv-border);
-  border-radius: 8px;
-  background: var(--hv-surface-2);
+  border-radius: var(--hv-radius-sm);
+  background: var(--hv-surface);
   cursor: pointer;
-  transition: background 0.14s ease, border-color 0.14s ease, transform 0.14s ease;
+  transition: background 0.12s ease, border-color 0.12s ease;
 }
 
 .widget-radio .radio-option:hover,
 .widget-checkbox .checkbox-option:hover {
-  border-color: var(--hv-accent);
-  transform: translateX(2px);
+  border-color: var(--hv-border-strong);
 }
 
 .widget-radio .radio-option:has(input:checked),
@@ -195,46 +206,52 @@ body {
   border-color: var(--hv-accent);
 }
 
+/* The cap fills when its option is taken, so the keyboard and the pointer agree
+   about what is selected. */
+.widget-radio .radio-option:has(input:checked) > .hv-key,
+.widget-checkbox .checkbox-option:has(input:checked) > .hv-key {
+  background: var(--hv-accent);
+  border-color: var(--hv-accent);
+  color: var(--hv-on-accent);
+}
+
 .widget-radio .radio-option input,
 .widget-checkbox .checkbox-option input {
-  margin-top: 2px;
-  flex-shrink: 0;
+  margin: 0;
   accent-color: var(--hv-accent);
   cursor: pointer;
 }
 
-.widget-radio .radio-option label,
-.widget-checkbox .checkbox-option label,
 .widget-radio .radio-option span,
 .widget-checkbox .checkbox-option span {
   font-size: 0.95rem;
-  line-height: 1.45;
+  line-height: 1.5;
   cursor: pointer;
   color: var(--hv-text);
-  flex: 1;
 }
 
 /* ── Approaches widget ────────────────────────────────────────────────────── */
 
 .widget-approaches .approaches-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-top: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
 }
 
-@media (max-width: 580px) {
+@media (max-width: 760px) {
   .widget-approaches .approaches-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
 .approach-col {
+  display: flex;
+  flex-direction: column;
   border: 1px solid var(--hv-border);
-  border-radius: 9px;
-  padding: 16px 18px;
-  background: var(--hv-surface-2);
-  transition: border-color 0.15s ease, background 0.15s ease;
+  border-radius: var(--hv-radius);
+  padding: 18px 20px;
+  background: var(--hv-surface);
+  transition: border-color 0.12s ease, background 0.12s ease;
 }
 
 .approach-col:has(input[value="approve"]:checked) {
@@ -248,19 +265,31 @@ body {
 }
 
 .approach-header {
-  font-family: var(--hv-font-display);
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  flex-wrap: wrap;
   font-weight: 600;
-  font-size: 1.05rem;
-  letter-spacing: -0.01em;
-  margin-bottom: 9px;
+  font-size: 1rem;
+  letter-spacing: -0.012em;
+  margin-bottom: 12px;
   color: var(--hv-text);
 }
 
 .approach-col p {
-  font-size: 0.9rem;
-  line-height: 1.55;
+  font-size: 0.92rem;
+  line-height: 1.65;
   color: var(--hv-muted);
-  margin: 0 0 14px;
+  margin: 0 0 12px;
+}
+
+.approach-col p strong {
+  font-family: var(--hv-font-mono);
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--hv-warn);
 }
 
 /* Single-choice comparison: one radio per column, all in one group. The whole
@@ -273,10 +302,10 @@ body {
 .approach-choice {
   display: flex;
   align-items: center;
-  gap: 9px;
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px dashed var(--hv-border);
+  gap: 11px;
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px solid var(--hv-border);
   font-size: 0.92rem;
   font-weight: 600;
   color: var(--hv-text);
@@ -292,43 +321,54 @@ body {
    both is an answer the user gives, not an empty field indistinguishable from one
    they never reached. */
 .approaches-none {
-  display: flex;
+  display: grid;
+  grid-template-columns: 20px 15px minmax(0, 1fr);
   align-items: center;
-  gap: 11px;
-  margin-top: 12px;
-  padding: 10px 13px;
+  gap: 13px;
+  margin-top: 10px;
+  padding: 12px 15px;
   border: 1px solid var(--hv-border);
-  border-radius: 8px;
-  background: var(--hv-surface-2);
+  border-radius: var(--hv-radius-sm);
+  background: var(--hv-surface);
   font-size: 0.95rem;
-  color: var(--hv-text);
+  color: var(--hv-muted);
   cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
 }
 
-.approaches-none:hover { border-color: var(--hv-accent); }
+.approaches-none:hover { border-color: var(--hv-border-strong); }
 
 .approaches-none:has(input:checked) {
   border-color: var(--hv-accent);
   background: var(--hv-accent-tint);
+  color: var(--hv-text);
+}
+
+.approaches-none:has(input:checked) > .hv-key {
+  background: var(--hv-accent);
+  border-color: var(--hv-accent);
+  color: var(--hv-on-accent);
 }
 
 .approaches-none input[type="radio"] {
+  margin: 0;
   accent-color: var(--hv-accent);
   cursor: pointer;
 }
 
 .approach-verdict {
   display: flex;
-  gap: 14px;
-  padding-top: 12px;
-  border-top: 1px dashed var(--hv-border);
+  gap: 16px;
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px solid var(--hv-border);
 }
 
 .approach-verdict label {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.89rem;
+  gap: 8px;
+  font-size: 0.9rem;
   cursor: pointer;
   color: var(--hv-text);
 }
@@ -341,52 +381,48 @@ body {
 /* ── Verdict section ──────────────────────────────────────────────────────── */
 
 .verdict-section {
-  background: var(--hv-surface);
-  border: 1px solid var(--hv-border);
-  border-radius: var(--hv-radius);
-  padding: 22px 26px;
-  margin-bottom: 18px;
-  box-shadow: var(--hv-shadow);
+  padding: 30px 0 34px 20px;
+  margin-left: -20px;
+  border-top: 1px solid var(--hv-border);
 }
 
 .verdict-section h2 {
-  font-family: var(--hv-font-display);
-  font-size: 1.3rem;
-  font-weight: 600;
-  letter-spacing: -0.015em;
-  color: var(--hv-text);
-}
-
-.verdict-section h2,
-.freeform-section h2 {
+  font-family: var(--hv-font-mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--hv-faint);
   margin: 0 0 14px;
 }
 
+.freeform-section h2 {
+  margin: 0 0 12px;
+}
+
 .widget-verdict .verdict-options {
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (max-width: 760px) {
+  .widget-verdict .verdict-options { grid-template-columns: minmax(0, 1fr); }
 }
 
 .widget-verdict .verdict-option {
   display: flex;
   align-items: flex-start;
-  gap: 13px;
-  padding: 13px 16px;
-  border: 1.5px solid var(--hv-border);
-  border-radius: 9px;
-  background: var(--hv-surface-2);
+  gap: 12px;
+  padding: 15px 17px;
+  border: 1px solid var(--hv-border);
+  border-radius: var(--hv-radius);
+  background: var(--hv-surface);
   cursor: pointer;
-  transition: background 0.14s ease, border-color 0.14s ease, transform 0.14s ease;
+  transition: background 0.12s ease, border-color 0.12s ease;
 }
 
-.widget-verdict .verdict-option:hover {
-  transform: translateX(2px);
-}
-
-.widget-verdict .verdict-option.verdict-approve:hover { border-color: var(--hv-ok); }
-.widget-verdict .verdict-option.verdict-approve-with-changes:hover { border-color: var(--hv-warn); }
-.widget-verdict .verdict-option.verdict-reject:hover { border-color: var(--hv-bad); }
+.widget-verdict .verdict-option:hover { border-color: var(--hv-border-strong); }
 
 .widget-verdict .verdict-option.verdict-approve:has(input:checked) {
   background: var(--hv-ok-tint);
@@ -404,7 +440,7 @@ body {
 }
 
 .widget-verdict .verdict-option input[type="radio"] {
-  margin-top: 3px;
+  margin: 3px 0 0;
   flex-shrink: 0;
   accent-color: var(--hv-accent);
   cursor: pointer;
@@ -413,26 +449,22 @@ body {
 .widget-verdict .verdict-option .verdict-label {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
 }
 
 .widget-verdict .verdict-option .verdict-label strong {
-  font-size: 0.98rem;
+  font-size: 0.97rem;
   font-weight: 600;
   color: var(--hv-text);
 }
 
 .widget-verdict .verdict-option .verdict-label span {
-  font-size: 0.86rem;
-  line-height: 1.45;
+  font-size: 0.87rem;
+  line-height: 1.5;
   color: var(--hv-muted);
 }
 
 /* ── Freeform section ─────────────────────────────────────────────────────── */
-
-.freeform-section {
-  margin-bottom: 18px;
-}
 
 .freeform-section textarea {
   min-height: 104px;
@@ -441,53 +473,47 @@ body {
 /* ── Submit button ────────────────────────────────────────────────────────── */
 
 .submit-btn {
-  padding: 12px 30px;
+  padding: 10px 20px;
   background: var(--hv-accent);
-  letter-spacing: 0.005em;
-  box-shadow: 0 6px 16px -8px rgba(var(--hv-accent-rgb),.7);
+  color: var(--hv-on-accent);
 }
 
 .submit-btn:hover:not(:disabled) {
   background: var(--hv-accent-deep);
-  transform: translateY(-1px);
-  box-shadow: 0 10px 22px -8px rgba(var(--hv-accent-rgb),.75);
 }
-
-.submit-btn:active:not(:disabled) { transform: translateY(0); }
 
 /* ── Per-question note field ─────────────────────────────────────────────── */
 /* Injected by app.js into every .annotatable widget — always visible, so the
    user can write free text on any question alongside its structured answer. */
 
 .widget-note {
-  margin-top: 16px;
-  padding-top: 14px;
-  border-top: 1px dashed var(--hv-border);
+  margin-top: 18px;
 }
 
 .widget-note-label {
   display: block;
-  font-size: 0.78rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-family: var(--hv-font-mono);
+  font-size: 0.64rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--hv-faint);
-  margin-bottom: 7px;
+  margin-bottom: 8px;
 }
 
 .widget-note-input {
   width: 100%;
-  min-height: 58px;
-  padding: 9px 11px;
+  min-height: 62px;
+  padding: 10px 12px;
   border: 1px solid var(--hv-border);
-  border-radius: 7px;
+  border-radius: var(--hv-radius-sm);
   font-family: inherit;
   font-size: 0.9rem;
-  line-height: 1.5;
+  line-height: 1.55;
   resize: vertical;
   color: var(--hv-text);
   background: var(--hv-surface-2);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  transition: border-color 0.12s ease, background 0.12s ease;
 }
 
 .widget-note-input::placeholder { color: var(--hv-faint); }
@@ -496,28 +522,30 @@ body {
   outline: none;
   border-color: var(--hv-accent);
   background: var(--hv-surface);
-  box-shadow: 0 0 0 3px var(--hv-accent-tint);
 }
 
 /* ── Evidence: code, tables ───────────────────────────────────────────────── */
 /* A question is answerable only if what it is about is ON the page. These style
-   the material quoted inside a widget so the user never has to go look it up. */
+   the material quoted inside a widget so the user never has to go look it up.
+   Evidence takes the whole content track, not the reading measure — a wrapped
+   line of code is a different line of code. */
 
 .widget pre {
-  margin: 0 0 12px;
-  padding: 11px 13px;
+  margin: 0 0 18px;
+  padding: 14px 16px;
   overflow-x: auto;
-  background: var(--hv-surface-2);
-  border: 1px solid var(--hv-border-soft);
-  border-radius: 7px;
+  background: var(--hv-surface-3);
+  border: 1px solid var(--hv-border);
+  border-radius: var(--hv-radius);
   font-family: var(--hv-font-mono);
-  font-size: 0.83rem;
-  line-height: 1.55;
+  font-size: 0.84rem;
+  line-height: 1.65;
   color: var(--hv-text);
 }
 
 .widget pre code {
   background: none;
+  border: none;
   padding: 0;
   font-size: inherit;
 }
@@ -525,34 +553,37 @@ body {
 .widget code {
   padding: 1px 5px;
   background: var(--hv-surface-2);
-  border: 1px solid var(--hv-border-soft);
-  border-radius: 4px;
+  border: 1px solid var(--hv-border);
+  border-radius: 3px;
   font-family: var(--hv-font-mono);
   font-size: 0.86em;
 }
 
 .widget table {
   width: 100%;
-  margin: 0 0 12px;
+  margin: 0 0 18px;
   border-collapse: collapse;
-  font-size: 0.88rem;
+  font-size: 0.9rem;
 }
 
 .widget th,
 .widget td {
-  padding: 7px 10px;
+  padding: 9px 12px;
   text-align: left;
-  border-bottom: 1px solid var(--hv-border-soft);
+  border-bottom: 1px solid var(--hv-border);
   vertical-align: top;
 }
 
 .widget th {
-  font-size: 0.76rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-family: var(--hv-font-mono);
+  font-size: 0.64rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--hv-faint);
 }
+
+.widget tbody tr:last-child td { border-bottom: none; }
 
 /* ── Recommended option ───────────────────────────────────────────────────── */
 /* The recommendation lives ON the option it recommends, not in a block above the
@@ -563,7 +594,6 @@ body {
 .radio-option.is-recommended,
 .checkbox-option.is-recommended {
   border-color: var(--hv-ok);
-  background: var(--hv-ok-tint);
 }
 
 .radio-option.is-recommended:hover,
@@ -576,7 +606,7 @@ body {
 }
 
 /* Selecting an option other than the recommended one must still read as the
-   selected one — the checked treatment wins over the recommendation tint. */
+   selected one — the checked treatment wins over the recommendation border. */
 .widget-radio .radio-option.is-recommended:has(input:checked),
 .widget-checkbox .checkbox-option.is-recommended:has(input:checked) {
   border-color: var(--hv-accent);
@@ -585,8 +615,7 @@ body {
 .recommended-mark {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  margin-left: 8px;
+  gap: 6px;
   white-space: nowrap;
 }
 
@@ -594,27 +623,30 @@ body {
 /* For a question with no options to mark — an open-ended .widget-text. */
 
 .widget-recommendation {
-  margin: 0 0 14px;
-  padding: 11px 14px;
-  border-left: 3px solid var(--hv-ok);
-  border-radius: 0 7px 7px 0;
-  background: var(--hv-ok-tint);
+  max-width: var(--hv-measure);
+  margin: 0 0 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--hv-border);
+  border-left: 2px solid var(--hv-ok);
+  border-radius: var(--hv-radius);
+  background: var(--hv-surface);
 }
 
 .widget-recommendation-label {
   display: block;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.07em;
+  font-family: var(--hv-font-mono);
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--hv-ok-deep);
-  margin-bottom: 5px;
+  color: var(--hv-ok);
+  margin-bottom: 8px;
 }
 
 .widget-recommendation p {
-  margin: 0 0 6px;
-  font-size: 0.92rem;
-  line-height: 1.55;
+  margin: 0 0 8px;
+  font-size: 0.93rem;
+  line-height: 1.65;
   color: var(--hv-text);
 }
 
@@ -622,7 +654,7 @@ body {
 
 .widget-recommendation .recommendation-why {
   color: var(--hv-muted);
-  font-size: 0.88rem;
+  font-size: 0.89rem;
 }
 
 /* ── Diagrams ─────────────────────────────────────────────────────────────── */
@@ -633,11 +665,11 @@ body {
 
 .vis-mermaid-wrap {
   position: relative;
-  margin: 0 0 13px;
-  padding: 12px 14px;
-  background: var(--hv-surface-2);
-  border: 1px solid var(--hv-border-soft);
-  border-radius: 8px;
+  margin: 0 0 18px;
+  padding: 16px 18px;
+  background: var(--hv-surface);
+  border: 1px solid var(--hv-border);
+  border-radius: var(--hv-radius);
   overflow-x: auto;
 }
 
@@ -655,42 +687,44 @@ body {
 
 .vis-mermaid-label {
   display: block;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.07em;
+  font-family: var(--hv-font-mono);
+  font-size: 0.64rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--hv-faint);
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .vis-compare {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
 }
 
-@media (max-width: 580px) {
-  .vis-compare { grid-template-columns: 1fr; }
+@media (max-width: 760px) {
+  .vis-compare { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* ── Responsive tweaks ────────────────────────────────────────────────────── */
 
-@media (max-width: 480px) {
-  .page-chrome {
-    padding: 26px 15px 44px;
-  }
-
-  .page-header h1 { font-size: 1.7rem; }
-
+@media (max-width: 680px) {
   .widget,
-  .verdict-section,
-  .freeform-section {
-    padding: 16px 17px;
+  .verdict-section {
+    padding: 24px 0 26px 14px;
+    margin-left: -14px;
   }
 
-  .submit-btn,
-  .copy-btn {
-    width: 100%;
-    text-align: center;
+  .widget-radio .radio-option,
+  .widget-checkbox .checkbox-option,
+  .approaches-none {
+    grid-template-columns: 20px 15px minmax(0, 1fr);
+    gap: 11px;
+    padding: 12px 13px;
+  }
+
+  /* The pill would force a third column at this width; it moves under the label. */
+  .recommended-mark {
+    grid-column: 3;
   }
 }

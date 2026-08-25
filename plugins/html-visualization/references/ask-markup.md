@@ -27,20 +27,65 @@ Every document must have this top-level structure:
   <link rel="stylesheet" href="/assets/ask/style.css">
 </head>
 <body>
-  <div class="page-chrome">
-    <header class="page-header"> … </header>
-    <div id="main-form"> … (widgets, verdict, freeform, submit-row) </div>
-    <div id="state-submitted" class="state-submitted"> … </div>
-    <div id="state-already-submitted" class="state-already-submitted"> … </div>
+  <div class="hv-topbar">                     <!-- mode, title, host -->
+    <span class="hv-topbar-mode">Ask</span>
+    <span class="hv-topbar-title"> … </span>
+    <span class="hv-topbar-meta"></span>      <!-- app.js fills this -->
+  </div>
+  <div class="hv-shell">
+    <aside class="hv-rail">                   <!-- app.js fills the list -->
+      <span class="hv-rail-title hv-meta">Questions</span>
+      <div class="hv-rail-list"></div>
+      <div class="hv-rail-progress">
+        <div class="hv-rail-track"><div class="hv-rail-fill"></div></div>
+        <span class="hv-rail-count hv-meta"></span>
+      </div>
+    </aside>
+    <main class="hv-main">
+      <header class="page-header"> … </header>
+      <div id="main-form"> … (widgets, verdict, freeform, submit-error, submit-row) </div>
+      <div id="state-submitted" class="state-submitted"> … </div>
+      <div id="state-already-submitted" class="state-already-submitted"> … </div>
+    </main>
   </div>
   <script src="/assets/shared/submit.js"></script>
   <script src="/assets/shared/overlay.js"></script>
+  <script src="/assets/shared/heartbeat.js"></script>
   <script src="/assets/ask/app.js"></script>
 </body>
 </html>
 ```
 
 **Do NOT** add `<script>const CSRF_TOKEN = "...";</script>` manually — the server injects it before `</head>`.
+
+## What app.js generates — do not author it
+
+Four things are built at load. Writing them by hand produces a duplicate, or a
+value that goes stale the moment a question moves:
+
+| Generated | Where it lands | Why not by hand |
+|---|---|---|
+| `.widget-index` — `01 · SINGLE CHOICE` | First child of every `.widget[data-qid]` | Hand numbering breaks when a question is inserted above it, and nothing checks it. |
+| `.hv-key` — the keycap on each option | First child of every option row | The cap is bound to a real key; an unbound cap is a lie. |
+| `.hv-rail-item` — one entry per question | `.hv-rail-list` | Same staleness problem as the numbering. |
+| `.widget-note` — the free-text answer field | Last child of every `.annotatable` widget | Already generated before this change. |
+
+Leave `.hv-rail-list`, `.hv-rail-count`, `.hv-topbar-meta`, `.hv-status-hint`
+and the `data-hv-mod` keycap EMPTY in the markup.
+
+## The keyboard layer
+
+The page advertises three keys in its status line and binds all three:
+
+| Key | What it does |
+|---|---|
+| `1`–`9` | Selects the nth option of the question with the most of itself on screen. On a `.widget-checkbox` it toggles rather than replaces. Ignored while the caret is in a text field. |
+| `?` | Opens the first `.hv-info-btn` panel in that question. |
+| `Cmd`/`Ctrl` + `Enter` | Submits. This one works from inside a textarea — it is the last thing a user does, and they are usually typing when they decide to. |
+
+Keep an option list short enough to key. Past nine options the tail carries no
+cap and can only be clicked, which is a reason to split the question rather
+than to accept it.
 
 ---
 
@@ -50,18 +95,22 @@ Every document must have this top-level structure:
 
 | Class | Element | Purpose |
 |---|---|---|
-| `.page-chrome` | `<div>` | Outer max-width container; always wraps everything inside `<body>`. |
-| `.page-header` | `<header>` | Top header area; contains `<h1>` (title) and `.subtitle` paragraph. |
+| `.hv-topbar` | `<div>` | Sticky bar naming the mode, the document and the host. First element in `<body>`. |
+| `.hv-shell` | `<div>` | The rail + content grid; wraps everything below the top bar. |
+| `.hv-rail` | `<aside>` | Question index and progress. Authored empty — app.js fills it. |
+| `.hv-main` | `<main>` | The content column. |
+| `.page-header` | `<header>` | Top of the content column; an `.hv-meta` eyebrow, `<h1>` and `.subtitle`. |
+| `.hv-meta` | `<span>` | A machine string — mono, uppercase, tracked. Used for the header eyebrow and every section label. |
 | `.subtitle` | `<p>` inside `.page-header` | One-line description of the document. |
 | `.verdict-section` | `<div>` | Wraps the overall `.widget-verdict` and its `<h2>` heading. |
 | `.freeform-section` | `<div>` | Wraps the global free-text textarea and its `<h2>` heading. |
-| `.submit-row` | `<div>` | Wraps `.submit-btn` and `.copy-btn`; always placed after `.freeform-section`. |
+| `.submit-row` | `<div>` | The sticky action bar. Wraps `.submit-btn`, `.copy-btn` and `.hv-status-hint`. Last child of `#main-form`, after `#submit-error`. |
 
 ### Widget classes (add to the same element)
 
 | Class | Used with | Purpose |
 |---|---|---|
-| `.widget` | Any question widget `<div>` | Base widget card. Always paired with a type-specific class. |
+| `.widget` | Any question widget `<div>` | Base widget section. Always paired with a type-specific class. |
 | `.widget-text` | `.widget` | Free-text question with a `<textarea>`. |
 | `.widget-radio` | `.widget` | Single-choice question with radio buttons. |
 | `.widget-checkbox` | `.widget` | Multi-choice question with checkboxes. |
