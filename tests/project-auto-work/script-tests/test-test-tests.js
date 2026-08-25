@@ -184,12 +184,12 @@ async function main() {
     DIALS.high, normalizeArgs({ repoRoot: '/r', scriptsDir: '/s', level: 'ultra' }).dial);
 
   // ── baselineAbort ────────────────────────────────────────────────────────────
-  eq('baselineAbort: a healthy baseline proceeds', null, baselineAbort(healthyBaseline(), '/schema.md'));
+  eq('baselineAbort: a healthy baseline proceeds', null, baselineAbort(healthyBaseline()));
 
   // THE ordering regression: a suite killed by the 600 s timeout reports wall_s=601 AND
   // green=false. Evaluated in the wrong order it would be reported as a failing suite,
   // sending the user to debug tests that never actually ran.
-  const timedOut = baselineAbort({ ...healthyBaseline(), wall_s: 601, green: false }, '/schema.md');
+  const timedOut = baselineAbort({ ...healthyBaseline(), wall_s: 601, green: false });
   truthy('baselineAbort: a timed-out baseline reports "too slow", not "red" (gate ordering)',
     timedOut && /too slow/.test(timedOut.reason), `got ${timedOut && timedOut.reason}`);
   truthy('baselineAbort: the slow abort says the pass/fail state is unknown',
@@ -197,7 +197,16 @@ async function main() {
   truthy('baselineAbort: the slow abort carries the slowest tests as remediation input',
     timedOut && timedOut.remediation.includes('slowest tests'));
 
-  const red = baselineAbort({ ...healthyBaseline(), green: false, red_details: 'test_foo failed' }, '/schema.md');
+  // The cap the gate is written against, driven exactly. Off by one either way is a real
+  // misdiagnosis: `>= 600` turns away a suite that lands on the documented cap, and a
+  // timed-out baseline reports green=false too, so it would fall through to the red gate and
+  // be reported as a failing suite — what the gate-ordering comment says must never happen.
+  eq('baselineAbort: a baseline at exactly the 600 s cap proceeds', null,
+    baselineAbort({ ...healthyBaseline(), wall_s: 600 }));
+  truthy('baselineAbort: one second past the cap aborts as too slow',
+    /too slow/.test((baselineAbort({ ...healthyBaseline(), wall_s: 601, green: false }) || {}).reason || ''));
+
+  const red = baselineAbort({ ...healthyBaseline(), green: false, red_details: 'test_foo failed' });
   truthy('baselineAbort: a red suite aborts as unauditable', red && /suite is red/.test(red.reason));
   truthy('baselineAbort: the red abort carries the failing tests', red && red.evidence.includes('test_foo failed'));
   // abortReport keys the verdict off this prefix ('untrustworthy' vs 'not-auditable').
@@ -229,8 +238,9 @@ async function main() {
   eq('reachabilitySummary: an unaudited component contributes nothing',
     { sites: 0, unreached: 0, inconclusive: 0, reached: 0 },
     reachabilitySummary([{ audited: false, mutants: [mut({ reached: 'no' })] }]));
-  truthy('reachabilitySummary: the cap ratio is a share, not a count',
-    UNREACHED_CAP_RATIO > 0 && UNREACHED_CAP_RATIO < 1);
+  // A range assertion passes for every value in the range, so it pins nothing: the ratio
+  // decides whether a suite can be called strong, and moving it would fail no test.
+  eq('reachabilitySummary: the cap ratio is exactly one third', 1 / 3, UNREACHED_CAP_RATIO);
 
   // ── scoreabilityAbort ────────────────────────────────────────────────────────
   const worker = (over) => ({ component: 'core', audited: true, mutants: [], noops: [], delays: [], flakes: [], ...over });
@@ -403,7 +413,9 @@ async function main() {
           component: opts.label.slice('worker:'.length), audited: true, integrity_ok: true,
           mutants: Array.from({ length: survivors }, (_, i) => ({
             file: 'src/a.js', line: i + 1, diff: 'd', stated_behavior_change: 'b', outcome: 'SURVIVED',
-            reached: agentOver.__workerReached || 'yes',
+            reached: Array.isArray(agentOver.__workerReached)
+              ? (agentOver.__workerReached[i] || 'yes')
+              : (agentOver.__workerReached || 'yes'),
           })),
           noops: [], delays: [], flakes: [],
         };
@@ -570,6 +582,24 @@ async function main() {
     !withCoverage.prompts.some((p) => /REACHABILITY CAP/.test(p)));
   eq('reachability: the measured counts are returned raw for the relay',
     { sites: 1, unreached: 1, inconclusive: 0, reached: 0 }, mostlyUnreached.ret.raw.reachability);
+
+  // The cap's exact boundary, from both sides. `>=` is the intended comparison, so one
+  // unreached site in three must fire it and one in four must not — and the arithmetic has to
+  // survive binary floating point, where a third of three sites is the awkward case.
+  const capAtBoundary = await runAudit({ level: 'medium' }, {
+    __workerSurvivors: 3, __workerReached: ['no', 'yes', 'yes'],
+  });
+  truthy('cap boundary: exactly one third unreached fires the reachability cap',
+    capAtBoundary.prompts.some((p, i) => capAtBoundary.labels[i] === 'synthesis' &&
+      /REACHABILITY CAP \(binding\)/.test(p)),
+    'one unreached of three did not trip the cap');
+  const capBelowBoundary = await runAudit({ level: 'medium' }, {
+    __workerSurvivors: 4, __workerReached: ['no', 'yes', 'yes', 'yes'],
+  });
+  truthy('cap boundary: one unreached in four stays under the cap',
+    !capBelowBoundary.prompts.some((p, i) => capBelowBoundary.labels[i] === 'synthesis' &&
+      /REACHABILITY CAP \(binding\)/.test(p)),
+    'one unreached of four tripped the cap');
 
   // Refuting a proven-unreached survivor would spend an agent to argue away a measurement.
   const unreachedDeep = await runAudit({ level: 'ultra' }, { __workerReached: 'no' });
