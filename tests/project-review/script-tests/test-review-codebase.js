@@ -94,7 +94,7 @@ async function main() {
   // ── normalizeArgs ────────────────────────────────────────────────────────────
   eq('normalizeArgs: parsed object passes through',
     {
-      repoRoot: '/r', scope: 'the api layer', vocabFile: '/v.md', rulesFile: '', rulesFileRejected: '', level: 'medium', ultra: false,
+      repoRoot: '/r', scope: 'the api layer', vocabFile: '/v.md', vocabFileRejected: '', rulesFile: '', rulesFileRejected: '', level: 'medium', ultra: false,
       reviewModel: 'opus', receivedKeys: ['repoRoot', 'scope', 'vocabFile'], error: null,
     },
     normalizeArgs({ repoRoot: '/r', scope: 'the api layer', vocabFile: '/v.md' }));
@@ -169,6 +169,18 @@ async function main() {
   truthy('dimensionSchema: an extra property is merged in', !!withTree.properties.tree_mermaid);
   eq('dimensionSchema: an extra property does not change the required core',
     base.required, withTree.required);
+
+  // vocabFile carries the identical trap: architectureProcedure branches on truthiness, so
+  // a placeholder would reach the agent as a read instruction pointing at nothing.
+  eq('normalizeArgs: a placeholder vocabFile is dropped',
+    '', normalizeArgs({ repoRoot: '/r', vocabFile: '<SKILL_DIR>/references/design-vocabulary.md' }).vocabFile);
+  eq('normalizeArgs: the dropped vocabFile is reported back',
+    '<SKILL_DIR>/references/design-vocabulary.md',
+    normalizeArgs({ repoRoot: '/r', vocabFile: '<SKILL_DIR>/references/design-vocabulary.md' }).vocabFileRejected);
+  truthy('buildDimensions: a dropped vocabFile leaves no dangling read instruction',
+    !/design vocabulary at/.test(
+      buildDimensions(normalizeArgs({ repoRoot: '/r', vocabFile: '<SKILL_DIR>/v.md' }).vocabFile)
+        .find((d) => d.key === 'architecture').procedure));
 
   // A rulesFile that is not absolute is an unsubstituted "<SKILL_DIR>/…" placeholder. It
   // must drop the dimension, not build one whose prompt points an agent at nothing, and it
