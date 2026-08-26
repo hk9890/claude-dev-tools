@@ -39,20 +39,22 @@ Check for `docs/RELEASING.md`. If it exists, read it before proceeding — it co
 
 Use TodoWrite to track progress through these phases:
 
-- [ ] Quality gates: run tests, build, lint — all must pass with zero failures
-- [ ] Documentation check: verify version consistency across all project files
-- [ ] Version bump: update version in project files (package.json, Cargo.toml, etc.)
-- [ ] Commit and push the version bump to the default branch; re-verify clean tree
-- [ ] Write release notes: structured format per release-notes-guide.md
-- [ ] Create GitHub release: tag, release body, assets
-- [ ] Post-release verification: confirm release is live and correct
+- [ ] Quality gates: run tests, build, lint — all must pass with zero failures — [quality-gates.md](references/quality-gates.md)
+- [ ] Documentation check: verify version consistency across all project files — [documentation-checklist.md](references/documentation-checklist.md)
+- [ ] Version bump: update version in project files (package.json, Cargo.toml, etc.) — [version-management.md](references/version-management.md)
+- [ ] Commit and push the version bump to the default branch; re-verify clean tree — [release-workflow.md](references/release-workflow.md)
+- [ ] Write release notes: structured format — [release-notes-guide.md](references/release-notes-guide.md)
+- [ ] Create GitHub release: tag, release body, assets — [release-workflow.md](references/release-workflow.md)
+- [ ] Post-release verification: confirm release is live and correct — [release-workflow.md](references/release-workflow.md)
 - [ ] Cleanup: post-release steps the project's `docs/RELEASING.md` specifies (announcements, version-file rollover); skip if it defines none
 
 **3. Execute each phase in order**
 
-Work through the checklist, marking items complete as you go. Reference the relevant doc for each phase (see References below). Do not proceed to the next phase if the current one fails.
+Work through the checklist, marking items complete as you go, and read each phase's doc before starting that phase. Do not proceed to the next phase if the current one fails. When something goes wrong, [troubleshooting.md](references/troubleshooting.md) covers the common `gh` CLI, git, and CI failures.
 
 ## References
+
+Every doc a release phase needs is linked from the checklist above. The full set:
 
 - [release-workflow.md](references/release-workflow.md) — Detailed process for each phase
 - [quality-gates.md](references/quality-gates.md) — Pre-release validation gates

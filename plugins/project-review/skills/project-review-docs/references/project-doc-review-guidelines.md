@@ -42,6 +42,12 @@ class of defect.
 
    Both legs ask *true?* and *belongs here?* of every unit of content against the file's
    ownership contract; accurate-but-misplaced content is a finding under *Ownership*.
+
+   Where the repo has a `docs/DOCUMENTING.md`, every agent in both legs is also pointed at
+   it and told to drop gap findings its recorded decisions already settle. The suppression
+   is scoped to gaps by name: a false claim, a stale command, a dead link, or out-of-boundary
+   content stays at full severity whatever the decisions say, and a decision that contradicts
+   the repo is itself a finding. Repos without the file are told nothing about decisions.
 3. **History** — the docs were used or they were not, and past sessions say which.
    `scripts/history.py` extracts the user messages of this repo's transcripts; a small model
    labels each with a use case; the script then filters, stratifies, and projects; a judge
@@ -55,7 +61,9 @@ class of defect.
    but never run. Routes history could not evaluate are probed first.
 5. **Synthesis** — merge and dedupe, reconcile across files (sibling contradictions; a missing
    canonical doc whose content lives under another name), raise the mechanical facts no reading
-   agent covered, then verdict and report.
+   agent covered, then verdict and report. It re-reads `docs/DOCUMENTING.md` where one exists and
+   drops any surviving finding those decisions settle, naming in `cross_file_notes` what it
+   dropped and which decision covered it — so a suppression is visible rather than silent.
 
 ## Where the bars live
 
@@ -70,6 +78,7 @@ Change them at the authoritative site. This table is the index, not the source.
 | Use case → doc, and the classifier's label vocabulary | `USE_CASES` in `review-docs.js` and `USE_CASE_DOCS` in `history.py` — two copies, because workflow scripts cannot import; pinned by `test-history.sh` |
 | What each level buys | `LEVEL_CONFIG` in `review-docs.js` |
 | History finding floor | `MIN_SEGMENTS_FOR_FINDING` in `review-docs.js` |
+| What a repo's recorded doc decisions may suppress | the `decisionsBlock` and the synthesis decisions block in `review-docs.js`; the *Recorded decisions* bullet of `docs/DOCUMENTING.md` in `project-setup.md` states the contract |
 | Execution verdicts | `GRADE_SCHEMA` and the grader prompt |
 | Overall verdict (`accurate` / `minor gaps` / `significant gaps` / `misleading`) | `REPORT_SCHEMA` and the synthesis prompt |
 

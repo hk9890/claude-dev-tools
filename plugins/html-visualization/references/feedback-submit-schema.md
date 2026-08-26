@@ -3,19 +3,9 @@
 The POST `/submit` payload produced by the feedback-mode browser document
 (`assets/feedback/app.js`) and read back by Claude.
 
-The shared `bin/server.js` is **schema-agnostic** — it accepts any JSON object,
-stamps `submittedAt`, and writes it verbatim. It does not validate the fields
-below. Conforming to this schema is the responsibility of `assets/feedback/app.js`
-(which emits it) and Claude (which reads it back). The server's only hard
-guarantees are CSRF/Origin checks, an `application/json` Content-Type, a
-JSON-object body, and the one-shot lifecycle.
-
-## Wire format
-
-- **Method**: `POST`
-- **Path**: `/submit`
-- **Content-Type**: `application/json`
-- **Required header**: `X-CSRF-Token: <startup-token>` (see CSRF section below)
+The wire format, CSRF and Origin checks, check order, response codes, and how the
+feedback file is written are the same in every mode and live in
+[submit-contract.md](submit-contract.md). This file owns the payload shape only.
 
 ## Request body
 
@@ -60,91 +50,9 @@ Each element of `comments` has exactly five fields:
 Multiple comments MAY share the same `blockId` (the user commented on different
 selections within one block).
 
----
+## Feedback file
 
-## CSRF protection
-
-The server is bound to every interface (dual-stack where the OS supports it) and
-accepts POST requests from any browser tab that can reach the port — local or on
-the network. The bind is NOT a CSRF
-boundary and NOT an access boundary. Real protection is a per-invocation
-unguessable startup token, and it proves only that a request came from the
-served page: `GET /` hands the token to whoever asks.
-
-### Token lifecycle
-
-1. At startup the server generates a cryptographically random token (at minimum
-   128 bits / 22+ base64url characters).
-2. The token is embedded in the served HTML as a JavaScript constant:
-   ```html
-   <script>const CSRF_TOKEN = "r4nD0m-t0k3n-v4lu3";</script>
-   ```
-   The constant name MUST be exactly `CSRF_TOKEN`.
-3. The browser-side submit handler reads `CSRF_TOKEN` and sends it as the
-   `X-CSRF-Token` request header.
-4. On every `POST /submit` the server checks the `X-CSRF-Token` header matches
-   the startup token exactly (constant-time comparison). Absent or wrong → `403`.
-
-### Origin / Sec-Fetch-Site validation
-
-- If `Sec-Fetch-Site` is present, its value MUST be `"same-origin"` or `"none"`.
-  Any other value → `403`.
-- If `Origin` is present, its **host** MUST equal the `Host` header of the same
-  request — the server answers to every name that resolves to it, so there is no
-  single origin string to compare against. Compare hosts, not whole origins: a
-  TLS-terminating forwarder gives the browser an `https://` page while the server
-  speaks `http`, and matching the scheme too would reject every submit made
-  through one. Mismatch, or an unparseable `Origin` (including the literal
-  `null`) → `403`.
-
-These checks are secondary; the startup-token check is the primary defence.
-
----
-
-## Response shape
-
-### Success — `200 OK`
-
-```json
-{ "ok": true }
-```
-
-The server writes the feedback file, then exits with code `0`.
-
-### Bad request — `400 Bad Request`
-
-```json
-{ "error": "<human-readable message>" }
-```
-
-Returned when: `Content-Type` is not `application/json`, the body is not valid
-JSON, or the body is valid JSON but not an object. The server does **not**
-inspect individual fields.
-
-### CSRF failure — `403 Forbidden`
-
-```json
-{ "error": "forbidden" }
-```
-
-Returned when the `X-CSRF-Token` header is missing or incorrect, or
-`Origin`/`Sec-Fetch-Site` validation fails.
-
-### Too late — `410 Gone`
-
-```json
-{ "error": "already submitted" }
-```
-
-Returned when the server has already accepted one successful submit.
-
----
-
-## Feedback file format
-
-On success the server writes a `<basename>.feedback.json` to the per-invocation
-temp directory. The file is the parsed request body plus a server-stamped
-timestamp:
+The request body passed through, with `submittedAt` stamped by the server:
 
 ```json
 {
@@ -162,10 +70,6 @@ timestamp:
   "freeform": "<string>"
 }
 ```
-
-`submittedAt` is added by the server. All other fields are passed through from the
-request body verbatim. The file is written atomically (write to a temp path, then
-`fs.renameSync`) before `exit 0`.
 
 Claude branches its read-back on `action`: `"apply"` → apply the feedback,
 regenerate the document, and re-serve for another round; `"submit"` → apply the
