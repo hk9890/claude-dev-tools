@@ -24,7 +24,7 @@ The Prerequisites and Workflow below apply to use case 1.
 Before starting, verify:
 - `command -v gh` succeeds (GitHub CLI installed)
 - `gh auth status` succeeds (GitHub CLI authenticated)
-- `git status --porcelain` returns empty (clean working tree)
+- No uncommitted tracked changes — [quality-gates.md — Gate 1](references/quality-gates.md#gate-1-clean-working-tree) owns the command
 - You are on the default branch — releases are cut from the default branch — and in sync with its remote
 
 Run the checks as [release-workflow.md — Phase 1](references/release-workflow.md) specifies; it owns the `DEFAULT_BRANCH` derivation. If `gh` is missing or unauthenticated, or any check fails, stop and guide the user through fixing it — see [troubleshooting.md](references/troubleshooting.md). Do not start the workflow with a failed prerequisite.
