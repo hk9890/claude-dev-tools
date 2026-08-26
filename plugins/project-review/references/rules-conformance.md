@@ -16,10 +16,8 @@ Read, in this order:
 2. **`docs/CODING.md`** — rules for creating and changing files.
 3. **`docs/TESTING.md`** — rules for writing tests, the gates, and when each applies.
 4. **`docs/DOCUMENTING.md`**, where the project has one — what `CODING.md` is to the source
-   tree it is to the doc tree: doc gates and lint, citation and link conventions, and the
-   decisions taken about what the project documents and what it leaves out. Its local rules
-   beat the generic doc standard, so any change that adds or edits Markdown is judged
-   against it.
+   tree, this is to the doc tree, and its local rules beat any generic doc standard. A
+   change that adds or edits Markdown is judged against it.
 5. **`docs/OVERVIEW.md`** — read it because `CODING.md` sends you there for where a file
    belongs. It is a map, not a rule set: judge placement against it, nothing else.
 6. **`docs/REVIEWING.md`** — the local delta. Its out-of-scope list **binds this review**:

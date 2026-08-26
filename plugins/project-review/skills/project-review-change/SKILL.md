@@ -7,10 +7,11 @@ argument-hint: "[pr-number|branch|path]"
 ---
 
 Read-only review of one change against **this project's own documents**. It asks a single
-question: does the change do what the project wrote down that it must? The standard is
-whatever `AGENTS.md` routes to — in the usual layout `docs/CODING.md`, `docs/TESTING.md`,
-`docs/DOCUMENTING.md`, and the layout map they point at. Correctness bugs, design, and simplification are a
-different review and are not judged here.
+question: does the change do what the project wrote down that it must? Correctness bugs,
+design, and simplification are a different review and are not judged here.
+
+`references/rules-conformance.md` at the plugin root is the whole procedure, including
+which documents form the standard. Step 2 builds the path to it.
 
 One adversarial agent does the whole job. There is no workflow and no level argument.
 
@@ -60,6 +61,9 @@ One adversarial agent does the whole job. There is no workflow and no level argu
 
    An empty file list is not a clean review. Say the subject contains no changes, and stop.
 
+   A repository with no `AGENTS.md` and no document it routes to has no standard to
+   measure against. Say so and stop here rather than paying for an agent run to discover it.
+
    Done when you can name the subject in one sentence and list the files it touches.
 
 2. **Build the two absolute paths.** `SKILL_DIR` is the **base directory for this skill**,
@@ -76,6 +80,8 @@ One adversarial agent does the whole job. There is no workflow and no level argu
 
    Never `find` the plugin and never improvise either path. If a file is missing, stop and
    say the install is broken.
+
+   Done when both paths are printed above.
 
 3. **Invoke the reviewer.** Use the **Agent** tool with `subagent_type`
    `project-review:project-reviewer` — that agent carries the adversarial posture, the
@@ -115,15 +121,9 @@ One adversarial agent does the whole job. There is no workflow and no level argu
    For a "did you really check X?" follow-up, **re-run the skill**; never answer from the
    review text alone.
 
-If the **Agent** tool is unavailable, run the procedure yourself — read
-`references/rules-conformance.md` in full, apply it to the subject, produce the same
-sections, and state that the review ran inline rather than on the reviewer agent.
-
-## No standard, no review
-
-Where the project has no `AGENTS.md` and no document it routes to, there is nothing to
-measure against. Report that, and stop. Never fall back to the patterns already in the
-code, and never report a rule the project has not written down.
+If the **Agent** tool is unavailable, run the procedure yourself — read the step-2
+procedure path in full, apply it to the subject, produce the same sections, and state that
+the review ran inline rather than on the reviewer agent.
 
 ## Not covered
 
