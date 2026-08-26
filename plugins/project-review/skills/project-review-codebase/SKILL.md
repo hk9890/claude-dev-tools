@@ -1,15 +1,19 @@
 ---
 name: project-review-codebase
-description: "Read-only review of production and test code across three dimensions (consistency, structure, architecture) via a multi-agent workflow that dedupes findings across dimensions and writes a standalone Markdown report with Mermaid diagrams; reports fixes, never edits."
+description: "Read-only review of production and test code across four dimensions (consistency, structure, architecture, and conformance to the rules the project wrote down) via a multi-agent workflow that dedupes findings across dimensions and writes a standalone Markdown report with Mermaid diagrams; reports fixes, never edits."
 user-invocable: true
 disable-model-invocation: true
 argument-hint: "[low|medium|high|ultra] [html-viz] [what-to-review]"
 ---
 
-Read-only codebase review across three dimensions — consistency, structure, and
-architecture. Launch the review workflow — do **not** review inline. The workflow
-returns a structured report plus a Markdown artifact; relay the report and write
-the artifact to a temp file.
+Read-only codebase review across four dimensions — consistency, structure,
+architecture, and rules. Launch the review workflow — do **not** review inline. The
+workflow returns a structured report plus a Markdown artifact; relay the report and
+write the artifact to a temp file.
+
+The rules dimension is the codebase-wide half of `project-review-change`: both run the
+same procedure from `references/rules-conformance.md`, one over a change and one over
+the whole tree.
 
 Test code is a subject here, not a backdrop: the dimensions cover test conventions and
 setup idioms, test-support layout and misplaced tests, and whether each module's failure
@@ -30,10 +34,13 @@ modes are actually exercised.
 
 3. Invoke the **Workflow** tool:
    - `scriptPath`: `<SKILL_DIR>/workflows/review-codebase.js`
-   - `args`: `{ "repoRoot": "<repo root, or the step-1 path>", "scope": "<the step-1 what-to-review, or empty>", "vocabFile": "<SKILL_DIR>/references/design-vocabulary.md", "level": "<the step-1 level>" }`
+   - `args`: `{ "repoRoot": "<repo root, or the step-1 path>", "scope": "<the step-1 what-to-review, or empty>", "vocabFile": "<SKILL_DIR>/references/design-vocabulary.md", "rulesFile": "<SKILL_DIR>/../../references/rules-conformance.md", "level": "<the step-1 level>" }`
+   - `rulesFile` sits at the **plugin root**, so the `../..` climb is correct — the
+     procedure is shared with `project-review-change`. Omitting the argument drops the
+     rules dimension and the run covers three dimensions instead of four.
    - The workflow fans out one adversarial read-only agent per dimension
-     (consistency, structure, architecture), then a synthesis stage dedupes and
-     reconciles findings across dimensions. `low` runs the same three dimensions on
+     (consistency, structure, architecture, rules), then a synthesis stage dedupes and
+     reconciles findings across dimensions. `low` runs the same four dimensions on
      sonnet rather than opus — same coverage, roughly 40% of the cost. `medium` and
      `high` are identical: opus dimensions, high-effort synthesis. `ultra` adds an
      adversarial refutation gate every finding must pass before it is reported.
@@ -83,14 +90,19 @@ modes are actually exercised.
    - **Keep it** — if they want it in the repo, they say where and you copy it.
      Do not pick a location or copy it unprompted.
 
-If the Workflow tool is unavailable or the workflow cannot launch, run the three
-dimension procedures inline yourself — they are embedded in
-`workflows/review-codebase.js`, along with the artifact format; read them from
+If the Workflow tool is unavailable or the workflow cannot launch, run the dimension
+procedures inline yourself. Consistency, structure and architecture are embedded in
+`workflows/review-codebase.js`, along with the artifact format; the rules procedure is
+the `rulesFile` from step 3, and the workflow's `rulesProcedure()` carries the two
+adjustments that turn it from a change review into a tree review. Read all of them from
 there, produce the same Markdown file, and state that the workflow did not run.
 
 ## Not covered
 
-Documentation accuracy and staleness → `project-review-docs`; empirical test-suite
+One change rather than the whole tree — a branch, a pull request, the working tree →
+`project-review-change`, which runs this skill's rules procedure over a diff and also
+catches the duties a change created and did not discharge. Documentation accuracy and
+staleness → `project-review-docs`; empirical test-suite
 strength — mutation kill rate, flakiness, unit-test isolation, which lines the tests
 actually execute → `project-auto-work:test-tests`, which proves what this skill can
 only read; pure formatting → linters. Challenging a single design decision

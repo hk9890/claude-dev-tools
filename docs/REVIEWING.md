@@ -1,6 +1,6 @@
 # Reviewing
 
-Local review rules for this plugin marketplace. The generic lenses are `project-review-codebase`, `project-review-docs`, and `project-auto-work:test-tests`; this file records only the delta, and wins where the two conflict.
+Local review rules for this plugin marketplace. The generic lenses are `project-review-change`, `project-review-codebase`, `project-review-docs`, and `project-auto-work:test-tests`; this file records only the delta, and wins where the two conflict.
 
 ## What to prioritise
 

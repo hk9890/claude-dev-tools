@@ -94,7 +94,7 @@ async function main() {
   // ── normalizeArgs ────────────────────────────────────────────────────────────
   eq('normalizeArgs: parsed object passes through',
     {
-      repoRoot: '/r', scope: 'the api layer', vocabFile: '/v.md', level: 'medium', ultra: false,
+      repoRoot: '/r', scope: 'the api layer', vocabFile: '/v.md', rulesFile: '', rulesFileRejected: '', level: 'medium', ultra: false,
       reviewModel: 'opus', receivedKeys: ['repoRoot', 'scope', 'vocabFile'], error: null,
     },
     normalizeArgs({ repoRoot: '/r', scope: 'the api layer', vocabFile: '/v.md' }));
@@ -170,10 +170,41 @@ async function main() {
   eq('dimensionSchema: an extra property does not change the required core',
     base.required, withTree.required);
 
+  // A rulesFile that is not absolute is an unsubstituted "<SKILL_DIR>/…" placeholder. It
+  // must drop the dimension, not build one whose prompt points an agent at nothing, and it
+  // must be distinguishable from an absent argument so the run can say what it dropped.
+  eq('normalizeArgs: an absolute rulesFile is kept',
+    '/rules.md', normalizeArgs({ repoRoot: '/r', rulesFile: '/rules.md' }).rulesFile);
+  eq('normalizeArgs: a placeholder rulesFile is dropped',
+    '', normalizeArgs({ repoRoot: '/r', rulesFile: '<SKILL_DIR>/../../references/rules-conformance.md' }).rulesFile);
+  eq('normalizeArgs: the dropped value is reported back',
+    '<SKILL_DIR>/../../references/rules-conformance.md',
+    normalizeArgs({ repoRoot: '/r', rulesFile: '<SKILL_DIR>/../../references/rules-conformance.md' }).rulesFileRejected);
+  eq('normalizeArgs: an absent rulesFile is not reported as rejected',
+    '', normalizeArgs({ repoRoot: '/r' }).rulesFileRejected);
+
   // ── buildDimensions / dimensionPrompt ────────────────────────────────────────
   const dims = buildDimensions('');
-  eq('buildDimensions: three dimensions in review order',
+  eq('buildDimensions: three dimensions without a rules procedure file',
     ['consistency', 'structure', 'architecture'], dims.map((d) => d.key));
+
+  // The rules procedure is the ONE dimension whose text lives outside this workflow —
+  // references/rules-conformance.md is shared verbatim with project-review-change. Without
+  // the path there is no procedure at all, so the dimension must drop rather than run on a
+  // prompt that tells an agent to read "undefined".
+  eq('buildDimensions: rulesFile appends the rules dimension last',
+    ['consistency', 'structure', 'architecture', 'rules'],
+    buildDimensions('', '/rules.md').map((d) => d.key));
+
+  const rules = buildDimensions('', '/rules.md').find((d) => d.key === 'rules').procedure;
+  truthy('buildDimensions: the rules procedure cites the shared file',
+    rules.includes('/rules.md'));
+  // Both adjustments exist because the shared procedure is written for a CHANGE. Lose
+  // either one and the dimension silently reviews the tree as though it were a diff.
+  truthy('buildDimensions: unfinished duties are re-scoped to standing ones',
+    /UNFINISHED DUTIES BECOME STANDING ONES/.test(rules));
+  truthy('buildDimensions: the suggested-rule-additions list is skipped tree-wide',
+    /SKIP THE "SUGGESTED RULE ADDITIONS" LIST/.test(rules));
 
   const arch = (v) => buildDimensions(v).find((d) => d.key === 'architecture').procedure;
   truthy('buildDimensions: the vocabulary file is cited when supplied',
@@ -265,7 +296,10 @@ async function main() {
     };
     const { ret } = await load({
       agent,
-      args: { repoRoot: '/repo', scope: 'the api layer', vocabFile: '/v.md', level },
+      args: {
+        repoRoot: '/repo', scope: 'the api layer', vocabFile: '/v.md', level,
+        ...(over.rulesFile ? { rulesFile: over.rulesFile } : {}),
+      },
       log: () => {},
       phase: () => {},
       parallel: async (thunks) => Promise.all(thunks.map((t) => t())),
@@ -292,6 +326,18 @@ async function main() {
     deep.prompts.some((p) => p.includes('Repo root: /repo')));
   truthy('orchestration: the scope reaches the dimension prompts',
     deep.prompts.some((p) => p.includes('the api layer')));
+
+  const badRules = await runReview('medium', { rulesFile: '<SKILL_DIR>/rules.md' });
+  eq('orchestration: a placeholder rulesFile spawns no rules agent',
+    ['review:consistency', 'review:structure', 'review:architecture'],
+    badRules.labels.filter((l) => l.startsWith('review:')));
+
+  const withRules = await runReview('medium', { rulesFile: '/rules.md' });
+  eq('orchestration: rulesFile adds a fourth review agent',
+    ['review:consistency', 'review:structure', 'review:architecture', 'review:rules'],
+    withRules.labels.filter((l) => l.startsWith('review:')));
+  truthy('orchestration: the rules agent is pointed at the shared procedure file',
+    withRules.prompts.some((p) => p.includes('Dimension: RULES') && p.includes('/rules.md')));
 
   // ── the ultra refutation filter ──────────────────────────────────────────────
   // The kept list IS the ultra rung's product: users pay for the extra pass to get findings
