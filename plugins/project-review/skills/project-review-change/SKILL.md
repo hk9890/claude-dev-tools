@@ -44,8 +44,23 @@ One adversarial agent does the whole job. There is no workflow and no level argu
    ```
 
    Then take the diff — `git diff` for a dirty tree, `git diff <base>...HEAD` for a
-   branch, `gh pr diff <n>` for a pull request. Done when you can name the subject in one
-   sentence and list the files it touches.
+   branch, `gh pr diff <n>` for a pull request. Use the three-dot form for a branch so the
+   comparison is against the merge base, not against whatever the base branch has since
+   gained.
+
+   **Prove the subject exists before you spawn anything.** Step 3 tells the reviewer agent
+   to take the diff itself, so a ref that does not resolve or a range with no files in it
+   reaches the agent as an empty subject and comes back as a confident review of nothing.
+   That has to fail here instead:
+
+   ```bash
+   git rev-parse --verify --quiet "<the ref you resolved>" >/dev/null || echo "ref does not resolve — stop and ask which branch is the base"
+   git diff --name-only "<the range you resolved>" | head -50
+   ```
+
+   An empty file list is not a clean review. Say the subject contains no changes, and stop.
+
+   Done when you can name the subject in one sentence and list the files it touches.
 
 2. **Build the two absolute paths.** `SKILL_DIR` is the **base directory for this skill**,
    given at the top of this file when the skill loads. It is absolute and install-correct.
