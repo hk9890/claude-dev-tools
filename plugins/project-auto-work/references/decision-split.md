@@ -11,7 +11,7 @@ settled or open *means* is a two-file edit, in both plugins, or they drift.
 | Kind | What it is |
 |---|---|
 | **settled** | One correct answer, and no consequence anyone could reasonably weigh differently. Just do it. |
-| **open** | A competent person could answer differently — it trades one cost against another, picks between conventions the project already uses, or is big enough that "not now" is a real answer. Ask. |
+| **open** | A competent person could answer differently — it changes a name people type, picks between conventions the project already uses, trades one cost against another, or is big enough that "not now" is a real answer. Ask. |
 
 The workflow assigns this, not the relay. Carry each proposal into the group the
 report put it in.

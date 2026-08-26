@@ -3,19 +3,9 @@
 The POST `/submit` payload produced by the ask-mode browser form
 (`assets/ask/app.js`) and read back by Claude.
 
-The shared `bin/server.js` is **schema-agnostic** — it accepts any JSON object,
-stamps `submittedAt`, and writes it verbatim. It does not validate the fields
-below. Conforming to this schema is therefore the responsibility of
-`assets/ask/app.js` (which emits it) and Claude (which reads it back). The
-server's only hard guarantees are CSRF/Origin checks, an `application/json`
-Content-Type, a JSON-object body, and the one-shot lifecycle.
-
-## Wire format
-
-- **Method**: `POST`
-- **Path**: `/submit`
-- **Content-Type**: `application/json`
-- **Required header**: `X-CSRF-Token: <startup-token>` (see CSRF section below)
+The wire format, CSRF and Origin checks, check order, response codes, and how the
+feedback file is written are the same in every mode and live in
+[submit-contract.md](submit-contract.md). This file owns the payload shape only.
 
 ## Request body
 
@@ -55,75 +45,10 @@ Each element of the `comments` array MUST have exactly two fields:
 | `anchor` | string | yes | CSS selector identifying the question widget the note belongs to — always `#<data-qid>` (e.g. `"#q2"`). The server stores this verbatim. |
 | `text` | string | yes | The note text. MUST NOT be an empty string when the element is present in the array — the browser-side form MUST omit empty notes from the array entirely. |
 
----
+## Feedback file
 
-## CSRF protection
-
-The server is bound to every interface (dual-stack where the OS supports it) and accepts POST requests from any browser tab that can reach the port — local or on the network. The bind is NOT a CSRF boundary and NOT an access boundary. Real protection is a per-invocation unguessable startup token, and it proves only that a request came from the served page: `GET /` hands the token to whoever asks.
-
-### Token lifecycle
-
-1. At server startup the server generates a cryptographically random token (at minimum 128 bits / 22+ base64url characters).
-2. The token is embedded in the served HTML document as a JavaScript constant in a `<script>` block:
-   ```html
-   <script>const CSRF_TOKEN = "r4nD0m-t0k3n-v4lu3";</script>
-   ```
-   The constant name MUST be exactly `CSRF_TOKEN`.
-3. The browser-side submit handler reads `CSRF_TOKEN` and sends it as the `X-CSRF-Token` request header.
-4. On every `POST /submit` request the server MUST:
-   - Check that the `X-CSRF-Token` header is present and matches the startup token exactly (constant-time comparison SHOULD be used).
-   - If the header is absent or does not match, respond `403` with no feedback written.
-
-### Origin / Sec-Fetch-Site validation
-
-The server MUST additionally validate:
-
-- If `Sec-Fetch-Site` is present, its value MUST be `"same-origin"` or `"none"`. Any other value (e.g. `"cross-site"`) MUST result in `403`.
-- If `Origin` is present, its **host** MUST equal the `Host` header of the same request — the server answers to every name that resolves to it, so there is no single origin string to compare against. Compare hosts, not whole origins: a TLS-terminating forwarder gives the browser an `https://` page while the server speaks `http`, and matching the scheme too would reject every submit made through one. An unparseable `Origin` (including the literal `null`) MUST result in `403`. Mismatch MUST result in `403`.
-
-These checks are secondary; the startup-token check is the primary defence.
-
----
-
-## Response shape
-
-### Success — `200 OK`
-
-```json
-{ "ok": true }
-```
-
-The server writes the feedback file, then exits with code `0`.
-
-### Bad request — `400 Bad Request`
-
-```json
-{ "error": "<human-readable message>" }
-```
-
-Returned when: `Content-Type` is not `application/json`, the body is not valid JSON, or the body is valid JSON but not an object (e.g. an array or scalar). The server does **not** inspect individual fields.
-
-### CSRF failure — `403 Forbidden`
-
-```json
-{ "error": "forbidden" }
-```
-
-Returned when: `X-CSRF-Token` header is missing or incorrect, or `Origin`/`Sec-Fetch-Site` validation fails.
-
-### Too late — `410 Gone`
-
-```json
-{ "error": "already submitted" }
-```
-
-Returned when the server has already accepted one successful submit and is in the process of shutting down. The server MUST reject duplicate submits with `410`, not `200`.
-
----
-
-## Feedback file format
-
-On success the server writes `<basename-without-ext>.feedback.json` next to the served HTML file in the per-invocation temp directory (e.g. `feedback.html` → `feedback.feedback.json`). The file contains the raw parsed request body plus metadata:
+`feedback.html` → `feedback.feedback.json`, with the request body passed through
+and `submittedAt` stamped by the server:
 
 ```json
 {
@@ -134,5 +59,3 @@ On success the server writes `<basename-without-ext>.feedback.json` next to the 
   "freeform":   "<string>"
 }
 ```
-
-The `submittedAt` field is added by the server. All other fields are passed through from the request body verbatim. The file is written atomically (write to a temp path, then `fs.renameSync`) before `exit 0` is called.
