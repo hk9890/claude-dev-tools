@@ -59,6 +59,12 @@ function normalizeArgs(rawArgs) {
   // than failing the run: three dimensions that ran beat four with one reviewing nothing.
   const rawRulesFile = String(parsed.rulesFile || '')
   const rulesFile = rawRulesFile.startsWith('/') ? rawRulesFile : ''
+  // The same trap once more: architectureProcedure() branches on truthiness, so an
+  // unsubstituted placeholder would build a prompt telling the agent to "First read the
+  // design vocabulary at <SKILL_DIR>/…" against a file that is not there. Reviewing with
+  // no vocabulary beats reviewing under a dangling read instruction.
+  const rawVocabFile = String(parsed.vocabFile || '')
+  const vocabFile = rawVocabFile.startsWith('/') ? rawVocabFile : ''
 
   let error = null
   if (parsed.ultra !== undefined) {
@@ -80,7 +86,8 @@ function normalizeArgs(rawArgs) {
   return {
     repoRoot,
     scope: parsed.scope || '',
-    vocabFile: parsed.vocabFile || '',
+    vocabFile,
+    vocabFileRejected: rawVocabFile && !vocabFile ? rawVocabFile : '',
     rulesFile,
     // Non-empty only when a rulesFile arrived and was rejected, so the orchestration can
     // say which value it dropped instead of reporting the same line as an absent one.
@@ -576,6 +583,9 @@ if (typeof agent === 'function') {
 
   const { repoRoot, scope, vocabFile, rulesFile, level, ultra, reviewModel } = cfg
   const DIMENSIONS = buildDimensions(vocabFile, rulesFile)
+  if (cfg.vocabFileRejected) {
+    log(`vocabFile ${JSON.stringify(cfg.vocabFileRejected)} is not an absolute path — the architecture dimension runs without the design vocabulary this run`)
+  }
   if (cfg.rulesFileRejected) {
     log(`rulesFile ${JSON.stringify(cfg.rulesFileRejected)} is not an absolute path — the rules dimension is skipped this run; the report covers three dimensions, not four`)
   } else if (!rulesFile) {
