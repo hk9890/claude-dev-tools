@@ -10,6 +10,8 @@ argument-hint: "[what-to-test]"
 
 Follow the project's own testing flow exactly. Do not invent commands, frameworks, or steps — if the project defines no testing flow, do nothing and report that testing is not configured for this project. A flow counts as defined only if stated in the project's docs (CLAUDE.md/AGENTS.md routing, README) or config (task-runner scripts, CI); check those before reporting not configured.
 
+With no scope, run the project's full test suite.
+
 If the project offers more than one way to test and the scope above does not settle which to run, ask the user — do not assume.
 
 Report faithfully: what ran, pass/fail, and anything skipped.

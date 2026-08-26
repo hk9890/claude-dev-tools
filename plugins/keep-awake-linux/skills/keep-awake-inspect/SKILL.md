@@ -182,6 +182,8 @@ If state dir is empty AND log is empty AND no inhibitors are registered with log
 
 If state dir is empty AND log is empty BUT inhibitors with `claude-keep-awake` are registered with logind: these are orphans from a prior helper version or a state-dir mismatch. Report them with their PIDs and `--why` annotations so the user can decide whether to `pkill -f 'systemd-inhibit.*claude-keep-awake'`.
 
-## What not to do
+## Reporting
 
-- Do NOT extrapolate beyond what the log shows. If the log is silent, say it's silent — don't invent activity.
+Report exactly what the state files and the log show, and stop there. Where the log is
+silent, say it is silent — an idle plugin with nothing to report is a valid finding, not a
+gap to fill.
