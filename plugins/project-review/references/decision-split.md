@@ -1,8 +1,8 @@
 # Settled and open
 
-Every review here classifies what it found into two kinds, and both skills relay
-them the same way. This file governs that for `project-review`; each skill's
-workflow owns only what the line means in its own domain.
+Every review here classifies what it found into two kinds, and every skill relays
+them the same way. This file governs that for `project-review`; each review owns
+only what the line means in its own domain.
 
 `project-auto-work` carries its own copy of the same vocabulary, because plugins
 install independently and neither can reach the other's files. Changing what
@@ -13,8 +13,8 @@ settled or open *means* is a two-file edit, in both plugins, or they drift.
 | **settled** | One correct answer, and no consequence anyone could reasonably weigh differently. Just do it. |
 | **open** | A competent person could answer differently — it changes a name people type, picks between conventions the project already uses, trades one cost against another, or is big enough that "not now" is a real answer. Ask. |
 
-The workflow assigns this, not the relay. Carry each item into the group the
-report put it in.
+The review assigns this, not the relay — the workflow where one runs, the
+reviewing agent where none does. Carry each item into the group it came back in.
 
 ## Relaying
 

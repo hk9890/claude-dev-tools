@@ -94,7 +94,7 @@ async function main() {
   // ── normalizeArgs ────────────────────────────────────────────────────────────
   eq('normalizeArgs: parsed object passes through',
     {
-      repoRoot: '/r', scope: 'the api layer', vocabFile: '/v.md', rulesFile: '', level: 'medium', ultra: false,
+      repoRoot: '/r', scope: 'the api layer', vocabFile: '/v.md', rulesFile: '', rulesFileRejected: '', level: 'medium', ultra: false,
       reviewModel: 'opus', receivedKeys: ['repoRoot', 'scope', 'vocabFile'], error: null,
     },
     normalizeArgs({ repoRoot: '/r', scope: 'the api layer', vocabFile: '/v.md' }));
@@ -169,6 +169,19 @@ async function main() {
   truthy('dimensionSchema: an extra property is merged in', !!withTree.properties.tree_mermaid);
   eq('dimensionSchema: an extra property does not change the required core',
     base.required, withTree.required);
+
+  // A rulesFile that is not absolute is an unsubstituted "<SKILL_DIR>/…" placeholder. It
+  // must drop the dimension, not build one whose prompt points an agent at nothing, and it
+  // must be distinguishable from an absent argument so the run can say what it dropped.
+  eq('normalizeArgs: an absolute rulesFile is kept',
+    '/rules.md', normalizeArgs({ repoRoot: '/r', rulesFile: '/rules.md' }).rulesFile);
+  eq('normalizeArgs: a placeholder rulesFile is dropped',
+    '', normalizeArgs({ repoRoot: '/r', rulesFile: '<SKILL_DIR>/../../references/rules-conformance.md' }).rulesFile);
+  eq('normalizeArgs: the dropped value is reported back',
+    '<SKILL_DIR>/../../references/rules-conformance.md',
+    normalizeArgs({ repoRoot: '/r', rulesFile: '<SKILL_DIR>/../../references/rules-conformance.md' }).rulesFileRejected);
+  eq('normalizeArgs: an absent rulesFile is not reported as rejected',
+    '', normalizeArgs({ repoRoot: '/r' }).rulesFileRejected);
 
   // ── buildDimensions / dimensionPrompt ────────────────────────────────────────
   const dims = buildDimensions('');
@@ -313,6 +326,11 @@ async function main() {
     deep.prompts.some((p) => p.includes('Repo root: /repo')));
   truthy('orchestration: the scope reaches the dimension prompts',
     deep.prompts.some((p) => p.includes('the api layer')));
+
+  const badRules = await runReview('medium', { rulesFile: '<SKILL_DIR>/rules.md' });
+  eq('orchestration: a placeholder rulesFile spawns no rules agent',
+    ['review:consistency', 'review:structure', 'review:architecture'],
+    badRules.labels.filter((l) => l.startsWith('review:')));
 
   const withRules = await runReview('medium', { rulesFile: '/rules.md' });
   eq('orchestration: rulesFile adds a fourth review agent',

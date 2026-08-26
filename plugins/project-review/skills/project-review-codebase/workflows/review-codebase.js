@@ -51,6 +51,14 @@ function normalizeArgs(rawArgs) {
   const raw = String(parsed.level || '').toLowerCase()
   const level = LEVELS.includes(raw) ? raw : 'medium'
   const repoRoot = String(parsed.repoRoot || '')
+  // Same trap as repoRoot below: an unsubstituted "<SKILL_DIR>/../../references/…"
+  // placeholder is a NON-EMPTY string, so a truthiness check passes it through and
+  // buildDimensions builds a rules dimension whose prompt tells an agent to read a file
+  // that is not there — the agent then reviews against no procedure and reports anyway.
+  // Unlike repoRoot this argument is optional, so a bad one drops the dimension rather
+  // than failing the run: three dimensions that ran beat four with one reviewing nothing.
+  const rawRulesFile = String(parsed.rulesFile || '')
+  const rulesFile = rawRulesFile.startsWith('/') ? rawRulesFile : ''
 
   let error = null
   if (parsed.ultra !== undefined) {
@@ -73,9 +81,10 @@ function normalizeArgs(rawArgs) {
     repoRoot,
     scope: parsed.scope || '',
     vocabFile: parsed.vocabFile || '',
-    // Absent rulesFile drops the rules dimension (see buildDimensions) rather than
-    // running it against a procedure it cannot read.
-    rulesFile: parsed.rulesFile || '',
+    rulesFile,
+    // Non-empty only when a rulesFile arrived and was rejected, so the orchestration can
+    // say which value it dropped instead of reporting the same line as an absent one.
+    rulesFileRejected: rawRulesFile && !rulesFile ? rawRulesFile : '',
     level,
     ultra: level === 'ultra',
     reviewModel: LEVEL_REVIEW_MODEL[level],
@@ -567,7 +576,11 @@ if (typeof agent === 'function') {
 
   const { repoRoot, scope, vocabFile, rulesFile, level, ultra, reviewModel } = cfg
   const DIMENSIONS = buildDimensions(vocabFile, rulesFile)
-  if (!rulesFile) log('no rulesFile argument: the rules dimension is skipped this run — the report covers three dimensions, not four')
+  if (cfg.rulesFileRejected) {
+    log(`rulesFile ${JSON.stringify(cfg.rulesFileRejected)} is not an absolute path — the rules dimension is skipped this run; the report covers three dimensions, not four`)
+  } else if (!rulesFile) {
+    log('no rulesFile argument: the rules dimension is skipped this run — the report covers three dimensions, not four')
+  }
 
   // ── Review → (ultra) per-finding refutation. pipeline: each dimension's findings
   // go to verification as soon as that dimension's review completes.
