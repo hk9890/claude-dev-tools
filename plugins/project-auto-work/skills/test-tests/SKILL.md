@@ -1,13 +1,13 @@
 ---
 name: test-tests
-description: "Empirical test-suite strength audit: proves whether the tests detect injected bugs (mutation kill rate), stay quiet on non-bugs, are flake-free under reruns/shuffle/delays, run fast, and are really isolated from external services. It measures for itself which lines the tests execute, so no coverage report is needed. Reports findings and proposals; never keeps an edit."
+description: "Empirical test-suite strength audit: mutation kill rate, flake, speed and unit isolation, measured rather than read. Reports and proposes; never keeps an edit."
 user-invocable: true
 disable-model-invocation: true
 argument-hint: "[low|medium|high|ultra] [html-viz] [path]"
 ---
 
 Empirical test-suite strength audit. Launch the audit workflow — do **not** probe the
-suite inline. The workflow returns a structured report; relay it and save it to a file.
+suite inline. It returns a structured report.
 
 The audit temporarily mutates production code to check that tests fail, inside its own
 git worktrees when the suite can run there, or in the live tree under a backup/restore
@@ -16,10 +16,13 @@ Nothing is ever committed, no test is written, nothing is installed.
 
 ## Run the workflow
 
+`SKILL_DIR` below is the **base directory for this skill**, given at the top of this file
+when the skill loads. It is absolute and install-correct — build every path from it.
+
 1. Parse `$ARGUMENTS` as `[low|medium|high|ultra] [html-viz] [path]`. All optional, and
    either leading token stands without the other. A `low` | `medium` | `high` | `ultra`
    token is the **level** and an `html-viz` token puts the open decisions on a browser
-   form in step 6; take both from the front of the argument, in either order. Everything
+   form in step 5; take both from the front of the argument, in either order. Everything
    left is the target path (default: the repo root — resolve a free-form description to
    a directory or fall back to the root).
 
@@ -40,15 +43,13 @@ Nothing is ever committed, no test is written, nothing is installed.
    seed) when one exists.
 
    Wall time is dominated by the suite's own speed in every tier, and a weak suite
-   costs more of it than a strong one: every mutant that survives earns one extra
-   run, the reachability probe that makes it readable.
+   costs more of it than a strong one: every mutant that survives earns one extra run —
+   the reachability probe, which re-runs the slice with a throw at the same site to
+   settle whether any test reaches the line at all.
 
-2. `SKILL_DIR` is the **base directory for this skill**, given at the top of this file when
-   the skill loads. It is absolute and install-correct — build every path below from it.
-
-3. Check the prerequisite, snapshot the target tree so integrity is verifiable afterwards,
+2. Check the prerequisite, snapshot the target tree so integrity is verifiable afterwards,
    and create a per-run scratch dir. Echo the scratch path: shell state does not survive
-   between commands, so a value you only assign is gone by the time step 4 needs it.
+   between commands, so a value you only assign is gone by the time step 3 needs it.
 
    ```bash
    command -v python3 >/dev/null || { echo "python3 missing — stop and tell the user"; return 2>/dev/null || exit 1; }
@@ -61,7 +62,7 @@ Nothing is ever committed, no test is written, nothing is installed.
    The untracked hashes matter: `git diff` is blind to untracked-file content, and a
    mutation left in an untracked production file would otherwise pass the check.
 
-4. Invoke the **Workflow** tool:
+3. Invoke the **Workflow** tool:
    - `scriptPath`: `<SKILL_DIR>/workflows/test-tests.js`
    - `args`: `{ "repoRoot": "<path>", "scriptsDir": "<SKILL_DIR>/scripts", "level": "<level>", "scratchDir": "<the absolute path printed above>" }`
 
@@ -76,17 +77,17 @@ Nothing is ever committed, no test is written, nothing is installed.
    - no component could be grouped for audit
    - no audited component produced a mutant, leaving nothing scoreable
 
+   The report then tells the user exactly how to make the repo auditable.
+
    A missing coverage report is **not** on that list: the audit measures reachability
    itself rather than reading it out of one —
    [`references/how-the-audit-measures.md`](references/how-the-audit-measures.md).
-
-   The report then tells the user exactly how to make the repo auditable.
 
    The audit also stops taking on new components once findings reach the workflow's
    `FINDINGS_CAP`. Components it never mutated land in `not_checked`, and the headline
    says the run was capped — `kill_rate` is then a rate over the components that ran.
 
-5. **Verify tree integrity** — after the workflow returns *or* fails:
+4. **Verify tree integrity** — after the workflow returns *or* fails:
 
    ```bash
    git -C "<path>" status --porcelain > "$SCRATCH/post-status.txt"
@@ -104,9 +105,9 @@ Nothing is ever committed, no test is written, nothing is installed.
    never `git checkout`), and tell the user exactly what was found and restored.
    If `git worktree list` still shows entries under `$SCRATCH`, remove each with
    `git -C "<path>" worktree remove --force <wt>` and finish with
-   `git -C "<path>" worktree prune`. Never leave any of this unreported.
+   `git -C "<path>" worktree prune`.
 
-6. Relay the report. The workflow returns
+5. Relay the report. The workflow returns
    `{ report: { verdict, headline, scores, findings[], proposals[], … }, raw, … }` —
    surface `.report` in full, and do not re-derive or soften it. Also save it as
    markdown to `$SCRATCH/test-tests-report.md` (outside the repo) and state that
@@ -131,7 +132,7 @@ If `python3` is missing or the workflow cannot launch, do not improvise an inlin
 audit — report which prerequisite is missing and stop. If the workflow returns an
 object with `error` and no `report` (bad arguments, or the baseline agent died),
 relay the error verbatim, state that the audit did not run, and do not improvise
-findings — still run the step-5 integrity check. When the error carries `got`, the
+findings — still run the step-4 integrity check. When the error carries `got`, the
 run never started and `got.keys` lists the arguments that actually arrived — surface
 it, since that is what shows a misspelled key.
 
@@ -139,10 +140,10 @@ it, since that is what shows a misspelled key.
 
 The verdict (`strong` | `adequate` | `weak` | `untrustworthy` | `not-auditable` — the
 last is an abort report with remediation proposals) and its scoring thresholds are
-computed by the workflow; relay them as returned. Below `high`, a surviving mutant the
-reachability probe proved *reachable* is labeled `candidate: true` — a possible
-equivalent mutant, presented with its diff, never as proof. A survivor proven *unreached*
-is never a candidate at any level: nothing there was argued, it was measured.
+computed by the workflow. Below `high`, a surviving mutant the reachability probe proved
+*reachable* is labeled `candidate: true` — a possible equivalent mutant, presented with its
+diff, never as proof. A survivor proven *unreached* is never a candidate at any level:
+nothing there was argued, it was measured.
 Delay-injection findings are always candidates: a test failing under an added delay may be
 brittle or may encode a legitimate latency contract — the user decides.
 
@@ -151,17 +152,16 @@ Two caps sit outside that scoring, and each puts `strong` out of reach:
 - **Reachability** — where a third or more of the *mutation sites* are run by no test,
   `kill_rate` is a rate over the little the tests execute. The headline must give the share
   no test reaches.
-- **Coverage truth** — a killed coverage-truth mutant means the repository's coverage
-  command under-reports, so any site it ranked was ranked from data proven incomplete. The
-  headline must say the coverage source is unreliable. A *surviving* coverage-truth mutant
-  restates what the summary already said and is never reported as a finding.
+- **Coverage truth** — a killed coverage-truth mutant means every ranking the summary drove
+  came from data proven incomplete. The headline must say the coverage source is unreliable.
+  A *surviving* one restates what the summary already said and is never reported as a
+  finding.
 
 The report also carries `untested_churn`: the repository's own coverage claim joined with
-git churn and ranked by churn × uncovered lines. The audit does not verify it and builds no
-finding on it — it costs no suite run, carries no severity, changes no score, and is
-churn-weighted rather than risk-ranked. It is empty where the repo has no coverage command.
-Relay it as the unverified pointer list it is; the proven-unreached sites among the findings
-are its audited counterpart.
+git churn and ranked by churn × uncovered lines. It is an unverified pointer list — the
+audit builds no finding on it, it costs no suite run, carries no severity, changes no score,
+and is churn-weighted rather than risk-ranked. It is empty where the repo has no coverage
+command, and the proven-unreached sites among the findings are its audited counterpart.
 
 ## Not covered
 
