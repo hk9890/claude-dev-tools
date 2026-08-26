@@ -6,7 +6,7 @@ Local review rules for this plugin marketplace. The generic lenses are `project-
 
 - **Quality gates stay green.** Flag any change that breaks, skips, or weakens `bash tests/run-all.sh` or `mise run check-consistency` ([TESTING.md](TESTING.md)).
 - **Skill triggering.** For Schema B skills, `when_to_use` is load-bearing: review wording changes for trigger accuracy, sibling overlap, and the bidirectional carve-out ([CODING.md](CODING.md)). Flag a new skill reaching for Schema B where Schema A, the default, would do.
-- **A new canonical doc lands in two plugins or in neither.** The taxonomy reference (`plugins/instruction-writing/skills/writing-project-docs/references/project-setup.md`, plus a worked example beside it under `examples/`) and `manifest.py`'s canonical lists (`plugins/project-review/skills/project-review-docs/scripts/`) sit in different plugins, so flag a change landing in only one — the manifest then classifies the doc as non-standard. That classification is advisory; registering the topic is a human step, not a gate.
+- **A new canonical doc lands in three plugins or in none.** The taxonomy is `instruction-writing` (`writing-project-docs/references/project-setup.md`, plus a worked example under `examples/docs/`); the reviewer's copy is `project-review` (`manifest.py`'s canonical lists, and the use-case maps in `history.py` and `workflows/review-docs.js`); the earned-topic table is `project-execute` (`project-exec-init/SKILL.md`). `tests/marketplace/script-tests/test-canonical-docs.sh` gates the first two. Nothing checks the exec-init row, so flag a change that leaves it behind — `/project-exec-init` then never writes the doc.
 
 ## Out of scope / non-blocking
 

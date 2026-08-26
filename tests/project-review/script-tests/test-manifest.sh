@@ -53,11 +53,16 @@ Load [docs/CODING.md](docs/CODING.md) before changes.
 ### Testing
 
 Load [docs/TESTING.md](docs/TESTING.md) to run tests.
+
+### Documenting
+
+Load [docs/DOCUMENTING.md](docs/DOCUMENTING.md) before editing a doc.
 EOF
   printf '# fixture\n\nA product. See [docs/OVERVIEW.md](docs/OVERVIEW.md).\n' > "$dir/README.md"
   printf '# Coding\n\nRun `make build`. See [the missing](docs/GONE.md).\n' > "$dir/docs/CODING.md"
   printf '# Testing\n\n```sh\nmake test\n```\n' > "$dir/docs/TESTING.md"
   printf '# Overview\n\nStructure map.\n' > "$dir/docs/OVERVIEW.md"
+  printf '# Documenting\n\nRun `make docs-lint`. We do not document the hotfix path.\n' > "$dir/docs/DOCUMENTING.md"
   printf '# Some Notes\n\nProject-specific notes not routed anywhere.\n' > "$dir/docs/NOTES.md"
   printf '# Hollow\n' > "$dir/docs/HOLLOW.md"   # heading only → hollow
   echo "$dir"
@@ -104,6 +109,8 @@ test_classification() {
   assert_eq "classify: README = canonical-root" "canonical-root" "$readme"
   local coding; coding=$(json_val "$out" "[f['classification'] for f in d['files'] if f['path']=='docs/CODING.md'][0]")
   assert_eq "classify: docs/CODING.md = canonical" "canonical" "$coding"
+  local documenting; documenting=$(json_val "$out" "[f['classification'] for f in d['files'] if f['path']=='docs/DOCUMENTING.md'][0]")
+  assert_eq "classify: docs/DOCUMENTING.md = canonical" "canonical" "$documenting"
   local notes; notes=$(json_val "$out" "[f['classification'] for f in d['files'] if f['path']=='docs/NOTES.md'][0]")
   assert_eq "classify: docs/NOTES.md = non-standard" "non-standard" "$notes"
   rm -rf "$dir"
@@ -173,6 +180,8 @@ test_contract() {
   # contract must still attach (regression: basename lookup vs path-prefixed heading).
   local ci; ci=$(json_val "$out" "([f['contract'] for f in d['files'] if f['path']=='docs/CODING.md'][0] or {}).get('inside','')")
   assert_contains "contract: docs/CODING.md inside is populated" "build" "$ci"
+  local di; di=$(json_val "$out" "([f['contract'] for f in d['files'] if f['path']=='docs/DOCUMENTING.md'][0] or {}).get('inside','')")
+  assert_contains "contract: docs/DOCUMENTING.md inside is populated" "delta" "$di"
   # Without the flag the contracts are simply absent — the manifest must still emit its
   # facts rather than fail, since the standard is another plugin's file and may be absent.
   local bare; bare=$("$SCRIPT" "$dir")

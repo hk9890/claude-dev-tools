@@ -12,6 +12,10 @@ Every route below is **mandatory, not advisory**. Load the document BEFORE the f
 
 **MUST read [docs/CODING.md](docs/CODING.md) before creating or editing ANY file under `internal/` or `cmd/`.** It owns the package boundaries, the error-wrapping convention, and the rules no linter catches.
 
+### Writing project docs
+
+**MUST read [docs/DOCUMENTING.md](docs/DOCUMENTING.md) before creating or editing ANY Markdown file under `docs/`, or `AGENTS.md`, `README.md`, or `CONTRIBUTING.md`.** It owns the doc gates, the citation convention, and what this service has decided not to document.
+
 ### Research, planning, analysis
 
 **MUST read [docs/OVERVIEW.md](docs/OVERVIEW.md) before searching this repository.** It is the map — package layout, the storage boundary, and the expressions that locate things fast. Go there first instead of grepping blind.

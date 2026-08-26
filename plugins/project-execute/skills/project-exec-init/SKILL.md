@@ -27,6 +27,7 @@ Read what the project already carries and record two lists.
 |---|---|
 | `OVERVIEW.md` | any repo past a trivial layout — earned by default |
 | `CODING.md` | lint/format/build config, a task runner, or a convention visible across the source |
+| `DOCUMENTING.md` | a docs lint or link gate, a doc tree beyond `docs/*.md`, or a stated convention for how the project's own docs are written |
 | `TESTING.md` | a test suite, a test task, or a CI test job |
 | `RELEASING.md` | a release workflow, a publish or tag script, or a version manifest the project bumps |
 | `CHANGE-WORKFLOW.md` | a PR template, commit hooks, branch protection, or a stated commit/branch convention |

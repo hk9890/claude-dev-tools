@@ -49,6 +49,7 @@ import sys
 USE_CASE_DOCS = {
     "searching": "docs/OVERVIEW.md",
     "coding": "docs/CODING.md",
+    "documenting": "docs/DOCUMENTING.md",
     "testing": "docs/TESTING.md",
     "running": "docs/RUNNING.md",
     "change-workflow": "docs/CHANGE-WORKFLOW.md",

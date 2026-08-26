@@ -23,6 +23,7 @@ root steering files (`README.md`, `AGENTS.md`, `CLAUDE.md`) are required.
 docs/
   OVERVIEW.md
   CODING.md
+  DOCUMENTING.md
   TESTING.md
   RELEASING.md
   MONITORING.md
@@ -94,6 +95,16 @@ Content outside a file's boundary is a defect even when every statement in it is
 - **Inside**: build commands and the coding rules/guidelines needed when modifying files — short, with examples pointing to real classes/files.
 - **Not inside**: end-user usage, release process, observability, PR/merge etiquette.
 - Example: [../examples/docs/CODING.md](../examples/docs/CODING.md)
+
+### `docs/DOCUMENTING.md`
+
+- **Audience**: AI agents, when they create or change a Markdown file in this repository.
+- **Inside**: the local delta of this standard — the repo's doc gates and lint, its citation and link conventions, any doc tree beyond the canonical set and what each one owns, and the decisions already taken about what the project documents and what it deliberately leaves out.
+- **Not inside**: the standard itself (→ the `instruction-writing:writing-project-docs` skill, which every doc set follows), source-tree rules (→`docs/CODING.md`), and the content of the docs themselves.
+- **Boundary vs `CODING.md`**: CODING owns a change to the source tree, DOCUMENTING owns a change to the doc tree. A docs lint or link gate is named here even though it runs like any other check.
+- **Precedence**: where a local rule conflicts with the standard, the local rule wins.
+- **Recorded decisions**: prose, in whatever shape the project keeps them — no section is required. `project-review:project-review-docs` reads them and leaves out a gap a decision already settles; a decision never suppresses a false claim, a stale command, or a dead link.
+- Example: [../examples/docs/DOCUMENTING.md](../examples/docs/DOCUMENTING.md)
 
 ### `docs/TESTING.md`
 
