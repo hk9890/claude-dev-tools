@@ -1,7 +1,7 @@
 export const meta = {
   name: 'project-review-codebase',
-  description: 'Read-only codebase review: consistency + structure + architecture dimension agents → cross-dimension synthesis → Markdown artifact',
-  whenToUse: 'Launched by the /project-review-codebase skill. Reviews a codebase — production and test code alike — for internal consistency, physical layout, and module architecture, including whether failure modes are tested; dedupes findings across dimensions and returns a standalone Markdown report with Mermaid diagrams.',
+  description: 'Read-only codebase review: consistency + structure + architecture + rules dimension agents → cross-dimension synthesis → Markdown artifact',
+  whenToUse: 'Launched by the /project-review-codebase skill. Reviews a codebase — production and test code alike — for internal consistency, physical layout, module architecture, and conformance to the rules the project wrote down, including whether failure modes are tested; dedupes findings across dimensions and returns a standalone Markdown report with Mermaid diagrams.',
   phases: [
     { title: 'Review', detail: 'one adversarial agent per dimension' },
     // `meta` must be a pure literal, so this phase cannot be declared conditionally.
@@ -13,7 +13,7 @@ export const meta = {
   ],
 }
 
-// args: { repoRoot, scope?, vocabFile?, level? }
+// args: { repoRoot, scope?, vocabFile?, rulesFile?, level? }
 
 // ---------------------------------------------------------------------------
 // Pure helpers — no runtime globals, so they are reachable without launching a
@@ -73,6 +73,9 @@ function normalizeArgs(rawArgs) {
     repoRoot,
     scope: parsed.scope || '',
     vocabFile: parsed.vocabFile || '',
+    // Absent rulesFile drops the rules dimension (see buildDimensions) rather than
+    // running it against a procedure it cannot read.
+    rulesFile: parsed.rulesFile || '',
     level,
     ultra: level === 'ultra',
     reviewModel: LEVEL_REVIEW_MODEL[level],
@@ -280,19 +283,17 @@ const CONSISTENCY_PROCEDURE =
   `vs relative paths, import ordering. Identify files that break the dominant pattern and whether the deviation is intentional.\n` +
   `5. FILE-NAMING AND CASING DRIFT — kebab-case vs PascalCase vs snake_case, especially within one directory. ` +
   `List deviations from the dominant casing.\n` +
-  `6. DOCUMENTED-BUT-IGNORED STANDARD — read AGENTS.md, CODING.md, and any RULES.md for explicit standards; find code ` +
-  `that demonstrably ignores them. Cite the documented rule and the code that ignores it. Whether to fix the code or ` +
-  `change the standard is the user's policy decision — surface the conflict, do not presume either. If the standard ` +
-  `itself looks stale (describes a convention the project clearly moved past), say the finding belongs to the docs review.\n` +
-  `7. TEST-CODE CONVENTION DRIFT — test code is code, and every check above applies to it. Look for competing setup or fixture idioms doing the same job, ` +
+  `6. TEST-CODE CONVENTION DRIFT — test code is code, and every check above applies to it. Look for competing setup or fixture idioms doing the same job, ` +
   `assertion styles that differ between sibling test files, and helper functions that duplicate one another because nobody found the existing one. ` +
   `Name the variants with their files and say which is the template. A suite where each file arranges its setup differently charges every future contributor the same re-reading before they can add one test.\n\n` +
-  `BASELINE RULE: a documented convention (AGENTS.md, CODING.md, RULES.md) is authoritative — deviations from it are ` +
-  `violations regardless of how many files deviate. With no documented convention, the dominant pattern is the de facto ` +
-  `standard; flag minority deviations. Never recommend "fixing" the majority to match a documented-but-ignored standard ` +
-  `without surfacing the conflict as a policy decision.\n\n` +
+  `BASELINE RULE: your standard is the dominant pattern — it is the de facto convention, so flag minority deviations ` +
+  `against it. Where the project has WRITTEN the convention down, the finding is the rules dimension's, not yours: ` +
+  `note it as "documented in <file>" and let that dimension carry it, so the same violation is not reported twice ` +
+  `under two headings. Never recommend "fixing" the majority to match a documented-but-ignored standard — that ` +
+  `conflict is a policy decision the rules dimension surfaces.\n\n` +
   `NOT THIS DIMENSION: pure formatting (whitespace, brackets — linter territory); whether the shared pattern is the ` +
-  `right design (architecture dimension); where files live (structure dimension).`
+  `right design (architecture dimension); where files live (structure dimension); code that ignores a rule the ` +
+  `project wrote down (rules dimension).`
 
 // CROSS-PLUGIN CONTRACT: the Mermaid class names below and in architectureProcedure()
 // (misplaced, dead, god, leak, deep) are coloured by html-visualization's
@@ -423,11 +424,38 @@ function architectureProcedure(vocabFile) {
     `decision through its tree interactively is challenge:kiss, not here.`
 }
 
-function buildDimensions(vocabFile) {
+// The rules procedure is deliberately NOT inlined here, unlike the other three. It is
+// shared verbatim with project-review-change, which runs the same procedure over one
+// change instead of the tree; references/rules-conformance.md at the plugin root is the
+// single copy and the skill passes its absolute path as `rulesFile`. A second copy here
+// would drift from the one the change review reads, and the two reviews would then judge
+// the same repository by two standards. Without the path there is no procedure, so the
+// dimension drops out of the run rather than being guessed at.
+function rulesProcedure(rulesFile) {
+  return `Dimension: RULES — does the codebase do what the project's own documents say it must?\n\n` +
+    `Read the procedure at ${rulesFile} and follow it exactly. It names the documents that form the standard, what ` +
+    `counts as a finding, what does not, and which commands you may run. It is written for a review of one CHANGE; ` +
+    `here the subject is THE WHOLE TREE. Two things that scope changes:\n` +
+    `1. UNFINISHED DUTIES BECOME STANDING ONES. You are not diffing anything, so you cannot find them by looking for ` +
+    `recent edits. Walk each document's stated requirements against the tree instead: a plugin the marketplace file ` +
+    `never registered, a rename the alias table never recorded, a committed helper no suite covers.\n` +
+    `2. SKIP THE "SUGGESTED RULE ADDITIONS" LIST. Report violations only. Over one change that list is short and ` +
+    `immediately actionable; over a whole tree it is unbounded, and whether the documents are complete is already ` +
+    `project-review-docs's question. A gap you would have listed goes in cross_dimension_notes at most.\n\n` +
+    `SEVERITY: weight by what the violation costs today, not by the fact that a rule was broken. Old, load-bearing ` +
+    `code that contradicts a rule everyone has since ignored is a signal the DOCUMENT is wrong — say so and route it ` +
+    `to the docs review rather than demanding the code change.\n\n` +
+    `NOT THIS DIMENSION: drift with nothing written down (consistency dimension); where files live, except where a ` +
+    `document states where they must live (structure dimension); whether the documents themselves are accurate or ` +
+    `complete (project-review-docs).`
+}
+
+function buildDimensions(vocabFile, rulesFile) {
   return [
     { key: 'consistency', procedure: CONSISTENCY_PROCEDURE, schema: DIMENSION_SCHEMA },
     { key: 'structure', procedure: STRUCTURE_PROCEDURE, schema: STRUCTURE_SCHEMA },
     { key: 'architecture', procedure: architectureProcedure(vocabFile), schema: ARCHITECTURE_SCHEMA },
+    ...(rulesFile ? [{ key: 'rules', procedure: rulesProcedure(rulesFile), schema: DIMENSION_SCHEMA }] : []),
   ]
 }
 
@@ -473,8 +501,9 @@ const ARTIFACT_FORMAT =
   `# Codebase review — <the repo's directory name>\n\n` +
   `One italic line giving the scope reviewed and whether the adversarial refutation pass ran.\n\n` +
   `## Verdict\n\n` +
-  `A table with columns Dimension | Verdict, one row each for consistency, structure and architecture, then a final ` +
-  `**Overall** row. Follow it with the headline as a short paragraph.\n\n` +
+  `A table with columns Dimension | Verdict, one row for each dimension that ran — consistency, structure, ` +
+  `architecture, and rules where it was included — then a final **Overall** row. Follow it with the headline as a ` +
+  `short paragraph.\n\n` +
   `## Deepening candidates\n\n` +
   `Omit this section entirely when there are no candidates. Otherwise one \`###\` block per candidate, NUMBERED FROM ` +
   `1 in array order — the number is how the user selects it, so it must match architecture_candidates exactly:\n\n` +
@@ -494,7 +523,7 @@ const ARTIFACT_FORMAT =
   `since the raw Markdown has no stylesheet to distinguish the two border weights. Then tree_mermaid verbatim in a ` +
   `fenced mermaid block — again byte-for-byte.\n\n` +
   `## Findings\n\n` +
-  `Grouped under \`###\` by dimension in the order consistency, structure, architecture; skip a dimension with no ` +
+  `Grouped under \`###\` by dimension in the order consistency, structure, architecture, rules; skip a dimension with no ` +
   `findings. Within a group order blocker → major → minor. One bullet per finding:\n` +
   `- **\`<location>\`** — <severity>. <observation> **Evidence:** <evidence> **Why it matters:** <why_it_matters> ` +
   `**Fix:** <recommended_action>\n\n` +
@@ -536,8 +565,9 @@ if (typeof agent === 'function') {
     return { error: cfg.error, got: { type: typeof args, keys: cfg.receivedKeys, repoRoot: cfg.repoRoot } }
   }
 
-  const { repoRoot, scope, vocabFile, level, ultra, reviewModel } = cfg
-  const DIMENSIONS = buildDimensions(vocabFile)
+  const { repoRoot, scope, vocabFile, rulesFile, level, ultra, reviewModel } = cfg
+  const DIMENSIONS = buildDimensions(vocabFile, rulesFile)
+  if (!rulesFile) log('no rulesFile argument: the rules dimension is skipped this run — the report covers three dimensions, not four')
 
   // ── Review → (ultra) per-finding refutation. pipeline: each dimension's findings
   // go to verification as soon as that dimension's review completes.
