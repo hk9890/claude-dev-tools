@@ -33,6 +33,7 @@ const LEVELS = ['low', 'medium', 'high', 'ultra']
 const USE_CASES = {
   'searching': { doc: 'docs/OVERVIEW.md', work: 'find your way around the repository — locate code, understand the layout' },
   'coding': { doc: 'docs/CODING.md', work: 'create or edit a file in the source tree' },
+  'documenting': { doc: 'docs/DOCUMENTING.md', work: 'create or edit a Markdown file in this repository' },
   'testing': { doc: 'docs/TESTING.md', work: 'run or write tests, or judge whether a change is verified' },
   'running': { doc: 'docs/RUNNING.md', work: 'launch the product by hand to reproduce a bug or verify a change' },
   'change-workflow': { doc: 'docs/CHANGE-WORKFLOW.md', work: 'commit, branch, push, or open a PR' },
@@ -442,6 +443,23 @@ if (typeof agent === 'function') {
   log(`Manifest: ${manifest.summary.total_md} docs, ${manifest.summary.canonical_missing} missing canonical, ` +
       `${manifest.summary.unresolved_links} dead links, ${manifest.summary.orphans} orphans, ${manifest.agents_routes.length} routes`)
 
+  // The project's own doc conventions, and the decisions it has already taken about what
+  // it documents and what it leaves out. Handed over by path rather than inlined: it is
+  // freeform prose of no fixed shape or length, and every read-review agent already reads
+  // the authoring standard the same way. Most repos have no such file, and then no agent
+  // is told anything about decisions.
+  const hasDocumenting = (manifest.files || []).some(f => f && f.path === 'docs/DOCUMENTING.md')
+  const documentingFile = repoRoot.replace(/\/$/, '') + '/docs/DOCUMENTING.md'
+  // Scoped to gap findings on purpose. A project gets to decide it will not document
+  // something; it does not get to decide a false statement is true, so accuracy findings
+  // are held out of the suppression by name rather than left to the agent's judgement.
+  const decisionsBlock = hasDocumenting
+    ? `\nRECORDED DOC DECISIONS — read ${documentingFile}, all of it, before you raise a gap finding. It carries this project's own doc conventions and the decisions it has already taken about what it documents and what it leaves out on purpose. It is freeform prose of no fixed shape: read the whole file rather than looking for a section.\n` +
+      `Treat a gap those decisions already settle as answered, and leave it out of your findings — the project decided it, and raising it again spends the maintainer's attention on a closed question.\n` +
+      `They bind GAP findings only. A false claim, a stale command, a path that does not exist, a dead link, or content outside this file's Inside boundary stays a finding at full severity however the decisions read.\n` +
+      `A decision that contradicts what you find in the repo is itself a finding, against docs/DOCUMENTING.md.\n`
+    : ''
+
   // ── Read-review: one agent per doc
 
   phase('Read-review')
@@ -472,7 +490,8 @@ if (typeof agent === 'function') {
       `  blocker: a documented fact or procedure that is wrong, or a doc largely in the wrong genre for its owner — it misleads confidently.\n` +
       `  major:   a real scope, actionability, or belonging gap (a localized out-of-boundary spill, a stale command, a routing gap), or bloat heavy enough to obscure the procedure the file exists to document.\n` +
       `  minor:   clarity, scanability, and economy defects a reader absorbs without being misled.\n` +
-      `Raise one level when the defect directly breaks a real workflow — a stale command in RELEASING.md is a blocker, not a minor. Judge Economy by what the bloat costs a reader rather than by line count, and treat minor as its floor, not its ceiling.\n`
+      `Raise one level when the defect directly breaks a real workflow — a stale command in RELEASING.md is a blocker, not a minor. Judge Economy by what the bloat costs a reader rather than by line count, and treat minor as its floor, not its ceiling.\n` +
+      decisionsBlock
   }
 
   // The per-unit accuracy and belonging pass, shared by any file that has a contract.
@@ -532,7 +551,7 @@ if (typeof agent === 'function') {
     return frame +
       `\nThis is a NON-STANDARD doc — not one of the canonical files, so it has no ownership contract. Judge it on two axes.\n\n` +
       `1. TRUE? This is the main job. For every claim, command, path, flag, and code reference, verify it against the repo with read-only grep/read. A false claim is an accuracy finding at the same severity bar as any canonical doc — and a doc that contradicts a canonical doc, or describes behaviour the code does not implement, is a blocker. Specs and design documents are the highest-risk case: they are written once, read as authoritative, and drift silently as the code moves.\n` +
-      `2. FILED CORRECTLY? Does its content belong to a canonical topic (OVERVIEW / CODING / TESTING / RELEASING / MONITORING / CHANGE-WORKFLOW / RUNNING / REVIEWING / README / CONTRIBUTING)? If so, that is a placement finding: recommend RENAME to docs/<TOPIC>.md when that canonical slot is empty (missing canonical: ${JSON.stringify(manifest.missing_canonical)}), or LINK it from the canonical doc when the slot is filled. If it maps to no canonical topic it is legitimately project-specific — no placement finding, which says nothing about whether it is accurate.\n\n` +
+      `2. FILED CORRECTLY? Does its content belong to a canonical topic (OVERVIEW / CODING / DOCUMENTING / TESTING / RELEASING / MONITORING / CHANGE-WORKFLOW / RUNNING / REVIEWING / README / CONTRIBUTING)? If so, that is a placement finding: recommend RENAME to docs/<TOPIC>.md when that canonical slot is empty (missing canonical: ${JSON.stringify(manifest.missing_canonical)}), or LINK it from the canonical doc when the slot is filled. If it maps to no canonical topic it is legitimately project-specific — no placement finding, which says nothing about whether it is accurate.\n\n` +
       `Also flag it if it is hollow (a stub) or duplicates AGENTS.md routing.\n\n` +
       `Read the full file, then return findings (category 'accuracy', 'placement', 'hollow', or 'other') with concrete evidence — quote the offending line and cite the repo fact that contradicts it. Empty array only if the file is genuinely both accurate and correctly filed. Read-only; do not run commands that change anything.`
   }
@@ -786,6 +805,9 @@ if (typeof agent === 'function') {
     `   Report the superseded-route evidence too, in its own short paragraph, and label it as being about wording that no longer exists. Quote the old route and give the ratio of segments that did the work to segments that opened the doc. Where a route has since been rewritten, say whether that evidence supports the rewrite. Never let it change a verdict or a finding about current text — but never drop it either: a route that was ignored under its old wording is the reason the new wording exists.\n` +
     `6. Assign an overall verdict: accurate / minor gaps / significant gaps / misleading. A clean 'accurate' requires no blocker/major AND positive coverage — not merely absence of findings.\n` +
     `7. Tag every finding \`settled\` or \`open\`, leaving none untagged. SETTLED is a doc contradicting the code or the repo's actual layout, a stale command, a dead link, a missing or misnamed route, CLAUDE.md carrying anything but the one-line import, an injected tool-block — one correct answer, nothing to weigh. OPEN moves content from one file to another (who owns a topic is a judgement), deletes a section someone may be relying on, rewords a route people's habits are built on, adopts a convention the repo has not committed to, or is large enough that "not now" is a real answer. When you can argue it either way it is settled: a doc that contradicts the code is a bug, and asking permission to fix it wastes the maintainer's attention. For every OPEN finding also fill \`question\` (what is being decided, in ASD-STE100 Simplified Technical English — one idea per sentence, every identifier and abbreviation expanded — naming the file and what it currently says, so a reader outside this audit understands it), \`options\` (the real alternatives, including "leave it as is" wherever that is one), and \`recommendation\` (which option you would pick and the tradeoff that decided it).\n\n` +
+    (hasDocumenting
+      ? `\nRECORDED DOC DECISIONS — read ${documentingFile} in full before you settle the findings list. It carries this project's doc conventions and what it has decided to leave undocumented. Drop any finding those decisions already settle, including one a read-review agent raised, and say in cross_file_notes which findings you dropped and which decision covered each. A decision binds GAP findings only: a false claim, a stale command, a dead link, or a broken CLAUDE.md stays a finding at full severity. A decision that contradicts the repo is a finding against docs/DOCUMENTING.md.\n\n`
+      : '') +
     `Return the structured object with fields verdict, headline, findings[], cross_file_notes, execution_summary. ` +
     `Each finding's why_it_matters states the concrete cost, risk, or trap the defect creates for someone relying on the doc — not a restatement of the observation. ` +
     `cross_file_notes and execution_summary are separate PLAIN-TEXT prose fields — never write XML/HTML tags, angle-bracket markers, or field names inside their values. ` +

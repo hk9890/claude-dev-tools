@@ -23,6 +23,7 @@ root steering files (`README.md`, `AGENTS.md`, `CLAUDE.md`) are required.
 docs/
   OVERVIEW.md
   CODING.md
+  DOCUMENTING.md
   TESTING.md
   RELEASING.md
   MONITORING.md
@@ -94,6 +95,16 @@ Content outside a file's boundary is a defect even when every statement in it is
 - **Inside**: build commands and the coding rules/guidelines needed when modifying files — short, with examples pointing to real classes/files.
 - **Not inside**: end-user usage, release process, observability, PR/merge etiquette.
 - Example: [../examples/docs/CODING.md](../examples/docs/CODING.md)
+
+### `docs/DOCUMENTING.md`
+
+- **Audience**: AI agents, when they create or change a Markdown file in this repository.
+- **Inside**: the local delta of this standard — doc gates and lint, citation and link conventions, any doc tree beyond the canonical set and what each owns, and the decisions taken about what the project documents and what it leaves out.
+- **Not inside**: the standard itself (→ the `instruction-writing:writing-project-docs` skill), source-tree rules (→`docs/CODING.md`), and the content of the docs themselves.
+- **Boundary vs `CODING.md`**: CODING owns a change to the source tree, DOCUMENTING a change to the doc tree.
+- **Precedence**: where a local rule conflicts with the standard, the local rule wins.
+- **Recorded decisions**: prose, in whatever shape the project keeps them. `project-review:project-review-docs` reads them and leaves out a gap a decision settles; a decision never makes a false claim acceptable.
+- Example: [../examples/docs/DOCUMENTING.md](../examples/docs/DOCUMENTING.md)
 
 ### `docs/TESTING.md`
 

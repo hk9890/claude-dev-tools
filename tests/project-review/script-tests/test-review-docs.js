@@ -358,13 +358,14 @@ async function main() {
 
   const runAudit = async (over = {}) => {
     // promptIndex is a stub override for the history script, not a workflow argument.
-    const { promptIndex: promptOverride, taskTier, ...argOver } = over;
+    const { promptIndex: promptOverride, taskTier, manifest: manifestOverride, ...argOver } = over;
+    const manifestForRun = manifestOverride || manifest;
     const labels = [];
     const prompts = [];
     const agent = async (prompt, opts = {}) => {
       labels.push(opts.label);
       prompts.push(prompt);
-      if (opts.label === 'manifest') return '```json\n' + JSON.stringify(manifest) + '\n```';
+      if (opts.label === 'manifest') return '```json\n' + JSON.stringify(manifestForRun) + '\n```';
       if (opts.label === 'history:extract') return JSON.stringify(promptOverride || promptIndex);
       if (opts.label === 'history:evidence') return JSON.stringify(evidence);
       if (opts.label.startsWith('history:label-')) {
@@ -456,6 +457,29 @@ async function main() {
     deep.prompts.some((p) => p.includes('use-case') || p.includes('MUST read [docs/CODING.md]')));
   truthy('read-review: the severity bar reaches every reviewer',
     deep.prompts.filter((p) => p.includes('SEVERITY — assign every finding')).length >= 2);
+
+  // ── recorded doc decisions (docs/DOCUMENTING.md) ─────────────────────────────
+  // The decisions are freeform prose, so the workflow hands the agents a path rather than
+  // extracting anything. Two things must hold: the block only appears where the repo has
+  // the file, and it scopes the suppression to gap findings — a project may decide not to
+  // document something, never that a false statement is true.
+  truthy('decisions: no DOCUMENTING.md in the repo means no decisions block anywhere',
+    !deep.prompts.some((p) => p.includes('RECORDED DOC DECISIONS')));
+
+  const withDoc = await runAudit({
+    manifest: {
+      ...manifest,
+      files: [...manifest.files, { path: 'docs/DOCUMENTING.md', classification: 'canonical', metrics, contract }],
+    },
+  });
+  eq('decisions: docs/DOCUMENTING.md is reviewed as the documenting use case',
+    ['use-case:coding', 'use-case:documenting'], withDoc.labels.filter((l) => l.startsWith('use-case:')));
+  truthy('decisions: every read-review agent is pointed at the absolute path',
+    withDoc.prompts.filter((p) => p.includes('/repo/docs/DOCUMENTING.md')).length >= 2);
+  truthy('decisions: the synthesis stage gets the decisions too',
+    withDoc.prompts.some((p) => p.includes('RECORDED DOC DECISIONS') && p.includes('cross_file_notes')));
+  truthy('decisions: the suppression is scoped to gap findings',
+    withDoc.prompts.some((p) => /GAP findings only/.test(p) && /stays a finding at full severity/.test(p)));
 
   // ── history ──────────────────────────────────────────────────────────────────
   truthy('history: the extract step runs before any classification',

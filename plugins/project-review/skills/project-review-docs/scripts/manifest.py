@@ -54,7 +54,7 @@ OPTIONAL_CANONICAL_ROOT = ["CONTRIBUTING.md"]             # optional at repo roo
 # real local guidance; none is ever reported missing. The names are canonical —
 # use them if you document the topic — but presence is never required.
 CANONICAL_DOCS = [
-    "OVERVIEW.md", "CODING.md", "TESTING.md", "RELEASING.md",
+    "OVERVIEW.md", "CODING.md", "DOCUMENTING.md", "TESTING.md", "RELEASING.md",
     "MONITORING.md", "CHANGE-WORKFLOW.md", "REVIEWING.md", "RUNNING.md",
 ]
 PERSONAL_LOCAL = [".claude.local.md"]
@@ -67,7 +67,8 @@ ROOT_META_IGNORE = [
 # Not a command; a category the workflow's driver turns into a concrete task.
 PURPOSE = {
     "README.md": "use", "AGENTS.md": "route",
-    "OVERVIEW.md": "find", "CODING.md": "code", "TESTING.md": "test",
+    "OVERVIEW.md": "find", "CODING.md": "code", "DOCUMENTING.md": "document",
+    "TESTING.md": "test",
     "RELEASING.md": "release", "MONITORING.md": "monitor",
     "CHANGE-WORKFLOW.md": "change", "REVIEWING.md": "review",
     "RUNNING.md": "run", "CONTRIBUTING.md": "contribute",
