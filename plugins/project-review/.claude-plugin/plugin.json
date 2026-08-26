@@ -1,7 +1,7 @@
 {
   "name": "project-review",
   "description": "Read-only adversarial project reviews — codebase (consistency, structure, architecture, rules, over production and test code alike), one change against the rules the project wrote down, and docs — each a standalone lens that challenges the artifact against the project's own standards and returns a prioritized action list; the codebase lens also writes a standalone Markdown report with Mermaid diagrams and numbered deepening proposals",
-  "version": "1.31.0",
+  "version": "1.32.0",
   "author": {
     "name": "Hans Kohlreiter",
     "email": "hans.kohlreiter@gmail.com"
