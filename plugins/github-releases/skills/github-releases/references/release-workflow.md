@@ -8,7 +8,7 @@ Before proceeding verify all gates pass:
 
 - `command -v gh` — GitHub CLI must be installed
 - `gh auth status` — GitHub CLI must be authenticated
-- `git status --porcelain` — working tree must be clean (no uncommitted changes)
+- No uncommitted tracked changes — [quality-gates.md — Gate 1](quality-gates.md#gate-1-clean-working-tree) owns the command, and says why an untracked file does not fail it
 - After `git fetch origin`, the local branch must be in sync with the remote default branch. Derive it — with a fallback for when `origin/HEAD` is not set locally (fresh `git init`, shallow/CI checkouts, new worktrees) — and diff against it:
 
   ```bash
@@ -72,8 +72,8 @@ git add <bumped version files>
 git commit -m "Bump version to <version>"
 git push origin "$DEFAULT_BRANCH"
 
-# Re-verify: clean tree, in sync with remote
-git status --porcelain            # expect empty
+# Re-verify: no uncommitted tracked changes, in sync with remote
+git status --porcelain --untracked-files=no   # expect empty
 git diff HEAD "origin/$DEFAULT_BRANCH" --stat   # expect no differences
 ```
 
