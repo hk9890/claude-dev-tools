@@ -1,7 +1,8 @@
 # Task anatomy
 
-Every task carries the same four sections, same names, same order. The cold reader learns the shape
-once and then knows where to look without reading the whole body.
+A `bug`, a `feature`, a `chore` and a `task` carry the same four sections, same names, same order;
+`epic` and `doc` deviate, below. The cold reader learns the shape once and then knows where to look
+without reading the whole body.
 
 ```markdown
 ## Context
@@ -29,9 +30,13 @@ into a parenthetical here.
 command to run or an observation to make. This is what a verifier executes, so it doubles as the
 task's test plan.
 
-Epics deviate: they carry **Outcome** and **Success criteria** in place of *Problem* and
-*Recommended action*, because an epic is never implemented directly. See
-[`../examples/epic.md`](../examples/epic.md).
+Two types deviate. An **epic** carries **Outcome** and **Success criteria** in place of *Problem*
+and *Recommended action*, because an epic is never implemented directly
+([`../examples/epic.md`](../examples/epic.md)). A **doc** carries no sections at all — its body is
+the document, under the document's own headings. Three of the rules below are written against work
+and do not apply to it: *One problem*, *Testable done*, *Smallest change*. *Cold start*, *Evidence*
+and *Economy* bind it as they bind anything read cold
+([`../examples/doc.md`](../examples/doc.md)).
 
 ## The six rules
 
@@ -68,4 +73,5 @@ are all load with no effect. Cut whole sentences rather than trimming words from
 ## The bar
 
 A task clears the bar when a competent stranger can open it, start work without asking a question,
-and prove they are done without asking a second one.
+and prove they are done without asking a second one. A `doc` clears it when that same stranger can
+read it and act on what it says, without asking who wrote it or when.

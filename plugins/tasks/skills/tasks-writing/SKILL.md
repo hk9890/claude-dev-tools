@@ -1,7 +1,7 @@
 ---
 name: tasks-writing
 description: "The standard a task follows before it is filed: which type carries it, what each body section owns, and a worked example of every type."
-when_to_use: "Use when writing, splitting, or repairing the text of a task, issue, or ticket: its type, priority, body, or acceptance criteria. Triggers on 'write a task', 'acceptance criteria', 'is this ticket clear enough'. Also loaded by name when another skill needs the standard. Not for project docs (`instruction-writing:writing-project-docs`) or skills (`instruction-writing:writing-skills`); to file a whole conversation as a task set, point the user at `/tasks:tasks-create`."
+when_to_use: "Use when writing, splitting, or repairing the text of a task, issue, or ticket: its type, priority, body, or acceptance criteria — a `doc` issue included, the design page or handover a tracker holds. Triggers on 'write a task', 'acceptance criteria', 'is this ticket clear enough'. Also loaded by name when another skill needs the standard. Not for a document that lives in the repository: project docs (`instruction-writing:writing-project-docs`) or skills (`instruction-writing:writing-skills`); to file a whole conversation as a task set, point the user at `/tasks:tasks-create`."
 argument-hint: "[task-or-draft]"
 ---
 
@@ -19,16 +19,17 @@ under discussion.
 
 ## Before you write a line
 
-1. **Which type carries this?** [`references/task-types.md`](references/task-types.md) — the five
+1. **Which type carries this?** [`references/task-types.md`](references/task-types.md) — the six
    types, each with its *Use when* / *Inside* / *Not inside* contract, plus the priority scale. The
    *nature* of the work picks the type; where it was discovered picks nothing.
 2. **What goes in the body?** [`references/task-anatomy.md`](references/task-anatomy.md) — the four
-   sections every task carries, what each one owns, and the six rules (*Cold start*, *One problem*,
-   *Evidence*, *Testable done*, *Smallest change*, *Economy*) a body must clear.
+   sections a body carries, what each one owns, where `epic` and `doc` deviate, and the six rules
+   (*Cold start*, *One problem*, *Evidence*, *Testable done*, *Smallest change*, *Economy*) a body
+   must clear.
 3. **What does a finished one look like?** [`examples/`](examples/) — a worked example per type.
    Match the register: short declarative sentences, real paths, real commands, pasted output.
-   `epic.md` is the deliberate deviation — an epic carries an outcome and children, never an
-   implementation.
+   `epic.md` and `doc.md` are the deliberate deviations — an epic carries an outcome and children,
+   never an implementation; a doc carries a document, and no work at all.
 
 ## The wish test
 
@@ -37,8 +38,12 @@ I am done?* Answer both from the page alone. An answer that lives in your head, 
 that produced the task, or in "the author will know" means the task is a wish — repair it before
 filing.
 
+A `doc` is exempt. It holds a document, not a path through work, so neither question has an answer
+to give.
+
 ## Done means
 
 Every section has been held against its owner's contract and the six rules — cleared, rewritten, or
-cut — and the wish test answered from the page. Reading the references is not the work; applying
-them to the task is.
+cut — and the wish test answered from the page. A `doc` is done when the rules that survive its
+exemptions are clear; `task-anatomy.md` says which. Reading the references is not the work;
+applying them to the task is.
