@@ -1,15 +1,17 @@
 # Task types
 
-Five types. The *nature* of the work picks one — where it was discovered (a review, a failing
-build, a design discussion) picks nothing.
+Six types. Five carry work, and the *nature* of that work picks one — where it was discovered (a
+review, a failing build, a design discussion) picks nothing. The sixth, `doc`, carries a document
+instead of work.
 
-| Type | The work is |
+| Type | The issue is |
 |---|---|
 | `bug` | behaviour that is wrong against what was intended |
 | `feature` | a capability that does not exist yet |
 | `chore` | a change that leaves behaviour identical — cleanup, refactor, dependency bump |
 | `task` | actionable work that is none of the above — an investigation, a migration step, a decision |
 | `epic` | a container for other issues; it holds no implementation of its own |
+| `doc` | not work at all — a document: a design page, a session note, a handover, a review |
 
 When a finding is both a defect and untidiness around it, the defect is a `bug` and the cleanup a
 separate `chore`. Batching them hides one behind the other's done-state. Several instances of the
@@ -65,6 +67,22 @@ finding, a decision recorded, a filed follow-up, a config change.
 **Not inside:** implementation, and "all children are closed" as the success criterion. Children
 closing is a precondition, not evidence the outcome was reached — an epic can have every child
 closed and still not deliver what it promised.
+
+## `doc`
+
+**Use when** the issue *is* a document rather than something to be done — a design page, a session
+note, a handover, a review.
+
+**Inside:** the document, under its own headings. The four sections in
+[`task-anatomy.md`](task-anatomy.md) describe work and do not apply here. Which kind of document it
+is goes in a label — `kind:design`, `kind:session`, `kind:handover` — because the type does not say.
+
+**Not inside:** anything to do. A design page that ends in "and then build it" buries work in the
+one type the ready queue cannot see. File that work separately, at the type the work picks, and
+link the two — `taskmgr rel add <doc-id> <task-id>` — so the page still leads to it.
+
+`taskmgr` holds `doc` out of `ready` and `blocked` by construction, so a doc's status, priority and
+assignee are stored but mean nothing. Reach one by asking for it: `taskmgr list -q 'type == "doc"'`.
 
 ## Priority
 

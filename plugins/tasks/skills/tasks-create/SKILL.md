@@ -15,9 +15,9 @@ the conversation is a candidate and step 4 confirms the set.
 
 ## 1. Load the standard
 
-Load `tasks:tasks-writing` before drafting anything. It owns the type contracts, the four body
-sections, and the rules each body must clear; this skill owns only how a conversation becomes a
-*set* of them. Draft nothing before it is loaded — repairing a batch of wishes afterwards costs more
+Load `tasks:tasks-writing` before drafting anything. It owns the type contracts, the body sections,
+and the rules each body must clear; this skill owns only how a conversation becomes a *set* of
+them. Draft nothing before it is loaded — repairing a batch of wishes afterwards costs more
 than writing them right once.
 
 ## 2. Confirm the tracker
