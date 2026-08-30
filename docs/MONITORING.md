@@ -8,7 +8,7 @@ Claude Code writes transcripts to `~/.claude/projects/<slug>/<uuid>.jsonl`, one 
 
 | `type` | Carries |
 |---|---|
-| `assistant` | Claude's turn, plus `attributionPlugin` (plugin directory name, e.g. `tasks`) and `attributionSkill` (namespaced, e.g. `tasks:tasks-writing`) while a skill runs — absent on unattributed turns, and never set on any other record type |
+| `assistant` | Claude's turn, plus `attributionPlugin` (plugin directory name, e.g. `tasks`) and `attributionSkill` (namespaced, e.g. `tasks:tasks-core`) while a skill runs — absent on unattributed turns, and never set on any other record type |
 | `user` | The human turn, and the `tool_result` blocks inside its `content` array; a failed tool is `tool_result.is_error == true`, an interrupted turn is `record.toolUseResult.interrupted == true` |
 | `system` | Internal events, e.g. `subtype: "turn_duration"` with `durationMs` |
 

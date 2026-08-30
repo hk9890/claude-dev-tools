@@ -1,7 +1,7 @@
 ---
 name: writing-skills
 description: "Reference for writing and editing skills well: the vocabulary and principles that make a skill predictable."
-when_to_use: "Use when writing or revising a SKILL.md, or a file it bundles or shares, under references/, scripts/, assets/, or a plugin-root references/ two skills reach. Triggers on 'SKILL.md', 'write a skill', 'skill description'. Also loaded by name when another skill needs the rubric. Not for a project's own docs (AGENTS.md, README.md, docs/ guides, see `writing-project-docs`), nor for task and issue bodies (`tasks:tasks-writing`)."
+when_to_use: "Use when writing or revising a SKILL.md, or a file it bundles or shares, under references/, scripts/, assets/, or a plugin-root references/ two skills reach. Triggers on 'SKILL.md', 'write a skill', 'skill description'. Also loaded by name when another skill needs the rubric. Not for a project's own docs (AGENTS.md, README.md, docs/ guides, see `writing-project-docs`), nor for task and issue bodies (`tasks:tasks-core`)."
 argument-hint: "[skill-path-or-request]"
 ---
 
