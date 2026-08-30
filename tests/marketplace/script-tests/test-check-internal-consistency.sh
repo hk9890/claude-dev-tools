@@ -325,6 +325,36 @@ test_skill_ref_ignores_foreign() {
       --skip-sections --skip-versions --skip-descriptions --skip-uniformity
 }
 
+# 18. Skill refs: a full scan reads what git tracks, not what sits on disk.
+#     Regression: walking the filesystem also read sibling checkouts under
+#     .claude/worktrees/ and globally-ignored scratch directories, so a stale
+#     reference in either failed a check about this tree. CI never saw it — a
+#     fresh clone has neither.
+test_skill_ref_scans_tracked_only() {
+  local tmp_dir
+  tmp_dir=$(mktemp -d) || { printf 'FAIL: mktemp -d unavailable — fixture not built\n'; exit 1; }
+  mkdir -p "$tmp_dir/plugins/tasks/skills/tasks-core"
+  printf -- '---\nname: tasks-core\n---\n' > "$tmp_dir/plugins/tasks/skills/tasks-core/SKILL.md"
+  printf '# tracked\n\nLoad `tasks:tasks-core`.\n' > "$tmp_dir/tracked.md"
+  git -C "$tmp_dir" init -q
+  git -C "$tmp_dir" add -A
+  # Untracked, and it names a skill that does not exist.
+  printf '# untracked\n\nLoad `tasks:tasks-gone`.\n' > "$tmp_dir/untracked.md"
+
+  assert_exit "skill-ref-tracked: untracked markdown is not scanned" 0 \
+    python3 "$SCRIPT" --repo-root "$tmp_dir" \
+      --skip-sections --skip-versions --skip-descriptions --skip-uniformity
+
+  # Tracking the same file must fail, or the assertion above would also pass
+  # against a check that scanned nothing at all.
+  git -C "$tmp_dir" add untracked.md
+  assert_exit "skill-ref-tracked: the same file tracked is scanned and fails" 1 \
+    python3 "$SCRIPT" --repo-root "$tmp_dir" \
+      --skip-sections --skip-versions --skip-descriptions --skip-uniformity
+
+  rm -rf "$tmp_dir"
+}
+
 # ── run all tests ─────────────────────────────────────────────────────────────
 
 test_live_repo_passes
@@ -344,6 +374,7 @@ test_skill_ref_fails
 test_skill_ref_message
 test_skill_ref_passes
 test_skill_ref_ignores_foreign
+test_skill_ref_scans_tracked_only
 
 printf '\n'
 printf 'Results: %d passed, %d failed\n' "$PASS" "$FAIL"

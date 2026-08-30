@@ -85,6 +85,7 @@ import importlib.util
 import json
 import os
 import re
+import subprocess
 import sys
 
 # ---------------------------------------------------------------------------
@@ -488,6 +489,35 @@ def _skill_ref_resolves(repo_root, plugin, name):
     return os.path.isfile(skill) or os.path.isfile(agent)
 
 
+def _tracked_markdown(repo_root):
+    """Markdown files git tracks, or None when repo_root is not a git checkout.
+
+    Asking git is what keeps the scan to this tree's own sources. Walking the
+    filesystem also reads whatever happens to sit under the root but belongs to
+    something else — a sibling checkout under .claude/worktrees/ holding an older
+    state, a scratch directory covered by a global gitignore, a build output tree
+    — and a stale reference in any of them would fail a check about this tree.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "-C", repo_root, "ls-files", "-z", "*.md"],
+            capture_output=True, text=True, check=True)
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    return [os.path.join(repo_root, p) for p in result.stdout.split("\0") if p]
+
+
+def _walked_markdown(repo_root):
+    """Markdown files under repo_root, for a tree git does not track."""
+    found = []
+    for dirpath, dirnames, filenames in os.walk(repo_root):
+        dirnames[:] = [d for d in dirnames if d not in (".git", "node_modules", "output")]
+        if _path_has_excluded_segment(os.path.relpath(dirpath, repo_root)):
+            continue
+        found.extend(os.path.join(dirpath, f) for f in filenames if f.endswith(".md"))
+    return found
+
+
 def run_skill_ref_check(repo_root, target_files=None):
     """Run Check E — skill and agent references. Returns list of failure strings."""
     local = _local_plugin_names(repo_root)
@@ -495,16 +525,17 @@ def run_skill_ref_check(repo_root, target_files=None):
         return []
 
     if target_files is None:
+        # Tracked files only; --repo-root may name a tree git does not track, so
+        # fall back to a walk there.
+        target_files = _tracked_markdown(repo_root)
+        if target_files is None:
+            target_files = _walked_markdown(repo_root)
         # examples/ and notes/ are excluded exactly as Check A excludes them: a
-        # fixture there is deliberately wrong, and a full scan that read it would
-        # fail on the very file written to prove this check fails.
-        target_files = []
-        for dirpath, dirnames, filenames in os.walk(repo_root):
-            dirnames[:] = [d for d in dirnames if d not in (".git", "node_modules", "output")]
-            if _path_has_excluded_segment(os.path.relpath(dirpath, repo_root)):
-                continue
-            target_files.extend(
-                os.path.join(dirpath, f) for f in filenames if f.endswith(".md"))
+        # fixture there is deliberately wrong, and a scan that read it would fail
+        # on the very file written to prove this check fails.
+        target_files = [
+            p for p in target_files
+            if not _path_has_excluded_segment(os.path.relpath(p, repo_root))]
 
     failures = []
     for path in sorted(target_files):
