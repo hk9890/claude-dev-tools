@@ -4,33 +4,34 @@ description: "Turn this conversation (a review, a plan, a spec) into a set of fi
 user-invocable: true
 disable-model-invocation: true
 argument-hint: "[scope]"
+allowed-tools: Bash(taskmgr *), Bash(command -v taskmgr)
 ---
 
 # Creating tasks from this conversation
 
 The material is already here: a review that produced findings, a plan that was argued out, a spec
-that was read. This skill turns it into filed tasks. **Scope:** $ARGUMENTS narrows which material to
-file — "only the critical findings", "just the auth work". With no scope, everything actionable in
-the conversation is a candidate and step 4 confirms the set.
+that was read. This skill turns it into filed tasks, and owns only that — how a conversation becomes
+a *set*. `taskmgr` owns the command surface and the store owns the body standard, both printed
+below and fetched by name at the step that needs them.
 
-## 1. Load the standard
+**Scope:** $ARGUMENTS narrows which material to file — "only the critical findings", "just the auth
+work". With no scope, everything actionable in the conversation is a candidate and step 3 confirms
+the set.
 
-Load `tasks:tasks-writing` before drafting anything. It owns the type contracts, the body sections,
-and the rules each body must clear; this skill owns only how a conversation becomes a *set* of
-them. Draft nothing before it is loaded — repairing a batch of wishes afterwards costs more
-than writing them right once.
+## The tracker, as it is on this machine
 
-## 2. Confirm the tracker
+!`command -v taskmgr >/dev/null 2>&1 && taskmgr where || echo "STOP: taskmgr is not on PATH. Tell the user and file nothing."`
 
-```bash
-command -v taskmgr >/dev/null 2>&1   # is the binary installed?
-taskmgr where                         # does a store resolve, and which one?
-```
+!`command -v taskmgr >/dev/null 2>&1 && taskmgr guide || true`
 
-Read `where`'s output rather than its exit status — it exits `0` whether or not a store resolves. No
-binary, or `kind: none`, means stop and tell the user; offer `taskmgr init` for a missing store.
+A `STOP` line above means the binary is absent: stop, tell the user, file nothing. `kind: none`
+means no store resolved: stop and offer `taskmgr init`. The overview names every part of the guide
+with the command that prints it, this store's own conventions included.
 
-## 3. Gather and ground
+Work only from what those commands printed, plus the topics you fetch below. Never from another
+memory of the command surface, and never from a flag you assume exists.
+
+## 1. Gather and ground
 
 Collect the actionable material from the conversation, and read anything it points at that you have
 not read — a linked spec, an issue, a file discussed but never opened.
@@ -40,7 +41,7 @@ real symbol, the real command from it. A task written from memory of the discuss
 discussion's vocabulary; a task written from the code carries the project's, and the implementer
 starts in the right file instead of searching for it.
 
-## 4. Decompose
+## 2. Decompose
 
 Two shapes, depending on what the conversation produced.
 
@@ -62,7 +63,7 @@ Then the edges:
 - **Parent** groups children under an epic when the set shares one outcome. It is organisational and
   never blocks anything.
 
-## 5. Get the set approved
+## 3. Get the set approved
 
 Present the whole set as a numbered list before writing anything — id-less at this point:
 
@@ -73,39 +74,28 @@ Present the whole set as a numbered list before writing anything — id-less at 
 ```
 
 Ask the user about granularity (too coarse, too fine), the blocking edges, and anything to merge,
-split, or drop. Iterate until they approve. Nothing is filed before that approval — a filed task
-set is harder to reshape than a list in a message.
+split, or drop. Iterate until they approve. Nothing is filed before that approval — a filed task set
+is harder to reshape than a list in a message.
 
-## 6. File them
+## 4. Write the bodies to the store's standard
+
+```bash
+taskmgr guide filing                    # the sections a body carries, and what the gate refuses
+taskmgr guide pkg:task-writing:types    # which type carries the work, the rules, the wish test
+```
+
+The second topic exists only where the `task-writing` package is installed. Whatever the overview
+listed is what this store enforces; a gate refusal names the section that is missing, so write to
+the printed standard rather than filing and retrying.
+
+## 5. File
 
 Create in dependency order — an epic and any blocker before the issues that reference them, since
 their ids do not exist until they are created. Ids are opaque short codes; take each from the
-command's output and never invent one.
+command's output and never invent one. `taskmgr guide filing` holds the create surface and
+`taskmgr guide scripting` holds `--json` id capture.
 
-```bash
-cat <<'EOF' | taskmgr create --title "Expired access token is accepted on every endpoint" \
-    --type bug --priority 1 --description-file -
-## Context
-src/middleware/auth.ts:42 — reproduced on main at a1b3f90.
-
-## Problem
-verifyToken reads the exp claim but never compares it to the current time, so any structurally
-valid token authenticates indefinitely. <observed output>
-
-## Recommended action
-Compare exp against the current time and reject when it is past; return 401.
-
-## Acceptance criteria
-- [ ] A request with an expired token returns 401
-- [ ] A request with a valid token still returns 200
-- [ ] `npm test -- auth` passes, including a case for the expired path
-EOF
-```
-
-Add `--parent <epic-id>` to group, `--blocked-by <id>` for an edge known at creation time, and
-`--label area:<x>` for routing. An edge discovered later is `taskmgr dep add <dependent> <blocker>`.
-
-## 7. Report
+## 6. Report
 
 List what was created — id, type, priority, title — and the edges between them, so the user can see
 the shape and run `taskmgr ready`. Name anything you did not file and why: out of the given scope,
