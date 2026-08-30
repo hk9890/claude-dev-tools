@@ -1,103 +1,27 @@
 ---
 name: tasks-create
-description: "Turn this conversation (a review, a plan, a spec) into a set of filed tasks with real blocking edges, approved before anything is written."
+description: "Turn this conversation (a review, a plan, a spec) into a filed, dependency-ordered set of tasks, approved before anything is written."
 user-invocable: true
 disable-model-invocation: true
 argument-hint: "[scope]"
-allowed-tools: Bash(taskmgr *), Bash(command -v taskmgr)
+allowed-tools: Bash(taskmgr *)
 ---
 
 # Creating tasks from this conversation
 
-The material is already here: a review that produced findings, a plan that was argued out, a spec
-that was read. This skill turns it into filed tasks, and owns only that — how a conversation becomes
-a *set*. `taskmgr` owns the command surface and the store owns the body standard, both printed
-below and fetched by name at the step that needs them.
+!`taskmgr where`
 
-**Scope:** $ARGUMENTS narrows which material to file — "only the critical findings", "just the auth
-work". With no scope, everything actionable in the conversation is a candidate and step 3 confirms
-the set.
+!`taskmgr guide pkg:task-writing:decomposing`
 
-## The tracker, as it is on this machine
+!`taskmgr guide filing`
 
-!`command -v taskmgr >/dev/null 2>&1 && taskmgr where || echo "STOP: taskmgr is not on PATH. Tell the user and file nothing."`
+!`taskmgr guide pkg:task-writing:types`
 
-!`command -v taskmgr >/dev/null 2>&1 && taskmgr guide || true`
+`kind: none` above means no store resolved: stop, tell the user, offer `taskmgr init`.
 
-A `STOP` line above means the binary is absent: stop, tell the user, file nothing. `kind: none`
-means no store resolved: stop and offer `taskmgr init`. The overview names every part of the guide
-with the command that prints it, this store's own conventions included.
+**Scope:** $ARGUMENTS narrows which of this conversation gets filed — "only the critical findings",
+"just the auth work". With no scope, everything actionable in it is a candidate.
 
-Work only from what those commands printed, plus the topics you fetch below. Never from another
-memory of the command surface, and never from a flag you assume exists.
-
-## 1. Gather and ground
-
-Collect the actionable material from the conversation, and read anything it points at that you have
-not read — a linked spec, an issue, a file discussed but never opened.
-
-Then ground it in the repository. Open the code each task will touch and take the real path, the
-real symbol, the real command from it. A task written from memory of the discussion carries the
-discussion's vocabulary; a task written from the code carries the project's, and the implementer
-starts in the right file instead of searching for it.
-
-## 2. Decompose
-
-Two shapes, depending on what the conversation produced.
-
-**Findings** — a review, a `/simplify` pass, a failing build. One task per finding; no slicing.
-Several instances of the *same* fix are one task. A finding that is both a defect and untidiness
-around it splits by type, not by call site.
-
-**A plan or spec** — cut it into **tracer bullets**. Each task is a narrow but *complete* path
-through every layer it touches — schema, API, UI, test — so finishing it produces something
-demonstrable. Size each to one sitting. Horizontal slices ("do all the schema changes") are the
-failure mode here: every one of them can be finished with nothing working end to end, so the first
-evidence anything is right arrives only after the last task closes.
-
-Then the edges:
-
-- **Blocked-by** is a real ordering constraint: B genuinely cannot start until A closes. Preferring
-  to do A first is not a blocker — that is what priority is for. False edges make the ready queue
-  lie about what is available.
-- **Parent** groups children under an epic when the set shares one outcome. It is organisational and
-  never blocks anything.
-
-## 3. Get the set approved
-
-Present the whole set as a numbered list before writing anything — id-less at this point:
-
-```
-1. [bug/1]     Expired access token is accepted on every endpoint
-2. [feature/2] Export the orders table as CSV        blocked by: 1
-3. [chore/3]   Collapse the three date formatters
-```
-
-Ask the user about granularity (too coarse, too fine), the blocking edges, and anything to merge,
-split, or drop. Iterate until they approve. Nothing is filed before that approval — a filed task set
-is harder to reshape than a list in a message.
-
-## 4. Write the bodies to the store's standard
-
-```bash
-taskmgr guide filing                    # the sections a body carries, and what the gate refuses
-taskmgr guide pkg:task-writing:types    # which type carries the work, the rules, the wish test
-```
-
-The second topic exists only where the `task-writing` package is installed. Whatever the overview
-listed is what this store enforces; a gate refusal names the section that is missing, so write to
-the printed standard rather than filing and retrying.
-
-## 5. File
-
-Create in dependency order — an epic and any blocker before the issues that reference them, since
-their ids do not exist until they are created. Ids are opaque short codes; take each from the
-command's output and never invent one. `taskmgr guide filing` holds both the create surface and the
-`--json` idiom for capturing an id.
-
-## 6. Report
-
-List what was created — id, type, priority, title — and the edges between them, so the user can see
-the shape and run `taskmgr ready`. Name anything you did not file and why: out of the given scope,
-or no testable criterion could be written for it. This skill only creates; existing issues are not
-closed or edited here.
+Collect that material and read what it points at that you have not read — a linked spec, an issue,
+a file discussed but never opened. Then decompose it, get the set approved, file it and report,
+each to the standard above.
