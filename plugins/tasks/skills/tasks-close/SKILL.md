@@ -1,6 +1,6 @@
 ---
 name: tasks-close
-description: "Close a task."
+description: "Close a task, against what it said done would look like."
 user-invocable: true
 disable-model-invocation: true
 argument-hint: "[task-id]"

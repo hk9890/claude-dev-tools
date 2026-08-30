@@ -1,11 +1,9 @@
-# taskmgr is not on PATH
+# taskmgr is unavailable
 
-`tasks-core` prints the tracker's own guide. When the binary is absent the skill prints a `STOP`
-line instead, and every other skill in this plugin is blocked behind it: they have no command
-surface to work from, and a body written without the store's standard is refused by its gate.
+Every skill in this plugin works from what `taskmgr guide` prints. Without it there is no command
+surface, and a body written without the store's standard is refused by its gate.
 
-Tell the user what is missing, offer the install below, and file nothing until `taskmgr guide`
-prints.
+Tell the user what is missing, offer the install below, and resume once `taskmgr guide` prints.
 
 ## Install it
 
@@ -23,14 +21,14 @@ Confirm with `taskmgr version`.
 Then **load this skill again**. Its guide line runs only when the skill loads, so a copy loaded
 before the install keeps showing the `STOP` line however many commands you run afterwards.
 
-## It is installed but the guide is thin
+## The guide printed, but the store's conventions are missing
 
-`taskmgr guide` lists the built-in jobs and every topic a package contributes. A store whose
-conventions are missing has no package installed for them; `taskmgr package list` shows what is
-loaded. Report that and let the user decide whether to install one — do not work around it.
+`taskmgr guide` lists the built-in jobs and every topic a package contributes. A store missing its
+conventions has no package installed for them, and `taskmgr package list` shows what is loaded.
+Report that and let the user decide whether to install one.
 
 ## Every other failure
 
 taskmgr reports its own error states and the message carries the fix: a directory with no store
 names `taskmgr init`, and a refused write names the section or the hook that refused it. Act on
-what the command printed rather than guessing from here.
+what the command printed.

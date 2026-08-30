@@ -3,7 +3,7 @@ name: tasks-overview
 description: "Where the tracker stands: ready, blocked, in progress."
 user-invocable: true
 disable-model-invocation: true
-argument-hint: "[filter]"
+argument-hint: "[scope]"
 ---
 
 # Tracker overview
