@@ -13,7 +13,7 @@
     {
       "name": "tasks",
       "source": "./plugins/tasks",
-      "description": "Write and file tasks worth executing — a writing standard taken from the taskmgr store being filed into, and a user-invoked skill that turns the current conversation into an approved, dependency-ordered set of filed taskmgr tasks.",
+      "description": "Work a taskmgr tracker from Claude Code: one skill that hands the model taskmgr's own guide, and seven you type for the jobs you repeat — filing a conversation, picking what is next, an overview, starting, closing, grooming, and handing over.",
       "version": "1.33.0",
       "author": {
         "name": "Hans Kohlreiter",

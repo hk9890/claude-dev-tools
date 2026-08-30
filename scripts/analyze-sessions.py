@@ -126,6 +126,10 @@ SKILL_RENAME_ALIASES = {
     # above; a merge (one live target) points at the successor instead.
     "project-quality:project-review-tests": "project-review:project-review-tests",
     "project-quality:project-review-docs": "project-review:project-review-docs",
+    # tasks-writing held the task-body standard as plugin text. The standard moved into
+    # taskmgr's own guide, so the skill was deleted and tasks-core — which prints that
+    # guide — is the single live successor for the work it used to do.
+    "tasks:tasks-writing": "tasks:tasks-core",
     # complexity-review plugin era (plugin later renamed; the skill now lives in challenge)
     "complexity-review:complexity-review": "challenge:kiss",
     # first project-review era (the test -> tests rename happened in the project-quality merge).

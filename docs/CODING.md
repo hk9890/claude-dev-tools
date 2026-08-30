@@ -87,7 +87,7 @@ disable-model-invocation: true
 ---
 ```
 
-**Schema B — model-discoverable.** Only where the `Skill` tool must reach the skill: siblings or agents load it by name (`tasks:tasks-writing`, `instruction-writing:writing-project-docs`), the model should fire it unprompted from context (`challenge:grill`, `writing-skills`), or a user-facing command skill must also answer a prose request for its surface instead of only the typed slash command (`html-visualize-ask`, `html-visualize-feedback`). `when_to_use` carries positive triggers, exclusions, and the argument shape where it helps.
+**Schema B — model-discoverable.** Only where the `Skill` tool must reach the skill: siblings or agents load it by name (`tasks:tasks-core`, `instruction-writing:writing-project-docs`), the model should fire it unprompted from context (`challenge:grill`, `writing-skills`), or a user-facing command skill must also answer a prose request for its surface instead of only the typed slash command (`html-visualize-ask`, `html-visualize-feedback`). `when_to_use` carries positive triggers, exclusions, and the argument shape where it helps.
 
 ```yaml
 ---
