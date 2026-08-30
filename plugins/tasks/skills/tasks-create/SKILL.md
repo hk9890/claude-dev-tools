@@ -92,8 +92,8 @@ the printed standard rather than filing and retrying.
 
 Create in dependency order — an epic and any blocker before the issues that reference them, since
 their ids do not exist until they are created. Ids are opaque short codes; take each from the
-command's output and never invent one. `taskmgr guide filing` holds the create surface and
-`taskmgr guide scripting` holds `--json` id capture.
+command's output and never invent one. `taskmgr guide filing` holds both the create surface and the
+`--json` idiom for capturing an id.
 
 ## 6. Report
 
