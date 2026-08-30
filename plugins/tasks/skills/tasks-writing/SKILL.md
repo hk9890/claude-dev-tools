@@ -1,49 +1,49 @@
 ---
 name: tasks-writing
-description: "The standard a task follows before it is filed: which type carries it, what each body section owns, and a worked example of every type."
-when_to_use: "Use when writing, splitting, or repairing the text of a task, issue, or ticket: its type, priority, body, or acceptance criteria — a `doc` issue included, the design page or handover a tracker holds. Triggers on 'write a task', 'acceptance criteria', 'is this ticket clear enough'. Also loaded by name when another skill needs the standard. Not for a document that lives in the repository: project docs (`instruction-writing:writing-project-docs`) or skills (`instruction-writing:writing-skills`); to file a whole conversation as a task set, point the user at `/tasks:tasks-create`."
+description: "The standard a task follows before it is filed: which type carries it, what each body section owns, and the rules the store's gate holds it to."
+when_to_use: "Use when writing, splitting, or repairing the text of a task, issue, or ticket: its type, priority, body, or acceptance criteria, including a `doc` issue such as a design page or handover the tracker holds. Triggers on 'write a task', 'acceptance criteria', 'is this ticket clear enough'. Also loaded by name when another skill needs the standard. Not for a document that lives in the repository: project docs (`instruction-writing:writing-project-docs`) or skills (`instruction-writing:writing-skills`); to file a whole conversation as a task set, point the user at `/tasks:tasks-create`."
 argument-hint: "[task-or-draft]"
 ---
 
 # Writing tasks
 
-A task is read **cold**. Whoever executes it — a colleague next month, an agent with no transcript —
-has your words and the repository, nothing else.
-
-A task that names a wanted end-state but no executable path is a **wish**. Wishes file cleanly and
-read fine, and they cost the implementer a round trip before any work starts. They are the default
-failure, not a rare one.
+The standard is not written here. `taskmgr` prints it, and the store you are filing into prints its
+own additions to the same text — so what you read is what that store's gate will refuse you for.
 
 **What to write or fix:** $ARGUMENTS — a draft, a task id, or a finding; with no argument, the task
 under discussion.
 
-## Before you write a line
+## 1. Check the tool is there
 
-1. **Which type carries this?** [`references/task-types.md`](references/task-types.md) — the six
-   types, each with its *Use when* / *Inside* / *Not inside* contract, plus the priority scale. The
-   *nature* of the work picks the type; where it was discovered picks nothing.
-2. **What goes in the body?** [`references/task-anatomy.md`](references/task-anatomy.md) — the four
-   sections a body carries, what each one owns, where `epic` and `doc` deviate, and the six rules
-   (*Cold start*, *One problem*, *Evidence*, *Testable done*, *Smallest change*, *Economy*) a body
-   must clear.
-3. **What does a finished one look like?** [`examples/`](examples/) — a worked example per type.
-   Match the register: short declarative sentences, real paths, real commands, pasted output.
-   `epic.md` and `doc.md` are the deliberate deviations — an epic carries an outcome and children,
-   never an implementation; a doc carries a document, and no work at all.
+```bash
+command -v taskmgr >/dev/null 2>&1 || echo "STOP: taskmgr is not on PATH"
+```
 
-## The wish test
+A `STOP` line means the standard is unavailable on this machine: say so and write nothing. Run
+nothing below it.
 
-Read the draft as the cold reader and answer two questions: *where do I start?* and *how will I know
-I am done?* Answer both from the page alone. An answer that lives in your head, in the conversation
-that produced the task, or in "the author will know" means the task is a wish — repair it before
-filing.
+## 2. Print the standard
 
-A `doc` is exempt. It holds a document, not a path through work, so neither question has an answer
-to give.
+```bash
+taskmgr guide filing                    # the sections a body carries, and what the gate refuses
+taskmgr guide pkg:task-writing:types    # which type carries the work, the rules, the wish test
+```
+
+The second topic exists only where the `task-writing` package is installed. `taskmgr guide --list`
+names the topics this store actually has, and any other `pkg:` topic it lists is this store's
+convention and binds too.
+
+Work only from what those commands print. Never from another memory of the standard, and never from
+a section or rule you assume exists.
+
+## 3. Hold the draft against it
+
+Take each section of the body and each rule the guide states, and clear it, rewrite it, or cut it.
+Where the guide names a template to start from, use the command it gives for finding it: a package
+cannot state its own install path, so the path has to be asked for rather than assumed.
 
 ## Done means
 
-Every section has been held against its owner's contract and the six rules — cleared, rewritten, or
-cut — and the wish test answered from the page. A `doc` is done when the rules that survive its
-exemptions are clear; `task-anatomy.md` says which. Reading the references is not the work;
-applying them to the task is.
+Every section held against its contract, every rule the guide states applied, and the guide's own
+completion test answered from the page alone. Reading the guide is not the work. Applying it to the
+task in front of you is.
