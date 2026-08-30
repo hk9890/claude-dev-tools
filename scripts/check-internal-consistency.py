@@ -43,6 +43,25 @@ Check D — version uniformity:
     even when its own plugin.json and marketplace entry agree — the gap Check B
     alone cannot see.
 
+Check E — skill and agent references:
+    Scans markdown for `plugin:name` references whose *plugin* half is a plugin
+    directory in this repo, and resolves each to plugins/<plugin>/skills/<name>/
+    or plugins/<plugin>/agents/<name>.md. Unresolved => FAIL with file:line.
+
+    Only locally-owned prefixes are checked: a reference to an external plugin
+    (commit-commands:commit, plugin-dev:skill-reviewer) names something this repo
+    does not ship and cannot resolve, and non-reference colon pairs (display:none,
+    test:integration, github:hk9890) never match a plugin directory. Lines
+    carrying the counter-example marker U+274C are skipped — docs/CODING.md marks
+    deliberately-wrong names that way, and they must stay wrong. A full scan skips
+    examples/ and notes/ segments for the same reason Check A does; an explicit
+    --check-skill-refs reads whatever it is given, which is how the fixtures there
+    are tested.
+
+    validate-routes.py treats these references as opaque by design, so nothing
+    else in the repo resolves them: renaming a skill leaves every sibling that
+    loads it by name pointing at nothing, with all other checks still green.
+
 All checks run regardless of each other; all failures are reported before exit.
 
 Fixture override flags (used by negative tests):
@@ -53,6 +72,8 @@ Fixture override flags (used by negative tests):
     --skip-versions              skip Check B entirely (useful for section-only tests)
     --skip-descriptions          skip Check C entirely
     --skip-uniformity            skip Check D entirely
+    --check-skill-refs <file>... scan only these specific markdown files for Check E
+    --skip-skill-refs            skip Check E entirely
 
 Path resolution for --check-sections: target .md files referenced inside a
 fixture are resolved relative to the fixture file first, then relative to
@@ -437,6 +458,80 @@ def run_version_uniformity_check(marketplace):
 
 
 # ---------------------------------------------------------------------------
+# Check E — skill and agent references
+# ---------------------------------------------------------------------------
+
+# `plugin:name`, both halves kebab-case. Deliberately loose: the prefix filter in
+# run_skill_ref_check, not this pattern, is what decides which matches are
+# references at all.
+_SKILL_REF_RE = re.compile(r"\b([a-z][a-z0-9]*(?:-[a-z0-9]+)*):([a-z][a-z0-9]*(?:-[a-z0-9]+)*)\b")
+
+# docs/CODING.md marks a deliberately-wrong name with this, and it must stay wrong.
+_COUNTEREXAMPLE_MARKER = "❌"
+
+
+def _local_plugin_names(repo_root):
+    """Plugin directory names this repo ships, i.e. the prefixes Check E owns."""
+    plugins_dir = os.path.join(repo_root, "plugins")
+    if not os.path.isdir(plugins_dir):
+        return set()
+    return {
+        name for name in os.listdir(plugins_dir)
+        if os.path.isdir(os.path.join(plugins_dir, name))
+    }
+
+
+def _skill_ref_resolves(repo_root, plugin, name):
+    """True when plugin:name names a skill directory or an agent file that exists."""
+    skill = os.path.join(repo_root, "plugins", plugin, "skills", name, "SKILL.md")
+    agent = os.path.join(repo_root, "plugins", plugin, "agents", f"{name}.md")
+    return os.path.isfile(skill) or os.path.isfile(agent)
+
+
+def run_skill_ref_check(repo_root, target_files=None):
+    """Run Check E — skill and agent references. Returns list of failure strings."""
+    local = _local_plugin_names(repo_root)
+    if not local:
+        return []
+
+    if target_files is None:
+        # examples/ and notes/ are excluded exactly as Check A excludes them: a
+        # fixture there is deliberately wrong, and a full scan that read it would
+        # fail on the very file written to prove this check fails.
+        target_files = []
+        for dirpath, dirnames, filenames in os.walk(repo_root):
+            dirnames[:] = [d for d in dirnames if d not in (".git", "node_modules", "output")]
+            if _path_has_excluded_segment(os.path.relpath(dirpath, repo_root)):
+                continue
+            target_files.extend(
+                os.path.join(dirpath, f) for f in filenames if f.endswith(".md"))
+
+    failures = []
+    for path in sorted(target_files):
+        try:
+            with open(path, encoding="utf-8") as fh:
+                lines = fh.readlines()
+        except OSError as exc:
+            failures.append(f"{os.path.relpath(path, repo_root)}: cannot read ({exc})")
+            continue
+
+        for lineno, line in enumerate(lines, 1):
+            if _COUNTEREXAMPLE_MARKER in line:
+                continue
+            for plugin, name in _SKILL_REF_RE.findall(line):
+                if plugin not in local:
+                    continue
+                if _skill_ref_resolves(repo_root, plugin, name):
+                    continue
+                rel = os.path.relpath(path, repo_root)
+                failures.append(
+                    f"{rel}:{lineno}: {plugin}:{name} resolves to no skill "
+                    f"(plugins/{plugin}/skills/{name}/SKILL.md) "
+                    f"or agent (plugins/{plugin}/agents/{name}.md)")
+    return failures
+
+
+# ---------------------------------------------------------------------------
 # Argument parsing
 # ---------------------------------------------------------------------------
 
@@ -467,6 +562,11 @@ def _parse_args(argv):
                         help="skip Check C entirely")
     parser.add_argument("--skip-uniformity", action="store_true",
                         help="skip Check D entirely")
+    parser.add_argument(
+        "--check-skill-refs", nargs="+", metavar="FILE", default=None,
+        help="scan only these markdown files for Check E (default: full repo scan)")
+    parser.add_argument("--skip-skill-refs", action="store_true",
+                        help="skip Check E entirely")
     args = parser.parse_args(argv)
 
     if args.repo_root is None:
@@ -581,6 +681,22 @@ def main():
             all_failures.extend(uniformity_failures)
         else:
             print("CHECK D — version uniformity: PASS")
+
+    # ------------------------------------------------------------------
+    # Check E — skill and agent references
+    # ------------------------------------------------------------------
+    if args.skip_skill_refs:
+        print("CHECK E — skill and agent references: SKIPPED")
+    else:
+        ref_failures = run_skill_ref_check(repo_root, args.check_skill_refs)
+
+        if ref_failures:
+            print("CHECK E — skill and agent references: FAILED")
+            for f in ref_failures:
+                print(f"  FAIL: {f}")
+            all_failures.extend(ref_failures)
+        else:
+            print("CHECK E — skill and agent references: PASS")
 
     # ------------------------------------------------------------------
     # Summary

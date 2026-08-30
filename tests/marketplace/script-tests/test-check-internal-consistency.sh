@@ -286,6 +286,45 @@ test_good_description_passes() {
   rm -rf "$tmp_dir"
 }
 
+# 14. Negative / skill ref: a locally-owned prefix naming no skill exits non-zero
+test_skill_ref_fails() {
+  assert_exit "bad-skill-ref: non-zero exit for a dangling local reference" 1 \
+    python3 "$SCRIPT" \
+      --repo-root "$REPO_ROOT" \
+      --check-skill-refs "$EXAMPLES/skill-refs/dangling.md" \
+      --skip-sections --skip-versions --skip-descriptions --skip-uniformity
+}
+
+# 15. Negative / skill ref: the failure names the reference and its line
+test_skill_ref_message() {
+  assert_output_contains \
+    "bad-skill-ref: output names the unresolvable reference" \
+    "tasks:tasks-nonexistent" \
+    python3 "$SCRIPT" \
+      --repo-root "$REPO_ROOT" \
+      --check-skill-refs "$EXAMPLES/skill-refs/dangling.md" \
+      --skip-sections --skip-versions --skip-descriptions --skip-uniformity
+}
+
+# 16. Positive / skill ref: a real skill and a real agent both resolve
+test_skill_ref_passes() {
+  assert_exit "good-skill-ref: skill and agent references exit 0" 0 \
+    python3 "$SCRIPT" \
+      --repo-root "$REPO_ROOT" \
+      --check-skill-refs "$EXAMPLES/skill-refs/resolving.md" \
+      --skip-sections --skip-versions --skip-descriptions --skip-uniformity
+}
+
+# 17. Positive / skill ref: external plugins, non-reference colon pairs, and a
+#     marked counter-example are all left alone
+test_skill_ref_ignores_foreign() {
+  assert_exit "skill-ref-scope: external and non-reference pairs exit 0" 0 \
+    python3 "$SCRIPT" \
+      --repo-root "$REPO_ROOT" \
+      --check-skill-refs "$EXAMPLES/skill-refs/not-references.md" \
+      --skip-sections --skip-versions --skip-descriptions --skip-uniformity
+}
+
 # ── run all tests ─────────────────────────────────────────────────────────────
 
 test_live_repo_passes
@@ -301,6 +340,10 @@ test_version_uniformity_passes
 test_bad_description_fails
 test_missing_description_entry_fails
 test_good_description_passes
+test_skill_ref_fails
+test_skill_ref_message
+test_skill_ref_passes
+test_skill_ref_ignores_foreign
 
 printf '\n'
 printf 'Results: %d passed, %d failed\n' "$PASS" "$FAIL"
