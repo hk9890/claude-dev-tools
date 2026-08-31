@@ -1,6 +1,6 @@
 # claude-dev-tools
 
-A plugin marketplace for [Claude Code](https://claude.ai/code). Each plugin is a self-contained unit — skills, agents, hooks, or themes — that extends Claude Code's capabilities in a specific domain.
+A plugin marketplace for [Claude Code](https://claude.ai/code). Each plugin is a self-contained unit — skills, agents, hooks, themes, or output styles — that extends Claude Code's capabilities in a specific domain.
 
 ## Plugins
 
