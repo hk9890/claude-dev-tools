@@ -216,18 +216,27 @@ test_hollow() {
   rm -rf "$dir"
 }
 
-# 12. AGENTS routes extracted (purpose hint present)
+# 12. AGENTS routes extracted
 test_routes() {
   local dir; dir=$(make_fixture)
   local out; out=$("$SCRIPT" "$dir")
   local n; n=$(json_val "$out" "len([r for r in d['agents_routes'] if r['target'].endswith('.md')])")
   if [[ "$n" -ge 2 ]]; then ok "routes: >=2 md routes (=$n)"; else fail "routes: too few ($n)"; fi
-  local purpose; purpose=$(json_val "$out" "[f['purpose'] for f in d['files'] if f['path']=='docs/TESTING.md'][0]")
-  assert_eq "routes: TESTING purpose=test" "test" "$purpose"
   rm -rf "$dir"
 }
 
-# 13. text format renders
+# 13. --brief keeps what the workflow reads and drops the resolved-link lists, which
+# made a 45-doc manifest too large for the agent that relays it to return in full.
+test_brief() {
+  local dir; dir=$(make_fixture)
+  local out; out=$("$SCRIPT" "$dir" --brief)
+  assert_eq "brief: one line of JSON" "1" "$(printf '%s\n' "$out" | wc -l | tr -d ' ')"
+  assert_eq "brief: no per-file links" "False" "$(json_val "$out" "any('links' in f for f in d['files'])")"
+  assert_contains "brief: unresolved links kept" "GONE.md" "$(json_val "$out" "[l for f in d['files'] for l in f['unresolved_links']]")"
+  rm -rf "$dir"
+}
+
+# 14. text format renders
 test_text() {
   local dir; dir=$(make_fixture)
   local out; out=$("$SCRIPT" "$dir" --format=text)
@@ -250,6 +259,7 @@ test_claude_ok
 test_claude_bad
 test_hollow
 test_routes
+test_brief
 test_text
 
 echo ""

@@ -39,11 +39,10 @@ docs inline. The workflow returns a structured report; relay it.
    Done when you hold two absolute paths: `SKILL_DIR` and `STANDARD_DIR`.
 
 3. Prepare the run — check the prerequisite, then mint a per-run scratch dir. The workflow
-   writes its history extracts and execution traces to that dir under deterministic names,
-   and the grading stage treats a trace as primary evidence, so two concurrent reviews
-   sharing one directory would grade each other's run. Echo the path: shell state does not
-   survive between commands, so a value you only assign is gone by the time you need it in
-   step 4.
+   writes its history extracts and session labels to that dir under deterministic names, so
+   two concurrent reviews sharing one directory would read each other's labels. Echo the
+   path: shell state does not survive between commands, so a value you only assign is gone
+   by the time you need it in step 4.
 
    ```bash
    command -v python3 >/dev/null || { echo "python3 missing — stop and fall back to a manual read"; return 2>/dev/null || exit 1; }
@@ -60,18 +59,16 @@ docs inline. The workflow returns a structured report; relay it.
 4. Invoke the **Workflow** tool:
    - `scriptPath`: `<SKILL_DIR>/workflows/review-docs.js`
    - `args`: `{ "repoRoot": "<the step-1 path>", "scriptsDir": "<SKILL_DIR>/scripts", "standardDir": "<STANDARD_DIR>", "level": "<the step-1 level>", "scratchDir": "<the absolute path printed above>" }`
-   - `level` rungs, on top of the read-review that always runs — one agent per use case
-     (`docs/CODING.md` reviewed by an agent that arrives wanting to code), plus one per
-     file that is not a use case:
-     `low` = a fast sonnet read-review, history reports coverage only;
-     `medium` = opus read-review, history over ~40 sessions;
-     `high` = history over every session, plus execution on 3 routes;
-     `ultra` = execution on every route.
-     Each rung is roughly double the one below it. Execution is what separates the top
-     two — it is the only stage costly enough to be worth a rung, since read-review is
-     ~84% of a run without it.
-     Advanced: `"maxExecutionRoutes": <n>` overrides the execution route cap (`-1` all,
-     `0` skip).
+   - `level` rungs. Every rung runs the same stages: the docs are packed into a few
+     batches, and each batch agent reads its docs and the standard once, then judges them
+     (`docs/CODING.md` judged as by an agent that arrives wanting to code). A rung buys the
+     model, the effort, and the history sample, never more agents or turns:
+     `low` = sonnet read-review, history over ~15 sessions reports coverage only;
+     `medium` = opus at medium effort, history over ~40 sessions;
+     `high` = opus at high effort, history over ~100 sessions;
+     `ultra` = opus at xhigh effort, history over ~100 sessions.
+     No stage checks the docs against the code, so a doc that has drifted from the code
+     without contradicting another doc is not caught. The report states this.
    - The history phase reads this repository's past Claude Code sessions and asks whether
      the doc each route points at was actually opened, and opened *before* the work. It
      writes only to the scratch dir. Findings need at least 3 comparable sessions, and a
@@ -82,9 +79,8 @@ docs inline. The workflow returns a structured report; relay it.
      under its previous wording" is what shows a rewrite was warranted. A repo with no
      sessions skips the phase: no evidence is a gap in the audit, never a finding about
      the docs.
-   - The execution phase (`ultra`) runs a cold agent **in the live working tree** — so it
-     audits your uncommitted doc edits, not `HEAD` — under a hard read-only contract.
-     Tier-C (destructive) tasks are never executed.
+   - The read-review reads the live working tree, so it audits your uncommitted doc edits,
+     not `HEAD`.
 
 5. Relay the report. The workflow returns `{ report: { verdict, headline, findings[], … }, raw, … }`
    — surface `.report`, and do not re-derive it. Each finding is tagged `settled`

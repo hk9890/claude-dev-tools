@@ -11,10 +11,13 @@
 // Coverage:
 //   - normalizeArgs parses a JSON-*string* args payload and rejects an unusable config
 //     here rather than at the `python3 undefined/manifest.py` invocation
-//   - the level vocabulary shared with project-review-codebase and test-tests, and the
-//     level-to-route-budget mapping
+//   - the level vocabulary shared with project-review-codebase and test-tests, and what
+//     each rung buys
 //   - parseManifest survives the wrappings a model actually returns JSON in
-//   - selectFileRoutes dedupes by target and caps without losing the pre-cap total
+//   - orderTargets / packBatches / unreviewedFiles: how docs reach the batch agents, and
+//     that a file no agent reviewed is reported by name
+//   - the orchestration: the cost bounds (a fixed read list per agent, explicit model and
+//     effort on every agent, one history judge) and the prompts each stage receives
 //   - the bad-args bailout returns the diagnostic error object without spawning agents
 //   - a broken runtime (no agent hook) fails loudly instead of no-op
 
@@ -75,12 +78,12 @@ async function main() {
   });
 
   const {
-    normalizeArgs, parseManifest, selectFileRoutes, splitReviewTargets,
-    orderRoutesByHistoryGap, historyFindingBar,
-    LEVEL_CONFIG, USE_CASES, MIN_SEGMENTS_FOR_FINDING,
+    normalizeArgs, parseManifest, splitReviewTargets, orderTargets, packBatches,
+    unreviewedFiles, historyFindingBar,
+    LEVEL_CONFIG, USE_CASES, BATCH_BYTES, MIN_SEGMENTS_FOR_FINDING,
   } = helpers;
 
-  const required = { normalizeArgs, parseManifest, selectFileRoutes };
+  const required = { normalizeArgs, parseManifest, splitReviewTargets, orderTargets, packBatches, unreviewedFiles, historyFindingBar };
   const missingExport = Object.keys(required).filter((k) => typeof required[k] !== 'function');
   if (missingExport.length) {
     bad('review-docs.js exposes its pure helpers', `missing or not a function: ${missingExport.join(', ')}`);
@@ -107,6 +110,9 @@ async function main() {
   eq('normalizeArgs: a trailing slash on standardDir does not double the separator',
     '/std/references/project-doc-guidelines.md',
     normalizeArgs({ repoRoot: '/r', scriptsDir: '/s/scripts', standardDir: '/std/' }).guidelinesFile);
+  // The batch agents are handed `${repoRoot}/${path}` to Read.
+  eq('normalizeArgs: a trailing slash on repoRoot is dropped', '/r',
+    normalizeArgs({ repoRoot: '/r/', scriptsDir: '/s/scripts', standardDir: '/std' }).repoRoot);
 
   // The regression the seam exists for: args arriving as a JSON STRING must be parsed,
   // or every field is undefined and the run dies at "undefined/manifest.py".
@@ -135,7 +141,7 @@ async function main() {
     /absolute path/.test(normalizeArgs({ repoRoot: '/r', scriptsDir: 'rel/scripts' }).error || ''));
 
   // `cost` was renamed to `level`. Silently ignoring it hands a caller who asked for an
-  // ultra audit a medium one — 3 routes, no refutation — and reports raw.level 'medium'.
+  // ultra audit a medium one and reports raw.level 'medium'.
   truthy('normalizeArgs: the renamed `cost` argument is rejected, not silently dropped',
     /level/.test(normalizeArgs({ repoRoot: '/r', scriptsDir: '/s/scripts', standardDir: '/std', cost: 'ultra' }).error || ''));
   eq('normalizeArgs: the received keys are echoed for diagnosis',
@@ -148,7 +154,7 @@ async function main() {
   eq('normalizeArgs: an absolute scratchDir is accepted', null,
     normalizeArgs({ repoRoot: '/r', scriptsDir: '/s/scripts', standardDir: '/std', scratchDir: '/tmp/x' }).error);
 
-  // ── the shared level vocabulary and its route budget ─────────────────────────
+  // ── the shared level vocabulary ──────────────────────────────────────────────
   for (const lvl of ['low', 'medium', 'high', 'ultra']) {
     eq(`level: ${lvl} is accepted`, lvl, normalizeArgs({ repoRoot: '/r', scriptsDir: '/s', level: lvl }).level);
   }
@@ -157,27 +163,19 @@ async function main() {
   eq('level: is case-insensitive', 'high',
     normalizeArgs({ repoRoot: '/r', scriptsDir: '/s', level: 'HIGH' }).level);
 
-  // Execution is the only stage expensive enough to separate a rung — read-review is ~84%
-  // of a no-execution run, so raising the history sample alone left high ~4% off medium.
-  // A capped probe at high and full coverage at ultra makes each step roughly a doubling.
-  const maxExecFor = (level) => normalizeArgs({ repoRoot: '/r', scriptsDir: '/s', level }).maxExec;
-  eq('level: low runs no execution phase', 0, maxExecFor('low'));
-  eq('level: medium runs no execution phase', 0, maxExecFor('medium'));
-  eq('level: high probes a capped sample of routes', 3, maxExecFor('high'));
-  eq('level: ultra runs every route', -1, maxExecFor('ultra'));
-  eq('level: execution is what separates the top two rungs', ['high', 'ultra'],
-    Object.keys(LEVEL_CONFIG).filter((l) => LEVEL_CONFIG[l].executionRoutes !== 0));
-  // Every rung must differ from the one below it in something a user can feel.
+  // Every rung must differ from the one below it in something a user can feel — a model,
+  // an effort, or whether history can raise findings — not only in history sample size.
   const rungs = ['low', 'medium', 'high', 'ultra'];
   for (let i = 1; i < rungs.length; i++) {
     const a = LEVEL_CONFIG[rungs[i - 1]], b = LEVEL_CONFIG[rungs[i]];
     truthy(`level: ${rungs[i]} differs from ${rungs[i - 1]} in more than sample size`,
-      a.reviewModel !== b.reviewModel || a.historyFindings !== b.historyFindings ||
-      a.executionRoutes !== b.executionRoutes);
+      a.reviewModel !== b.reviewModel || a.reviewEffort !== b.reviewEffort || a.historyFindings !== b.historyFindings);
   }
-
-  // low is the only rung that downgrades the read-review model. Without that, low and
-  // high cost nearly the same and the cheap token is a lie.
+  // No rung may buy depth by letting an agent gather more: that is the quadratic cost the
+  // batch design removed. A rung that re-adds a stage has to come through here.
+  eq('level: every rung is only model, effort, and history sample',
+    ['historyFindings', 'perUseCase', 'reviewEffort', 'reviewModel', 'sessionLimit'],
+    [...new Set(Object.values(LEVEL_CONFIG).flatMap((c) => Object.keys(c)))].sort());
   eq('level: only low downgrades the read-review model', ['low'],
     Object.keys(LEVEL_CONFIG).filter((l) => LEVEL_CONFIG[l].reviewModel !== 'opus'));
   eq('level: low reports history coverage but cannot raise a history finding', false,
@@ -188,25 +186,10 @@ async function main() {
     truthy(`level: ${lvl} can reach the finding floor`,
       LEVEL_CONFIG[lvl].historyFindings && LEVEL_CONFIG[lvl].perUseCase >= MIN_SEGMENTS_FOR_FINDING);
   }
-
-  // maxExecutionRoutes is the documented advanced override, including the value 0,
-  // which a falsy-guard implementation would silently discard.
-  eq('maxExecutionRoutes: overrides the level budget', 7,
-    normalizeArgs({ repoRoot: '/r', scriptsDir: '/s', level: 'medium', maxExecutionRoutes: 7 }).maxExec);
-  eq('maxExecutionRoutes: an explicit 0 is honoured, not treated as unset', 0,
-    normalizeArgs({ repoRoot: '/r', scriptsDir: '/s', level: 'high', maxExecutionRoutes: 0 }).maxExec);
-  // selectFileRoutes branches on `=== 0` and `> 0`. A string "0" — which a model filling
-  // the args object as JSON text emits — satisfies neither, so without coercion it falls
-  // through to "run every route": the caller asks for none and gets one live action agent
-  // per AGENTS.md route.
-  eq('maxExecutionRoutes: a string "0" is coerced, not fallen through', 0,
-    normalizeArgs({ repoRoot: '/r', scriptsDir: '/s', maxExecutionRoutes: '0' }).maxExec);
-  eq('maxExecutionRoutes: a string "-1" is coerced', -1,
-    normalizeArgs({ repoRoot: '/r', scriptsDir: '/s', maxExecutionRoutes: '-1' }).maxExec);
-  eq('maxExecutionRoutes: null falls back to the level default, not to every route', 0,
-    normalizeArgs({ repoRoot: '/r', scriptsDir: '/s', level: 'medium', maxExecutionRoutes: null }).maxExec);
-  truthy('maxExecutionRoutes: a non-integer is rejected rather than silently ignored',
-    /integer/.test(normalizeArgs({ repoRoot: '/r', scriptsDir: '/s', standardDir: '/std', maxExecutionRoutes: 'all' }).error || ''));
+  // history.py reads --limit 0 as "every session". One classifier runs per 12 sessions, so
+  // an uncapped rung spawns agents in proportion to how long the repo has been worked in.
+  truthy('level: every rung caps the history sample',
+    Object.values(LEVEL_CONFIG).every((c) => c.sessionLimit > 0));
 
   // ── parseManifest ────────────────────────────────────────────────────────────
   eq('parseManifest: raw JSON', { a: 1 }, parseManifest('{"a":1}'));
@@ -222,34 +205,6 @@ async function main() {
   try { parseManifest('no json here at all'); } catch { parseThrew = true; }
   truthy('parseManifest: unparseable input throws so the run aborts loudly', parseThrew);
 
-  // ── selectFileRoutes ─────────────────────────────────────────────────────────
-  const routes = [
-    { kind: 'file', target: 'docs/A.md' },
-    { kind: 'skill', target: 'docs/SKILL.md' },   // skills are not doc routes
-    { kind: 'file', target: 'docs/B.md' },
-    { kind: 'file', target: 'docs/A.md' },        // duplicate target
-    { kind: 'file', target: 'plugins/x' },        // not a .md
-    { kind: 'file', target: 'docs/C.md' },
-  ];
-  const all = selectFileRoutes(routes, -1);
-  eq('selectFileRoutes: dedupes by target and drops skills and non-.md targets',
-    ['docs/A.md', 'docs/B.md', 'docs/C.md'], all.routes.map((r) => r.target));
-  eq('selectFileRoutes: total counts the distinct routes', 3, all.total);
-
-  const capped = selectFileRoutes(routes, 2);
-  eq('selectFileRoutes: caps the routes it runs', 2, capped.routes.length);
-  eq('selectFileRoutes: the pre-cap total survives capping, so the skip can be reported',
-    3, capped.total);
-
-  const none = selectFileRoutes(routes, 0);
-  eq('selectFileRoutes: a budget of 0 runs nothing', 0, none.routes.length);
-  eq('selectFileRoutes: a budget of 0 still reports what was skipped', 3, none.total);
-
-  eq('selectFileRoutes: a cap above the total is not padded', 3, selectFileRoutes(routes, 99).routes.length);
-  eq('selectFileRoutes: no routes at all', { routes: [], total: 0 }, selectFileRoutes([], -1));
-  eq('selectFileRoutes: an absent routes list is tolerated', { routes: [], total: 0 },
-    selectFileRoutes(undefined, -1));
-
   // ── splitReviewTargets ───────────────────────────────────────────────────────
   const targets = splitReviewTargets([
     { path: 'docs/CODING.md', classification: 'canonical' },
@@ -263,14 +218,14 @@ async function main() {
   ]);
   eq('splitReviewTargets: a canonical topic doc becomes its use case',
     ['coding', 'testing'], targets.useCases.map((u) => u.useCase).sort());
-  eq('splitReviewTargets: the files that are not use cases keep a per-file reviewer',
+  eq('splitReviewTargets: the files that are not use cases are still reviewed',
     ['AGENTS.md', 'README.md', 'docs/WHATEVER.md'], targets.residual.map((f) => f.path).sort());
   truthy('splitReviewTargets: CLAUDE.md is excluded — the manifest checks it mechanically',
     !targets.residual.some((f) => f.path === 'CLAUDE.md'));
   truthy('splitReviewTargets: meta and personal-local files are excluded',
     !targets.residual.some((f) => f.path === 'CHANGELOG.md' || f.path === '.claude.local.md'));
   // The standard makes every topic doc optional and never reports one missing, so an
-  // absent doc must produce no agent at all rather than an empty-file finding.
+  // absent doc must produce no review at all rather than an empty-file finding.
   eq('splitReviewTargets: a use case whose doc does not exist is not reviewed',
     0, splitReviewTargets([{ path: 'README.md', classification: 'canonical' }]).useCases.length);
   eq('splitReviewTargets: an empty manifest is tolerated',
@@ -278,24 +233,48 @@ async function main() {
   eq('splitReviewTargets: every use case maps to a docs/ topic file',
     [], Object.keys(USE_CASES).filter((u) => !/^docs\/[A-Z-]+\.md$/.test(USE_CASES[u].doc)));
 
-  // ── orderRoutesByHistoryGap ──────────────────────────────────────────────────
-  const gapRoutes = [
-    { target: 'docs/CLEAN.md' }, { target: 'docs/MISSED.md' }, { target: 'docs/UNSEEN.md' },
-  ];
-  const seen = {
-    'docs/CLEAN.md': { evaluated: true, missed: false },
-    'docs/MISSED.md': { evaluated: true, missed: true },
-  };
-  eq('orderRoutesByHistoryGap: no evidence first, then misses, then the clean ones',
-    ['docs/UNSEEN.md', 'docs/MISSED.md', 'docs/CLEAN.md'],
-    orderRoutesByHistoryGap(gapRoutes, seen).map((r) => r.target));
-  eq('orderRoutesByHistoryGap: with no history at all the input order is kept',
-    ['docs/CLEAN.md', 'docs/MISSED.md', 'docs/UNSEEN.md'],
-    orderRoutesByHistoryGap(gapRoutes, {}).map((r) => r.target));
-  eq('orderRoutesByHistoryGap: reordering never drops or duplicates a route',
-    3, orderRoutesByHistoryGap(gapRoutes, seen).length);
-  eq('orderRoutesByHistoryGap: an absent route list is tolerated', [],
-    orderRoutesByHistoryGap(undefined, seen));
+  // ── orderTargets ─────────────────────────────────────────────────────────────
+  const ordered = orderTargets([
+    { path: 'docs/specs/Z.md', classification: 'non-standard' },
+    { path: 'docs/TESTING.md', classification: 'canonical' },
+    { path: 'README.md', classification: 'canonical' },
+    { path: 'docs/A.md', classification: 'non-standard' },
+    { path: 'AGENTS.md', classification: 'canonical' },
+    { path: 'docs/CODING.md', classification: 'canonical' },
+    { path: 'CLAUDE.md', classification: 'canonical' },
+  ]);
+  // The router and the docs it routes to lead, so they tend to share a batch and one agent
+  // sees both sides of a route.
+  eq('orderTargets: steering files, then use cases in USE_CASES order, then the rest by path',
+    ['AGENTS.md', 'README.md', 'docs/CODING.md', 'docs/TESTING.md', 'docs/A.md', 'docs/specs/Z.md'],
+    ordered.map((t) => t.file.path));
+  eq('orderTargets: a use-case doc carries its use case', 'coding',
+    ordered.find((t) => t.file.path === 'docs/CODING.md').useCase.useCase);
+  eq('orderTargets: every other file carries none', null,
+    ordered.find((t) => t.file.path === 'docs/A.md').useCase);
+
+  // ── packBatches ──────────────────────────────────────────────────────────────
+  const sized = (path, bytes) => ({ file: { path, metrics: { bytes } }, useCase: null });
+  const packed = packBatches([sized('a', 60), sized('b', 50), sized('c', 30), sized('d', 100)], 100);
+  eq('packBatches: fills a batch until the next file would overflow it',
+    [['a'], ['b', 'c'], ['d']], packed.map((b) => b.map((t) => t.file.path)));
+  eq('packBatches: a file over the budget gets a batch of its own, not dropped',
+    [['big'], ['s']], packBatches([sized('big', 500), sized('s', 1)], 100).map((b) => b.map((t) => t.file.path)));
+  eq('packBatches: no targets means no batches', [], packBatches([], 100));
+  // The measured repo this redesign was cut against: 45 docs, 470KB. One agent per file was
+  // 39 agents; the whole point is a handful.
+  const realistic = Array.from({ length: 45 }, (_, i) => sized(`d${i}`, Math.round(470000 / 45)));
+  truthy('packBatches: a 45-doc, 470KB doc set needs at most five agents',
+    packBatches(realistic, BATCH_BYTES).length <= 5, `got ${packBatches(realistic, BATCH_BYTES).length}`);
+
+  // ── unreviewedFiles ──────────────────────────────────────────────────────────
+  const twoBatches = [[sized('a', 1), sized('b', 1)], [sized('c', 1)]];
+  eq('unreviewedFiles: a file its agent did not list is reported',
+    ['b'], unreviewedFiles(twoBatches, [{ files_reviewed: ['a'] }, { files_reviewed: ['c'] }]));
+  eq('unreviewedFiles: a dead batch agent reports its whole batch',
+    ['c'], unreviewedFiles(twoBatches, [{ files_reviewed: ['a', 'b'] }, null]));
+  eq('unreviewedFiles: a complete run reports nothing',
+    [], unreviewedFiles(twoBatches, [{ files_reviewed: ['a', 'b'] }, { files_reviewed: ['c'] }]));
 
   // ── historyFindingBar ────────────────────────────────────────────────────────
   const med = LEVEL_CONFIG.medium;
@@ -317,11 +296,11 @@ async function main() {
   else bad('bailout: no agent spawned on the bad-args path');
 
   // ── orchestration ────────────────────────────────────────────────────────────
-  // Drive the FULL manifest → read-review → execution → (ultra) verify → synthesis
-  // pipeline through stubbed hooks. Without this the orchestration block never executes,
-  // so a variable dropped from its destructure would throw a ReferenceError only during a
-  // real multi-agent run while every helper assertion above still passed.
-  const metrics = { lines: 10, words: 50, non_heading_lines: 8 };
+  // Drive the FULL manifest → read-review → history → synthesis pipeline through stubbed
+  // hooks. Without this the orchestration block never executes, so a variable dropped from
+  // its destructure would throw a ReferenceError only during a real multi-agent run while
+  // every helper assertion above still passed.
+  const metrics = { lines: 10, words: 50, non_heading_lines: 8, bytes: 400 };
   const contract = { audience: 'a', inside: 'i', not_inside: 'n' };
   const manifest = {
     summary: { total_md: 3, canonical_missing: 0, unresolved_links: 0, orphans: 0 },
@@ -333,8 +312,6 @@ async function main() {
     agents_routes: [
       { kind: 'file', target: 'docs/CODING.md', text: '**MUST read [docs/CODING.md](docs/CODING.md) before editing ANY file.**' },
       { kind: 'file', target: 'docs/B.md', text: 'See [docs/B.md](docs/B.md) for details.' },
-      { kind: 'file', target: 'docs/C.md', text: '' },
-      { kind: 'file', target: 'docs/D.md', text: '' },
     ],
     missing_canonical: [], orphans: [], location_violations: [], injected_blocks: [],
   };
@@ -346,6 +323,10 @@ async function main() {
   };
   const evidence = {
     evidence_file: '/tmp/sc/history/evidence.json', sessions_scanned: 2, sessions_labelled: 2,
+    evidence_files: {
+      coding: '/tmp/sc/history/evidence-coding.json',
+      testing: '/tmp/sc/history/evidence-testing.json',
+    },
     coverage: {
       coding: { labelled: 6, valid: 4, examined: 6, excluded_route_changed: 2, historical_examined: 2 },
       testing: { labelled: 0, valid: 0, examined: 0, excluded_route_changed: 0 },
@@ -357,33 +338,33 @@ async function main() {
   };
 
   const runAudit = async (over = {}) => {
-    // promptIndex is a stub override for the history script, not a workflow argument.
-    const { promptIndex: promptOverride, taskTier, manifest: manifestOverride, ...argOver } = over;
+    // promptIndex and manifest are stub overrides for the scripts, not workflow arguments.
+    const { promptIndex: promptOverride, manifest: manifestOverride, dropFile, ...argOver } = over;
     const manifestForRun = manifestOverride || manifest;
     const labels = [];
     const prompts = [];
+    const calls = [];
     const agent = async (prompt, opts = {}) => {
       labels.push(opts.label);
       prompts.push(prompt);
+      calls.push(opts);
       if (opts.label === 'manifest') return '```json\n' + JSON.stringify(manifestForRun) + '\n```';
       if (opts.label === 'history:extract') return JSON.stringify(promptOverride || promptIndex);
       if (opts.label === 'history:evidence') return JSON.stringify(evidence);
       if (opts.label.startsWith('history:label-')) {
         return { labels_file: '/tmp/sc/history/labels-01.json', sessions_labelled: 2, messages_labelled: 10 };
       }
-      if (opts.label.startsWith('history:')) {
-        return {
+      if (opts.label === 'history:judge') {
+        return { entries: [{
           use_case: 'coding', doc: 'docs/CODING.md', segments_judged: 4, routed: 1, late: 0,
           missed: 3, not_applicable: 0, route_wording: 'obligation', attribution: 'agent',
           severity: 'minor', finding: 'skipped despite a hard route',
-        };
+        }] };
       }
-      if (opts.label.startsWith('read:') || opts.label.startsWith('use-case:')) {
-        return { file: 'docs/CODING.md', findings: [{ category: 'accuracy', severity: 'major', observation: 'o', evidence: 'e', recommended_action: 'r' }] };
+      if (opts.label.startsWith('review-')) {
+        const paths = [...prompt.matchAll(/── FILE \d+: (\S+)/g)].map((m) => m[1]).filter((p) => p !== dropFile);
+        return { files_reviewed: paths, findings: [{ file: paths[0], category: 'accuracy', severity: 'major', observation: 'o', evidence: 'e', recommended_action: 'r' }] };
       }
-      if (opts.label.startsWith('gen:')) return { task: 't', expected: 'e', tier: taskTier || 'A' };
-      if (opts.label.startsWith('do:')) return { completed: true, answer: 'a', docs_consulted: [] };
-      if (opts.label.startsWith('grade:')) return { route: 'docs/A.md', verdict: 'routed-and-succeeded', attribution: 'doc' };
       return { verdict: 'minor gaps', headline: 'h', findings: [] };
     };
     const { ret } = await load({
@@ -392,79 +373,80 @@ async function main() {
       log: () => {},
       phase: () => {},
       parallel: async (thunks) => Promise.all(thunks.map((t) => t())),
-      pipeline: async (items, ...stages) => Promise.all(items.map(async (item, i) => {
-        let v = item;
-        for (const s of stages) v = await s(v, item, i);
-        return v;
-      })),
+      pipeline: async () => { throw new Error('the workflow no longer pipelines'); },
     });
-    return { ret, labels, prompts };
+    return { ret, labels, prompts, calls };
   };
 
   const deep = await runAudit({ level: 'ultra' });
-  eq('orchestration: ultra runs every deduped route', 4, deep.labels.filter((l) => l.startsWith('gen:')).length);
-
-  // ── the tier-C safety gate ───────────────────────────────────────────────────
-  // Stage 2 hands the generated task to a COLD agent that runs commands in the user's live
-  // repository. The only thing between a task classified destructive — tag, push, publish,
-  // delete, prod — and that agent is one guard. A mutation audit deleted the guard whole and
-  // this suite stayed green, because the stub above always classified the task tier A, so
-  // the gate had never once been driven with the input it exists for.
-  const tierC = await runAudit({ level: 'ultra', taskTier: 'C' });
-  eq('tier-C: no action agent is spawned for a destructive task',
-    0, tierC.labels.filter((l) => l.startsWith('do:')).length);
-  // Grading is short-circuited too: the skipped record is built in code, so an agent here
-  // would mean the run reached the grader with no trace file to read.
-  eq('tier-C: no grader agent is spawned either',
-    0, tierC.labels.filter((l) => l.startsWith('grade:')).length);
-  // The route must still appear in the report. Dropping it silently would read as a route
-  // that passed rather than one nobody was allowed to run.
-  eq('tier-C: every skipped route is still graded into the report',
-    4, (tierC.ret.raw.execution || []).length);
-  const skipped = (tierC.ret.raw.execution || [])[0] || {};
-  eq('tier-C: the verdict is inconclusive, not a pass', 'inconclusive', skipped.verdict);
-  eq('tier-C: nothing is attributed to the documentation', 'none', skipped.attribution);
-  truthy('tier-C: the record says why it was not executed',
-    /tier-C \(destructive\) — not executed/.test(skipped.finding || ''), skipped.finding);
-
-  // The control: a tier-A task DOES reach the action agent, so the assertions above pin the
-  // guard rather than a run that was never going to execute anything.
-  eq('tier-A: a safe task still reaches the action agent',
-    4, deep.labels.filter((l) => l.startsWith('do:')).length);
+  const reviewPrompts = deep.prompts.filter((_, i) => deep.labels[i].startsWith('review-'));
   eq('orchestration: the report is returned', 'minor gaps', deep.ret && deep.ret.report && deep.ret.report.verdict);
   eq('orchestration: the level is echoed in raw', 'ultra', deep.ret && deep.ret.raw.level);
-  eq('orchestration: the pre-cap route total is reported', 4, deep.ret && deep.ret.raw.routes_total);
-  // The regression that motivates driving the pipeline: repoRoot and the derived
-  // guidelines path reach the read-review prompts.
-  truthy('orchestration: the repo root reaches the read-review prompts',
-    deep.prompts.some((p) => p.includes('Repo root: /repo')));
-  truthy('orchestration: the authoring rules path reaches the read-review prompts',
-    deep.prompts.some((p) => p.includes('/std/references/project-doc-guidelines.md')));
-  truthy('orchestration: the scratch dir reaches the execution prompts',
-    deep.prompts.some((p) => p.includes('/tmp/sc')));
-  eq('orchestration: the verify stage is gone', 0, deep.labels.filter((l) => l.startsWith('verify:')).length);
+  eq('orchestration: the stages are manifest, read-review, history, synthesis — nothing else',
+    ['manifest', 'review-1/1', 'history:extract', 'history:label-1', 'history:evidence', 'history:judge', 'synthesis'],
+    deep.labels);
 
-  // ── read-review legs ─────────────────────────────────────────────────────────
-  eq('read-review: a canonical topic doc is reviewed as its use case, not as a file',
-    ['use-case:coding'], deep.labels.filter((l) => l.startsWith('use-case:')));
-  truthy('read-review: AGENTS.md and the non-standard doc keep per-file reviewers',
-    deep.labels.includes('read:AGENTS.md') && deep.labels.includes('read:docs/A.md'));
-  truthy('read-review: no file gets reviewed twice',
-    !deep.labels.includes('read:docs/CODING.md'));
-  truthy('read-review: the use-case agent is framed as doing the work, not auditing a file',
-    deep.prompts.some((p) => p.includes('You are here to create or edit a file in the source tree')));
-  truthy('read-review: the route wording reaches the use-case agent',
-    deep.prompts.some((p) => p.includes('use-case') || p.includes('MUST read [docs/CODING.md]')));
-  truthy('read-review: the severity bar reaches every reviewer',
-    deep.prompts.filter((p) => p.includes('SEVERITY — assign every finding')).length >= 2);
+  // ── the cost bounds ──────────────────────────────────────────────────────────
+  // An agent that omits model or effort inherits the session's, which may be opus at
+  // xhigh. Every agent that thinks must name both, so the price of a run is the script's.
+  eq('cost: every agent names its model',
+    [], deep.calls.filter((c) => !c.model).map((c) => c.label));
+  eq('cost: every agent above haiku names its effort',
+    [], deep.calls.filter((c) => c.model !== 'haiku' && !c.effort).map((c) => c.label));
+  eq('cost: the read-review uses the level model and effort',
+    [['opus', 'xhigh']], deep.calls.filter((c) => c.label.startsWith('review-')).map((c) => [c.model, c.effort]));
+  // The one rule that keeps a batch agent's turn count fixed. Losing it lets the agent
+  // grep the code claim by claim, and every grep re-sends all it has read.
+  truthy('cost: the batch agent reads its fixed list in one parallel batch and nothing else',
+    reviewPrompts.length > 0 && reviewPrompts.every((p) =>
+      p.includes('ONE parallel batch of Read calls') && p.includes('no Bash, no Grep, no Glob, no other Read')));
+  truthy('cost: the batch agent does not check claims against the code',
+    reviewPrompts.every((p) => p.includes('you do not open the code')));
+  eq('cost: one history judge for every use case, not one per use case', 1,
+    deep.labels.filter((l) => l === 'history:judge').length);
+  // --brief: the full manifest of a 45-doc repo is 132KB, and the relaying agent's Bash tool
+  // returns only a preview of that. Two runs died on the fragment.
+  truthy('cost: the manifest is requested in its brief form',
+    deep.prompts[0].includes('--brief'));
+
+  // ── read-review prompts ──────────────────────────────────────────────────────
+  truthy('read-review: the repo root reaches the batch prompt',
+    reviewPrompts[0].includes('Repo root: /repo'));
+  truthy('read-review: every doc in the batch is on the read list by absolute path',
+    ['/repo/docs/CODING.md', '/repo/AGENTS.md', '/repo/docs/A.md'].every((p) => reviewPrompts[0].includes(`  ${p}\n`)));
+  truthy('read-review: the authoring rules and hygiene rules are on the read list',
+    reviewPrompts[0].includes('/std/references/project-doc-guidelines.md') &&
+    reviewPrompts[0].includes('/std/../../references/writing-hygiene.md'));
+  truthy('read-review: the use-case doc is judged as doing the work, not auditing a file',
+    reviewPrompts[0].includes('arrives wanting to create or edit a file in the source tree'));
+  truthy('read-review: the route wording reaches the use-case section',
+    reviewPrompts[0].includes('MUST read [docs/CODING.md]'));
+  truthy('read-review: the severity bar reaches the batch agent',
+    reviewPrompts[0].includes('SEVERITY — assign every finding'));
+  truthy('read-review: AGENTS.md is judged for trigger edge without needing transcripts',
+    reviewPrompts[0].includes('TRIGGER EDGE') && reviewPrompts[0].includes('is there a single, recognizable instant'));
+  truthy('read-review: the AGENTS.md section carries both a sharp and an edgeless example',
+    reviewPrompts[0].includes('before ANY git operation') && reviewPrompts[0].includes('before searching this repository'));
+  truthy('read-review: the non-standard doc is judged for placement',
+    reviewPrompts[0].includes('NON-STANDARD doc'));
+  eq('read-review: findings reach raw', 1, deep.ret.raw.read_findings.length);
+  eq('read-review: the batches are reported', [['AGENTS.md', 'docs/CODING.md', 'docs/A.md']], deep.ret.raw.review_batches);
+  eq('read-review: a complete run reports no unreviewed file', [], deep.ret.raw.not_reviewed);
+
+  const partial = await runAudit({ dropFile: 'docs/A.md' });
+  eq('read-review: a file the agent did not review is reported in raw', ['docs/A.md'], partial.ret.raw.not_reviewed);
+  truthy('read-review: and the synthesis is told about it',
+    partial.prompts[partial.prompts.length - 1].includes('Files the read-review did not cover: ["docs/A.md"]'));
 
   // ── recorded doc decisions (docs/DOCUMENTING.md) ─────────────────────────────
-  // The decisions are freeform prose, so the workflow hands the agents a path rather than
+  // The decisions are freeform prose, so the workflow hands the agents the file rather than
   // extracting anything. Two things must hold: the block only appears where the repo has
   // the file, and it scopes the suppression to gap findings — a project may decide not to
   // document something, never that a false statement is true.
   truthy('decisions: no DOCUMENTING.md in the repo means no decisions block anywhere',
     !deep.prompts.some((p) => p.includes('RECORDED DOC DECISIONS')));
+  truthy('decisions: without the file the synthesis makes no tool calls',
+    deep.prompts[deep.prompts.length - 1].includes('make no tool calls'));
 
   const withDoc = await runAudit({
     manifest: {
@@ -472,75 +454,77 @@ async function main() {
       files: [...manifest.files, { path: 'docs/DOCUMENTING.md', classification: 'canonical', metrics, contract }],
     },
   });
-  eq('decisions: docs/DOCUMENTING.md is reviewed as the documenting use case',
-    ['use-case:coding', 'use-case:documenting'], withDoc.labels.filter((l) => l.startsWith('use-case:')));
-  truthy('decisions: every read-review agent is pointed at the absolute path',
-    withDoc.prompts.filter((p) => p.includes('/repo/docs/DOCUMENTING.md')).length >= 2);
+  const withDocReview = withDoc.prompts.filter((_, i) => withDoc.labels[i].startsWith('review-'));
+  truthy('decisions: docs/DOCUMENTING.md is reviewed as the documenting use case',
+    withDocReview.some((p) => p.includes('Use case "documenting"')));
+  truthy('decisions: every batch agent reads it',
+    withDocReview.every((p) => p.includes('RECORDED DOC DECISIONS') && p.includes('/repo/docs/DOCUMENTING.md')));
   truthy('decisions: the synthesis stage gets the decisions too',
     withDoc.prompts.some((p) => p.includes('RECORDED DOC DECISIONS') && p.includes('cross_file_notes')));
   truthy('decisions: the suppression is scoped to gap findings',
-    withDoc.prompts.some((p) => /GAP findings only/.test(p) && /stays a finding at full severity/.test(p)));
+    withDocReview.some((p) => /GAP findings only/.test(p) && /stays a finding at full severity/.test(p)));
 
   // ── history ──────────────────────────────────────────────────────────────────
+  const judgePrompt = deep.prompts[deep.labels.indexOf('history:judge')];
   truthy('history: the extract step runs before any classification',
     deep.labels.indexOf('history:extract') < deep.labels.indexOf('history:label-1'));
   eq('history: one classifier per prompt batch', 1, deep.labels.filter((l) => l.startsWith('history:label-')).length);
-  eq('history: only use cases with valid evidence are judged',
-    ['history:coding'], deep.labels.filter((l) => /^history:(?!extract|evidence|label-)/.test(l)));
+  truthy('history: the judge reads the per-use-case evidence file',
+    judgePrompt.includes('/tmp/sc/history/evidence-coding.json'));
+  truthy('history: only use cases with valid evidence are judged',
+    judgePrompt.includes('use_case "coding"') && !judgePrompt.includes('use_case "testing"'));
   eq('history: verdicts reach raw', 4, deep.ret && deep.ret.raw.history[0].segments_judged);
   eq('history: coverage reaches raw', 4, deep.ret && deep.ret.raw.history_coverage.coding.valid);
   truthy('history: the judge is told AGENTS.md is never Read, so its absence proves nothing',
-    deep.prompts.some((p) => p.includes('AGENTS.md is always in an agent') && p.includes('never Read')));
+    judgePrompt.includes('AGENTS.md is always in an agent') && judgePrompt.includes('never Read'));
   truthy('history: a well-edged obligation route that is skipped accuses the agent, not the doc',
-    deep.prompts.some((p) => p.includes('obligation route WITH a recognizable edge + misses => attribution "agent"')));
+    judgePrompt.includes('obligation route WITH a recognizable edge + misses => attribution "agent"'));
   truthy('history: an advisory or edgeless route that is skipped accuses the doc',
-    deep.prompts.some((p) => p.includes('advisory, edgeless, or absent route + misses => attribution "doc"')));
+    judgePrompt.includes('advisory, edgeless, or absent route + misses => attribution "doc"'));
   // A route can satisfy every written rule and still be unfollowable, because naming an
   // action is not the same as there being a moment the agent notices crossing it. Without
   // this the case is indistinguishable from laziness and is blamed on the agent forever.
   truthy('history: the judge must locate the turn the trigger fired',
-    deep.prompts.some((p) => p.includes('TRIGGER EDGE') && p.includes('find the exact turn at which the route')));
+    judgePrompt.includes('TRIGGER EDGE') && judgePrompt.includes('find the exact turn at which the route'));
   truthy('history: an edgeless MUST is treated as advisory, not as a correct route',
-    deep.prompts.some((p) => p.includes('Set route_wording to "advisory" for an edgeless trigger even when it is phrased as a MUST')));
+    judgePrompt.includes('Set route_wording to "advisory" for an edgeless trigger even when it is phrased as a MUST'));
   truthy('history: the judge is told a miss never proves the doc redundant',
-    deep.prompts.some((p) => p.includes('could not know what the doc contained before opening it')));
-  truthy('read-review: AGENTS.md is judged for trigger edge without needing transcripts',
-    deep.prompts.some((p) => p.includes('TRIGGER EDGE') && p.includes('is there a single, recognizable instant')));
-  truthy('read-review: the AGENTS.md agent is given both a sharp and an edgeless example',
-    deep.prompts.some((p) => p.includes('before ANY git operation') && p.includes('before searching this repository')));
+    judgePrompt.includes('could not know what the doc contained before opening it'));
 
   // Evidence about a superseded route is not evidence about today's text — but it is
   // what shows whether a rewrite was warranted, so it is reported rather than dropped.
   truthy('history: the judge is told to report superseded-route evidence',
-    deep.prompts.some((p) => p.includes('SUPERSEDED ROUTES') && p.includes('historical_note')));
+    judgePrompt.includes('SUPERSEDED ROUTES') && judgePrompt.includes('historical_note'));
   truthy('history: superseded evidence may never move severity or attribution',
-    deep.prompts.some((p) => p.includes('NEVER a finding about the current text and must not move severity')));
+    judgePrompt.includes('NEVER a finding about the current text and must not move severity'));
   truthy('synthesis: superseded-route evidence reaches the report',
     deep.prompts.some((p) => p.includes('Superseded-route evidence') && p.includes('Load [docs/CODING.md]')));
   truthy('synthesis: is told to report it without letting it change a verdict',
     deep.prompts.some((p) => p.includes('never drop it either')));
+  // The review no longer checks the docs against the code. A report that did not say so
+  // would read as a clean bill of health for docs nobody compared with the code.
+  truthy('synthesis: the report must say the docs were not checked against the code',
+    deep.prompts[deep.prompts.length - 1].includes('did not check documented commands, paths, or flags against the code'));
 
   const medium = await runAudit({ level: 'medium' });
-  eq('orchestration: medium runs no execution route', 0, medium.labels.filter((l) => l.startsWith('gen:')).length);
-  eq('orchestration: medium still runs history', 1, medium.labels.filter((l) => l === 'history:coding').length);
   truthy('history: medium clears the finding floor, so a finding is allowed',
     medium.prompts.some((p) => p.includes('a finding is allowed')));
+  eq('cost: medium reviews with opus at medium effort',
+    [['opus', 'medium']], medium.calls.filter((c) => c.label.startsWith('review-')).map((c) => [c.model, c.effort]));
 
-  const noExec = await runAudit({ level: 'low' });
-  eq('orchestration: low runs no execution route at all',
-    0, noExec.labels.filter((l) => l.startsWith('gen:')).length);
+  const low = await runAudit({ level: 'low' });
   eq('orchestration: low still read-reviews and reports', 'minor gaps',
-    noExec.ret && noExec.ret.report && noExec.ret.report.verdict);
+    low.ret && low.ret.report && low.ret.report.verdict);
   truthy('history: low is held to coverage-only, below the finding floor',
-    noExec.prompts.some((p) => p.includes('Do not raise a finding from this sample')));
+    low.prompts.some((p) => p.includes('Do not raise a finding from this sample')));
 
   // A repo nobody has opened in Claude Code has no transcripts. That is a gap in the
   // audit, not a defect in the docs — the stage must skip rather than invent evidence.
   const noHistory = await runAudit({ level: 'medium', promptIndex: { projects_dir: '/p', batches: [] } });
   eq('history: no transcripts means no classifier runs', 0,
     noHistory.labels.filter((l) => l.startsWith('history:label-')).length);
-  eq('history: no transcripts means no use case is judged', 0,
-    noHistory.labels.filter((l) => /^history:(?!extract|evidence|label-)/.test(l)).length);
+  eq('history: no transcripts means no judge runs', 0,
+    noHistory.labels.filter((l) => l === 'history:judge').length);
   eq('history: the audit still completes and reports', 'minor gaps',
     noHistory.ret && noHistory.ret.report && noHistory.ret.report.verdict);
 
