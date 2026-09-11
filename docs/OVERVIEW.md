@@ -28,6 +28,7 @@ plugins/<plugin-name>/
   bin/                   # bundled executables
   commands/              # slash commands (.md; no plugin uses these yet)
   hooks/                 # hooks.json
+  output-styles/         # output styles (.md) — declare the dir in plugin.json "outputStyles"
   references/            # .md shared by two or more of the plugin's skills, reached with ../..
   scripts/               # build-time scripts, e.g. a themes/ generator (not loaded at runtime)
   skills/                # <skill-name>/SKILL.md + optional references/, scripts/, examples/, workflows/

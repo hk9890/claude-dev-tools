@@ -129,6 +129,18 @@
       },
       "category": "code-quality",
       "keywords": ["instructions", "skills", "skill-writing", "prompt-engineering", "context-efficiency", "documentation"]
+    },
+    {
+      "name": "plain-english-output-style",
+      "source": "./plugins/plain-english-output-style",
+      "description": "Response style for Claude Code: ASD-STE100 Simplified Technical English, answer before acting, agree or disagree explicitly",
+      "version": "1.34.0",
+      "author": {
+        "name": "Hans Kohlreiter",
+        "email": "hans.kohlreiter@gmail.com"
+      },
+      "category": "style",
+      "keywords": ["output-style", "asd-ste100", "ste", "simplified-technical-english", "concise", "direct"]
     }
   ]
 }
