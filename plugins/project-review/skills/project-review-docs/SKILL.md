@@ -1,6 +1,6 @@
 ---
 name: project-review-docs
-description: "Read-only audit of a project's docs for accuracy, staleness, gaps, misplaced content, and whether agents can and do actually use them; runs a multi-agent workflow, reports fixes, never edits."
+description: "Read-only audit of a project's docs for gaps, misplaced content, contradictions, dead links, and whether agents can and do actually use them; judges the docs as documents and never opens the code; reports fixes, never edits."
 user-invocable: true
 disable-model-invocation: true
 argument-hint: "[low|medium|high|ultra] [html-viz] [path]"
@@ -83,7 +83,10 @@ docs inline. The workflow returns a structured report; relay it.
      not `HEAD`.
 
 5. Relay the report. The workflow returns `{ report: { verdict, headline, findings[], … }, raw, … }`
-   — surface `.report`, and do not re-derive it. Each finding is tagged `settled`
+   — surface `.report`, and do not re-derive it. `raw.not_reviewed` names any file no
+   batch agent reported back on; when it is non-empty, say which files went unreviewed,
+   whatever the report says — a partial audit relayed as a complete one is the worst
+   outcome this skill has. Each finding is tagged `settled`
    or `open` — read `<base directory for this skill>/../../references/decision-split.md`
    for what those mean and how to relay them (the plugin-root layout applies, so
    `../..` is correct here). For a "did you really check X?" follow-up, **re-run
@@ -98,8 +101,9 @@ docs inline. The workflow returns a structured report; relay it.
      `got.keys` lists the arguments that actually arrived — surface it, since that
      is what shows a misspelled key.
    - a null or absent `report` with no `error` — the synthesis stage died. Say so
-     and offer to re-run; `raw.read_findings` holds unsynthesized per-file output,
-     so relay it only as raw material, never as the report.
+     and offer to re-run; `raw.read_findings` holds one flat list of every batch
+     agent's findings, unmerged and each naming its own file, so relay it only as
+     raw material, never as the report.
 
    Once relayed, follow `../../references/decision-split.md`, which branches on the
    `html-viz` flag from step 1, over the open findings. "the docs audit" is what was
