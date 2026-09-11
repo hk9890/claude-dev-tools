@@ -498,8 +498,17 @@ def cmd_evidence(args):
     out = os.path.join(args.scratch, "evidence.json")
     with open(out, "w") as fh:
         json.dump(result, fh, indent=1)
+    # One file per use case as well: the judge reads each in a single Read call, where the
+    # combined file outgrows one call and had the judges paging through it turn by turn.
+    per_use_case = {}
+    for e in result["use_cases"]:
+        path = os.path.join(args.scratch, f"evidence-{e['use_case']}.json")
+        with open(path, "w") as fh:
+            json.dump(e, fh, indent=1)
+        per_use_case[e["use_case"]] = path
     summary = {
         "evidence_file": out,
+        "evidence_files": per_use_case,
         "sessions_scanned": len(files),
         "sessions_labelled": len(labels),
         "per_use_case": args.per_use_case,

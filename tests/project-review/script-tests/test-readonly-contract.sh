@@ -10,10 +10,10 @@
 # never silently skip the other — the exact failure that motivated it: the agent copy had lost
 # the "never change git state" clause the workflow carried.
 #
-# NOT covered here: the docs workflow (review-docs.js). Its agents carry DELIBERATELY different
-# contracts — the read-review agents forbid running commands at all, and the execution
-# action-agent is a task-doer allowed to write one trace file — so they are not copies of this
-# sentence and must not be forced to match it. A single copy has nothing to drift against.
+# NOT covered here: the docs workflow (review-docs.js). Its agents carry a DELIBERATELY different
+# contract — each read-review agent may Read only the files it is listed, and the history agents
+# write only into the scratch dir — so they are not copies of this sentence and must not be
+# forced to match it. A single copy has nothing to drift against.
 set -uo pipefail
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"

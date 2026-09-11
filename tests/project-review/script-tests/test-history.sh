@@ -119,6 +119,11 @@ assert_eq "evidence: an unchanged route keeps its segment valid" "1" "$(json_val
 assert_eq "evidence: an unlabelled use case stays empty" "0" "$(json_val "d['coverage']['testing']['labelled']" <<< "$E")"
 
 EV="$OUT/evidence.json"
+# The judge reads one file per use case, so each must hold that use case's full entry.
+assert_eq "evidence: each use case gets its own file" "$OUT/evidence-coding.json" \
+  "$(json_val "d['evidence_files']['coding']" <<< "$E")"
+assert_eq "evidence: the per-use-case file holds that entry" "1" \
+  "$(json_val "len(d['segments'])" < "$OUT/evidence-coding.json")"
 seg() { json_val "d['use_cases'][[u['use_case'] for u in d['use_cases']].index('coding')]['segments'][0]$1" < "$EV"; }
 assert_eq "evidence: the doc read is located" "5" "$(seg "['activity']['first_doc_read_turn']")"
 assert_eq "evidence: the first action of that kind is located" "4" "$(seg "['activity']['first_work_turn']")"

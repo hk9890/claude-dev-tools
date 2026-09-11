@@ -2,7 +2,7 @@
 """manifest.py — the deterministic layer of the project-review docs review.
 
 Usage:
-    manifest.py <repo-root> [--format=json|text] [--setup-md=<path>]
+    manifest.py <repo-root> [--format=json|text] [--setup-md=<path>] [--brief]
 
 Emits ONE structured manifest describing every Markdown doc in <repo-root>. This
 is the entire hand-off from the deterministic layer to the review workflow: the
@@ -18,7 +18,7 @@ What is a *fact* here (and therefore lives in this script, never in an agent):
   - reachability of each doc from AGENTS.md (graph walk over doc links)
   - the CLAUDE.md == @AGENTS.md invariant, hollow docs, location violations,
     injected tool-blocks in steering docs
-  - the AGENTS.md route list (the surface the workflow's execution stage tests)
+  - the AGENTS.md route list (what the read-review and history stages judge routes by)
 
 What is NOT a fact and is deliberately absent: any judgment about whether a doc's
 content is accurate, belongs where it sits, or is well-written. That is the
@@ -62,17 +62,6 @@ ROOT_META_IGNORE = [
     "SECURITY.md", "CHANGELOG.md", "CODE_OF_CONDUCT.md",
     "LICENSE.md", "NOTICE.md", "AUTHORS.md", "MAINTAINERS.md",
 ]
-
-# Purpose hint per canonical file — the kind of task the execution stage derives.
-# Not a command; a category the workflow's driver turns into a concrete task.
-PURPOSE = {
-    "README.md": "use", "AGENTS.md": "route",
-    "OVERVIEW.md": "find", "CODING.md": "code", "DOCUMENTING.md": "document",
-    "TESTING.md": "test",
-    "RELEASING.md": "release", "MONITORING.md": "monitor",
-    "CHANGE-WORKFLOW.md": "change", "REVIEWING.md": "review",
-    "RUNNING.md": "run", "CONTRIBUTING.md": "contribute",
-}
 
 _SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -265,15 +254,11 @@ def compute_reachability(link_map, repo_root):
 
 
 # ---------------------------------------------------------------------------
-# AGENTS.md route extraction (execution-stage surface)
+# AGENTS.md route extraction
 # ---------------------------------------------------------------------------
 
 def agents_routes(vr, repo_root):
-    """Every route out of AGENTS.md: doc links and named skill references.
-
-    The workflow's execution stage generates one task per route and checks the
-    routing chain actually delivers an agent to a working answer.
-    """
+    """Every route out of AGENTS.md: doc links and named skill references."""
     abs_path = os.path.join(repo_root, "AGENTS.md")
     content = vr.load_file(abs_path)
     if content is None:
@@ -374,7 +359,6 @@ def build(repo_root, setup_md=None):
             "hollow": bool(m and m["non_heading_lines"] == 0),
             "links": links,
             "unresolved_links": [x for x in links if not x["resolved"]],
-            "purpose": PURPOSE.get(canon) if canon else None,
             "contract": ownership.get(canon) if canon else None,
         }
         if canon:
@@ -483,7 +467,7 @@ def format_text(data):
         if e["path"] in orphan_set:
             flags.append("ORPHAN")
         flagstr = ("  [" + ", ".join(flags) + "]") if flags else ""
-        out.append(f"  {e['path']:<34} {tag:<16} lines={m.get('lines','?'):<4} words={m.get('words','?'):<5} purpose={e['purpose'] or '-'}{flagstr}")
+        out.append(f"  {e['path']:<34} {tag:<16} lines={m.get('lines','?'):<4} words={m.get('words','?'):<5}{flagstr}")
     out.append("")
     out.append(f"--- AGENTS.md routes ({len(data['agents_routes'])}) ---")
     for r in data["agents_routes"]:
@@ -495,12 +479,15 @@ def main():
     args = sys.argv[1:]
     fmt = "json"
     setup_md = None
+    brief = False
     positional = []
     for a in args:
         if a.startswith("--format="):
             fmt = a.split("=", 1)[1]
         elif a.startswith("--setup-md="):
             setup_md = a.split("=", 1)[1]
+        elif a == "--brief":
+            brief = True
         elif a in ("-h", "--help"):
             print(__doc__)
             return
@@ -511,7 +498,7 @@ def main():
             positional.append(a)
     if not positional:
         print(
-            f"Usage: {os.path.basename(sys.argv[0])} <repo-root> [--format=json|text] [--setup-md=<path>]",
+            f"Usage: {os.path.basename(sys.argv[0])} <repo-root> [--format=json|text] [--setup-md=<path>] [--brief]",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -520,7 +507,18 @@ def main():
         print(f"Error: {repo_root!r} is not a directory", file=sys.stderr)
         sys.exit(1)
     data = build(repo_root, setup_md)
-    print(format_text(data) if fmt == "text" else json.dumps(data, indent=2))
+    if fmt == "text":
+        print(format_text(data))
+    elif brief:
+        # The workflow reads this output back through an agent's Bash tool, which returns
+        # only a preview of a large result. The per-file resolved-link lists are most of
+        # the bytes and no stage reads them (unresolved_links stays), so --brief drops
+        # them and prints compact JSON: a 45-doc repo goes from 132KB to under 20KB.
+        for f in data["files"]:
+            f.pop("links", None)
+        print(json.dumps(data, separators=(",", ":")))
+    else:
+        print(json.dumps(data, indent=2))
 
 
 if __name__ == "__main__":
