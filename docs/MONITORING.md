@@ -20,10 +20,16 @@ Run `mise run analyze-sessions`, or `python3 scripts/analyze-sessions.py` from t
 python3 scripts/analyze-sessions.py                                    # full scan of ~/.claude/projects
 python3 scripts/analyze-sessions.py --projects-dir /path/to/projects   # scan elsewhere
 python3 scripts/analyze-sessions.py --project dt-operator --since-days 2
+python3 scripts/analyze-sessions.py --since 2026-08-30        # episodes since a release
 python3 scripts/analyze-sessions.py --fixture scripts/fixtures/session-fixture.jsonl
 ```
 
-`--project` matches a substring of the project directory name. `--since-days` filters on file mtime — "sessions touched in the window", so a long-lived session modified recently is included whole, old episodes and all. `--help` lists the rest.
+`--project` matches a substring of the project directory name. `--help` lists the rest.
+
+The two window filters cut at different levels:
+
+- `--since-days` filters on file mtime — "sessions touched in the window", so a long-lived session modified recently is included whole, old episodes and all.
+- `--since` filters **episodes**, on `started_at` — a date or full ISO timestamp, local time where it carries no zone. This is the one to scope a release with; it sets the mtime prefilter too when `--since-days` is absent. It drops an episode whose first turn has no timestamp, and it does not reach the unmatched-plugin table, which counts everything scanned.
 
 ### Output
 
@@ -38,8 +44,9 @@ Under `output/session-analysis/` (relative to cwd, or `--output-dir`); `--fixtur
 Each `dataset.json` record carries:
 
 - **Identity** — `episode_id`, `session_id`, `source_file`, `start_line`, `end_line`
+- **Placement in time** — `started_at` (timestamp of the episode's first attributed turn) and `plugin_version` (the installed version that served it, read from the skill-load banner; `null` in a dev checkout, which has no version in its path)
 - **Attribution** — `attribution_skill` (raw attributed name), `attribution_plugin` (canonical), `trigger_type`
-- **Friction** — `turn_count`, `tool_errors`, `interruptions`, `permission_denials`, `user_corrections`, `ask_user_questions`, `retries`, `duration_ms`, `friction_score`
+- **Friction** — `turn_count`, `tool_errors`, `harness_refusals`, `interruptions`, `permission_denials`, `user_corrections`, `ask_user_questions`, `retries`, `duration_ms`, `friction_score`
 - **Outcome** — `ended_in_commit`, `ended_in_pr`, `tests_run`, `tests_passed`
 
 ### Episode delimiting
@@ -54,10 +61,12 @@ An **episode** is a contiguous run of assistant messages sharing one `attributio
 
 `friction_score` is a weighted signal sum divided by `turn_count`, so episodes of different lengths compare directly: 0.0 is smooth, higher is rockier. Tool errors weigh heaviest, interruptions and denials sit in the middle, corrections and questions weigh least — the authoritative weights are `FRICTION_WEIGHTS` and `Episode._compute_friction()` in the script, deliberately not mirrored here, as are the `*_RE` signal patterns. What reading those will not tell you:
 
-- `tool_errors` skips results matching `"Cancelled: parallel tool call"` — the un-run siblings of an interrupted batch are user cancellations, not failures.
+- `tool_errors` skips two kinds of `is_error` result where no tool ran: `"Cancelled: parallel tool call"` — the un-run siblings of an interrupted batch, which are user cancellations — and harness guard refusals, which land in `harness_refusals` instead.
+- `harness_refusals` counts the worktree-isolation guard refusing a command it cannot prove stays inside the worktree — over half of all `is_error` results in a 12-day sample. It carries no friction weight: the command never ran and the skill did nothing wrong.
 - `permission_denials` matches its detector phrases only where `is_error == true`. Without that guard, model-read file content containing a phrase would score a denial.
 - `user_corrections` strips harness-generated blocks (`<command-name>`, `<system-reminder>`, …) before matching, since a slash-command body is not user prose. Fuzzy in both directions — **Phase 2 is the authority** on whether a correction happened.
 - `retries` counts only the first repeat of a `(tool_name, input_repr[:200])` pair.
+- A skill's signals include work that is not the skill's. Attribution holds until the next skill or an unattributed turn closes the episode, so a skill loaded for one step carries the feature work that follows it — `writing-project-docs` episodes averaged 49 turns. Read a per-skill friction average as "friction of the work around this skill", and hold any skill-level claim against the slices before reporting it.
 - The outcome signals are pattern matches over the serialized assistant turn (`ended_in_commit`, `ended_in_pr`) or over `tool_result` text (`tests_run`, `tests_passed` — the latter gated on `tests_run`, so stray "pass" text cannot report a pass with no run). Coarse signals, not verified outcomes. Only commits and PRs reach `summary.md`; read the test signals from `dataset.json`.
 
 ### Invocation modes

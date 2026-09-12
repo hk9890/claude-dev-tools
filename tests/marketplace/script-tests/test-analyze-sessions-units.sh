@@ -10,6 +10,8 @@
 #     and the maps are single-application (no value is also a key)
 #   - walk_projects: --project substring filter, --since-days mtime filter,
 #     cross-file uuid dedup, and no dedup of uuid-less records
+#   - parse_since / filter_since: the --since episode window — zone handling of
+#     the cutoff, the inclusive boundary, and undated episodes
 set -uo pipefail
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
@@ -23,6 +25,7 @@ import os
 import sys
 import tempfile
 import time
+from datetime import datetime
 
 spec = importlib.util.spec_from_file_location("analyze_sessions", sys.argv[1])
 mod = importlib.util.module_from_spec(spec)
@@ -177,6 +180,42 @@ with tempfile.TemporaryDirectory() as projects_dir:
     eps = scan(projects_dir)
     check(len(eps) == 1 and eps[0].turn_count == 2,
           "walk_projects: identical uuid-less records are all counted")
+
+
+# ── parse_since / filter_since: the episode window ───────────────────────────
+
+check(mod.parse_since("2026-08-30T18:33:54Z").isoformat() == "2026-08-30T18:33:54+00:00",
+      "parse_since: a Z-suffixed timestamp is read as UTC")
+check(mod.parse_since("2026-08-30T00:00:00+02:00").isoformat() == "2026-08-29T22:00:00+00:00",
+      "parse_since: an offset timestamp is converted to UTC")
+# A bare date carries no zone, so it means local midnight — the clock the user reads.
+local_midnight = datetime(2026, 8, 30).astimezone()
+check(mod.parse_since("2026-08-30") == local_midnight,
+      "parse_since: a bare date is local midnight, not UTC midnight")
+try:
+    mod.parse_since("last tuesday")
+    fail("parse_since: an unparseable value raises ValueError")
+except ValueError:
+    ok("parse_since: an unparseable value raises ValueError")
+
+def episode_at(started_at):
+    ep = mod.Episode(
+        episode_id="e", session_id="s", source_file="f", start_line=0,
+        attribution_skill="p:s", attribution_plugin="p", started_at=started_at,
+    )
+    return ep
+
+cutoff = mod.parse_since("2026-08-30T12:00:00Z")
+before = episode_at("2026-08-30T11:59:59.000Z")
+on_cutoff = episode_at("2026-08-30T12:00:00.000Z")
+after = episode_at("2026-08-31T09:00:00.000Z")
+undated = episode_at(None)
+
+kept = mod.filter_since([before, on_cutoff, after, undated], cutoff)
+check(kept == [on_cutoff, after],
+      "filter_since: keeps episodes at or after the cutoff, drops earlier ones")
+check(undated not in kept,
+      "filter_since: an episode with no timestamp cannot be placed, so it is dropped")
 
 
 # ── rename-alias invariants ──────────────────────────────────────────────────
