@@ -62,6 +62,7 @@ SKIP_FIELDS = {"episode_id", "_description", "_friction_breakdown", "_notes", "_
 
 FIELDS_TO_CHECK = [
     "attribution_skill", "attribution_plugin", "trigger_type",
+    "started_at", "plugin_version", "harness_refusals",
     "turn_count", "tool_errors", "user_corrections", "retries",
     "permission_denials", "interruptions", "ask_user_questions",
     "duration_ms", "ended_in_commit", "ended_in_pr",

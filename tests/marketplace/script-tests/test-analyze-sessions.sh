@@ -256,6 +256,36 @@ test_duplicate_uuids_skipped() {
   fi
 }
 
+# 12. Harness guard refusal: episode 3's user-017c carries is_error=true but no
+#     tool ran, so it counts in harness_refusals and leaves tool_errors at 2
+#     (test 5 pins the other half of that number).
+test_harness_refusal_split_out() {
+  assert_json_field \
+    "harness refusal: harness_refusals=1 for github-releases (refusal not a tool error)" \
+    "$TMP_DIR/output/fixture/dataset.json" \
+    "github-releases:github-releases" \
+    "harness_refusals" \
+    "1"
+}
+
+# 13. --since keeps only episodes whose first turn is at or after the cutoff.
+#     The fixture's four episodes start 10:00, 10:03, 10:05 and 10:06 UTC, so a
+#     10:05 cutoff keeps exactly the last two.
+test_since_filters_episodes() {
+  python3 "$SCRIPT" \
+    --fixture "$FIXTURE" \
+    --output-dir "$TMP_DIR/since" \
+    --plugins-dir "$REPO_ROOT/plugins" \
+    --since "2026-05-22T10:05:00Z" >/dev/null 2>&1
+  local count
+  count=$(python3 -c "import json; print(len(json.load(open('$TMP_DIR/since/fixture/dataset.json'))))")
+  if [[ "$count" == "2" ]]; then
+    ok "--since: keeps only the 2 episodes started at or after the cutoff"
+  else
+    fail "--since: expected 2 episodes after the cutoff, got $count"
+  fi
+}
+
 # ── run all tests (ordered — later tests depend on earlier output) ────────────
 
 test_fixture_runs
@@ -269,6 +299,8 @@ test_slice_redacts_long_hex
 test_slice_truncates_long_text
 test_pass_without_run_not_counted
 test_duplicate_uuids_skipped
+test_harness_refusal_split_out
+test_since_filters_episodes
 
 printf '\n'
 printf 'Results: %d passed, %d failed\n' "$PASS" "$FAIL"

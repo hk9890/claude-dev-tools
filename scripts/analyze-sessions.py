@@ -9,7 +9,7 @@ Usage:
     python3 scripts/analyze-sessions.py [options]
 
 Run with --help for the option list (--projects-dir, --plugins-dir,
---output-dir, --project, --since-days, --fixture, --max-slice-chars,
+--output-dir, --project, --since-days, --since, --fixture, --max-slice-chars,
 --sample-rocky, --sample-baseline).
 
 Outputs (under output-dir/):
@@ -28,6 +28,7 @@ import sys
 import time
 import uuid
 from collections import defaultdict
+from datetime import datetime, timezone
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -220,6 +221,28 @@ TEST_PASS_RE = re.compile(
 # failures, so they must not be counted as tool_errors (weighted 3.0).
 CANCELLED_PARALLEL_RE = re.compile(r"cancelled:\s*parallel tool call", re.IGNORECASE)
 
+# Harness guard refusals. A worktree-isolated session refuses a command it
+# cannot prove stays inside the worktree; the refusal comes back as an
+# is_error tool_result. The tool never ran and the skill did nothing wrong, so
+# these are counted in harness_refusals and kept out of tool_errors, exactly as
+# cancelled parallel siblings are. Measured on one machine over 12 days, they
+# were 54% of all is_error results — left in, they rank skills by how often the
+# work happened in a worktree.
+HARNESS_REFUSAL_RE = re.compile(
+    r"this session is isolated in the worktree", re.IGNORECASE
+)
+
+# The skill-load banner, which the harness writes as a user text block before
+# the first attributed turn of an episode. In a cached install its path carries
+# the plugin version:
+#   ~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/skills/<skill>
+# A dev checkout or --plugin-dir run has no version segment, so plugin_version
+# stays None there rather than guessing one.
+SKILL_BASE_RE = re.compile(
+    r"Base directory for this skill:\s*\S*?/"
+    r"([A-Za-z0-9_.-]+)/(\d+\.\d+\.\d+)/skills/[A-Za-z0-9_-]+"
+)
+
 # ---------------------------------------------------------------------------
 # Helper: discover marketplace plugins
 # ---------------------------------------------------------------------------
@@ -343,7 +366,8 @@ class Episode:
     """Represents a contiguous run of assistant messages sharing attributionSkill."""
 
     def __init__(self, episode_id, session_id, source_file, start_line,
-                 attribution_skill, attribution_plugin):
+                 attribution_skill, attribution_plugin, started_at=None,
+                 plugin_version=None):
         self.episode_id = episode_id
         self.session_id = session_id
         self.source_file = source_file
@@ -351,10 +375,16 @@ class Episode:
         self.end_line = start_line
         self.attribution_skill = attribution_skill
         self.attribution_plugin = attribution_plugin
+        # When the episode's first attributed turn was written, and which
+        # installed plugin version served it. Both place the episode in time —
+        # the file's mtime cannot, since one session file spans many days.
+        self.started_at = started_at
+        self.plugin_version = plugin_version
 
         # Friction signals
         self.turn_count = 0
         self.tool_errors = 0
+        self.harness_refusals = 0
         self.interruptions = 0
         self.permission_denials = 0
         self.user_corrections = 0
@@ -399,9 +429,12 @@ class Episode:
             "end_line": self.end_line,
             "attribution_skill": self.attribution_skill,
             "attribution_plugin": self.attribution_plugin,
+            "started_at": self.started_at,
+            "plugin_version": self.plugin_version,
             "trigger_type": self.trigger_type,
             "turn_count": self.turn_count,
             "tool_errors": self.tool_errors,
+            "harness_refusals": self.harness_refusals,
             "interruptions": self.interruptions,
             "permission_denials": self.permission_denials,
             "user_corrections": self.user_corrections,
@@ -499,6 +532,21 @@ def _tool_result_text(content):
     return ""
 
 
+def _user_text_blocks(content):
+    """Yield the prose strings of a user record's 'content' (str or block list).
+
+    Tool results are skipped: only what the user or the harness wrote as text.
+    """
+    if isinstance(content, str):
+        yield content
+    elif isinstance(content, list):
+        for block in content:
+            if isinstance(block, dict) and block.get("type") == "text":
+                text = block.get("text")
+                if isinstance(text, str):
+                    yield text
+
+
 # ---------------------------------------------------------------------------
 # Trigger detection helpers
 # ---------------------------------------------------------------------------
@@ -570,6 +618,10 @@ def parse_file(filepath, alias_to_canonical, seen_uuids=None):
     in_first_turn_of_episode = False
     # Track the last assistant message content blocks seen (for "immediately-preceding turn" check)
     last_asst_content_blocks = []  # list of content blocks from most-recent assistant turn
+    # plugin directory name -> version, read from each skill-load banner. The
+    # banner precedes the episode it opens, so the map is always populated by
+    # the time an episode starts.
+    plugin_versions = {}
 
     session_id = os.path.splitext(os.path.basename(filepath))[0]
     # filepath should be used as-is for the source_file field (full path)
@@ -620,6 +672,10 @@ def parse_file(filepath, alias_to_canonical, seen_uuids=None):
                         start_line=lineno,
                         attribution_skill=skill,
                         attribution_plugin=canonical,  # store canonical name
+                        started_at=record.get("timestamp"),
+                        # Keyed on the directory name the banner carries, which is
+                        # the effective (pre-alias) plugin, not the canonical one.
+                        plugin_version=plugin_versions.get(effective_plugin),
                     )
                     # Check for explicit trigger: did the immediately-preceding assistant
                     # turn (before this episode started) use the Skill tool for this skill?
@@ -687,12 +743,19 @@ def parse_file(filepath, alias_to_canonical, seen_uuids=None):
                 current.ended_in_pr = True
 
         elif rtype == "user":
-            # Assign user messages to the currently-open matched episode
-            if current is None:
-                continue
-
             msg = record.get("message", {})
             content = msg.get("content", [])
+
+            # Skill-load banners arrive before the episode they open, so read
+            # them whether or not an episode is currently open.
+            for banner_text in _user_text_blocks(content):
+                match = SKILL_BASE_RE.search(banner_text)
+                if match:
+                    plugin_versions[match.group(1)] = match.group(2)
+
+            # Everything below assigns to the currently-open matched episode
+            if current is None:
+                continue
 
             if isinstance(content, str):
                 # Plain text prompt — check for user correction.
@@ -711,14 +774,18 @@ def parse_file(filepath, alias_to_canonical, seen_uuids=None):
                     if btype == "tool_result":
                         block_content = block.get("content", "")
                         is_error = block.get("is_error") is True
-                        # Error signal: is_error == True, EXCEPT cancelled siblings
-                        # of a parallel tool batch. When a user interrupts a parallel
-                        # call, the un-run siblings return is_error results carrying
-                        # "Cancelled: parallel tool call" — those are cancellations,
-                        # not tool failures, so counting them inflates tool_errors.
-                        if is_error and not CANCELLED_PARALLEL_RE.search(
-                                _tool_result_text(block_content)):
-                            current.tool_errors += 1
+                        # Error signal: is_error == True, EXCEPT two kinds of
+                        # is_error result where no tool ever ran:
+                        #   - cancelled siblings of a parallel tool batch, which the
+                        #     user interrupted ("Cancelled: parallel tool call")
+                        #   - harness guard refusals, counted in harness_refusals
+                        # Counting either one inflates tool_errors (weighted 3.0).
+                        if is_error:
+                            result_text = _tool_result_text(block_content)
+                            if HARNESS_REFUSAL_RE.search(result_text):
+                                current.harness_refusals += 1
+                            elif not CANCELLED_PARALLEL_RE.search(result_text):
+                                current.tool_errors += 1
 
                         # Permission denial: user rejected the tool use.
                         # Guard with is_error == True to avoid false positives when
@@ -815,6 +882,51 @@ def walk_projects(projects_dir, alias_to_canonical, project_filter=None,
                 yield parse_file(filepath, alias_to_canonical, seen_uuids)
             except OSError:
                 continue
+
+
+# ---------------------------------------------------------------------------
+# Episode window filter
+# ---------------------------------------------------------------------------
+
+def parse_iso_timestamp(value):
+    """Parse a transcript timestamp into an aware UTC datetime, or None."""
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.astimezone()
+    return parsed.astimezone(timezone.utc)
+
+
+def parse_since(value):
+    """Parse a --since value ("2026-08-30" or a full ISO timestamp) to UTC.
+
+    A value with no zone is read as local time — the clock the user reads —
+    while transcript timestamps are UTC. Raises ValueError on anything else.
+    """
+    parsed = parse_iso_timestamp(value.strip())
+    if parsed is None:
+        raise ValueError(f"not a date or ISO timestamp: {value!r}")
+    return parsed
+
+
+def filter_since(episodes, cutoff):
+    """Return the episodes whose first attributed turn is at or after cutoff.
+
+    This filters episodes, not files: --since-days drops whole session files by
+    mtime, which keeps every old episode of a long-lived session that was
+    touched recently. An episode whose first turn carries no timestamp cannot
+    be placed in the window, so it is dropped rather than guessed into it.
+    """
+    kept = []
+    for ep in episodes:
+        started = parse_iso_timestamp(ep.started_at)
+        if started is not None and started >= cutoff:
+            kept.append(ep)
+    return kept
 
 
 # ---------------------------------------------------------------------------
@@ -949,6 +1061,7 @@ def write_summary(episodes, output_dir, extra_unmatched=None, skill_modes=None):
         "total_duration_ms": 0,
         "total_friction": 0.0,
         "total_tool_errors": 0,
+        "total_harness_refusals": 0,
         "total_interruptions": 0,
         "total_permission_denials": 0,
         "total_user_corrections": 0,
@@ -968,6 +1081,7 @@ def write_summary(episodes, output_dir, extra_unmatched=None, skill_modes=None):
         stats["total_duration_ms"] += ep.duration_ms
         stats["total_friction"] += ep.friction_score
         stats["total_tool_errors"] += ep.tool_errors
+        stats["total_harness_refusals"] += ep.harness_refusals
         stats["total_interruptions"] += ep.interruptions
         stats["total_permission_denials"] += ep.permission_denials
         stats["total_user_corrections"] += ep.user_corrections
@@ -1001,10 +1115,13 @@ def write_summary(episodes, output_dir, extra_unmatched=None, skill_modes=None):
         "skills are loaded by other skills via the Skill tool. `both` skills can be",
         "reached either way.",
         "",
+        "Errors excludes harness refusals — guard refusals where no tool ran.",
+        "Those are the Refusals column, and they carry no friction weight.",
+        "",
         "| Skill | Mode | Episodes | Avg Turns | Avg Duration (s) | Avg Friction | "
-        "Errors | Interrupts | Model-invoked | Commits | PRs |",
+        "Errors | Refusals | Interrupts | Model-invoked | Commits | PRs |",
         "|-------|------|----------|-----------|-----------------|--------------|"
-        "--------|-----------|---------------|---------|-----|",
+        "--------|----------|-----------|---------------|---------|-----|",
     ]
 
     for skill in sorted(skill_stats):
@@ -1016,7 +1133,8 @@ def write_summary(episodes, output_dir, extra_unmatched=None, skill_modes=None):
         mode = skill_modes.get(skill, "?")
         lines.append(
             f"| {skill} | {mode} | {n} | {avg_turns} | {avg_dur} | {avg_friction} | "
-            f"{s['total_tool_errors']} | {s['total_interruptions']} | "
+            f"{s['total_tool_errors']} | {s['total_harness_refusals']} | "
+            f"{s['total_interruptions']} | "
             f"{s['explicit_triggers']} | {s['ended_in_commit']} | {s['ended_in_pr']} |"
         )
 
@@ -1103,6 +1221,11 @@ def _parse_args(argv):
         help="only scan session files modified in the last N days (file-mtime "
              "filter: a long-lived session touched recently is included whole)")
     parser.add_argument(
+        "--since", default=None,
+        help="only keep episodes that started at or after this date or ISO "
+             "timestamp, e.g. 2026-08-30 (episode filter, unlike --since-days; "
+             "a value with no zone is read as local time)")
+    parser.add_argument(
         "--plugins-dir", default=os.path.join(_REPO_ROOT, "plugins"),
         help="root of the marketplace plugins directory (default: <repo-root>/plugins)")
     parser.add_argument(
@@ -1131,6 +1254,20 @@ def main():
     max_slice_chars = args.max_slice_chars
     rocky_n = args.sample_rocky
     baseline_n = args.sample_baseline
+
+    since_cutoff = None
+    since_days = args.since_days
+    if args.since:
+        try:
+            since_cutoff = parse_since(args.since)
+        except ValueError as exc:
+            print(f"Error: --since {exc}", file=sys.stderr)
+            sys.exit(1)
+        if since_days is None:
+            # A file last modified before the cutoff cannot hold a record after
+            # it, so the mtime filter is a free prefilter for the episode window.
+            since_days = max(
+                0.0, (time.time() - since_cutoff.timestamp()) / 86400)
 
     # Discover plugins
     canonical_names, alias_to_canonical = discover_plugins(plugins_dir)
@@ -1164,12 +1301,12 @@ def main():
         scope = ""
         if args.project:
             scope += f" [project contains: {args.project}]"
-        if args.since_days is not None:
-            scope += f" [modified in last {args.since_days:g} days]"
+        if since_days is not None:
+            scope += f" [modified in last {since_days:g} days]"
         print(f"Scanning projects under: {projects_dir}{scope}")
         for episodes, unmatched in walk_projects(
                 projects_dir, alias_to_canonical,
-                project_filter=args.project, since_days=args.since_days):
+                project_filter=args.project, since_days=since_days):
             before = len(all_episodes)
             all_episodes.extend(episodes)
             # Print progress roughly every 100 episodes
@@ -1178,6 +1315,14 @@ def main():
             for k, v in unmatched.items():
                 all_unmatched[k] += v
         print(f"Scan complete. Found {len(all_episodes)} episodes.")
+
+    if since_cutoff is not None:
+        found = len(all_episodes)
+        all_episodes = filter_since(all_episodes, since_cutoff)
+        print(
+            f"Episode window: {len(all_episodes)} of {found} episodes started "
+            f"at or after {since_cutoff.isoformat()}"
+        )
 
     # Write outputs
     dataset_path = write_dataset(all_episodes, output_dir)
