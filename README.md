@@ -17,6 +17,7 @@ A plugin marketplace for [Claude Code](https://claude.ai/code). Each plugin is a
 | [`project-auto-work`](plugins/project-auto-work/) | Unattended audits that report but never write code — `test-tests` (mutation-based test-suite strength) and `test-app` (exploratory app testing). |
 | [`instruction-writing`](plugins/instruction-writing/) | Standards for the artifacts a harness reads — `writing-project-docs` (the canonical doc set) and `writing-skills` (skill authoring). |
 | [`plain-english-output-style`](plugins/plain-english-output-style/) | An output style that puts Claude Code's replies in ASD-STE100 Simplified Technical English: answer before acting, agree or disagree explicitly, no filler. |
+| [`worktree-flow`](plugins/worktree-flow/) | A hook that steers Claude from `git worktree add` to the `EnterWorktree` tool, plus `worktree-ship` (worktree to reviewed PR) and `worktree-merge` (merge, then remove the worktree and branches). |
 
 ## Installation
 

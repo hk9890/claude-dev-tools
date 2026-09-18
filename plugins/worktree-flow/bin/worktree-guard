@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# PreToolUse (Bash) guard: steer persistent `git worktree add` to the EnterWorktree tool.
+#
+# EnterWorktree is a native tool, so only hand-rolled worktrees reach this hook. A throwaway
+# probe into a scratch or tmp directory stays allowed. Fail-open: a hook bug, or jq missing,
+# must never wedge the session.
+set -u
+
+command -v jq >/dev/null 2>&1 || exit 0
+cmd="$(jq -r '.tool_input.command // empty' 2>/dev/null)" || exit 0
+[ -z "$cmd" ] && exit 0
+
+# Only creation is in scope; list, remove and prune pass. `git` must sit in command position, so
+# a commit message or PR body that mentions the command passes. Options between `git` and
+# `worktree` (`git -C <dir> worktree add`) still match, but not across a `;`, `&` or `|`.
+opt='[[:space:]]+-[^;&|[:space:]]*([[:space:]]+[^-;&|[:space:]][^;&|[:space:]]*)?'
+add_re="(^|[;&|(])[[:space:]]*git($opt)*[[:space:]]+worktree[[:space:]]+add([[:space:]][^;&|]*|\$)"
+add="$(printf '%s\n' "$cmd" | grep -oE "$add_re")" || exit 0
+
+# A throwaway probe is judged by the arguments of the add itself, not by the rest of the command.
+if printf '%s' "$add" | grep -qE '/scratchpad/|(^|[[:space:]"'\''=])/tmp/|mktemp|\$\{?TMPDIR'; then
+  exit 0
+fi
+
+reason='Use the EnterWorktree tool for a persistent worktree, not `git worktree add`: it creates the worktree under .claude/worktrees/ and enters it in one step, and ExitWorktree can remove it later. A throwaway probe (`git worktree add --detach <dir> <ref>`) into /tmp or the scratchpad is allowed. If EnterWorktree cannot express what you need, tell the user instead of creating the worktree by hand.'
+jq -cn --arg r "$reason" '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"deny",permissionDecisionReason:$r}}'
