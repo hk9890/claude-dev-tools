@@ -1,0 +1,13 @@
+{
+  "name": "worktree-flow",
+  "description": "Keeps Claude on the EnterWorktree tool instead of hand-rolled git worktrees, plus two human-triggered skills: ship a change from a worktree to a reviewed PR, then merge it and clean up the worktree and branches",
+  "version": "1.34.0",
+  "author": {
+    "name": "Hans Kohlreiter",
+    "email": "hans.kohlreiter@gmail.com"
+  },
+  "homepage": "https://github.com/hk9890/claude-dev-tools",
+  "repository": "https://github.com/hk9890/claude-dev-tools",
+  "license": "MIT",
+  "keywords": ["git", "worktree", "pull-request", "merge", "cleanup", "hooks"]
+}
