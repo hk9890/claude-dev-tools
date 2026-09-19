@@ -19,7 +19,7 @@ A session inside a worktree may run git only against that worktree — the harne
 - **PR** — `gh pr view <pr> --json number,url,state,mergeable,headRefName,headRefOid,baseRefName`.
 - **Local branch** — the branch whose upstream is the PR head (`git for-each-ref --format='%(refname:short) %(upstream:short)' refs/heads`), else the branch named like the head. A branch pushed under another name than its local one matches only by upstream.
 - **Worktree** — the `git worktree list --porcelain` entry holding the local branch, or none.
-- **Session position** — one of: in the worktree, having entered it with `EnterWorktree { name }` (the **owner**); in the worktree, entered another way; in the main checkout; started inside the worktree, with no other directory to return to.
+- **Session position** — one of: in this PR's worktree; in another worktree; in the main checkout; started inside this PR's worktree, with no other directory to return to.
 - **Remotes** — the one holding the base branch and the one holding the head branch; the same remote unless the PR comes from a fork.
 
 Done when every item has a value or is marked absent.
@@ -49,8 +49,8 @@ Done when `gh pr view <pr> --json state` prints `MERGED`.
 
 Skip when there is none. Step 2 proved the worktree clean and equal to the merged head, and step 3 proved the PR merged, so the forcing below loses nothing:
 
-- **Owner** — `ExitWorktree` with `action: "remove"` and `discard_changes: true`. Without it the tool refuses: it counts the branch commits as unmerged until the local base branch catches up, which step 5 can do only outside the worktree. It deletes the local branch too.
-- **In the worktree, entered another way** — `ExitWorktree` with `action: "keep"` first, to get back to the main checkout. Then as below.
+- **In this PR's worktree** — `ExitWorktree` with `action: "remove"` and `discard_changes: true`. Without `discard_changes` the tool refuses: it counts the branch commits as unmerged until the local base branch catches up, which step 5 can do only outside the worktree. It deletes the local branch too. Where it answers that this session is not the owner (the worktree came from another session), continue as for another worktree.
+- **In another worktree** — `ExitWorktree` with `action: "keep"`, to get back to the main checkout. Then as below.
 - **In the main checkout** — `git worktree remove --force <worktree>`. `--force` is needed for the symlinked and ignored files the harness adds.
 
 Done when `git worktree list` no longer shows it and the session's directory is the main checkout.

@@ -1,6 +1,6 @@
 ---
 name: worktree-ship
-description: "Ship a change from a fresh worktree to an open, reviewed PR, then stop for /worktree-merge."
+description: "Ship a change from a worktree to an open, reviewed PR, then stop for /worktree-flow:worktree-merge."
 user-invocable: true
 disable-model-invocation: true
 argument-hint: "[change-to-make]"
@@ -25,7 +25,7 @@ Where the project documents a step, its rule replaces the generic one below. Don
 
 ## 2. Enter a worktree
 
-Already in a worktree for this change: stay there. Otherwise:
+Already in a worktree for this change: stay there. In a worktree for other work: `ExitWorktree` with `action: "keep"` first, then continue here. Otherwise:
 
 1. `git fetch <remote>`. Where the harness setting `worktree.baseRef` is `head` (`.claude/settings.local.json`, `.claude/settings.json`), the worktree branches from local HEAD, so bring the default branch to the remote tip first: `git merge --ff-only <remote>/<default branch>` where it is checked out, else `git fetch <remote> <default branch>:<default branch>`.
 2. Call `EnterWorktree` with a bare kebab-case name for the change, for example `fix-login` — before any file edit and before starting any subagent: a subagent already running when the session enters a worktree loses its Bash. The tool names the branch `worktree-<name>`.
@@ -39,13 +39,13 @@ Make the change, and add or update the tests that cover it. Done when both are w
 
 ## 4. Run the gates
 
-Run every gate recorded in step 1. Fix and rerun until all are green. Keep the command and result of each: the PR body quotes them. A gate that cannot run here (missing tool, missing credential) is reported as skipped, never as passed.
+Run every gate recorded in step 1. Fix and rerun until all are green. A gate that fails on the base branch too was broken before this change: report it and ask the user, and leave it out of this PR. Keep the command and result of each: the PR body quotes them. A gate that cannot run here (missing tool, missing credential) is reported as skipped, never as passed.
 
 ## 5. Commit, push, open the PR
 
-1. Commit in the project's style — one logical change per commit.
+1. Commit in the project's style.
 2. Push with upstream tracking. Where the project has a branch naming convention, push under it: `git push -u <remote> HEAD:<branch-name>`. Otherwise push `worktree-<name>` as it is.
-3. Open the PR with `gh pr create --head <branch-name>`; from a fork, `--repo <upstream> --head <fork-owner>:<branch-name>`. The body states what changed and why, and each gate with its result — only claims this run verified.
+3. Where `gh pr view` already finds a PR for the branch — a rerun after an interruption — the push updated it: skip to the done check. Otherwise open the PR with `gh pr create --head <branch-name>`; from a fork, `--repo <upstream> --head <fork-owner>:<branch-name>`. The body states what changed and why, and each gate with its result — only claims this run verified.
 
 Done when `gh pr view --json url` prints the PR.
 
