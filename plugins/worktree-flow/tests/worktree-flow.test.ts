@@ -76,7 +76,7 @@ for (const command of DENIED) {
 
     expect(answer.deny).toContain('EnterWorktree')
     expect(seen.ran).toEqual([])
-    expect(seen.toasts).toEqual(['worktree-flow: use EnterWorktree, not git worktree add'])
+    expect(seen.toasts).toEqual(['use EnterWorktree, not git worktree add'])
   })
 }
 

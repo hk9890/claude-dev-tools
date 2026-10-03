@@ -76,7 +76,7 @@ async function showWorktree($: EngineInterface) {
 export const register: Register = on => {
   on('tool.call', { tool: 'Bash' }, ($, e, next) => {
     if (addsPersistentWorktree(e.command)) {
-      $.ui.toast('worktree-flow: use EnterWorktree, not git worktree add')
+      $.ui.toast('use EnterWorktree, not git worktree add')
 
       return { deny: DENY_REASON }
     }
