@@ -115,13 +115,13 @@ test('with no store, /tasks-board prints taskmgr\'s own line and opens no pane',
   expect(seen.opened).toEqual([])
 })
 
-test('without taskmgr on PATH, /tasks-board says so', async ($, on) => {
+test('when taskmgr cannot run, /tasks-board says why and where the install steps are', async ($, on) => {
   const seen = host(on, new Error('spawn taskmgr ENOENT'))
 
   await $.session.start(TERMINAL)
   const answer = await $.command.run(TYPED)
 
-  expect(answer.text).toBe('taskmgr is not on PATH')
+  expect(answer.text).toMatch(/^taskmgr did not run \(.+\)\. The tasks-core skill has the install steps\.$/)
   expect(seen.opened).toEqual([])
 })
 

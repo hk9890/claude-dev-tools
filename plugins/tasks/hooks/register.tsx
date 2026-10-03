@@ -44,8 +44,8 @@ async function loadBoard($: EngineInterface): Promise<TasksBoard | string> {
       ready: issues(ready.stdout),
       blocked: issues(blocked.stdout),
     }
-  } catch {
-    return 'taskmgr is not on PATH'
+  } catch (error) {
+    return `taskmgr did not run (${String(error)}). The tasks-core skill has the install steps.`
   }
 }
 
