@@ -14,7 +14,7 @@ How to run this marketplace's automated suites and validators. To launch and dri
 | `mise run lint` | ShellCheck `--severity=warning` over every tracked shell script (`scripts/list-shell-scripts.sh`) |
 | `mise run analyze-sessions` | Session-transcript analyser — usage in [MONITORING.md](MONITORING.md) |
 
-`bash`, `python3`, `node`, `jq`, and `shellcheck` must already be on PATH: `.mise.toml` declares no `[tools]`, so mise runs the tasks but installs none of them. Absent `node`, the node-backed suites fail rather than skip.
+`bash`, `python3`, `node`, `jq`, and `shellcheck` must already be on PATH: `.mise.toml` declares no `[tools]`, so mise runs the tasks but installs none of them. Absent `node`, the node-backed suites fail rather than skip. `claude` 2.1.287 or later is needed for the mod suite alone.
 
 ## Script tests — `tests/run-all.sh`
 
@@ -38,7 +38,25 @@ A suite is a `test-*.sh` under `tests/<plugin>/script-tests/` or `tests/marketpl
 Two skip rather than fail where their prerequisite is absent:
 
 - `tests/html-visualization/script-tests/test-browser.sh` — needs Playwright in the npm `_npx` cache: `npx playwright --version` populates it, then `npx playwright install chromium`. `REQUIRE_BROWSER=1` makes it fail instead.
-- `tests/keep-awake-linux/script-tests/test-keep-awake.sh` — needs logind to register an inhibitor, so it skips on GitHub Actions. `REQUIRE_LOGIND=1` makes it fail instead.
+- `tests/marketplace/script-tests/test-mods.sh` — needs `claude` 2.1.287 or later on PATH, so it skips on GitHub Actions and no CI job tests a mod. `REQUIRE_CLAUDE=1` makes it fail instead.
+
+## Mod tests — `claude plugin test`
+
+A mod's tests live inside the plugin, at `plugins/<plugin>/tests/*.test.ts`, and run against the engine with no session, sign-in or network:
+
+```bash
+claude plugin validate plugins/<plugin>   # manifest + the static analysis Claude Code applies at load
+claude plugin test plugins/<plugin>       # the plugin's tests
+```
+
+`test-mods.sh` (above) runs both for every plugin whose `hooks/hooks.json` has a `modules` key, so `mise run test` covers them.
+
+### Writing a mod test
+
+- The test stands for the host: register a hook for every event and `$` call the mod reaches (`process.run`, `ui.status`, `session.id`), or the call fails with `no implementation for <event>`.
+- A stub for a `$` call answers `{ value: ... }`; a stub for an event answers the event's own result.
+- Drive time with `mock.clock(on)` and `clock.advance(ms)`.
+- Model a new test on the one nearest in shape: [`worktree-flow.test.ts`](../plugins/worktree-flow/tests/worktree-flow.test.ts) (denied tool calls, stubbed `git` and `gh`, a timer), [`tasks-board.test.tsx`](../plugins/tasks/tests/tasks-board.test.tsx) (a command and a mounted pane), [`keep-awake.test.ts`](../plugins/keep-awake-linux/tests/keep-awake.test.ts) (a spawned child's life, plugin options).
 
 ### analyze-sessions fixture check
 
@@ -70,7 +88,7 @@ A non-zero `validate-routes.py` must be fixed before pushing. The manifest is in
 
 | Job | What it checks | Locally |
 |---|---|---|
-| `test` | Full script-test suite | `mise run test` |
+| `test` | Full script-test suite; the mod suite skips there | `mise run test` |
 | `consistency` | Cross-references, version mirrors, marketplace | `mise run check-consistency` |
 | `manifests` | JSON well-formedness of every plugin and marketplace manifest | `for f in .claude-plugin/marketplace.json plugins/*/.claude-plugin/plugin.json; do jq empty "$f"; done` |
 | `shellcheck` | ShellCheck over every tracked shell script | `mise run lint` |

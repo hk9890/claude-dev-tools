@@ -1,0 +1,4 @@
+{
+  "description": "Draws the taskmgr tracker in a pane on /tasks-board",
+  "modules": ["./register.tsx"]
+}

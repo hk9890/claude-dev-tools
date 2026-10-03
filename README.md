@@ -1,23 +1,23 @@
 # claude-dev-tools
 
-A plugin marketplace for [Claude Code](https://claude.ai/code). Each plugin is a self-contained unit — skills, agents, hooks, themes, or output styles — that extends Claude Code's capabilities in a specific domain.
+A plugin marketplace for [Claude Code](https://claude.ai/code). Each plugin is a self-contained unit — skills, agents, mods, themes, or output styles — that extends Claude Code's capabilities in a specific domain.
 
 ## Plugins
 
 | Plugin | Description |
 |---|---|
-| [`tasks`](plugins/tasks/) | Work a taskmgr tracker from Claude Code — `tasks-core` hands the model taskmgr's own guide, and seven typed skills cover the jobs you repeat: `tasks-create`, `tasks-next`, `tasks-overview`, `tasks-start`, `tasks-close`, `tasks-groom`, `tasks-handover`. |
+| [`tasks`](plugins/tasks/) | Work a taskmgr tracker from Claude Code — `tasks-core` hands the model taskmgr's own guide, and seven typed skills cover the jobs you repeat: `tasks-create`, `tasks-next`, `tasks-overview`, `tasks-start`, `tasks-close`, `tasks-groom`, `tasks-handover`. `/tasks-board` draws the tracker in a pane without a model turn (needs Claude Code 2.1.287+). |
 | [`project-review`](plugins/project-review/) | Read-only adversarial audits that return a prioritized action list — `project-review-change`, `project-review-codebase` and `project-review-docs`. |
 | [`project-execute`](plugins/project-execute/) | Run a project's own documented flows from its docs — `project-exec-testing`, `project-exec-releasing`, `project-exec-monitoring`, `project-exec-reviewing`, `project-exec-running`, and `project-explain`; `project-exec-init` writes the doc set those flows are read from. |
 | [`challenge`](plugins/challenge/) | Project-agnostic adversarial passes — `grill` (stress-test a plan), `kiss` (cut accidental complexity), `are-you-sure` (re-check finished work), `what-do-you-mean` (re-pitch a message that did not land). |
 | [`github-releases`](plugins/github-releases/) | Language-agnostic GitHub release workflow with quality gates, semver, and release notes. |
 | [`catppuccin-themes`](plugins/catppuccin-themes/) | Catppuccin color themes for Claude Code: Latte, Frappe, Macchiato, Mocha. |
-| [`keep-awake-linux`](plugins/keep-awake-linux/) | Hooks that block Linux system sleep while Claude Code works, releasing on idle or session exit — `keep-awake-inspect` reads the state. |
+| [`keep-awake-linux`](plugins/keep-awake-linux/) | A mod that blocks Linux system sleep while Claude Code works, releasing on idle or session exit, with its state in the status line — `keep-awake-inspect` reads what logind holds. Needs Claude Code 2.1.287+. |
 | [`html-visualization`](plugins/html-visualization/) | Browser HTML that sends the user's response back to Claude — `html-visualize-ask`, `html-visualize-feedback`, `html-visualize-page`. |
 | [`project-auto-work`](plugins/project-auto-work/) | Unattended audits that report but never write code — `test-tests` (mutation-based test-suite strength) and `test-app` (exploratory app testing). |
 | [`instruction-writing`](plugins/instruction-writing/) | Standards for the artifacts a harness reads — `writing-project-docs` (the canonical doc set) and `writing-skills` (skill authoring). |
 | [`plain-english-output-style`](plugins/plain-english-output-style/) | An output style that puts Claude Code's replies in ASD-STE100 Simplified Technical English: answer before acting, agree or disagree explicitly, no filler. |
-| [`worktree-flow`](plugins/worktree-flow/) | A hook that steers Claude from `git worktree add` to the `EnterWorktree` tool, plus `worktree-ship` (worktree to reviewed PR) and `worktree-merge` (merge, then remove the worktree and branches). |
+| [`worktree-flow`](plugins/worktree-flow/) | A mod that steers Claude from `git worktree add` to the `EnterWorktree` tool and shows the worktree, branch and PR state in the status line, plus `worktree-ship` (worktree to reviewed PR) and `worktree-merge` (merge, then remove the worktree and branches). Needs Claude Code 2.1.287+. |
 
 ## Installation
 

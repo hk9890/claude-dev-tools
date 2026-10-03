@@ -32,3 +32,7 @@ output/
 
 # Claude Code per-user local overrides (machine-specific, never shared)
 .claude/settings.local.json
+
+# Written by Claude Code beside a mod it loads with --plugin-dir (docs/CODING.md, Mods)
+plugins/*/.claude-plugin/types/
+plugins/*/tsconfig.json

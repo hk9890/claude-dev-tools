@@ -27,12 +27,14 @@ plugins/<plugin-name>/
   assets/                # static files the plugin serves or bundles (e.g. browser CSS/JS)
   bin/                   # bundled executables
   commands/              # slash commands (.md; no plugin uses these yet)
-  hooks/                 # hooks.json
+  hooks/                 # hooks.json, and the hooks module it names when the plugin is a mod
   output-styles/         # output styles (.md) — declare the dir in plugin.json "outputStyles"
   references/            # .md shared by two or more of the plugin's skills, reached with ../..
   scripts/               # build-time scripts, e.g. a themes/ generator (not loaded at runtime)
   skills/                # <skill-name>/SKILL.md + optional references/, scripts/, examples/, workflows/
+  tests/                 # a mod's *.test.ts — every other test lives in the repo's tests/
   themes/                # color themes
+  types/                 # a mod's $.state contract (index.d.ts)
   workflows/             # Workflow-tool scripts (.js) — here, or inside the one skill that owns them
 ```
 
@@ -43,6 +45,7 @@ ls plugins/*/skills/*/SKILL.md                                 # every skill in 
 git grep -ln 'name: <skill>' -- 'plugins/*/skills/*/SKILL.md'  # which plugin ships a skill
 git grep -n '<plugin>:<skill>' -- plugins                      # references by qualified name
 ls -d plugins/*/hooks                                          # which plugins define hooks
+git grep -l '"modules"' -- 'plugins/*/hooks/hooks.json'        # which of them are mods
 git ls-files 'plugins/*/agents/*.md' 'plugins/*/workflows/*.js' 'plugins/*/skills/*/workflows/*.js'
 ```
 

@@ -1,6 +1,6 @@
 # tests
 
-Marketplace-level tests for the plugins in this repo. Tests live here (outside `plugins/`) so they do not ship with the plugin payload when installed via `/plugin install`.
+Marketplace-level tests for the plugins in this repo. Tests live here (outside `plugins/`) so they do not ship with the plugin payload when installed via `/plugin install`. The one exception is a mod's `*.test.ts`: `claude plugin test` reads them from `plugins/<plugin-name>/tests/`, and `tests/marketplace/script-tests/test-mods.sh` runs them from here.
 
 ## Layout
 

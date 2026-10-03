@@ -1,7 +1,4 @@
 {
-  "hooks": {
-    "PreToolUse": [
-      { "matcher": "Bash", "hooks": [{ "type": "command", "command": "\"${CLAUDE_PLUGIN_ROOT}/bin/worktree-guard\"", "timeout": 10 }] }
-    ]
-  }
+  "description": "Steers git worktree add to EnterWorktree and shows the worktree's PR in the status line",
+  "modules": ["./register.ts"]
 }

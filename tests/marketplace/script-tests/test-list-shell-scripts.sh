@@ -2,9 +2,9 @@
 # test-list-shell-scripts.sh — pin scripts/list-shell-scripts.sh's coverage against drift.
 #
 # `mise run lint` and the CI shellcheck job both depend on this list. It must keep
-# catching extensionless shell scripts under a plugin's bin/ (the keep-awake-linux
-# gap this script was written to close) without pulling in non-shell bin/ scripts
-# (html-visualization's bin/server.js, a Node script).
+# catching extensionless shell scripts under a plugin's bin/ without pulling in non-shell
+# bin/ scripts (html-visualization's bin/server.js, a Node script). No plugin ships an
+# extensionless shell script today, so that case runs against a throwaway repository.
 set -uo pipefail
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
@@ -20,10 +20,18 @@ fail() { printf 'FAIL: %s\n' "$1"; FAIL=$((FAIL + 1)); }
 
 output="$(cd "$REPO_ROOT" && bash "$SCRIPT")"
 
-if grep -qF "plugins/keep-awake-linux/bin/keep-awake" <<<"$output"; then
-  ok "extensionless bash script under a plugin bin/ is included"
+FIXTURE="$(mktemp -d)"
+trap 'rm -rf "$FIXTURE"' EXIT
+mkdir -p "$FIXTURE/plugins/demo/bin"
+printf '#!/usr/bin/env bash\necho hi\n' > "$FIXTURE/plugins/demo/bin/tool"
+printf '#!/usr/bin/env node\n' > "$FIXTURE/plugins/demo/bin/server"
+git -C "$FIXTURE" init -q && git -C "$FIXTURE" add -A
+fixture_output="$(cd "$FIXTURE" && bash "$SCRIPT")"
+
+if [[ "$fixture_output" == "plugins/demo/bin/tool" ]]; then
+  ok "extensionless bash script under a plugin bin/ is included, a node one beside it is not"
 else
-  fail "plugins/keep-awake-linux/bin/keep-awake missing from the list"
+  fail "fixture: expected plugins/demo/bin/tool alone, got: $fixture_output"
 fi
 
 if grep -qF "plugins/html-visualization/bin/server.js" <<<"$output"; then
