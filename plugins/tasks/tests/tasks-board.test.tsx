@@ -1,5 +1,5 @@
 import { expect, test } from 'claude-code/testing'
-import type { On, ProcessRunResult, RenderPropsOf } from 'claude-code'
+import type { On, ProcessRunResult, RenderPropsOf, RenderSurface } from 'claude-code'
 
 const TERMINAL = { cwd: '/repo', surface: 'terminal', isInteractive: true } as const
 const HEADLESS = { cwd: '/repo', surface: null, isInteractive: false } as const
@@ -39,14 +39,15 @@ function ran(stdout: string, exitCode = 0, stderr = ''): { value: ProcessRunResu
   return { value: { exitCode, stdout, stderr, isStdoutTruncated: false, isStderrTruncated: false } }
 }
 
-// Stands for the host: answers taskmgr's three views and records the panes opened. A surface that
-// places no pane is `host(on, views, { placesPanes: false })`.
+// Stands for the host: answers taskmgr's three views, keeps the roster of surfaces and records the
+// panes opened. A surface that places no pane is `host(on, views, { placesPanes: false })`.
 function host(
   on: On,
   views: { inProgress: unknown[]; ready: unknown[]; blocked: unknown[] } | Error | string,
   { placesPanes = true } = {},
 ) {
   const seen = { opened: [] as string[] }
+  const surfaces: RenderSurface[] = []
 
   on('process.run', ($, e) => {
     if (views instanceof Error) {
@@ -67,7 +68,17 @@ function host(
     return { value: placesPanes ? { isPlaced: true } : { isPlaced: false, reason: 'the attached surface places no panes' } }
   })
   on('command.register', ($, e) => ({ value: { command: e.name } }))
-  on('session.start', ($, e) => ({ cwd: e.cwd }))
+  on('session.start', ($, e) => {
+    surfaces.push(...(e.surface === null ? [] : [e.surface]))
+
+    return { cwd: e.cwd }
+  })
+  on('session.attach', ($, e) => {
+    surfaces.push(e.surface)
+
+    return { clientId: e.clientId }
+  })
+  on('session.surfaces', () => ({ value: surfaces }))
 
   return seen
 }
@@ -154,6 +165,28 @@ test('a headless session gets the three views as text and no pane', async ($, on
   const seen = host(on, { inProgress: IN_PROGRESS, ready: READY, blocked: BLOCKED })
 
   await $.session.start(HEADLESS)
+  const answer = await $.command.run(TYPED)
+
+  expect(answer.text).toBe(BOARD_TEXT)
+  expect(seen.opened).toEqual([])
+})
+
+test('the desktop app that joins a headless session gets the pane', async ($, on) => {
+  const seen = host(on, { inProgress: IN_PROGRESS, ready: READY, blocked: BLOCKED })
+
+  await $.session.start(HEADLESS)
+  await $.session.attach({ surface: 'desktop', clientId: 'desktop:default' })
+  const answer = await $.command.run(TYPED)
+
+  expect(seen.opened).toEqual(['tasks-board'])
+  expect(answer.text).toBe('1 in progress, 2 ready, 1 blocked')
+})
+
+test('a phone that joins a headless session gets the three views as text', async ($, on) => {
+  const seen = host(on, { inProgress: IN_PROGRESS, ready: READY, blocked: BLOCKED })
+
+  await $.session.start(HEADLESS)
+  await $.session.attach({ surface: 'mobile', clientId: 'mobile:default' })
   const answer = await $.command.run(TYPED)
 
   expect(answer.text).toBe(BOARD_TEXT)
