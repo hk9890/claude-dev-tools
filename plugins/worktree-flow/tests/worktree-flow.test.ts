@@ -259,6 +259,24 @@ test('when git stops running the status entry is cleared', async ($, on) => {
   expect(seen.status).toEqual(['fix-login on fix/login', undefined])
 })
 
+test('a refresh whose git did not run does not stop the poll', async ($, on) => {
+  const clock = mock.clock(on)
+  const answers: Record<string, Answer | Error> = {
+    'git rev-parse': ran('/repo/.claude/worktrees/fix-login\n'),
+    'git branch': ran('fix/login\n'),
+  }
+  const seen = host(on, answers)
+
+  await $.session.start(SESSION)
+  await clock.settle()
+  answers['git rev-parse'] = new Error('spawn git EAGAIN')
+  await clock.advance(REFRESH_MS)
+  answers['git rev-parse'] = ran('/repo/.claude/worktrees/fix-login\n')
+  await clock.advance(REFRESH_MS)
+
+  expect(seen.status).toEqual(['fix-login on fix/login', undefined, 'fix-login on fix/login'])
+})
+
 test('a refresh that a later one overtook does not bring its status back', async ($, on) => {
   const clock = mock.clock(on)
   const answers: Record<string, Answer | (() => Promise<Answer>)> = {
@@ -321,6 +339,19 @@ test('the desktop app that joins a session gets the status line', async ($, on) 
   expect(seen.status).toEqual(['fix-login on fix/login'])
 })
 
+test('a mod that loads into a session with the desktop app attached shows the status line', async ($, on) => {
+  const clock = mock.clock(on)
+  const seen = host(on, {
+    'git rev-parse': ran('/repo/.claude/worktrees/fix-login\n'),
+    'git branch': ran('fix/login\n'),
+  })
+
+  await $.session.start({ ...HEADLESS, surface: 'desktop' })
+  await clock.settle()
+
+  expect(seen.status).toEqual(['fix-login on fix/login'])
+})
+
 test('a phone that joins a session starts no status line', async ($, on) => {
   const clock = mock.clock(on)
   const seen = host(on, { 'git rev-parse': ran('/repo/.claude/worktrees/fix-login\n') })
@@ -362,6 +393,23 @@ test('a push refreshes the status line at once', async ($, on) => {
   await clock.settle()
 
   expect(seen.status).toEqual(['fix-login on fix/login', 'fix-login on fix/login PR#12 open'])
+})
+
+test('a change of branch refreshes the status line at once', async ($, on) => {
+  const clock = mock.clock(on)
+  const answers: Record<string, Answer> = {
+    'git rev-parse': ran('/repo/.claude/worktrees/fix-login\n'),
+    'git branch': ran('fix/login\n'),
+  }
+  const seen = host(on, answers)
+
+  await $.session.start(SESSION)
+  await clock.settle()
+  answers['git branch'] = ran('fix/logout\n')
+  await $.tool.call({ tool: 'Bash', command: 'git switch -c fix/logout' })
+  await clock.settle()
+
+  expect(seen.status).toEqual(['fix-login on fix/login', 'fix-login on fix/logout'])
 })
 
 test('a pull-request command refreshes the status line, another command does not', async ($, on) => {

@@ -17,8 +17,11 @@ const THROWAWAY_TARGET = /\/scratchpad\/|(?:^|[\s"'=])\/tmp\/|mktemp|\$\{?TMPDIR
 const HEREDOC = /(?<!<)<<(?!<)(-?)\s*(['"]?)([A-Za-z_]\w*)\2/
 const SHELL = /\b(?:bash|sh|zsh)\b/
 
-// A push or a pull-request command changes what the status line shows.
-const CHANGES_PULL_REQUEST = new RegExp(String.raw`(?:^|[;&|(])\s*(?:git(?:${GIT_OPTION})*\s+push|gh\s+pr)\b`, 'm')
+// A push, a change of branch or a pull-request command changes what the status line shows.
+const CHANGES_STATUS_LINE = new RegExp(
+  String.raw`(?:^|[;&|(])\s*(?:git(?:${GIT_OPTION})*\s+(?:push|switch|checkout)|gh\s+pr)\b`,
+  'm',
+)
 
 const FAILED_CHECK = ['FAILURE', 'ERROR', 'TIMED_OUT', 'CANCELLED', 'ACTION_REQUIRED', 'STARTUP_FAILURE']
 const WAITING_STATE = ['PENDING', 'EXPECTED']
@@ -112,13 +115,21 @@ async function worktreeLabel($: EngineInterface) {
 
 // A refresh that a later one overtook is dropped, and one whose git did not run clears the status.
 // The poll runs only while there is a worktree to show: a check can finish with no local event.
+// It stops when git says the session left the worktree, not when git did not run.
 async function showWorktree($: EngineInterface) {
   if (!hasStatusLine) {
     return
   }
 
   const refresh = ++latestRefresh
-  const label = await worktreeLabel($).catch(() => undefined)
+  let label: string | undefined
+  let hasGitRun = true
+
+  try {
+    label = await worktreeLabel($)
+  } catch {
+    hasGitRun = false
+  }
 
   if (refresh !== latestRefresh) {
     return
@@ -126,11 +137,11 @@ async function showWorktree($: EngineInterface) {
 
   $.ui.status(label)
 
-  if (label === undefined) {
+  if (label !== undefined) {
+    poll ??= $.clock.every(STATUS_REFRESH_MS, () => void showWorktree($))
+  } else if (hasGitRun) {
     poll?.cancel()
     poll = undefined
-  } else {
-    poll ??= $.clock.every(STATUS_REFRESH_MS, () => void showWorktree($))
   }
 }
 
@@ -144,7 +155,7 @@ export const register: Register = on => {
 
     const ran = await next(e)
 
-    if (CHANGES_PULL_REQUEST.test(e.command)) {
+    if (CHANGES_STATUS_LINE.test(e.command)) {
       void showWorktree($)
     }
 
@@ -158,8 +169,9 @@ export const register: Register = on => {
     return ran
   })
 
+  // A mod that loads into a running session finds the desktop app attached already.
   on('session.start', ($, e, next) => {
-    hasStatusLine = e.isInteractive
+    hasStatusLine = e.isInteractive || e.surface === 'desktop'
     void showWorktree($)
 
     return next(e)

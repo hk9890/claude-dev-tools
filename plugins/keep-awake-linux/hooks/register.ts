@@ -19,6 +19,9 @@ let inhibitor: HookStream<ProcessSpawnChunk, ProcessSpawnResult> | undefined
 let idleTimer: Timer | undefined
 let cannotInhibit = false
 
+// The status text outlives the hold that showed it when the next hold takes over before it ended.
+let isStatusShown = false
+
 async function keepAwake($: EngineInterface) {
   if (hold !== undefined) {
     return
@@ -31,6 +34,7 @@ async function keepAwake($: EngineInterface) {
   const startup = $.clock.after(STARTUP_MS, () => {
     if (hold === mine) {
       hasStarted = true
+      isStatusShown = true
       $.ui.status('sleep blocked')
     }
   })
@@ -74,7 +78,8 @@ async function keepAwake($: EngineInterface) {
 
   startup.cancel()
 
-  if (hasStarted && hold === undefined) {
+  if (isStatusShown && hold === undefined) {
+    isStatusShown = false
     $.ui.status(undefined)
   }
 }

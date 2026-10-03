@@ -62,7 +62,7 @@ suspend|hibernate` alone.
 
    | Check | Cause |
    |---|---|
-   | `systemd-inhibit MISSING` in step 1 | Not a systemd machine, or not on PATH: the mod showed the toast `sleep is not blocked` at the first turn and is off until Claude Code restarts |
+   | `systemd-inhibit MISSING` in step 1 | Not a systemd machine, or not on PATH: the mod showed the toast `sleep is not blocked` at the first turn and is off until it reloads or Claude Code restarts |
    | The user saw the toast `sleep is not blocked` and `systemd-inhibit` is present | logind refused the request; the toast and the `inhibitor lost` line in the debug log carry the reason |
    | `claude --version` below 2.1.287 | Mods are not supported; the plugin does nothing |
    | `disableAllHooks` is true in `~/.claude/settings.json`, or the session started with `--safe-mode` or `--bare` | Mods are off |

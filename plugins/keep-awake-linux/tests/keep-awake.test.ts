@@ -264,6 +264,26 @@ test('an inhibitor that logind refuses at once is not tried again', async ($, on
   expect(seen.toasts).toEqual(['sleep is not blocked: systemd-inhibit exited with 1'])
 })
 
+// The session ends and the next turn starts before the first inhibitor's loop saw its child end.
+test('an inhibitor that takes over and fails at once clears the status of the one before', async ($, on) => {
+  const clock = mock.clock(on)
+  const seen = host(on)
+
+  await $.turn.start({ text: 'go', turnId: 't1' })
+  await clock.advance(STARTUP_MS)
+  await Promise.all([
+    $.session.end({ reason: 'prompt_input_exit', sessionId: 's1', resume: { id: 's1' } }),
+    $.turn.start({ text: 'again', turnId: 't2' }),
+  ])
+  await clock.settle()
+  seen.exit(1)
+  await clock.advance(STARTUP_MS)
+
+  expect(seen.started).toHaveLength(2)
+  expect(seen.status).toEqual(['sleep blocked', undefined])
+  expect(seen.toasts).toEqual(['sleep is not blocked: systemd-inhibit exited with 1'])
+})
+
 test('without systemd-inhibit the mod never shows sleep as blocked and says so once', async ($, on) => {
   const clock = mock.clock(on)
   const seen = host(on, { canStart: false })
