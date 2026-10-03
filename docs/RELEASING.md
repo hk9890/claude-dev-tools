@@ -47,7 +47,7 @@ Publish in the same sitting the bump PR merges — a merged bump with no tag lea
 Write around **what changed for users**, not the PRs that changed it: a reader scanning the release should learn what they can now do, and what will behave differently, without opening a single PR.
 
 1. **Lede** — one or two sentences naming the headline change, enough for a reader who stops there.
-2. **A section per user-facing feature**, titled by what it *does* (`Every Catppuccin flavour, generated from one source`), not by what delivered it (`claude-catppuccin changes`). Say what it enables, and why it works that way where the design is non-obvious. Collapse several PRs into one section when they built one feature.
+2. **A section per user-facing feature**, titled by what it *does* (`Every Catppuccin flavour, generated from one source`), not by what delivered it (`catppuccin-themes changes`). Say what it enables, and why it works that way where the design is non-obvious. Collapse several PRs into one section when they built one feature.
 3. **Fixes** — user-visible symptom first, then the cause, plus the trade-off where a fix carries one.
 4. **Changed behavior worth knowing** — argument-order changes, removed scripts, new defaults, anything that breaks a habit. Keep the section even when short; an upgrading reader looks here first.
 5. **Full Changelog** — the compare link, which is where the per-PR list belongs.

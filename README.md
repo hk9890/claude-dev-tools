@@ -11,7 +11,7 @@ A plugin marketplace for [Claude Code](https://claude.ai/code). Each plugin is a
 | [`project-execute`](plugins/project-execute/) | Run a project's own documented flows from its docs — `project-exec-testing`, `project-exec-releasing`, `project-exec-monitoring`, `project-exec-reviewing`, `project-exec-running`, and `project-explain`; `project-exec-init` writes the doc set those flows are read from. |
 | [`challenge`](plugins/challenge/) | Project-agnostic adversarial passes — `grill` (stress-test a plan), `kiss` (cut accidental complexity), `are-you-sure` (re-check finished work), `what-do-you-mean` (re-pitch a message that did not land). |
 | [`github-releases`](plugins/github-releases/) | Language-agnostic GitHub release workflow with quality gates, semver, and release notes. |
-| [`claude-catppuccin`](plugins/claude-catppuccin/) | Catppuccin color themes for Claude Code: Latte, Frappe, Macchiato, Mocha. |
+| [`catppuccin-themes`](plugins/catppuccin-themes/) | Catppuccin color themes for Claude Code: Latte, Frappe, Macchiato, Mocha. |
 | [`keep-awake-linux`](plugins/keep-awake-linux/) | Hooks that block Linux system sleep while Claude Code works, releasing on idle or session exit — `keep-awake-inspect` reads the state. |
 | [`html-visualization`](plugins/html-visualization/) | Browser HTML that sends the user's response back to Claude — `html-visualize-ask`, `html-visualize-feedback`, `html-visualize-page`. |
 | [`project-auto-work`](plugins/project-auto-work/) | Unattended audits that report but never write code — `test-tests` (mutation-based test-suite strength) and `test-app` (exploratory app testing). |
