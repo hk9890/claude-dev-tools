@@ -18,6 +18,7 @@ A plugin marketplace for [Claude Code](https://claude.ai/code). Each plugin is a
 | [`instruction-writing`](plugins/instruction-writing/) | Standards for the artifacts a harness reads — `writing-project-docs` (the canonical doc set) and `writing-skills` (skill authoring). |
 | [`plain-english-output-style`](plugins/plain-english-output-style/) | An output style that puts Claude Code's replies in ASD-STE100 Simplified Technical English: answer before acting, agree or disagree explicitly, no filler. |
 | [`worktree-flow`](plugins/worktree-flow/) | A mod that steers Claude from `git worktree add` to the `EnterWorktree` tool and shows the worktree, branch and PR state in the status line, plus `worktree-ship` (worktree to reviewed PR) and `worktree-merge` (merge, then remove the worktree and branches). Needs Claude Code 2.1.287+. |
+| [`revier`](plugins/revier/) | Reach the other projects on this machine through the [revier](https://github.com/hk9890/revier) CLI — the `revier` skill lists every project and the agents running in it, finds a project's checkout to read its source, and prompts another agent, and a mod denies the revier commands that open, raise or close a window, so your focus stays where it is. Needs Claude Code 2.1.287+. |
 
 ## Installation
 
