@@ -4,7 +4,7 @@ Rules for creating or changing files in this plugin marketplace.
 
 ## Adding a new plugin
 
-1. Create `plugins/<plugin-name>/` with the layout in [OVERVIEW.md](OVERVIEW.md).
+1. Create `plugins/<plugin-name>/` with the layout in [OVERVIEW.md](OVERVIEW.md). Name it for what it does: `claude plugin validate` refuses a name that starts with `claude-`, `anthropic-` or `cc-plugin-`.
 2. Write `.claude-plugin/plugin.json` with `name`, `version`, `description`, `author`. Set `version` to whatever `.claude-plugin/marketplace.json` `metadata.version` already carries, not `1.0.0` — all plugins ship in lockstep under one repo tag ([RELEASING.md](RELEASING.md)), and `mise run check-consistency` fails on a second distinct version string.
 3. Register it in `.claude-plugin/marketplace.json` under `plugins` with `name`, `source`, `description`, `version`, `author`, `category`, `keywords`. `description` must be **byte-identical** to `plugin.json`'s and `version` must match it — the CI `consistency` job compares both.
 4. Add a row to the plugin table in `README.md`, in `marketplace.json` order.
@@ -18,7 +18,7 @@ Depend on a specific technology only where the dependency is declared:
 
 - Another plugin → `dependencies` in `plugin.json` (below).
 - A CLI tool or runtime → a load-time check that stops with guidance when it is missing (below).
-- A whole platform → name the plugin for it, so the constraint is visible before install. `keep-awake-linux` is the worked example: logind is the point of the plugin, and its suite skips rather than fails where it is absent ([TESTING.md](TESTING.md)).
+- A whole platform → name the plugin for it, so the constraint is visible before install. `keep-awake-linux` is the worked example: logind is the point of the plugin, and where `systemd-inhibit` is absent its mod is a silent no-op.
 
 ## Declaring plugin dependencies
 
@@ -53,7 +53,21 @@ Every skill is loaded with a `Base directory for this skill: <absolute path>` li
 
 ## Shell scripts
 
-Every tracked `*.sh` — under `scripts/`, `tests/`, or a plugin's `bin/` — must pass `mise run lint` ([TESTING.md](TESTING.md)). An extensionless `bin/` script is still covered: `scripts/list-shell-scripts.sh` finds it by shebang, so `keep-awake-linux`'s `bin/keep-awake` needs no rename.
+Every tracked `*.sh` — under `scripts/`, `tests/`, or a plugin's `bin/` — must pass `mise run lint` ([TESTING.md](TESTING.md)). An extensionless `bin/` script is still covered: `scripts/list-shell-scripts.sh` finds it by shebang.
+
+## Mods
+
+A mod is a plugin whose `hooks/hooks.json` names a hooks module under `modules`; Claude Code 2.1.287 and later runs it in-process. Claude Code's built-in `plugin-authoring` skill carries the API and the write-validate-test loop — load it first. **Local delta:**
+
+- **Worked examples** — `keep-awake-linux` (a child process and timers), `worktree-flow` (a `tool.call` guard and a status line), `tasks` (a command, a pane, and a `$.state` contract).
+- **Layout** — `hooks/hooks.json` holds `{ "modules": ["./register.ts"] }`, `.tsx` when the module draws. Tests go in `plugins/<plugin>/tests/*.test.ts`, where `claude plugin test` reads them ([TESTING.md](TESTING.md)). A module that keeps `$.state` values declares them in `types/index.d.ts`, named in `plugin.json` as `"types"`.
+- **One code path** — a behaviour moves to the module whole: delete the settings hook and its `bin/` script in the same change.
+- **Validate early** — run `claude plugin validate plugins/<plugin>` after every edit. It refuses an event name that is not a string literal, a `$` call not written in full (`$.ui.status(...)`, never `const ui = $.ui`), and `$` passed anywhere but a top-level function of the same file.
+- **Footprint** — a mod runs unsandboxed, so reach only the `$` namespaces the feature needs; the `calls:` line `claude plugin validate` prints is the footprint a user audits before installing.
+- **Where nothing draws** — panes and the status line show in the terminal and the desktop app only. Branch on `session.start`'s `e.isInteractive` and `e.surface`: `tasks` answers `/tasks-board` as text there, `worktree-flow` starts no status timer.
+- **Command names** — a name registered with `$.command.register` is global. Lead it with the plugin's domain word (`tasks-board`); `/tasks` is Claude Code's own.
+- **Minimum version** — say "needs Claude Code 2.1.287+" in the plugin's `README.md` row.
+- **Generated files** — a `--plugin-dir` load writes `.claude-plugin/types/` and `tsconfig.json` into the plugin; both are gitignored. After one such load, `npx -p typescript tsc -p plugins/<plugin>` type-checks the module and its tests.
 
 ## SKILL.md conventions
 
