@@ -19,14 +19,14 @@ suspend|hibernate` alone.
 
 - The first main turn of a session starts one `systemd-inhibit --what=idle:sleep
   --who=claude-keep-awake --why="Claude session <session id>" --mode=block sleep 1800`, and the
-  status line shows `keep-awake: on`.
+  status line shows `keep-awake-linux: sleep blocked`.
 - The child is respawned when its `sleep 1800` ends while the session still wants it, so the PID
   changes every 30 minutes and the inhibitor stays.
 - The inhibitor ends `idleMinutes` (plugin option, default 30) after the last main turn completes.
   A tool call inside that window, from a background agent, extends it by one more period.
 - It ends at once on session exit, on `/clear`, and when the mod reloads.
 - There is no state directory and no log file. The only records are logind's list and the debug
-  log (`claude --debug`), where the mod's lines start with `keep-awake-linux:`.
+  log (`claude --debug`), where the mod's lines carry the plugin's name.
 
 ## Steps
 
@@ -35,8 +35,9 @@ suspend|hibernate` alone.
    ```bash
    command -v systemd-inhibit >/dev/null 2>&1 || echo "systemd-inhibit MISSING"
    systemd-inhibit --list 2>&1 | grep -E 'WHO|claude-keep-awake'
-   for pid in $(pgrep -f 'systemd-inhibit.*--who=claude-keep-awake'); do
+   for pid in $(pgrep -f '^systemd-inhibit .*--who=claude-keep-awake'); do
      ppid=$(ps -o ppid= -p "$pid" | tr -d ' ')
+     [ -n "$ppid" ] || continue   # the inhibitor ended between the two calls
      printf '%s parent=%s (%s) age=%s\n' "$pid" "$ppid" "$(ps -o comm= -p "$ppid")" "$(ps -o etime= -p "$pid" | tr -d ' ')"
    done
    ```
@@ -60,7 +61,7 @@ suspend|hibernate` alone.
    | `systemd-inhibit MISSING` in step 1 | Not a systemd machine, or not on PATH: the mod is a no-op and logs `inhibitor lost` to the debug log |
    | `claude --version` below 2.1.287 | Mods are not supported; the plugin does nothing |
    | `disableAllHooks` is true in `~/.claude/settings.json`, or the session started with `--safe-mode` or `--bare` | Mods are off |
-   | `/plugin` → Installed does not name `keep-awake-linux` under the mods-active line | The plugin is disabled or blocked by managed settings; ask the user to look, the command is theirs to run |
+   | `/plugin` shows no `mod active` line that names `keep-awake-linux` | The plugin is disabled or blocked by managed settings; ask the user to look, the command is theirs to run |
    | No main turn ran yet, or the last one ended more than `idleMinutes` ago | Correct idle state |
 
 ## Report

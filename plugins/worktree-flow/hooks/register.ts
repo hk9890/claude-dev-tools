@@ -70,7 +70,7 @@ async function showWorktree($: EngineInterface) {
   }
 
   const branch = (await $.process.run(['git', 'branch', '--show-current'])).stdout.trim()
-  $.ui.status(`worktree ${name} on ${branch}${await pullRequestLabel($)}`)
+  $.ui.status(`${name} on ${branch}${await pullRequestLabel($)}`)
 }
 
 export const register: Register = on => {

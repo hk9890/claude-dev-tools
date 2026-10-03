@@ -18,7 +18,7 @@ Depend on a specific technology only where the dependency is declared:
 
 - Another plugin → `dependencies` in `plugin.json` (below).
 - A CLI tool or runtime → a load-time check that stops with guidance when it is missing (below).
-- A whole platform → name the plugin for it, so the constraint is visible before install. `keep-awake-linux` is the worked example: logind is the point of the plugin, and where `systemd-inhibit` is absent its mod is a silent no-op.
+- A whole platform → name the plugin for it, so the constraint is visible before install. `keep-awake-linux` is the worked example: logind is the point of the plugin, and where `systemd-inhibit` is absent its mod holds nothing and says why in the debug log.
 
 ## Declaring plugin dependencies
 

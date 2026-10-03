@@ -103,7 +103,7 @@ test('the status line shows the worktree, the branch and the pull request', asyn
   await $.session.start(SESSION)
   await clock.settle()
 
-  expect(seen.status).toEqual(['worktree fix-login on fix/login PR#12 open checks passed'])
+  expect(seen.status).toEqual(['fix-login on fix/login PR#12 open checks passed'])
 })
 
 test('the status line follows the checks on the next refresh', async ($, on) => {
@@ -127,8 +127,8 @@ test('the status line follows the checks on the next refresh', async ($, on) => 
   await clock.advance(60_000)
 
   expect(seen.status).toEqual([
-    'worktree fix-login on fix/login PR#12 open checks running',
-    'worktree fix-login on fix/login PR#12 open checks failed',
+    'fix-login on fix/login PR#12 open checks running',
+    'fix-login on fix/login PR#12 open checks failed',
   ])
 })
 
@@ -153,7 +153,7 @@ test('without gh the status line shows the worktree and the branch', async ($, o
   await $.session.start(SESSION)
   await clock.settle()
 
-  expect(seen.status).toEqual(['worktree fix-login on fix/login'])
+  expect(seen.status).toEqual(['fix-login on fix/login'])
 })
 
 test('a branch with no pull request shows the worktree and the branch', async ($, on) => {
@@ -167,7 +167,7 @@ test('a branch with no pull request shows the worktree and the branch', async ($
   await $.session.start(SESSION)
   await clock.settle()
 
-  expect(seen.status).toEqual(['worktree fix-login on fix/login'])
+  expect(seen.status).toEqual(['fix-login on fix/login'])
 })
 
 test('entering a worktree refreshes the status line at once', async ($, on) => {
@@ -181,7 +181,7 @@ test('entering a worktree refreshes the status line at once', async ($, on) => {
   await $.tool.call({ tool: 'EnterWorktree', name: 'feat-x' })
   await clock.settle()
 
-  expect(seen.status).toEqual([undefined, 'worktree feat-x on feat/x'])
+  expect(seen.status).toEqual([undefined, 'feat-x on feat/x'])
 })
 
 test('a headless session runs no git and sets no status', async ($, on) => {

@@ -60,7 +60,7 @@ test('the first turn starts one inhibitor and shows it in the status line', asyn
 
   expect(seen.started).toHaveLength(1)
   expect(seen.started[0]?.slice(0, 3)).toEqual(['systemd-inhibit', '--what=idle:sleep', '--who=claude-keep-awake'])
-  expect(seen.status).toEqual(['keep-awake: on'])
+  expect(seen.status).toEqual(['sleep blocked'])
 })
 
 test('a second turn starts no second inhibitor', async ($, on) => {
@@ -150,7 +150,7 @@ test('a turn after the idle release starts one fresh inhibitor', async ($, on) =
 
   expect(seen.started).toHaveLength(2)
   expect(seen.ended).toBe(1)
-  expect(seen.status.at(-1)).toBe('keep-awake: on')
+  expect(seen.status.at(-1)).toBe('sleep blocked')
 })
 
 test('the inhibitor is renewed when its lease ends during a long turn', async ($, on) => {
@@ -163,7 +163,7 @@ test('the inhibitor is renewed when its lease ends during a long turn', async ($
   await clock.settle()
 
   expect(seen.started).toHaveLength(2)
-  expect(seen.status).toEqual(['keep-awake: on'])
+  expect(seen.status).toEqual(['sleep blocked'])
 })
 
 test('an inhibitor that exits with an error is not started again', async ($, on) => {
@@ -176,7 +176,7 @@ test('an inhibitor that exits with an error is not started again', async ($, on)
   await clock.settle()
 
   expect(seen.started).toHaveLength(1)
-  expect(seen.status).toEqual(['keep-awake: on', undefined])
+  expect(seen.status).toEqual(['sleep blocked', undefined])
   expect(seen.logged).toEqual(['inhibitor lost: Error: systemd-inhibit exited with 1'])
 })
 

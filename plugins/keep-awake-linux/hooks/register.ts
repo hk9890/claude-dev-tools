@@ -24,7 +24,7 @@ async function keepAwake($: EngineInterface) {
   const mine = {}
   hold = mine
   const why = `Claude session ${await $.session.id()}`
-  $.ui.status('keep-awake: on')
+  $.ui.status('sleep blocked')
 
   while (hold === mine) {
     const child = $.process.spawn({
