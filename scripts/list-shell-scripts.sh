@@ -4,9 +4,8 @@
 # to stay mirrored).
 #
 # Every tracked *.sh, plus any plugin bin/ script whose shebang names a POSIX-family
-# shell. A plain `*.sh` glob misses the latter — keep-awake-linux's bin/keep-awake is
-# a bash script with no extension, so CODING.md's promise that plugin bin/ scripts are
-# covered went unmet until this existed.
+# shell. A plain `*.sh` glob misses the latter: a bash script with no extension, the way
+# a bin/ command is usually named.
 set -uo pipefail
 
 git ls-files '*.sh'
