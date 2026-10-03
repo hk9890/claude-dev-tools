@@ -13,8 +13,9 @@ const PANE: RenderPropsOf['Pane'] = {
 }
 
 const IN_PROGRESS = [{ id: 'rep-1', type: 'task', priority: 2, title: 'Rewrite the guard' }]
+// taskmgr keeps a closed blocker in `blocked_by`: rep-0 is closed, so rep-2 is ready.
 const READY = [
-  { id: 'rep-2', type: 'bug', priority: 1, title: 'Name fails validation' },
+  { id: 'rep-2', type: 'bug', priority: 1, title: 'Name fails validation', blocked_by: ['rep-0'] },
   { id: 'rep-3', type: 'epic', priority: 2, title: 'Ship mods' },
 ]
 const TYPED = {
@@ -23,14 +24,28 @@ const TYPED = {
   origin: { kind: 'composer' },
   presentation: { isFullscreen: true, columns: 160 },
 } as const
-const BLOCKED = [{ id: 'rep-4', type: 'feature', priority: 3, title: 'Status line', blocked_by: ['rep-1'] }]
+const BLOCKED = [
+  {
+    id: 'rep-4',
+    type: 'feature',
+    priority: 3,
+    title: 'Status line',
+    blocked_by: ['rep-0', 'rep-1'],
+    blocked_by_refs: [{ id: 'rep-1', title: 'Rewrite the guard', type: 'task', status: 'in_progress', priority: 2 }],
+  },
+]
 
 function ran(stdout: string, exitCode = 0, stderr = ''): { value: ProcessRunResult } {
   return { value: { exitCode, stdout, stderr, isStdoutTruncated: false, isStderrTruncated: false } }
 }
 
-// Stands for the host: answers taskmgr's three views and records the panes opened.
-function host(on: On, views: { inProgress: unknown[]; ready: unknown[]; blocked: unknown[] } | Error | string) {
+// Stands for the host: answers taskmgr's three views and records the panes opened. A surface that
+// places no pane is `host(on, views, { placesPanes: false })`.
+function host(
+  on: On,
+  views: { inProgress: unknown[]; ready: unknown[]; blocked: unknown[] } | Error | string,
+  { placesPanes = true } = {},
+) {
   const seen = { opened: [] as string[] }
 
   on('process.run', ($, e) => {
@@ -49,7 +64,7 @@ function host(on: On, views: { inProgress: unknown[]; ready: unknown[]; blocked:
   on('ui.open', ($, e) => {
     seen.opened.push(e.id)
 
-    return { value: { isPlaced: true } }
+    return { value: placesPanes ? { isPlaced: true } : { isPlaced: false, reason: 'the attached surface places no panes' } }
   })
   on('command.register', ($, e) => ({ value: { command: e.name } }))
   on('session.start', ($, e) => ({ cwd: e.cwd }))
@@ -125,22 +140,32 @@ test('when taskmgr cannot run, /tasks-board says why and where the install steps
   expect(seen.opened).toEqual([])
 })
 
+const BOARD_TEXT = [
+  'In progress (1)',
+  '  rep-1 P2 task Rewrite the guard',
+  'Ready (2)',
+  '  rep-2 P1 bug Name fails validation',
+  '  rep-3 P2 epic Ship mods',
+  'Blocked (1)',
+  '  rep-4 P3 feature Status line (blocked by rep-1)',
+].join('\n')
+
 test('a headless session gets the three views as text and no pane', async ($, on) => {
   const seen = host(on, { inProgress: IN_PROGRESS, ready: READY, blocked: BLOCKED })
 
   await $.session.start(HEADLESS)
   const answer = await $.command.run(TYPED)
 
-  expect(answer.text).toBe(
-    [
-      'In progress (1)',
-      '  rep-1 P2 task Rewrite the guard',
-      'Ready (2)',
-      '  rep-2 P1 bug Name fails validation',
-      '  rep-3 P2 epic Ship mods',
-      'Blocked (1)',
-      '  rep-4 P3 feature Status line (blocked by rep-1)',
-    ].join('\n'),
-  )
+  expect(answer.text).toBe(BOARD_TEXT)
   expect(seen.opened).toEqual([])
+})
+
+test('where the pane is not placed, /tasks-board answers with the three views as text', async ($, on) => {
+  const seen = host(on, { inProgress: IN_PROGRESS, ready: READY, blocked: BLOCKED }, { placesPanes: false })
+
+  await $.session.start(TERMINAL)
+  const answer = await $.command.run(TYPED)
+
+  expect(seen.opened).toEqual(['tasks-board'])
+  expect(answer.text).toBe(BOARD_TEXT)
 })

@@ -12,27 +12,30 @@ const SECTIONS = [
 
 const board = atom({ plugin: 'tasks', key: 'board' } as const, null)
 
-// taskmgr's --json rows; `blocked_by` is present on the blocked view alone.
-type Row = { id: string; type: string; priority: number; title: string; blocked_by?: string[] }
+// taskmgr's --json rows. `blocked_by_refs` is on the blocked view alone and holds the blockers
+// still open; `blocked_by` is on every view and keeps the closed ones.
+type Row = { id: string; type: string; priority: number; title: string; blocked_by_refs?: { id: string }[] }
 
 function issues(json: string): TasksIssue[] {
   const rows: Row[] = JSON.parse(json)
 
-  return rows.map(({ id, type, priority, title, blocked_by: blockedBy = [] }) => ({
+  return rows.map(({ id, type, priority, title, blocked_by_refs: openBlockers = [] }) => ({
     id,
     type,
     priority,
     title,
-    blockedBy,
+    blockedBy: openBlockers.map(blocker => blocker.id),
   }))
 }
 
 // Resolves the board, or the line that says why there is none.
 async function loadBoard($: EngineInterface): Promise<TasksBoard | string> {
   try {
-    const inProgress = await $.process.run(['taskmgr', 'list', '-q', 'status == "in_progress"', '--json'])
-    const ready = await $.process.run(['taskmgr', 'ready', '--json'])
-    const blocked = await $.process.run(['taskmgr', 'blocked', '--json'])
+    const [inProgress, ready, blocked] = await Promise.all([
+      $.process.run(['taskmgr', 'list', '-q', 'status == "in_progress"', '--json']),
+      $.process.run(['taskmgr', 'ready', '--json']),
+      $.process.run(['taskmgr', 'blocked', '--json']),
+    ])
     const failed = [inProgress, ready, blocked].find(view => view.exitCode !== 0)
 
     if (failed !== undefined) {
@@ -105,9 +108,9 @@ export const register: Register = on => {
     }
 
     await update($, board, () => loaded)
-    await $.ui.open({ id: BOARD, title: 'Tasks' })
+    const { isPlaced } = await $.ui.open({ id: BOARD, title: 'Tasks' })
 
-    return { text: countsLine(loaded) }
+    return { text: isPlaced ? countsLine(loaded) : boardText(loaded) }
   })
 
   on('ui.render', { component: 'Pane', requestId: BOARD }, async ($, e, next) => {

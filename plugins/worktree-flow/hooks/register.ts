@@ -14,10 +14,13 @@ const WORKTREE_ADD = new RegExp(
 const THROWAWAY_TARGET = /\/scratchpad\/|(?:^|[\s"'=])\/tmp\/|mktemp|\$\{?TMPDIR/
 
 const FAILED_CHECK = ['FAILURE', 'ERROR', 'TIMED_OUT', 'CANCELLED', 'ACTION_REQUIRED', 'STARTUP_FAILURE']
+const WAITING_STATE = ['PENDING', 'EXPECTED']
 const STATUS_REFRESH_MS = 60_000
 
 type Check = { status?: string; conclusion?: string; state?: string }
 type PullRequest = { number: number; state: string; statusCheckRollup: Check[] }
+
+let latestRefresh = 0
 
 // A throwaway probe is judged by the arguments of the add itself, not by the rest of the command,
 // so each line is matched alone and every add on it must name a throwaway target.
@@ -37,14 +40,19 @@ function checksLabel(checks: Check[]) {
   }
 
   const isRunning = (check: Check) =>
-    check.state === 'PENDING' || (check.status !== undefined && check.status !== 'COMPLETED')
+    WAITING_STATE.includes(check.state ?? '') || (check.status !== undefined && check.status !== 'COMPLETED')
 
   return checks.some(isRunning) ? ' checks running' : ' checks passed'
 }
 
-async function pullRequestLabel($: EngineInterface) {
+// gh finds a pull request by the local branch name. A push can name the remote branch differently
+// (`git push -u origin HEAD:feat/x`), and then gh is asked for the upstream's name.
+async function pullRequestLabel($: EngineInterface, branch: string) {
   try {
-    const viewed = await $.process.run(['gh', 'pr', 'view', '--json', 'number,state,statusCheckRollup'])
+    const upstream = (await $.process.run(['git', 'config', '--get', `branch.${branch}.merge`])).stdout.trim()
+    const pushedAs = upstream.startsWith('refs/heads/') ? upstream.slice('refs/heads/'.length) : branch
+    const selector = pushedAs === branch ? [] : [pushedAs]
+    const viewed = await $.process.run(['gh', 'pr', 'view', ...selector, '--json', 'number,state,statusCheckRollup'])
 
     if (viewed.exitCode !== 0) {
       return ''
@@ -58,19 +66,28 @@ async function pullRequestLabel($: EngineInterface) {
   }
 }
 
-async function showWorktree($: EngineInterface) {
+// The status text, or undefined outside `.claude/worktrees/<name>`. A detached HEAD has no branch.
+async function worktreeLabel($: EngineInterface) {
   const top = await $.process.run(['git', 'rev-parse', '--show-toplevel'])
-  const root = top.stdout.trim()
-  const name = root.split('/.claude/worktrees/')[1]
+  const name = top.stdout.trim().split('/.claude/worktrees/')[1]
 
   if (top.exitCode !== 0 || name === undefined) {
-    $.ui.status(undefined)
-
-    return
+    return undefined
   }
 
   const branch = (await $.process.run(['git', 'branch', '--show-current'])).stdout.trim()
-  $.ui.status(`${name} on ${branch}${await pullRequestLabel($)}`)
+
+  return branch === '' ? name : `${name} on ${branch}${await pullRequestLabel($, branch)}`
+}
+
+// A refresh that a later one overtook is dropped, and one whose git did not run clears the status.
+async function showWorktree($: EngineInterface) {
+  const refresh = ++latestRefresh
+  const label = await worktreeLabel($).catch(() => undefined)
+
+  if (refresh === latestRefresh) {
+    $.ui.status(label)
+  }
 }
 
 export const register: Register = on => {
