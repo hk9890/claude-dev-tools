@@ -74,6 +74,8 @@ The exception is a plugin whose names trigger on their own, each a distinct conc
 
 **When renaming a plugin directory or a skill**, add the old-to-new entry to `RENAME_ALIASES` / `SKILL_RENAME_ALIASES` in [`scripts/analyze-sessions.py`](../scripts/analyze-sessions.py) in the same change, or that name's history silently falls into the unmatched bucket ([MONITORING.md](MONITORING.md)).
 
+**When renaming a plugin**, also add the old-to-new entry to the top-level `renames` map in `.claude-plugin/marketplace.json`. Claude Code follows it when an installed name is no longer found and migrates the user's `enabledPlugins`; without it every existing install loses the plugin, and no gate here catches the omission. A stored `theme` setting (`custom:<plugin>:<theme>`) is not migrated: say in the release notes that users select the theme again with `/theme`.
+
 ### Frontmatter
 
 **Schema A — user-only.** The default; nearly every skill here uses it.
