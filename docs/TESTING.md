@@ -38,7 +38,7 @@ A suite is a `test-*.sh` under `tests/<plugin>/script-tests/` or `tests/marketpl
 Two skip rather than fail where their prerequisite is absent:
 
 - `tests/html-visualization/script-tests/test-browser.sh` — needs Playwright in the npm `_npx` cache: `npx playwright --version` populates it, then `npx playwright install chromium`. `REQUIRE_BROWSER=1` makes it fail instead.
-- `tests/marketplace/script-tests/test-mods.sh` — needs `claude` 2.1.287 or later on PATH, so it skips on GitHub Actions and no CI job tests a mod. `REQUIRE_CLAUDE=1` makes it fail instead.
+- `tests/marketplace/script-tests/test-mods.sh` — needs `claude` 2.1.287 or later on PATH. `REQUIRE_CLAUDE=1` makes it fail instead, and the CI `test` job sets it.
 
 ## Mod tests — `claude plugin test`
 
@@ -88,7 +88,7 @@ A non-zero `validate-routes.py` must be fixed before pushing. The manifest is in
 
 | Job | What it checks | Locally |
 |---|---|---|
-| `test` | Full script-test suite; the mod suite skips there | `mise run test` |
+| `test` | Full script-test suite, the mod suite included: the job installs the Claude Code version pinned in `ci.yml` | `mise run test` |
 | `consistency` | Cross-references, version mirrors, marketplace | `mise run check-consistency` |
 | `manifests` | JSON well-formedness of every plugin and marketplace manifest | `for f in .claude-plugin/marketplace.json plugins/*/.claude-plugin/plugin.json; do jq empty "$f"; done` |
 | `shellcheck` | ShellCheck over every tracked shell script | `mise run lint` |
