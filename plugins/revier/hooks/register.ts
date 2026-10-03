@@ -54,8 +54,8 @@ function movesFocus(command: string) {
 }
 
 export const register: Register = on => {
-  on('tool.call', { tool: 'Bash' }, ($, e, next) => {
-    if (movesFocus(e.command)) {
+  on('tool.call', { tool: ['Bash', 'Monitor'] }, ($, e, next) => {
+    if (movesFocus(e.command ?? '')) {
       $.ui.toast('blocked a command that takes the focus')
 
       return { deny: DENY_REASON }

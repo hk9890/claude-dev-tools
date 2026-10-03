@@ -115,3 +115,35 @@ for (const command of ALLOWED) {
     expect(seen.toasts).toEqual([])
   })
 }
+
+const WATCH = { tool: 'Monitor', description: 'watch', timeout_ms: 60_000 } as const
+
+test('denies a focus mover run through Monitor', async ($, on) => {
+  const seen = host(on)
+
+  const answer = await $.tool.call({ ...WATCH, command: 'revier open demo' })
+
+  expect(answer.deny).toContain('takes the focus')
+  expect(seen.ran).toEqual([])
+  expect(seen.toasts).toEqual(['blocked a command that takes the focus'])
+})
+
+test('allows a Monitor command that moves no window', async ($, on) => {
+  const seen = host(on)
+
+  const answer = await $.tool.call({ ...WATCH, command: 'revier agent wait demo --until stopped' })
+
+  expect(answer.deny).toBeUndefined()
+  expect(seen.ran).toEqual(['Monitor'])
+  expect(seen.toasts).toEqual([])
+})
+
+test('allows a Monitor that watches a socket and runs no command', async ($, on) => {
+  const seen = host(on)
+
+  const answer = await $.tool.call({ ...WATCH, ws: { url: 'wss://example.test/events' } })
+
+  expect(answer.deny).toBeUndefined()
+  expect(seen.ran).toEqual(['Monitor'])
+  expect(seen.toasts).toEqual([])
+})
