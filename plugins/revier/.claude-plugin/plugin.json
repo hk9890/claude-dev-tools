@@ -1,0 +1,13 @@
+{
+  "name": "revier",
+  "description": "Reach the other projects on this machine through the revier CLI: one skill that lets the model list every project and the agents running in it, find a project's checkout to read its source, and prompt another agent, plus a mod that denies the revier commands that would take the user's window focus",
+  "version": "1.35.0",
+  "author": {
+    "name": "Hans Kohlreiter",
+    "email": "hans.kohlreiter@gmail.com"
+  },
+  "homepage": "https://github.com/hk9890/claude-dev-tools",
+  "repository": "https://github.com/hk9890/claude-dev-tools",
+  "license": "MIT",
+  "keywords": ["revier", "projects", "agents", "multi-project", "cross-project", "mod"]
+}

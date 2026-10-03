@@ -1,0 +1,4 @@
+{
+  "description": "Denies the revier commands that open, raise or close a window, so the user's focus stays where it is",
+  "modules": ["./register.ts"]
+}
