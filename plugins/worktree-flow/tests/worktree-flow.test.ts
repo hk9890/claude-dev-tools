@@ -2,7 +2,10 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { On, ProcessRunResult } from 'claude-code'
 
 const SESSION = { cwd: '/repo', surface: 'terminal', isInteractive: true } as const
+const HEADLESS = { cwd: '/repo', surface: null, isInteractive: false } as const
 const PASSED = { status: 'COMPLETED', conclusion: 'SUCCESS' }
+const REFRESH_MS = 5 * 60_000
+const TEN_MINUTES = 10 * 60_000
 
 type Answer = { value: ProcessRunResult }
 
@@ -46,9 +49,17 @@ function host(on: On, answers: Record<string, Answer | Error | (() => Promise<An
     return { result: 'ok' }
   })
   on('session.start', ($, e) => ({ cwd: e.cwd }))
+  on('session.attach', ($, e) => ({ clientId: e.clientId }))
 
   return seen
 }
+
+const PR_BODY_WITH_THE_COMMAND = [
+  'gh pr create --title "Guard notes" --body-file - <<\'EOF\'',
+  'The guard refuses this line:',
+  'git worktree add ../feature feat/x',
+  'EOF',
+].join('\n')
 
 const DENIED = [
   'git worktree add ../feature -b feature',
@@ -62,6 +73,11 @@ const DENIED = [
   'result=$(git worktree add ../x)',
   'git -c core.x=y --no-pager worktree add ../x',
   'git worktree add --detach /tmp/probe HEAD; git worktree add ../x',
+  "bash <<'EOF'\ngit worktree add ../x\nEOF",
+  'cat <<EOF | sh\ngit worktree add ../x\nEOF',
+  "cat <<'EOF'\nsome text\nEOF\ngit worktree add ../x",
+  'echo $((1 << n))\ngit worktree add ../x',
+  'cat <<< EOF\ngit worktree add ../x\nEOF',
 ]
 
 const ALLOWED = [
@@ -75,6 +91,8 @@ const ALLOWED = [
   'ls .git/worktrees',
   'git commit -m "use git worktree add here"',
   'gh pr create --body "blocks git worktree add now"',
+  PR_BODY_WITH_THE_COMMAND,
+  'cat > notes.md <<-"END"\n\tgit worktree add ../x\n\tEND',
 ]
 
 for (const command of DENIED) {
@@ -134,7 +152,7 @@ test('the status line follows the checks on the next refresh', async ($, on) => 
       statusCheckRollup: [PASSED, { status: 'COMPLETED', conclusion: 'FAILURE' }],
     }),
   )
-  await clock.advance(60_000)
+  await clock.advance(REFRESH_MS)
 
   expect(seen.status).toEqual([
     'fix-login on fix/login PR#12 open checks running',
@@ -236,7 +254,7 @@ test('when git stops running the status entry is cleared', async ($, on) => {
   await $.session.start(SESSION)
   await clock.settle()
   answers['git rev-parse'] = new Error('spawn git ENOENT')
-  await clock.advance(60_000)
+  await clock.advance(REFRESH_MS)
 
   expect(seen.status).toEqual(['fix-login on fix/login', undefined])
 })
@@ -281,8 +299,117 @@ test('a headless session runs no git and sets no status', async ($, on) => {
   const clock = mock.clock(on)
   const seen = host(on, { 'git rev-parse': ran('/repo/.claude/worktrees/fix-login\n') })
 
-  await $.session.start({ ...SESSION, surface: null, isInteractive: false })
-  await clock.advance(120_000)
+  await $.session.start(HEADLESS)
+  await $.tool.call({ tool: 'EnterWorktree', name: 'fix-login' })
+  await clock.advance(TEN_MINUTES)
 
   expect(seen.status).toEqual([])
+  expect(seen.commands).toEqual([])
+})
+
+test('the desktop app that joins a session gets the status line', async ($, on) => {
+  const clock = mock.clock(on)
+  const seen = host(on, {
+    'git rev-parse': ran('/repo/.claude/worktrees/fix-login\n'),
+    'git branch': ran('fix/login\n'),
+  })
+
+  await $.session.start(HEADLESS)
+  await $.session.attach({ surface: 'desktop', clientId: 'desktop:default' })
+  await clock.settle()
+
+  expect(seen.status).toEqual(['fix-login on fix/login'])
+})
+
+test('a phone that joins a session starts no status line', async ($, on) => {
+  const clock = mock.clock(on)
+  const seen = host(on, { 'git rev-parse': ran('/repo/.claude/worktrees/fix-login\n') })
+
+  await $.session.start(HEADLESS)
+  await $.session.attach({ surface: 'mobile', clientId: 'mobile:default' })
+  await clock.settle()
+
+  expect(seen.commands).toEqual([])
+})
+
+test('inside a worktree gh is asked once per 5 minutes while nothing happens', async ($, on) => {
+  const clock = mock.clock(on)
+  const seen = host(on, {
+    'git rev-parse': ran('/repo/.claude/worktrees/fix-login\n'),
+    'git branch': ran('fix/login\n'),
+    'gh pr': ran(JSON.stringify({ number: 12, state: 'OPEN', statusCheckRollup: [PASSED] })),
+  })
+
+  await $.session.start(SESSION)
+  await clock.settle()
+  await clock.advance(TEN_MINUTES)
+
+  expect(seen.commands.filter(command => command.startsWith('gh pr'))).toHaveLength(3)
+})
+
+test('a push refreshes the status line at once', async ($, on) => {
+  const clock = mock.clock(on)
+  const answers: Record<string, Answer> = {
+    'git rev-parse': ran('/repo/.claude/worktrees/fix-login\n'),
+    'git branch': ran('fix/login\n'),
+  }
+  const seen = host(on, answers)
+
+  await $.session.start(SESSION)
+  await clock.settle()
+  answers['gh pr'] = ran(JSON.stringify({ number: 12, state: 'OPEN', statusCheckRollup: [] }))
+  await $.tool.call({ tool: 'Bash', command: 'git push -u origin HEAD:fix/login' })
+  await clock.settle()
+
+  expect(seen.status).toEqual(['fix-login on fix/login', 'fix-login on fix/login PR#12 open'])
+})
+
+test('a pull-request command refreshes the status line, another command does not', async ($, on) => {
+  const clock = mock.clock(on)
+  const seen = host(on, {
+    'git rev-parse': ran('/repo/.claude/worktrees/fix-login\n'),
+    'git branch': ran('fix/login\n'),
+  })
+
+  await $.session.start(SESSION)
+  await clock.settle()
+  await $.tool.call({ tool: 'Bash', command: 'git commit -m "fix: push the gh pr text"' })
+  await clock.settle()
+  expect(seen.status).toHaveLength(1)
+
+  await $.tool.call({ tool: 'Bash', command: 'cd /repo && gh pr create --fill' })
+  await clock.settle()
+  expect(seen.status).toHaveLength(2)
+})
+
+test('outside a worktree git runs once and no timer starts', async ($, on) => {
+  const clock = mock.clock(on)
+  const seen = host(on, { 'git rev-parse': ran('/repo\n') })
+
+  await $.session.start(SESSION)
+  await clock.advance(TEN_MINUTES)
+
+  expect(seen.commands).toEqual(['git rev-parse --show-toplevel'])
+})
+
+test('the timer starts with the worktree and stops when the session leaves it', async ($, on) => {
+  const clock = mock.clock(on)
+  const answers = { 'git rev-parse': ran('/repo\n'), 'git branch': ran('feat/x\n') }
+  const seen = host(on, answers)
+
+  await $.session.start(SESSION)
+  await clock.settle()
+  answers['git rev-parse'] = ran('/repo/.claude/worktrees/feat-x\n')
+  await $.tool.call({ tool: 'EnterWorktree', name: 'feat-x' })
+  await clock.advance(REFRESH_MS)
+  expect(seen.status).toEqual([undefined, 'feat-x on feat/x', 'feat-x on feat/x'])
+
+  answers['git rev-parse'] = ran('/repo\n')
+  await $.tool.call({ tool: 'ExitWorktree', action: 'keep' })
+  await clock.settle()
+  const ranUntilExit = seen.commands.length
+  await clock.advance(TEN_MINUTES)
+
+  expect(seen.status.at(-1)).toBeUndefined()
+  expect(seen.commands).toHaveLength(ranUntilExit)
 })
