@@ -36,6 +36,7 @@ from datetime import datetime, timezone
 
 RENAME_ALIASES = {
     "html-ask": "html-visualization",
+    "claude-catppuccin": "catppuccin-themes",
     # Plugin renamed whole (grill -> challenge, when kiss and are-you-sure joined it).
     "grill": "challenge",
     # These plugins were folded, whole, into a single current plugin.
