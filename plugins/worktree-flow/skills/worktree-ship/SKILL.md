@@ -8,9 +8,9 @@ argument-hint: "[change-to-make]"
 
 **Ship this change as a reviewed PR:** $ARGUMENTS
 
-With no argument, ship the change the current worktree holds; where it holds none, ask what to change. The run ends at an open PR; merging belongs to `/worktree-flow:worktree-merge`, which the user starts.
+With no argument, ship the change the current worktree holds; where the session is in no worktree, or its worktree holds no change, ask what to change. The run ends at an open PR; merging belongs to `/worktree-flow:worktree-merge`, which the user starts.
 
-A run **resumes**: it can start in the main checkout with nothing done, in a worktree with the change half made, or on a PR already reviewed. Each step states the result it leaves, and a step whose result already stands is skipped.
+A run **resumes**: it can start in the main checkout with nothing done, in a worktree with the change half made, or on a PR already reviewed. Each step states the result it leaves, and a step whose result already stands is skipped. A gate or drive result stands only for the tree it ran on.
 
 ## 1. Read the project's change rules
 
@@ -20,7 +20,10 @@ Read the project's own workflow (AGENTS.md or CLAUDE.md routing, a change-workfl
 
 ## 2. Enter a worktree
 
-Where `git rev-parse --git-dir` and `git rev-parse --git-common-dir` print different paths, the session is in a worktree already: stay in it, and run the setup from step 1 where it has not run.
+Where `git rev-parse --path-format=absolute --git-dir --git-common-dir` prints two different paths, the session is in a worktree already. Look up its PR with `gh pr view <pushed-branch> --json number,state,headRefOid,mergeable,body`:
+
+- **No PR, or an `OPEN` one** — stay in the worktree, and run the setup from step 1 where it has not run.
+- **A `MERGED` or `CLOSED` one** — stop and report: the worktree belongs to a finished change, and a new change needs a new worktree.
 
 Otherwise:
 
@@ -28,11 +31,13 @@ Otherwise:
 2. Call `EnterWorktree` with a bare kebab-case name, for example `fix-login` — before starting any subagent: a subagent already running when the session enters a worktree loses its Bash.
 3. Run the setup from step 1.
 
-**Shipped already** — `git status --porcelain` prints nothing, `gh pr view --json state,headRefOid,body` shows an `OPEN` PR whose `headRefOid` equals `git rev-parse HEAD`, and the **Review** line of its body names that commit. Then go to step 8 and change nothing.
+**Shipped already** — `git status --porcelain` prints nothing, the PR is `OPEN` with a `headRefOid` equal to `git rev-parse HEAD`, the **Review** line of its body names that commit, and, where the run has an argument, the PR's diff carries that whole change. Then go to step 8 and change nothing; where `mergeable` is `CONFLICTING`, report that the PR needs the base branch merged in before it can merge.
+
+`<pushed-branch>` is the branch's upstream without the remote name (`git rev-parse --abbrev-ref @{upstream}`): `gh` finds a PR by the local branch name, and step 6 can push under another one. With no upstream, or with the base branch as upstream, nothing was pushed: there is no `<pushed-branch>` and no PR.
 
 ## 3. Implement
 
-Read what the worktree holds: `git status`, and `git diff` against the base branch. Make the part of the change that is missing, and add or update the tests that cover it.
+Read what the worktree holds: `git status`, and `git diff --merge-base <remote>/<base-branch>`, which leaves out what landed on the base branch since the worktree left it. Make the part of the change that is missing, and add or update the tests that cover it.
 
 Done when the diff carries the whole change and its tests.
 
@@ -48,11 +53,11 @@ Fix what the drive shows broken, then return to step 4. Keep each command and wh
 
 ## 6. Commit, push, open the PR
 
-Commit in the project's style. Push with upstream tracking, under the project's branch convention where it has one (`git push -u <remote> HEAD:<branch-name>`). Read [the PR body template](references/pr-body.md) and write the body in its shape to a file outside the worktree. Open the PR with `gh pr create --body-file`; where the branch has a PR, bring its body up to date with `gh pr edit --body-file`.
+Commit in the project's style. Push with upstream tracking: to `<pushed-branch>` where there is one, else under the project's branch convention where it has one (`git push -u <remote> HEAD:<branch-name>`). Read [the PR body template](references/pr-body.md) and write the body in its shape to a file outside the worktree. Open the PR with `gh pr create --body-file`; where step 2 found an `OPEN` PR, bring its body up to date with `gh pr edit <pr-number> --body-file`.
 
 ## 7. Review and fix
 
-Invoke the `code-review` skill with the argument `xhigh --fix <pr-number>`. It runs in the background: wait for its completion notification, then read which findings it applied. Repeat steps 4 and 5, commit, push, and bring the PR body up to date with `gh pr edit --body-file`: the gate and drive results, the **Review** line with the commit just pushed, and every other part the fixes made stale.
+Invoke the `code-review` skill with the argument `xhigh --fix <pr-number>`. It runs in the background: wait for its completion notification, then read which findings it applied. Where it applied any, repeat steps 4 and 5, commit, and push. Then bring the PR body up to date with `gh pr edit <pr-number> --body-file`: the gate and drive results, the **Review** line with the PR's head commit, and every other part the fixes made stale.
 
 Done when the review has finished, its fixes are pushed with every gate green, and the **Review** line names the PR's head commit.
 
