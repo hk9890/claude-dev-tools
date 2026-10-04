@@ -56,7 +56,7 @@ claude plugin test plugins/<plugin>       # the plugin's tests
 - The test stands for the host: register a hook for every event and `$` call the mod reaches (`process.run`, `ui.status`, `session.id`), or the call fails with `no implementation for <event>`.
 - A stub for a `$` call answers `{ value: ... }`; a stub for an event answers the event's own result.
 - Drive time with `mock.clock(on)` and `clock.advance(ms)`.
-- Model a new test on the one nearest in shape: [`worktree-flow.test.ts`](../plugins/worktree-flow/tests/worktree-flow.test.ts) (denied tool calls, stubbed `git` and `gh`, a timer), [`tasks-board.test.tsx`](../plugins/tasks/tests/tasks-board.test.tsx) (a command and a mounted pane), [`keep-awake.test.ts`](../plugins/keep-awake-linux/tests/keep-awake.test.ts) (a spawned child's life, plugin options).
+- Model a new test on the one nearest in shape: [`worktree-flow.test.ts`](../plugins/worktree-flow/tests/worktree-flow.test.ts) (denied tool calls), [`tasks-board.test.tsx`](../plugins/tasks/tests/tasks-board.test.tsx) (a command and a mounted pane), [`keep-awake.test.ts`](../plugins/keep-awake-linux/tests/keep-awake.test.ts) (a spawned child's life, plugin options).
 
 ### analyze-sessions fixture check
 
