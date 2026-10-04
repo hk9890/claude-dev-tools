@@ -14,7 +14,7 @@ Every route below is **mandatory, not advisory**. Load the document BEFORE the f
 
 ### Coding and file changes
 
-**MUST read [docs/CODING.md](docs/CODING.md) before creating or editing ANY file under `plugins/` or `scripts/`, or `.claude-plugin/marketplace.json`.** It owns plugin scaffolding and registration, dependency declarations, runtime path resolution, the `SKILL.md` conventions, and the shell-lint rule.
+**MUST read [docs/CODING.md](docs/CODING.md) before creating or editing ANY file under `plugins/` or `scripts/`, or `.claude-plugin/marketplace.json`.** It owns plugin scaffolding and registration, dependency declarations, runtime path resolution, the mod conventions, the `SKILL.md` conventions, and the shell-lint rule.
 
 ### Writing project docs
 

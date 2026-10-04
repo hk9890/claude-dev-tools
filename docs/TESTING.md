@@ -14,7 +14,7 @@ How to run this marketplace's automated suites and validators. To launch and dri
 | `mise run lint` | ShellCheck `--severity=warning` over every tracked shell script (`scripts/list-shell-scripts.sh`) |
 | `mise run analyze-sessions` | Session-transcript analyser — usage in [MONITORING.md](MONITORING.md) |
 
-`bash`, `python3`, `node`, `jq`, and `shellcheck` must already be on PATH: `.mise.toml` declares no `[tools]`, so mise runs the tasks but installs none of them. Absent `node`, the node-backed suites fail rather than skip. `claude` 2.1.287 or later is needed for the mod suite alone.
+`bash`, `python3`, `node`, `jq`, and `shellcheck` must already be on PATH: `.mise.toml` declares no `[tools]`, so mise runs the tasks but installs none of them. Absent `node`, the node-backed suites fail rather than skip. The mod suite alone needs `claude` too ([Suites that skip](#suites-that-skip)).
 
 ## Script tests — `tests/run-all.sh`
 
