@@ -33,9 +33,9 @@ The JSON is an array with one element per named project. Each element gives:
 
 - `.project.path`: the checkout. `.path_exists` says whether it is cloned.
 - `.project.git_url`: its remote.
-- `.project.remote`: set for a link alone. The path and `.path_exists` are then its host's, not this machine's.
+- `.project.remote`: set for a link alone. The path, `.path_exists` and each `.state.dir` are then its host's, not this machine's.
 - `.running`: whether its workspace is open.
-- `.agents[]`: every agent in it, where the table shows one. Each has a `.panel`, a `.state.status` and a `.state.activity`, the title of what it works on. One with a `.ref` sits in a panel on this machine, and one without runs on a link's host. A project with no agent has no `.agents`.
+- `.agents[]`: every agent in it, where the table shows one. Each has a `.panel`, a `.state.status` and a `.state.activity`, the title of what it works on. One with a `.ref` sits in a panel on this machine, and one without runs on a link's host. A `.state.dir` is the directory the agent works in now, set where revier knows one other than `.project.path`: a git worktree for example. An agent with no `.state.dir` works in `.project.path`, or revier has no directory for it. A project with no agent has no `.agents`.
 
 You are the entry in your own project, the one `revier status` names, whose `.panel` equals `$KITTY_WINDOW_ID` where the `runtime` line of `revier status` says kitty, or `$TMUX_PANE` where it says tmux. Every other entry is another agent, in your own project too.
 
@@ -45,7 +45,7 @@ The source of a link is on its host, and a directory at the same path on this ma
 
 For every other project, `.path_exists` decides:
 
-- True: `.project.path` is an ordinary directory, so read it with the file tools. Treat it as read-only, because an agent may be in the middle of a change there. A change to that project goes through its agent or through the user.
+- True: `.project.path` is an ordinary directory, so read it with the file tools. Read the work of an agent from its `.state.dir` where it has one, in place of `.project.path`. Treat `.project.path` and every `.state.dir` as read-only, because an agent may be in the middle of a change there. A change to that project goes through its agent or through the user.
 - False: the project is not cloned here. `revier open <name>` clones it from `.project.git_url` and takes the focus, so it is the user's to run.
 
 ## Prompting another agent
