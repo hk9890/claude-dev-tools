@@ -12,8 +12,8 @@ Use this template for the PR body:
 ## Evidence
 
 - **Gate:** `<command>`: <passed, failed, or skipped, and why>
-- **Before:** <screenshot/output/failing test run>
-  **After:** <screenshot/output/passing test run>
+- <optional: **Before:** output or failing test run>
+  <optional: **After:** output or passing test run>
 
 ## Merge Danger
 
@@ -21,7 +21,7 @@ Use this template for the PR body:
 
 <optional: description>
 
-**Blast Radius:** <one-word description>
+**Blast Radius:** <none, local, consumers, or data>
 
 <optional: potential ramifications of merge>
 ```
@@ -84,46 +84,7 @@ sequenceDiagram
     Daemon-->>UI: stream result
 ```
 
-- Use `diff` when the point is what changes and the surrounding shape already exists. Match the diff shape to the topic.
-
-For a component change:
-
-```diff
- <SessionPage>
-   useSessionEvents()
-   <SessionToolbar>
-+    <RunSkillButton />
-   <SessionTimeline>
-+    <SkillResultCard />
-```
-
-For a file-layout change:
-
-```diff
- src/
- ├── commands/
-+│   └── show-me.ts       # expands the slash command
- ├── sessions/
--└── transport.ts
-+└── transport/
-+    ├── client.ts
-+    └── stream.ts
-```
-
-For a call-tree or call-stack change:
-
-```diff
- submitForm
-   createSession
-     persistPrompt
-+    expandSkillMention
-     launchAgent
--  navigateToSession
-+  navigateToSession
-+    subscribeToEvents
-```
-
-For a state or control-flow change:
+- Use `diff` when the point is what changes and the surrounding shape already exists. Any of the shapes above works as a diff:
 
 ```diff
  on(save)
@@ -149,14 +110,19 @@ You may use one of these, you may use several, it is unlikely you will use all o
 
 ### Evidence
 
-Concrete evidence that the change works.
-
 List every gate with its command and its result.
 
-Add a before and after pair where the change has a visible effect. Screenshots are the strongest evidence, when the environment is set up for them and the change is visual. Execution-based evidence comes next: test results, console output. Show the exact test that failed before and passes now, as pseudocode.
+Add a before and after pair where the change has an effect a reviewer can see. Execution-based evidence is the strongest: test results, console output. Show the exact test that failed before and passes now, as pseudocode. Add a screenshot only where the project has a place to host the image; `gh` cannot upload one into a PR body.
 
 ### Merge Danger
 
-Say whether the merge is a one-way or a two-way door. You can walk back through a two-way door, but not through a one-way door. A PR that is cheap to roll back is lower risk. Changes that involve destructive actions or hard-to-reverse decisions are one-way doors.
+Say whether the merge is a one-way or a two-way door. Changes that involve destructive actions or hard-to-reverse decisions are one-way doors.
 
-The blast radius is the potential impact or scope of the changes this PR introduces. Consider all possibilities. Examples are layout shift, breakages for consumers, and mobile responsiveness.
+The blast radius is the widest thing the merge can break:
+
+- `none`: no behavior changes, for example docs or comments.
+- `local`: only the changed module and its own callers in this repository.
+- `consumers`: anything that installs, imports, or calls this project.
+- `data`: stored data, a schema, or anything a rollback does not restore.
+
+Name the ramifications on the optional line below it.

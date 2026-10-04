@@ -32,11 +32,11 @@ Run every gate. Fix and rerun until all are green. A gate that also fails on the
 
 ## 5. Commit, push, open the PR
 
-Commit in the project's style. Push with upstream tracking, under the project's branch convention where it has one (`git push -u <remote> HEAD:<branch-name>`). Read [the PR body template](references/pr-body.md) and write the body in its shape, unless the project has a PR template of its own. Either way the body carries each gate with its result. Open the PR with `gh pr create`.
+Commit in the project's style. Push with upstream tracking, under the project's branch convention where it has one (`git push -u <remote> HEAD:<branch-name>`). Read [the PR body template](references/pr-body.md) and write the body in its shape to a file outside the worktree. Open the PR with `gh pr create --body-file`.
 
 ## 6. Review and fix
 
-Invoke the `code-review` skill with the argument `xhigh --fix <pr-number>`. It runs in the background: wait for its completion notification, then read which findings it applied. Rerun the gates, commit, push, and bring the PR body up to date with `gh pr edit --body`: the gate results, and every other part the fixes made stale.
+Invoke the `code-review` skill with the argument `xhigh --fix <pr-number>`. It runs in the background: wait for its completion notification, then read which findings it applied. Rerun the gates, commit, push, and bring the PR body up to date with `gh pr edit --body-file`: the gate results, and every other part the fixes made stale.
 
 Done when the review has finished and its fixes are pushed with every gate green.
 
