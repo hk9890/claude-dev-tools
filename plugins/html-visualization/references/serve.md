@@ -323,7 +323,7 @@ TLS-terminating forwarder (Codespaces, VS Code forwarded ports, ngrok). Re-serve
 with that name allow-listed:
 
 ```bash
-node "$(cat "$HTML_DIR/.plugin-root")/bin/server.js" "$HTML_DIR/review.html" --host devbox.corp.example
+node "$(cat "$HTML_DIR/.plugin-root")/bin/server.js" "$HTML_DIR/review.html" --mode feedback --port "$(cat "$HTML_DIR/.port")" --host devbox.corp.example
 ```
 
 `--host` is repeatable and **adds to** the defaults rather than replacing them. A
