@@ -8,7 +8,7 @@ const DENY_REASON =
 // across a `;`, `&` or `|`.
 const GIT_OPTION = String.raw`\s+-[^;&|\s]*(?:\s+[^-;&|\s][^;&|\s]*)?`
 const WORKTREE_ADD = new RegExp(
-  String.raw`(?:^|[;&|(])\s*git(?:${GIT_OPTION})*\s+worktree\s+add(?:\s[^;&|]*|$)`,
+  String.raw`(?:^|[;&|(])\s*git\s+worktree\s+add(?:\s[^;&|]*|$)`,
   'g',
 )
 const THROWAWAY_TARGET = /\/scratchpad\/|(?:^|[\s"'=])\/tmp\/|mktemp|\$\{?TMPDIR/
