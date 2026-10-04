@@ -32,7 +32,7 @@ Run every gate. Fix and rerun until all are green. A gate that also fails on the
 
 ## 5. Commit, push, open the PR
 
-Commit in the project's style. Push with upstream tracking, under the project's branch convention where it has one (`git push -u <remote> HEAD:<branch-name>`). Open the PR with `gh pr create`; the body states what changed and why, and each gate with its result.
+Commit in the project's style. Push with upstream tracking, under the project's branch convention where it has one (`git push -u <remote> HEAD:<branch-name>`). Open the PR with `gh pr create`. Read [the PR body template](references/pr-body.md) and write the body in its shape, unless the project has a PR template of its own. Either way the body carries each gate with its result.
 
 ## 6. Review and fix
 
