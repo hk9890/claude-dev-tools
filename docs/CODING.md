@@ -59,7 +59,7 @@ Every tracked `*.sh` — under `scripts/`, `tests/`, or a plugin's `bin/` — mu
 
 A mod is a plugin whose `hooks/hooks.json` names a hooks module under `modules`; Claude Code 2.1.287 and later runs it in-process. Claude Code's built-in `plugin-authoring` skill carries the API and the write-validate-test loop — load it first. **Local delta:**
 
-- **Worked examples** — `keep-awake-linux` (a child process and timers), `worktree-flow` (a `tool.call` guard and a status line), `tasks` (a command, a pane, and a `$.state` contract).
+- **Worked examples** — `keep-awake-linux` (a child process, timers, and a pane a timer refreshes), `worktree-flow` (a `tool.call` guard and a status line), `tasks` (a command, a pane, and a `$.state` contract).
 - **Layout** — `hooks/hooks.json` holds `{ "modules": ["./register.ts"] }`, `.tsx` when the module draws. Tests go in `plugins/<plugin>/tests/*.test.ts`, where `claude plugin test` reads them ([TESTING.md](TESTING.md)). A module that keeps `$.state` values declares them in `types/index.d.ts`, named in `plugin.json` as `"types"`.
 - **One code path** — a behaviour moves to the module whole: delete the settings hook and its `bin/` script in the same change.
 - **Validate early** — run `claude plugin validate plugins/<plugin>` after every edit. It refuses an event name that is not a string literal, a `$` call not written in full (`$.ui.status(...)`, never `const ui = $.ui`), and `$` passed anywhere but a top-level function of the same file.
@@ -79,10 +79,10 @@ Review the skill at plugins/my-plugin/skills/my-skill/SKILL.md
 
 ### Naming
 
-Directory name and frontmatter `name:` must match. **Sibling skills share one prefix** so they sort and read as a family: the plugin's domain word where it has one (`keep-awake-`, `html-visualize-`, `project-review-`, `tasks-`), otherwise a word the siblings agree on (`writing-` in `instruction-writing`, `test-` in `project-auto-work`). A "main" skill may take the plugin's own name (`github-releases:github-releases`).
+Directory name and frontmatter `name:` must match. **Sibling skills share one prefix** so they sort and read as a family: the plugin's domain word where it has one (`worktree-`, `html-visualize-`, `project-review-`, `tasks-`), otherwise a word the siblings agree on (`writing-` in `instruction-writing`, `test-` in `project-auto-work`). A "main" skill may take the plugin's own name (`github-releases:github-releases`).
 
-- ✅ `keep-awake-linux:keep-awake-inspect`, `instruction-writing:writing-skills`
-- ❌ `keep-awake-linux:inspect` — bare verb, shared with no sibling
+- ✅ `worktree-flow:worktree-ship`, `instruction-writing:writing-skills`
+- ❌ `worktree-flow:ship` — bare verb, shared with no sibling
 
 The exception is a plugin whose names trigger on their own, each a distinct concept rather than a generic operation, where a shared prefix would only dilute them — every skill in `challenge` (`grill`, `kiss`, `are-you-sure`, `what-do-you-mean`).
 
