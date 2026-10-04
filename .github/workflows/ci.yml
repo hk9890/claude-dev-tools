@@ -20,7 +20,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: jdx/mise-action@v4
+      # The mod suite runs against the Claude Code engine, with no sign-in.
+      - name: Install Claude Code
+        run: npm install --global @anthropic-ai/claude-code@2.1.288
       - name: Run test suite
+        env:
+          REQUIRE_CLAUDE: "1"
         run: mise run test
 
   consistency:

@@ -83,11 +83,13 @@ function section({ Box, Text }: Elements['terminal' | 'desktop'], heading: strin
   )
 }
 
-export const register: Register = on => {
-  let canDraw = false
+// Asked at each run: the desktop app joins a session after it started, and can leave it.
+async function hasPaneSurface($: EngineInterface) {
+  return (await $.session.surfaces()).some(surface => surface === 'terminal' || surface === 'desktop')
+}
 
+export const register: Register = on => {
   on('session.start', async ($, e, next) => {
-    canDraw = e.isInteractive && (e.surface === 'terminal' || e.surface === 'desktop')
     await $.command.register({
       name: BOARD,
       description: 'Show the taskmgr tracker in a pane: in progress, ready, blocked',
@@ -103,7 +105,7 @@ export const register: Register = on => {
       return { text: loaded }
     }
 
-    if (!canDraw) {
+    if (!(await hasPaneSurface($))) {
       return { text: boardText(loaded) }
     }
 

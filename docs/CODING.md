@@ -18,7 +18,7 @@ Depend on a specific technology only where the dependency is declared:
 
 - Another plugin → `dependencies` in `plugin.json` (below).
 - A CLI tool or runtime → a load-time check that stops with guidance when it is missing (below).
-- A whole platform → name the plugin for it, so the constraint is visible before install. `keep-awake-linux` is the worked example: logind is the point of the plugin, and where `systemd-inhibit` is absent its mod holds nothing and says why in the debug log.
+- A whole platform → name the plugin for it, so the constraint is visible before install. `keep-awake-linux` is the worked example: logind is the point of the plugin, and where `systemd-inhibit` is absent its mod holds nothing and says so once in a toast.
 
 ## Declaring plugin dependencies
 
@@ -64,7 +64,7 @@ A mod is a plugin whose `hooks/hooks.json` names a hooks module under `modules`;
 - **One code path** — a behaviour moves to the module whole: delete the settings hook and its `bin/` script in the same change.
 - **Validate early** — run `claude plugin validate plugins/<plugin>` after every edit. It refuses an event name that is not a string literal, a `$` call not written in full (`$.ui.status(...)`, never `const ui = $.ui`), and `$` passed anywhere but a top-level function of the same file.
 - **Footprint** — a mod runs unsandboxed, so reach only the `$` namespaces the feature needs; the `calls:` line `claude plugin validate` prints is the footprint a user audits before installing.
-- **Where nothing draws** — panes and the status line show in the terminal and the desktop app only. Branch on `session.start`'s `e.isInteractive` and `e.surface`: `tasks` answers `/tasks-board` as text there, `worktree-flow` starts no status timer.
+- **Where nothing draws** — panes and the status line show in the terminal and the desktop app only. Do not settle it at `session.start`: the desktop app joins after it, with a `session.attach` event, and can leave. Read `$.session.surfaces()` when the feature runs: `tasks` does at each `/tasks-board` and answers as text where neither is attached; `worktree-flow` does at each status refresh, and a desktop `session.attach` starts one.
 - **Command names** — a name registered with `$.command.register` is global. Lead it with the plugin's domain word (`tasks-board`); `/tasks` is Claude Code's own.
 - **Minimum version** — say "needs Claude Code 2.1.287+" in the plugin's `README.md` row.
 - **Generated files** — a `--plugin-dir` load writes `.claude-plugin/types/` and `tsconfig.json` into the plugin; both are gitignored. After one such load, `npx -p typescript tsc -p plugins/<plugin>` type-checks the module and its tests.

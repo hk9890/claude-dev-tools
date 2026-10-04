@@ -17,14 +17,19 @@ suspend|hibernate` alone.
 
 ## How the mod behaves
 
-- The first main turn of a session starts one `systemd-inhibit --what=idle:sleep
-  --who=claude-keep-awake --why="Claude session <session id>" --mode=block sleep 1800`, and the
-  status line shows `keep-awake-linux: sleep blocked`.
+- Activity is a turn start, a turn end, or a tool call, from the main session or an agent. Activity
+  with no inhibitor held starts one `systemd-inhibit --what=idle:sleep --who=claude-keep-awake
+  --why="Claude session <session id>" --mode=block sleep 1800`. One second later the status line
+  shows `keep-awake-linux: sleep blocked`.
 - The child is respawned when its `sleep 1800` ends while the session still wants it, so the PID
   changes every 30 minutes and the inhibitor stays.
-- The inhibitor ends `idleMinutes` (plugin option, default 30) after the last main turn completes.
-  A tool call inside that window, from a background agent, extends it by one more period.
+- The inhibitor ends `idleMinutes` (plugin option, default 30, minimum 1; a lower value stops the mod from loading)
+  after the last activity, also when
+  a turn is open: a session that waits at a permission prompt releases the machine.
 - It ends at once on session exit, on `/clear`, and when the mod reloads.
+- A child that fails in its first second (no `systemd-inhibit`, logind refuses) turns the mod off
+  until it reloads or Claude Code restarts: one toast `sleep is not blocked: <reason>`, and no
+  further attempt. A `/clear` does not turn it on again.
 - There is no state directory and no log file. The only records are logind's list and the debug
   log (`claude --debug`), where the mod's lines carry the plugin's name.
 
@@ -58,11 +63,12 @@ suspend|hibernate` alone.
 
    | Check | Cause |
    |---|---|
-   | `systemd-inhibit MISSING` in step 1 | Not a systemd machine, or not on PATH: the mod is a no-op and logs `inhibitor lost` to the debug log |
+   | `systemd-inhibit MISSING` in step 1 | Not a systemd machine, or not on PATH: the mod showed the toast `sleep is not blocked` at the first turn and is off until it reloads or Claude Code restarts |
+   | The user saw the toast `sleep is not blocked` and `systemd-inhibit` is present | logind refused the request; the toast and the `inhibitor lost` line in the debug log carry the reason |
    | `claude --version` below 2.1.287 | Mods are not supported; the plugin does nothing |
    | `disableAllHooks` is true in `~/.claude/settings.json`, or the session started with `--safe-mode` or `--bare` | Mods are off |
    | `/plugin` shows no `mod active` line that names `keep-awake-linux` | The plugin is disabled or blocked by managed settings; ask the user to look, the command is theirs to run |
-   | No main turn ran yet, or the last one ended more than `idleMinutes` ago | Correct idle state |
+   | No turn ran yet, or the last turn start, turn end or tool call is more than `idleMinutes` ago | Correct idle state |
 
 ## Report
 
