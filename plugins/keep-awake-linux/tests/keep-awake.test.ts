@@ -327,7 +327,7 @@ const INFO = [
   'LEASE: a block lasts 30 minutes. An active session renews it.',
 ]
 const HEADER = ['Keep Awake Info', '─'.repeat(80)]
-const NO_BLOCK = ['Sleep is not blocked', 'No Claude session keeps the computer awake. It can suspend.']
+const NO_BLOCK = ['Claude does not block sleep', 'No Claude session keeps the computer awake. Another program can still block sleep.']
 
 function ran(lines: string[]): { value: ProcessRunResult } {
   return {

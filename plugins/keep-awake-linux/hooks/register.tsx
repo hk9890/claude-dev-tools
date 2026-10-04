@@ -173,8 +173,8 @@ function info(list: KeepAwakeInhibitor[]) {
   if (list.length === 0) {
     return {
       isBlocked: false,
-      headline: 'Sleep is not blocked',
-      detail: 'No Claude session keeps the computer awake. It can suspend.',
+      headline: 'Claude does not block sleep',
+      detail: 'No Claude session keeps the computer awake. Another program can still block sleep.',
       rows: [],
       notes: [],
     }
