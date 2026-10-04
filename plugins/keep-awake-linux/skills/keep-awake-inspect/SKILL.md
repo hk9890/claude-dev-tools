@@ -23,7 +23,8 @@ suspend|hibernate` alone.
   shows `keep-awake-linux: sleep blocked`.
 - The child is respawned when its `sleep 1800` ends while the session still wants it, so the PID
   changes every 30 minutes and the inhibitor stays.
-- The inhibitor ends `idleMinutes` (plugin option, default 30) after the last activity, also when
+- The inhibitor ends `idleMinutes` (plugin option, default 30, minimum 1; a lower value stops the mod from loading)
+  after the last activity, also when
   a turn is open: a session that waits at a permission prompt releases the machine.
 - It ends at once on session exit, on `/clear`, and when the mod reloads.
 - A child that fails in its first second (no `systemd-inhibit`, logind refuses) turns the mod off

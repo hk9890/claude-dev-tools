@@ -15,7 +15,8 @@
       "type": "number",
       "title": "Idle minutes",
       "description": "Minutes the inhibitor stays after the last turn start, turn end or tool call",
-      "default": 30
+      "default": 30,
+      "min": 1
     }
   }
 }
