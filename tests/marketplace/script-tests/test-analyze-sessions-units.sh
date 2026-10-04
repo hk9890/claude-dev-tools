@@ -10,6 +10,9 @@
 #     and the maps are single-application (no value is also a key)
 #   - walk_projects: --project substring filter, --since-days mtime filter,
 #     cross-file uuid dedup, and no dedup of uuid-less records
+#   - parse_file: tests_passed needs a result that is not an error, and a user
+#     rejection is recognised only at the start of the result; an outcome tool
+#     counts only where a command starts, heredoc bodies excluded
 #   - parse_since / filter_since: the --since episode window — zone handling of
 #     the cutoff, the inclusive boundary, and undated episodes
 set -uo pipefail
@@ -180,6 +183,64 @@ with tempfile.TemporaryDirectory() as projects_dir:
     eps = scan(projects_dir)
     check(len(eps) == 1 and eps[0].turn_count == 2,
           "walk_projects: identical uuid-less records are all counted")
+
+
+# ── parse_file: signals read from a Bash command and its result ──────────────
+
+def bash_episode(command, result_text, is_error):
+    """One attributed turn that runs `command`, answered by one tool_result."""
+    call = asst_record("pb-1")
+    call["message"]["content"] = [
+        {"type": "tool_use", "id": "tu-1", "name": "Bash", "input": {"command": command}}]
+    result = {"type": "user", "uuid": "pb-2",
+              "message": {"role": "user", "content": [
+                  {"type": "tool_result", "tool_use_id": "tu-1",
+                   "content": result_text, "is_error": is_error}]}}
+    with tempfile.TemporaryDirectory() as projects_dir:
+        path = write_session(projects_dir, "p", "s.jsonl", [call, result])
+        episodes, _ = mod.parse_file(path, {"tasks": "tasks"})
+    return episodes[0]
+
+ep = bash_episode("pytest -q", "Exit code 1\n1 failed, 7 passed", True)
+check(ep.tests_run and not ep.tests_passed,
+      "parse_file: a failed test run that prints pass text is run, not passed")
+
+ep = bash_episode("pytest -q", "8 passed in 0.42s\nall tests passed", False)
+check(ep.tests_run and ep.tests_passed,
+      "parse_file: a test run that is not an error and prints pass text is passed")
+
+ep = bash_episode("bash tests/x.sh",
+                  "Exit code 1\nFAIL: The user doesn't want to proceed with this tool use.", True)
+check(ep.tool_errors == 1 and ep.permission_denials == 0,
+      "parse_file: a failed command that prints the rejection phrase is a tool error")
+
+ep = bash_episode("rm -rf build",
+                  "The user doesn't want to proceed with this tool use. The tool use was rejected.", True)
+check(ep.tool_errors == 0 and ep.permission_denials == 1,
+      "parse_file: a result that starts with the rejection phrase is a denial only")
+
+# A tool counts only where a command starts, optionally behind a launcher.
+def outcomes(command):
+    ep = bash_episode(command, "ok", False)
+    return ep.tests_run, ep.ended_in_commit, ep.ended_in_pr
+
+for command in ("pytest -q",
+                "cd /repo && timeout 60 go test ./...",
+                "CGO_ENABLED=1 .venv/bin/python -m pytest tests",
+                "for i in 1 2; do bun test; done"):
+    check(outcomes(command)[0], f"parse_file: `{command}` is a test run")
+
+for command in ("grep -n pytest scripts/x.sh",
+                "echo '=== pytest config ==='",
+                "python3 - <<'EOF'\npytest = 1\nEOF"):
+    check(not outcomes(command)[0], f"parse_file: `{command!r}` is not a test run")
+
+check(outcomes("git -C /repo commit -m 'Fix pytest fixture'") == (False, True, False),
+      "parse_file: a commit whose message names pytest is a commit, not a test run")
+check(outcomes("git add -A && git commit -q -F msg.txt; gh pr create --fill") == (False, True, True),
+      "parse_file: a commit and a PR after shell separators both count")
+check(outcomes("rg 'git commit' plugins/ | grep 'gh pr create'") == (False, False, False),
+      "parse_file: searching for the words commit and PR is neither")
 
 
 # ── parse_since / filter_since: the episode window ───────────────────────────

@@ -15,8 +15,13 @@
 #     over --max-slice-chars with a "[truncated N chars]" suffix
 #   - the SKILL_RENAME_ALIASES merge is pinned via check-fixture.py's
 #     summary-table assertions (canonical rows present, raw aliases absent)
-#   - tests_passed gate: pass text without a detected test run must not set
-#     tests_passed (episode 4 stays false)
+#   - tests_passed: pass text in a result that answers no test command must
+#     not set tests_passed (episode 4 stays false)
+#   - a user rejection counts in permission_denials only, never in tool_errors
+#   - outcome signals come from the Bash command: text naming a test command,
+#     a commit or a pull request sets none of them (episode 1 stays false)
+#   - outcome signals need the command's result: a test command the harness
+#     refused and a commit-and-PR command that failed set none (episode 4)
 #   - uuid dedup: verbatim re-appended records (same uuids) must be skipped,
 #     not opened as a fifth episode
 set -uo pipefail
@@ -139,15 +144,16 @@ test_false_positive_not_counted() {
     "0"
 }
 
-# 5. lvdtq4: the cancelled parallel-batch sibling in episode 3 carries
-#    is_error=true but must NOT count toward tool_errors (stays 2, not 3).
+# 5. Episode 3 carries four is_error results and only one is a tool error (the
+#    interrupted sleep). The cancelled parallel-batch sibling (lvdtq4), the
+#    harness refusal and the user rejection must NOT count toward tool_errors.
 test_cancelled_not_counted() {
   assert_json_field \
-    "lvdtq4: tool_errors=2 for github-releases (cancelled parallel call not counted)" \
+    "lvdtq4: tool_errors=1 for github-releases (cancelled call, refusal and rejection not counted)" \
     "$TMP_DIR/output/fixture/dataset.json" \
     "github-releases:github-releases" \
     "tool_errors" \
-    "2"
+    "1"
 }
 
 # 6. rzbmhc: the episode slice carries reconstructed conversation events,
@@ -231,12 +237,12 @@ test_slice_truncates_long_text() {
   fi
 }
 
-# 10. tests_passed gate: episode 4's user-020 tool_result carries pass text
-#     ("All tests passed") but no test-run command; tests_passed must stay
-#     false (gated on tests_run).
+# 10. tests_passed: episode 4's user-020 tool_result carries pass text
+#     ("All tests passed") but answers no test command; tests_passed must stay
+#     false.
 test_pass_without_run_not_counted() {
   assert_json_field \
-    "tests-passed gate: tests_passed=false for pass text without a test run" \
+    "tests-passed: tests_passed=false for pass text without a test command" \
     "$TMP_DIR/output/fixture/dataset.json" \
     "github-releases:release" \
     "tests_passed" \
@@ -257,7 +263,7 @@ test_duplicate_uuids_skipped() {
 }
 
 # 12. Harness guard refusal: episode 3's user-017c carries is_error=true but no
-#     tool ran, so it counts in harness_refusals and leaves tool_errors at 2
+#     tool ran, so it counts in harness_refusals and leaves tool_errors at 1
 #     (test 5 pins the other half of that number).
 test_harness_refusal_split_out() {
   assert_json_field \
@@ -286,6 +292,47 @@ test_since_filters_episodes() {
   fi
 }
 
+# 14. Episode 3's rejected git push counts as one permission denial; test 5
+#     pins that it adds no tool error.
+test_rejection_is_a_denial() {
+  assert_json_field \
+    "rejection: permission_denials=1 for github-releases" \
+    "$TMP_DIR/output/fixture/dataset.json" \
+    "github-releases:github-releases" \
+    "permission_denials" \
+    "1"
+}
+
+# 15. Outcome signals come from the Bash command. Episode 1's Read result and
+#     assistant text name `go test`, a commit and a pull request, but no Bash
+#     command ran one.
+test_outcomes_need_a_command() {
+  local field
+  for field in tests_run ended_in_commit ended_in_pr; do
+    assert_json_field \
+      "outcomes: $field=false for text that only names the action" \
+      "$TMP_DIR/output/fixture/dataset.json" \
+      "tasks:tasks" \
+      "$field" \
+      "false"
+  done
+}
+
+# 16. Outcome signals need the command's result. Episode 4 issues `go test`,
+#     which the harness refuses, and a `git commit && gh pr create` chain,
+#     which exits 1: no test ran, and no commit or pull request was made.
+test_outcomes_need_a_result() {
+  local field
+  for field in tests_run ended_in_commit ended_in_pr; do
+    assert_json_field \
+      "outcomes: $field=false for a refused test command and a failed commit-and-PR command" \
+      "$TMP_DIR/output/fixture/dataset.json" \
+      "github-releases:release" \
+      "$field" \
+      "false"
+  done
+}
+
 # ── run all tests (ordered — later tests depend on earlier output) ────────────
 
 test_fixture_runs
@@ -301,6 +348,9 @@ test_pass_without_run_not_counted
 test_duplicate_uuids_skipped
 test_harness_refusal_split_out
 test_since_filters_episodes
+test_rejection_is_a_denial
+test_outcomes_need_a_command
+test_outcomes_need_a_result
 
 printf '\n'
 printf 'Results: %d passed, %d failed\n' "$PASS" "$FAIL"
