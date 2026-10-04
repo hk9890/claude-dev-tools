@@ -12,7 +12,8 @@ The following files in this plugin are derived from
 - `skills/what-do-you-mean/SKILL.md` — adapted from the `wait-what` skill at
   [v1.2.0](https://github.com/mattpocock/skills/releases/tag/v1.2.0): the re-pitch prompt and
   the description trace there. The word limit, the naming rule, and the hand-off to
-  `html-visualization` are locally authored, as is `references/html-explanation.md`
+  `html-visualization` are locally authored, as is
+  `skills/what-do-you-mean/references/html-explanation.md`
 
 ## MIT License (mattpocock/skills)
 

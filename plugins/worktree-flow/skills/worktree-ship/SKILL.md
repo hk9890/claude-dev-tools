@@ -14,7 +14,7 @@ With no argument, ask what to change. The run ends at an open PR; merging belong
 
 `gh auth status` must succeed; where it fails, stop and tell the user to install `gh` or run `gh auth login`.
 
-Read the project's own workflow (AGENTS.md or CLAUDE.md routing, a change-workflow or contributing doc, `CLAUDE.local.md`) and record: the remote to push to, the branch naming convention, the **gates** a PR needs green plus the setup a fresh checkout needs, and the commit style. Where the project documents a step, its rule replaces the generic one below.
+Read the project's own workflow (AGENTS.md or CLAUDE.md routing, a change-workflow or contributing doc, `CLAUDE.local.md`, a PR template) and record: the remote to push to, the branch naming convention, the **gates** a PR needs green plus the setup a fresh checkout needs, the commit style, and the PR template where there is one. Where the project documents a step, its rule replaces the generic one below.
 
 ## 2. Enter a worktree
 
@@ -32,11 +32,11 @@ Run every gate. Fix and rerun until all are green. A gate that also fails on the
 
 ## 5. Commit, push, open the PR
 
-Commit in the project's style. Push with upstream tracking, under the project's branch convention where it has one (`git push -u <remote> HEAD:<branch-name>`). Open the PR with `gh pr create`. Read [the PR body template](references/pr-body.md) and write the body in its shape, unless the project has a PR template of its own. Either way the body carries each gate with its result.
+Commit in the project's style. Push with upstream tracking, under the project's branch convention where it has one (`git push -u <remote> HEAD:<branch-name>`). Read [the PR body template](references/pr-body.md) and write the body in its shape, unless the project has a PR template of its own. Either way the body carries each gate with its result. Open the PR with `gh pr create`.
 
 ## 6. Review and fix
 
-Invoke the `code-review` skill with the argument `xhigh --fix <pr-number>`. It runs in the background: wait for its completion notification, then read which findings it applied. Rerun the gates, commit, push, and bring the gate results in the PR body up to date with `gh pr edit --body`.
+Invoke the `code-review` skill with the argument `xhigh --fix <pr-number>`. It runs in the background: wait for its completion notification, then read which findings it applied. Rerun the gates, commit, push, and bring the PR body up to date with `gh pr edit --body`: the gate results, and every other part the fixes made stale.
 
 Done when the review has finished and its fixes are pushed with every gate green.
 

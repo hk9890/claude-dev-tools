@@ -145,13 +145,13 @@ function expandSkill(command: string): string {
 
 Place each visual next to the short text it supports. Keep only the calls, files, props, states, and boundaries the reviewer needs to see the change.
 
-You may use one of these, you may use several, it is unlikely you will use all of them. Use your judgement and do not overwhelm the reviewer.
+You may use one of these, you may use several, it is unlikely you will use all of them.
 
 ### Evidence
 
 Concrete evidence that the change works.
 
-List every gate with its command and its result. A gate that could not run is reported as skipped, never as passed.
+List every gate with its command and its result.
 
 Add a before and after pair where the change has a visible effect. Screenshots are the strongest evidence, when the environment is set up for them and the change is visual. Execution-based evidence comes next: test results, console output. Show the exact test that failed before and passes now, as pseudocode.
 
