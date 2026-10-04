@@ -31,6 +31,7 @@ const STATUS_NOTES = {
   orphan: 'orphan: its Claude process is gone. The block ends by itself.',
   duplicate: 'duplicate: one session holds two blocks. This is a defect of the plugin.',
 } as const
+const STATUS_COLORS = { active: 'success', orphan: 'warning', duplicate: 'error' } as const
 
 const inhibitors = atom({ plugin: 'keep-awake-linux', key: 'inhibitors' } as const, null)
 let panelRefresh: Timer | undefined
@@ -152,32 +153,40 @@ function clock(seconds: number) {
 }
 
 // A docked pane is about 50 columns wide: a row is 48.
-function tableLine(session: string, status: string, pid: string, lease: string) {
-  return `${session.padEnd(9)}  ${status.padEnd(9)}  ${pid.padEnd(7)}  ${lease}`
+const TITLE = 'Keep Awake Info'
+const COLUMNS = { session: 'SESSION'.padEnd(10), status: 'STATUS'.padEnd(12), rest: `${'PID'.padEnd(9)}LEASE` }
+const TABLE_RULE = '─'.repeat(48)
+
+function row({ session, status, pid, ageSeconds, isThisSession }: KeepAwakeInhibitor) {
+  const lease =
+    status === 'orphan' ? `ends in ${clock(Math.max(0, LEASE_SECONDS - ageSeconds))}` : `renewed ${clock(ageSeconds)} ago`
+
+  return {
+    session: `${session.slice(0, 8)}${isThisSession ? '*' : ''}`.padEnd(10),
+    status: `● ${status}`.padEnd(12),
+    rest: `${String(pid).padEnd(9)}${lease}`,
+    color: STATUS_COLORS[status],
+  }
 }
 
-// What the pane shows and the text answer prints: the state in one sentence, the blocks, and what
-// each word in the table means.
+// What the pane shows and the text answer prints: the state, the blocks, and what each word in the
+// table means.
 function info(list: KeepAwakeInhibitor[]) {
   if (list.length === 0) {
-    return { summary: 'No Claude session blocks sleep. The computer can suspend.', table: [], notes: [] }
+    return {
+      isBlocked: false,
+      headline: 'Sleep is not blocked',
+      detail: 'No Claude session keeps the computer awake. It can suspend.',
+      rows: [],
+      notes: [],
+    }
   }
 
   return {
-    summary: `Sleep is blocked: Claude holds ${list.length} ${list.length === 1 ? 'block' : 'blocks'}. The computer does not suspend while a row is listed.`,
-    table: [
-      tableLine('SESSION', 'STATUS', 'PID', 'LEASE'),
-      ...list.map(({ session, status, pid, ageSeconds, isThisSession }) =>
-        tableLine(
-          `${session.slice(0, 8)}${isThisSession ? '*' : ''}`,
-          status,
-          String(pid),
-          status === 'orphan'
-            ? `ends in ${clock(Math.max(0, LEASE_SECONDS - ageSeconds))}`
-            : `renewed ${clock(ageSeconds)} ago`,
-        ),
-      ),
-    ],
+    isBlocked: true,
+    headline: 'Sleep is blocked',
+    detail: `Claude holds ${list.length} ${list.length === 1 ? 'block' : 'blocks'}. The computer does not suspend while a row is listed.`,
+    rows: list.map(row),
     notes: [
       ...(list.some(one => one.isThisSession) ? ['*: this session.'] : []),
       ...(['active', 'orphan', 'duplicate'] as const)
@@ -189,9 +198,10 @@ function info(list: KeepAwakeInhibitor[]) {
 }
 
 function infoText(list: KeepAwakeInhibitor[]) {
-  const { summary, table, notes } = info(list)
+  const { headline, detail, rows, notes } = info(list)
+  const [columns, ...table] = [COLUMNS, ...rows].map(({ session, status, rest }) => `${session}${status}${rest}`)
 
-  return [summary, ...(table.length === 0 ? [] : ['', ...table, '', ...notes])].join('\n')
+  return [headline, detail, ...(rows.length === 0 ? [] : ['', columns, TABLE_RULE, ...table, '', ...notes])].join('\n')
 }
 
 function stopPanelRefresh() {
@@ -242,7 +252,7 @@ export const register: Register = (on, options) => {
     }
 
     await update($, inhibitors, () => loaded)
-    const { isPlaced } = await $.ui.open({ id: PANEL, title: 'Keep awake' })
+    const { isPlaced } = await $.ui.open({ id: PANEL, title: TITLE })
 
     if (!isPlaced) {
       return { text: infoText(loaded) }
@@ -250,7 +260,9 @@ export const register: Register = (on, options) => {
 
     panelRefresh ??= $.clock.every(REFRESH_MS, () => void refreshPanel($))
 
-    return { text: info(loaded).summary }
+    const { headline, detail } = info(loaded)
+
+    return { text: `${headline}. ${detail}` }
   })
 
   on('ui.render', { component: 'Pane', requestId: PANEL }, async ($, e, next) => {
@@ -261,18 +273,37 @@ export const register: Register = (on, options) => {
     }
 
     const { Box, Text } = $.ui.resolve(e)
-    const { summary, table, notes } = info(shown)
+    const { isBlocked, headline, detail, rows, notes } = info(shown)
 
     return (
       <Box flexDirection="column">
+        <Text bold>{TITLE}</Text>
         <Box marginBottom={1}>
-          <Text>{summary}</Text>
+          <Text dimColor wrap="truncate-end">
+            {'─'.repeat(e.props.bodyColumns)}
+          </Text>
         </Box>
-        {table.length > 0 && (
+        <Text bold color={isBlocked ? 'success' : undefined}>
+          {headline}
+        </Text>
+        <Box marginBottom={1}>
+          <Text>{detail}</Text>
+        </Box>
+        {rows.length > 0 && (
           <Box flexDirection="column" marginBottom={1}>
-            {table.map((line, index) => (
-              <Text bold={index === 0} wrap="truncate-end">
-                {line}
+            <Text bold wrap="truncate-end">
+              {COLUMNS.session}
+              {COLUMNS.status}
+              {COLUMNS.rest}
+            </Text>
+            <Text dimColor wrap="truncate-end">
+              {TABLE_RULE}
+            </Text>
+            {rows.map(({ session, status, rest, color }) => (
+              <Text wrap="truncate-end">
+                {session}
+                <Text color={color}>{status}</Text>
+                {rest}
               </Text>
             ))}
           </Box>

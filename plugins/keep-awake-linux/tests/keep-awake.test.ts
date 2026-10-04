@@ -273,7 +273,7 @@ const PANEL = {
   component: 'Pane',
   requestId: 'keep-awake-info',
   props: {
-    title: 'Keep awake',
+    title: 'Keep Awake Info',
     isFocused: false,
     bodyColumns: 80,
     placement: 'dock',
@@ -296,16 +296,19 @@ const CHILDREN = [
 ]
 const PARENTS = ['   11 claude', ' 2221 systemd']
 const INFO = [
-  'Sleep is blocked: Claude holds 2 blocks. The computer does not suspend while a row is listed.',
-  'SESSION    STATUS     PID      LEASE',
-  's1*        active     101      renewed 01:37 ago',
-  '36eed69b   orphan     102      ends in 04:51',
+  'Sleep is blocked',
+  'Claude holds 2 blocks. The computer does not suspend while a row is listed.',
+  'SESSION   STATUS      PID      LEASE',
+  '─'.repeat(48),
+  's1*       ● active    101      renewed 01:37 ago',
+  '36eed69b  ● orphan    102      ends in 04:51',
   '*: this session.',
   'active: the session works, or worked a short time ago.',
   'orphan: its Claude process is gone. The block ends by itself.',
   'LEASE: a block lasts 30 minutes. An active session renews it.',
 ]
-const NO_BLOCK = 'No Claude session blocks sleep. The computer can suspend.'
+const HEADER = ['Keep Awake Info', '─'.repeat(80)]
+const NO_BLOCK = ['Sleep is not blocked', 'No Claude session keeps the computer awake. It can suspend.']
 
 function ran(lines: string[]): { value: ProcessRunResult } {
   return {
@@ -354,8 +357,13 @@ test('/keep-awake-info opens the pane and says what each row and word means', as
   const ui = await $.ui.mount(PANEL)
 
   expect(seen.opened).toEqual(['keep-awake-info'])
-  expect(answer.text).toBe(INFO[0])
-  expect((await ui.findAll({ type: 'Text' })).map(line => line.text)).toEqual(INFO)
+  expect(answer.text).toBe(`${INFO[0]}. ${INFO[1]}`)
+  const texts = await ui.findAll({ type: 'Text' })
+  const statusCells = texts.filter(text => ['● active', '● orphan'].includes(text.text.trim()))
+
+  expect(texts.filter(text => !statusCells.includes(text)).map(line => line.text)).toEqual([...HEADER, ...INFO])
+  expect(statusCells.map(cell => cell.props.color)).toEqual(['success', 'warning'])
+  expect(texts[2]?.props.color).toBe('success')
 })
 
 test('two inhibitors of one session with a claude parent are both a duplicate', async ($, on) => {
@@ -373,7 +381,7 @@ test('two inhibitors of one session with a claude parent are both a duplicate', 
   const ui = await $.ui.mount(PANEL)
   const lines = (await ui.findAll({ type: 'Text' })).map(line => line.text ?? '')
 
-  expect(lines.filter(line => / duplicate {2}/.test(line))).toHaveLength(2)
+  expect(lines.filter(line => /● duplicate /.test(line))).toHaveLength(2)
   expect(lines).toContain('duplicate: one session holds two blocks. This is a defect of the plugin.')
 })
 
@@ -388,7 +396,7 @@ test('the open pane follows the inhibitors as they change', async ($, on) => {
   processes.children = []
   await clock.advance(REFRESH_MS)
 
-  expect((await ui.findAll({ type: 'Text' })).map(line => line.text)).toEqual([NO_BLOCK])
+  expect((await ui.findAll({ type: 'Text' })).map(line => line.text)).toEqual([...HEADER, ...NO_BLOCK])
 })
 
 test('a closed pane reads the inhibitors no more', async ($, on) => {
@@ -411,6 +419,6 @@ test('a headless session gets the inhibitors as text and no pane', async ($, on)
   await $.session.start(HEADLESS)
   const answer = await $.command.run(TYPED)
 
-  expect(answer.text).toBe([INFO[0], '', ...INFO.slice(1, 4), '', ...INFO.slice(4)].join('\n'))
+  expect(answer.text).toBe([...INFO.slice(0, 2), '', ...INFO.slice(2, 6), '', ...INFO.slice(6)].join('\n'))
   expect(seen.opened).toEqual([])
 })
