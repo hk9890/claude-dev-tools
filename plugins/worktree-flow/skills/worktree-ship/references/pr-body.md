@@ -12,6 +12,8 @@ Use this template for the PR body:
 ## Evidence
 
 - **Gate:** `<command>`: <passed, failed, or skipped, and why>
+- **Driven:** `<command>`: <what it showed, or not driven, and what to check by hand>
+- **Review:** `code-review xhigh --fix`: <findings applied>, through `<head commit>`
 - <optional: **Before:** output or failing test run>
   <optional: **After:** output or passing test run>
 
@@ -110,7 +112,9 @@ You may use one of these, you may use several, it is unlikely you will use all o
 
 ### Evidence
 
-List every gate with its command and its result.
+List every gate with its command and its result, then every command that drove the change by hand with what it showed.
+
+Leave the **Review** line out until the review has run. Its commit is the PR's head after the review fixes were pushed: a later run reads it to tell whether the head was reviewed.
 
 Add a before and after pair where the change has an effect a reviewer can see. Execution-based evidence is the strongest: test results, console output. Show the exact test that failed before and passes now, as pseudocode. Add a screenshot only where the project has a place to host the image; `gh` cannot upload one into a PR body.
 
