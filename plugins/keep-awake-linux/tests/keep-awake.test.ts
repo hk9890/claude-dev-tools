@@ -271,7 +271,7 @@ const PANEL = {
   plugin: 'keep-awake-linux',
   surface: 'terminal',
   component: 'Pane',
-  requestId: 'keep-awake-panel',
+  requestId: 'keep-awake-info',
   props: {
     title: 'Keep awake',
     isFocused: false,
@@ -282,7 +282,7 @@ const PANEL = {
   } satisfies RenderPropsOf['Pane'],
 } as const
 const TYPED = {
-  command: 'keep-awake-panel',
+  command: 'keep-awake-info',
   args: '',
   origin: { kind: 'composer' },
   presentation: { isFullscreen: true, columns: 160 },
@@ -295,12 +295,17 @@ const CHILDREN = [
   '  103   12    40 systemd-inhibit --who=someone-else sleep 60',
 ]
 const PARENTS = ['   11 claude', ' 2221 systemd']
-const TABLE = [
-  'VERDICT    SESSION    PID      PARENT    AGE',
-  'healthy    s1*        101      claude    01:37',
-  'orphan     36eed69b   102      systemd   25:09',
-  '* this session',
+const INFO = [
+  'Sleep is blocked: Claude holds 2 blocks. The computer does not suspend while a row is listed.',
+  'SESSION    STATUS     PID      LEASE',
+  's1*        active     101      renewed 01:37 ago',
+  '36eed69b   orphan     102      ends in 04:51',
+  '*: this session.',
+  'active: the session works, or worked a short time ago.',
+  'orphan: its Claude process is gone. The block ends by itself.',
+  'LEASE: a block lasts 30 minutes. An active session renews it.',
 ]
+const NO_BLOCK = 'No Claude session blocks sleep. The computer can suspend.'
 
 function ran(lines: string[]): { value: ProcessRunResult } {
   return {
@@ -340,7 +345,7 @@ function panelHost(on: On, processes: { children: string[]; parents: string[] },
   return seen
 }
 
-test('/keep-awake-panel opens the pane and draws one row for each inhibitor', async ($, on) => {
+test('/keep-awake-info opens the pane and says what each row and word means', async ($, on) => {
   mock.clock(on)
   const seen = panelHost(on, { children: CHILDREN, parents: PARENTS })
 
@@ -348,9 +353,9 @@ test('/keep-awake-panel opens the pane and draws one row for each inhibitor', as
   const answer = await $.command.run(TYPED)
   const ui = await $.ui.mount(PANEL)
 
-  expect(seen.opened).toEqual(['keep-awake-panel'])
-  expect(answer.text).toBe('2 held, 1 not healthy')
-  expect((await ui.findAll({ type: 'Text' })).map(line => line.text)).toEqual(TABLE)
+  expect(seen.opened).toEqual(['keep-awake-info'])
+  expect(answer.text).toBe(INFO[0])
+  expect((await ui.findAll({ type: 'Text' })).map(line => line.text)).toEqual(INFO)
 })
 
 test('two inhibitors of one session with a claude parent are both a duplicate', async ($, on) => {
@@ -364,9 +369,12 @@ test('two inhibitors of one session with a claude parent are both a duplicate', 
   })
 
   await $.session.start(TERMINAL)
-  const answer = await $.command.run(TYPED)
+  await $.command.run(TYPED)
+  const ui = await $.ui.mount(PANEL)
+  const lines = (await ui.findAll({ type: 'Text' })).map(line => line.text ?? '')
 
-  expect(answer.text).toBe('2 held, 2 not healthy')
+  expect(lines.filter(line => / duplicate {2}/.test(line))).toHaveLength(2)
+  expect(lines).toContain('duplicate: one session holds two blocks. This is a defect of the plugin.')
 })
 
 test('the open pane follows the inhibitors as they change', async ($, on) => {
@@ -380,7 +388,7 @@ test('the open pane follows the inhibitors as they change', async ($, on) => {
   processes.children = []
   await clock.advance(REFRESH_MS)
 
-  expect((await ui.findAll({ type: 'Text' })).map(line => line.text)).toEqual(['No inhibitor is held.'])
+  expect((await ui.findAll({ type: 'Text' })).map(line => line.text)).toEqual([NO_BLOCK])
 })
 
 test('a closed pane reads the inhibitors no more', async ($, on) => {
@@ -403,6 +411,6 @@ test('a headless session gets the inhibitors as text and no pane', async ($, on)
   await $.session.start(HEADLESS)
   const answer = await $.command.run(TYPED)
 
-  expect(answer.text).toBe(TABLE.join('\n'))
+  expect(answer.text).toBe([INFO[0], '', ...INFO.slice(1, 4), '', ...INFO.slice(4)].join('\n'))
   expect(seen.opened).toEqual([])
 })

@@ -3,7 +3,7 @@ export type KeepAwakeInhibitor = {
   pid: number
   parent: string
   ageSeconds: number
-  verdict: 'healthy' | 'orphan' | 'duplicate'
+  status: 'active' | 'orphan' | 'duplicate'
   isThisSession: boolean
 }
 

@@ -22,14 +22,15 @@ let inhibitor: HookStream<ProcessSpawnChunk, ProcessSpawnResult> | undefined
 let idleTimer: Timer | undefined
 let cannotInhibit = false
 
-const PANEL = 'keep-awake-panel'
+const PANEL = 'keep-awake-info'
 const REFRESH_MS = 5000
 const WHO = '--who=claude-keep-awake'
 
-// A docked pane is about 50 columns wide: the verdict leads, so a cut row keeps it.
-type Row = readonly [verdict: string, session: string, pid: string, parent: string, age: string]
-const COLUMNS: Row = ['VERDICT', 'SESSION', 'PID', 'PARENT', 'AGE']
-const THIS_SESSION = '* this session'
+const STATUS_NOTES = {
+  active: 'active: the session works, or worked a short time ago.',
+  orphan: 'orphan: its Claude process is gone. The block ends by itself.',
+  duplicate: 'duplicate: one session holds two blocks. This is a defect of the plugin.',
+} as const
 
 const inhibitors = atom({ plugin: 'keep-awake-linux', key: 'inhibitors' } as const, null)
 let panelRefresh: Timer | undefined
@@ -134,43 +135,63 @@ async function loadInhibitors($: EngineInterface): Promise<KeepAwakeInhibitor[] 
     return owned.map(one => ({
       ...one,
       isThisSession: one.session === thisSession,
-      verdict:
+      status:
         one.parent !== 'claude'
           ? 'orphan'
           : owned.some(other => other !== one && other.session === one.session && other.parent === 'claude')
             ? 'duplicate'
-            : 'healthy',
+            : 'active',
     }))
   } catch (error) {
     return `ps did not run (${String(error)}).`
   }
 }
 
-function row({ session, pid, parent, ageSeconds, verdict, isThisSession }: KeepAwakeInhibitor): Row {
-  const minutes = String(Math.floor(ageSeconds / 60)).padStart(2, '0')
-  const seconds = String(ageSeconds % 60).padStart(2, '0')
-
-  return [verdict, `${session.slice(0, 8)}${isThisSession ? '*' : ''}`, String(pid), parent, `${minutes}:${seconds}`]
+function clock(seconds: number) {
+  return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`
 }
 
-function tableLines(list: KeepAwakeInhibitor[]) {
+// A docked pane is about 50 columns wide: a row is 48.
+function tableLine(session: string, status: string, pid: string, lease: string) {
+  return `${session.padEnd(9)}  ${status.padEnd(9)}  ${pid.padEnd(7)}  ${lease}`
+}
+
+// What the pane shows and the text answer prints: the state in one sentence, the blocks, and what
+// each word in the table means.
+function info(list: KeepAwakeInhibitor[]) {
   if (list.length === 0) {
-    return ['No inhibitor is held.']
+    return { summary: 'No Claude session blocks sleep. The computer can suspend.', table: [], notes: [] }
   }
 
-  return [
-    ...[COLUMNS, ...list.map(row)].map(
-      ([verdict, session, pid, parent, age]) =>
-        `${verdict.padEnd(9)}  ${session.padEnd(9)}  ${pid.padEnd(7)}  ${parent.padEnd(8)}  ${age}`,
-    ),
-    THIS_SESSION,
-  ]
+  return {
+    summary: `Sleep is blocked: Claude holds ${list.length} ${list.length === 1 ? 'block' : 'blocks'}. The computer does not suspend while a row is listed.`,
+    table: [
+      tableLine('SESSION', 'STATUS', 'PID', 'LEASE'),
+      ...list.map(({ session, status, pid, ageSeconds, isThisSession }) =>
+        tableLine(
+          `${session.slice(0, 8)}${isThisSession ? '*' : ''}`,
+          status,
+          String(pid),
+          status === 'orphan'
+            ? `ends in ${clock(Math.max(0, LEASE_SECONDS - ageSeconds))}`
+            : `renewed ${clock(ageSeconds)} ago`,
+        ),
+      ),
+    ],
+    notes: [
+      ...(list.some(one => one.isThisSession) ? ['*: this session.'] : []),
+      ...(['active', 'orphan', 'duplicate'] as const)
+        .filter(status => list.some(one => one.status === status))
+        .map(status => STATUS_NOTES[status]),
+      `LEASE: a block lasts ${LEASE_SECONDS / 60} minutes. An active session renews it.`,
+    ],
+  }
 }
 
-function countsLine(list: KeepAwakeInhibitor[]) {
-  const unhealthy = list.filter(one => one.verdict !== 'healthy').length
+function infoText(list: KeepAwakeInhibitor[]) {
+  const { summary, table, notes } = info(list)
 
-  return `${list.length} held, ${unhealthy} not healthy`
+  return [summary, ...(table.length === 0 ? [] : ['', ...table, '', ...notes])].join('\n')
 }
 
 function stopPanelRefresh() {
@@ -203,7 +224,7 @@ export const register: Register = (on, options) => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: PANEL,
-      description: 'Show the sleep inhibitors every Claude session holds in a pane',
+      description: 'Show in a pane which Claude sessions block system sleep',
     })
 
     return next(e)
@@ -217,19 +238,19 @@ export const register: Register = (on, options) => {
     }
 
     if (!(await hasPaneSurface($))) {
-      return { text: tableLines(loaded).join('\n') }
+      return { text: infoText(loaded) }
     }
 
     await update($, inhibitors, () => loaded)
     const { isPlaced } = await $.ui.open({ id: PANEL, title: 'Keep awake' })
 
     if (!isPlaced) {
-      return { text: tableLines(loaded).join('\n') }
+      return { text: infoText(loaded) }
     }
 
     panelRefresh ??= $.clock.every(REFRESH_MS, () => void refreshPanel($))
 
-    return { text: countsLine(loaded) }
+    return { text: info(loaded).summary }
   })
 
   on('ui.render', { component: 'Pane', requestId: PANEL }, async ($, e, next) => {
@@ -240,13 +261,24 @@ export const register: Register = (on, options) => {
     }
 
     const { Box, Text } = $.ui.resolve(e)
+    const { summary, table, notes } = info(shown)
 
     return (
       <Box flexDirection="column">
-        {tableLines(shown).map(line => (
-          <Text wrap="truncate-end" dimColor={line === THIS_SESSION}>
-            {line}
-          </Text>
+        <Box marginBottom={1}>
+          <Text>{summary}</Text>
+        </Box>
+        {table.length > 0 && (
+          <Box flexDirection="column" marginBottom={1}>
+            {table.map((line, index) => (
+              <Text bold={index === 0} wrap="truncate-end">
+                {line}
+              </Text>
+            ))}
+          </Box>
+        )}
+        {notes.map(note => (
+          <Text dimColor>{note}</Text>
         ))}
       </Box>
     )
