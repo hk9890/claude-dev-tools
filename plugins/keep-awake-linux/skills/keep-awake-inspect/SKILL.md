@@ -73,8 +73,8 @@ suspend|hibernate` alone.
    | `systemd-inhibit MISSING` in step 1 | Not a systemd machine, or not on PATH: the child failed in its first second |
    | The user saw the toast `sleep is not blocked` and `systemd-inhibit` is present | logind refused the request in the child's first second; the toast and the `inhibitor lost` line in the debug log carry the reason |
    | `claude --version` below 2.1.287 | Mods are not supported; the plugin does nothing |
-   | `disableAllHooks` is true in a user, project or managed settings file, or the session started with `--safe-mode` or `--bare` | Mods are off |
-   | `/plugin` shows no `mod active` line that names `keep-awake-linux` | The plugin is disabled or blocked by managed settings; ask the user to look, the command is theirs to run |
+   | `disableAllHooks` is true in a user, project, local or managed settings file, or the session started with `--safe-mode` or `--bare` | Mods are off |
+   | `/plugin` shows no `mod active` line that names `keep-awake-linux` | The plugin is disabled or blocked by managed settings, or `idleMinutes` is below 1; ask the user to look, the command is theirs to run |
    | Another session: no turn ran yet, or its last activity is more than `idleMinutes` ago | Correct idle state |
 
 ## Report
