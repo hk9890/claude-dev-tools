@@ -5,9 +5,9 @@ MIT license:
 
 - [mattpocock/skills](https://github.com/mattpocock/skills) — adapted from the `pr` skill at
   commit [`d81f3a1`](https://github.com/mattpocock/skills/commit/d81f3a1): the Summary, Evidence
-  and Merge Danger template and the prose of all three sections trace there. The gate lines in
-  Evidence, the blast radius scale, and the sentence of prose that opens the Summary are locally
-  authored
+  and Merge Danger template and the prose of all three sections trace there. The gate, driven and
+  review lines in Evidence with the prose about them, the blast radius scale, and the sentence of
+  prose that opens the Summary are locally authored
 - [humanlayer/skills](https://github.com/humanlayer/skills) — the Summary section's menu of
   visuals (pseudocode, call trees, component trees, file trees, Mermaid, diffs) and its placement
   guidance come from Dex Horthy's `show-me` skill, which the `pr` skill reproduces almost word

@@ -1,4 +1,4 @@
 {
-  "description": "Steers git worktree add to EnterWorktree and shows the worktree's PR in the status line",
+  "description": "Steers git worktree add to EnterWorktree",
   "modules": ["./register.ts"]
 }

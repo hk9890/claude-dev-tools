@@ -59,12 +59,12 @@ Every tracked `*.sh` — under `scripts/`, `tests/`, or a plugin's `bin/` — mu
 
 A mod is a plugin whose `hooks/hooks.json` names a hooks module under `modules`; Claude Code 2.1.287 and later runs it in-process. Claude Code's built-in `plugin-authoring` skill carries the API and the write-validate-test loop — load it first. **Local delta:**
 
-- **Worked examples** — `keep-awake-linux` (a child process, timers, and a pane a timer refreshes), `worktree-flow` (a `tool.call` guard and a status line), `tasks` (a command, a pane, and a `$.state` contract).
+- **Worked examples** — `keep-awake-linux` (a child process, timers, and a pane a timer refreshes), `worktree-flow` (a `tool.call` guard), `tasks` (a command, a pane, and a `$.state` contract).
 - **Layout** — `hooks/hooks.json` holds `{ "modules": ["./register.ts"] }`, `.tsx` when the module draws. Tests go in `plugins/<plugin>/tests/*.test.ts`, where `claude plugin test` reads them ([TESTING.md](TESTING.md)). A module that keeps `$.state` values declares them in `types/index.d.ts`, named in `plugin.json` as `"types"`.
 - **One code path** — a behaviour moves to the module whole: delete the settings hook and its `bin/` script in the same change.
 - **Validate early** — run `claude plugin validate plugins/<plugin>` after every edit. It refuses an event name that is not a string literal, a `$` call not written in full (`$.ui.status(...)`, never `const ui = $.ui`), and `$` passed anywhere but a top-level function of the same file.
 - **Footprint** — a mod runs unsandboxed, so reach only the `$` namespaces the feature needs; the `calls:` line `claude plugin validate` prints is the footprint a user audits before installing.
-- **Where nothing draws** — panes and the status line show in the terminal and the desktop app only. Do not settle it at `session.start`: the desktop app joins after it, with a `session.attach` event, and can leave. Read `$.session.surfaces()` when the feature runs: `tasks` does at each `/tasks-board` and answers as text where neither is attached; `worktree-flow` does at each status refresh, and a desktop `session.attach` starts one.
+- **Where nothing draws** — panes and the status line show in the terminal and the desktop app only. Do not settle it at `session.start`: the desktop app joins after it, with a `session.attach` event, and can leave. Read `$.session.surfaces()` when the feature runs: `tasks` does at each `/tasks-board` and answers as text where neither is attached.
 - **Command names** — a name registered with `$.command.register` is global. Lead it with the plugin's domain word (`tasks-board`); `/tasks` is Claude Code's own.
 - **Minimum version** — say "needs Claude Code 2.1.287+" in the plugin's `README.md` row.
 - **Generated files** — a `--plugin-dir` load writes `.claude-plugin/types/` and `tsconfig.json` into the plugin; both are gitignored. After one such load, `npx -p typescript tsc -p plugins/<plugin>` type-checks the module and its tests.
