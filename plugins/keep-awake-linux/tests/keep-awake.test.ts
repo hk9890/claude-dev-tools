@@ -1,5 +1,5 @@
 import { expect, mock, test } from 'claude-code/testing'
-import type { On } from 'claude-code'
+import type { On, ProcessRunResult, RenderPropsOf, RenderSurface } from 'claude-code'
 
 const IDLE_MS = 30 * 60_000
 const STARTUP_MS = 1000
@@ -12,7 +12,6 @@ function host(on: On, { canStart = true } = {}) {
   const seen = {
     started: [] as (readonly string[])[],
     ended: 0,
-    status: [] as (string | undefined)[],
     logged: [] as string[],
     toasts: [] as string[],
     exit: (code: number) => {},
@@ -40,11 +39,6 @@ function host(on: On, { canStart = true } = {}) {
 
     return { value: undefined }
   })
-  on('ui.status', ($, e) => {
-    seen.status.push(e.text)
-
-    return { value: undefined }
-  })
   on('ui.toast', ($, e) => {
     seen.toasts.push(e.text)
 
@@ -59,7 +53,7 @@ function host(on: On, { canStart = true } = {}) {
   return seen
 }
 
-test('the first turn starts one inhibitor and shows it once the child has started', async ($, on) => {
+test('the first turn starts one inhibitor', async ($, on) => {
   const clock = mock.clock(on)
   const seen = host(on)
 
@@ -68,10 +62,6 @@ test('the first turn starts one inhibitor and shows it once the child has starte
 
   expect(seen.started).toHaveLength(1)
   expect(seen.started[0]?.slice(0, 3)).toEqual(['systemd-inhibit', '--what=idle:sleep', '--who=claude-keep-awake'])
-  expect(seen.status).toEqual([])
-
-  await clock.advance(STARTUP_MS)
-  expect(seen.status).toEqual(['sleep blocked'])
 })
 
 test('a second turn starts no second inhibitor', async ($, on) => {
@@ -98,7 +88,6 @@ test('the inhibitor ends once the session is idle for the configured time', asyn
 
   await clock.advance(1)
   expect(seen.ended).toBe(1)
-  expect(seen.status).toEqual(['sleep blocked', undefined])
 })
 
 test('a turn that waits on the person releases the inhibitor after the idle time', async ($, on) => {
@@ -111,7 +100,6 @@ test('a turn that waits on the person releases the inhibitor after the idle time
 
   await clock.advance(1)
   expect(seen.ended).toBe(1)
-  expect(seen.status.at(-1)).toBeUndefined()
 
   await clock.advance(IDLE_MS * 20)
   expect(seen.started).toHaveLength(1)
@@ -161,7 +149,6 @@ test('a tool call after the idle release starts one fresh inhibitor', async ($, 
 
   expect(seen.started).toHaveLength(2)
   expect(seen.ended).toBe(1)
-  expect(seen.status.at(-1)).toBe('sleep blocked')
 })
 
 // A background agent works on after the main turn ended: its tool calls are the only events.
@@ -213,7 +200,6 @@ test('a turn after the idle release starts one fresh inhibitor', async ($, on) =
 
   expect(seen.started).toHaveLength(2)
   expect(seen.ended).toBe(1)
-  expect(seen.status.at(-1)).toBe('sleep blocked')
 })
 
 test('the inhibitor is renewed when its lease ends during a long turn', async ($, on) => {
@@ -226,7 +212,6 @@ test('the inhibitor is renewed when its lease ends during a long turn', async ($
   await clock.settle()
 
   expect(seen.started).toHaveLength(2)
-  expect(seen.status).toEqual(['sleep blocked'])
 })
 
 test('an inhibitor that fails after it started is tried again on the next activity', async ($, on) => {
@@ -239,7 +224,6 @@ test('an inhibitor that fails after it started is tried again on the next activi
   await clock.settle()
 
   expect(seen.started).toHaveLength(1)
-  expect(seen.status).toEqual(['sleep blocked', undefined])
   expect(seen.logged).toEqual(['inhibitor lost: Error: systemd-inhibit exited with 1'])
   expect(seen.toasts).toEqual([])
 
@@ -260,31 +244,10 @@ test('an inhibitor that logind refuses at once is not tried again', async ($, on
   await clock.advance(STARTUP_MS)
 
   expect(seen.started).toHaveLength(1)
-  expect(seen.status).toEqual([])
   expect(seen.toasts).toEqual(['sleep is not blocked: systemd-inhibit exited with 1'])
 })
 
-// The session ends and the next turn starts before the first inhibitor's loop saw its child end.
-test('an inhibitor that takes over and fails at once clears the status of the one before', async ($, on) => {
-  const clock = mock.clock(on)
-  const seen = host(on)
-
-  await $.turn.start({ text: 'go', turnId: 't1' })
-  await clock.advance(STARTUP_MS)
-  await Promise.all([
-    $.session.end({ reason: 'prompt_input_exit', sessionId: 's1', resume: { id: 's1' } }),
-    $.turn.start({ text: 'again', turnId: 't2' }),
-  ])
-  await clock.settle()
-  seen.exit(1)
-  await clock.advance(STARTUP_MS)
-
-  expect(seen.started).toHaveLength(2)
-  expect(seen.status).toEqual(['sleep blocked', undefined])
-  expect(seen.toasts).toEqual(['sleep is not blocked: systemd-inhibit exited with 1'])
-})
-
-test('without systemd-inhibit the mod never shows sleep as blocked and says so once', async ($, on) => {
+test('without systemd-inhibit the mod says so once', async ($, on) => {
   const clock = mock.clock(on)
   const seen = host(on, { canStart: false })
 
@@ -295,9 +258,151 @@ test('without systemd-inhibit the mod never shows sleep as blocked and says so o
   await clock.advance(STARTUP_MS)
 
   expect(seen.started).toEqual([])
-  expect(seen.status).toEqual([])
   expect(seen.logged).toHaveLength(1)
   expect(seen.logged[0]).toContain('inhibitor lost')
   expect(seen.toasts).toHaveLength(1)
   expect(seen.toasts[0]).toMatch(/^sleep is not blocked: .+/)
+})
+
+const TERMINAL = { cwd: '/repo', surface: 'terminal', isInteractive: true } as const
+const HEADLESS = { cwd: '/repo', surface: null, isInteractive: false } as const
+const REFRESH_MS = 5000
+const PANEL = {
+  plugin: 'keep-awake-linux',
+  surface: 'terminal',
+  component: 'Pane',
+  requestId: 'keep-awake-panel',
+  props: {
+    title: 'Keep awake',
+    isFocused: false,
+    bodyColumns: 80,
+    placement: 'dock',
+    scroll: { offset: 0, bodyRows: 20 },
+    view: {},
+  } satisfies RenderPropsOf['Pane'],
+} as const
+const TYPED = {
+  command: 'keep-awake-panel',
+  args: '',
+  origin: { kind: 'composer' },
+  presentation: { isFullscreen: true, columns: 160 },
+} as const
+
+const INHIBIT = 'systemd-inhibit --what=idle:sleep --who=claude-keep-awake'
+const CHILDREN = [
+  `  101   11    97 ${INHIBIT} --why=Claude session s1 --mode=block sleep 1800`,
+  `  102 2221  1509 ${INHIBIT} --why=Claude session 36eed69b-7898 --mode=block sleep 1800`,
+  '  103   12    40 systemd-inhibit --who=someone-else sleep 60',
+]
+const PARENTS = ['   11 claude', ' 2221 systemd']
+const TABLE = [
+  'VERDICT    SESSION    PID      PARENT    AGE',
+  'healthy    s1*        101      claude    01:37',
+  'orphan     36eed69b   102      systemd   25:09',
+  '* this session',
+]
+
+function ran(lines: string[]): { value: ProcessRunResult } {
+  return {
+    value: {
+      exitCode: lines.length === 0 ? 1 : 0,
+      stdout: lines.join('\n'),
+      stderr: '',
+      isStdoutTruncated: false,
+      isStderrTruncated: false,
+    },
+  }
+}
+
+// Stands for the host of the panel: answers `ps` from `processes`, which a test changes in place,
+// and keeps the panes open in `seen.opened`, which a test empties as the person closing the pane.
+function panelHost(on: On, processes: { children: string[]; parents: string[] }, { surfaces = ['terminal'] as RenderSurface[] } = {}) {
+  const seen = { opened: [] as string[], psRuns: 0 }
+
+  on('process.run', ($, e) => {
+    seen.psRuns += 1
+
+    return ran(e.argv[1] === '-C' ? processes.children : processes.parents)
+  })
+  on('ui.open', ($, e) => {
+    seen.opened.push(e.id)
+
+    return { value: { isPlaced: true } }
+  })
+  on('ui.panes', () => ({
+    value: seen.opened.map(id => ({ id, title: id, isShown: true, isFocused: false, isPlaced: true })),
+  }))
+  on('command.register', ($, e) => ({ value: { command: e.name } }))
+  on('session.start', ($, e) => ({ cwd: e.cwd }))
+  on('session.surfaces', () => ({ value: surfaces }))
+  on('session.id', () => ({ value: 's1' }))
+
+  return seen
+}
+
+test('/keep-awake-panel opens the pane and draws one row for each inhibitor', async ($, on) => {
+  mock.clock(on)
+  const seen = panelHost(on, { children: CHILDREN, parents: PARENTS })
+
+  await $.session.start(TERMINAL)
+  const answer = await $.command.run(TYPED)
+  const ui = await $.ui.mount(PANEL)
+
+  expect(seen.opened).toEqual(['keep-awake-panel'])
+  expect(answer.text).toBe('2 held, 1 not healthy')
+  expect((await ui.findAll({ type: 'Text' })).map(line => line.text)).toEqual(TABLE)
+})
+
+test('two inhibitors of one session with a claude parent are both a duplicate', async ($, on) => {
+  mock.clock(on)
+  panelHost(on, {
+    children: [
+      `  101   11    97 ${INHIBIT} --why=Claude session s1 --mode=block sleep 1800`,
+      `  104   11     5 ${INHIBIT} --why=Claude session s1 --mode=block sleep 1800`,
+    ],
+    parents: PARENTS,
+  })
+
+  await $.session.start(TERMINAL)
+  const answer = await $.command.run(TYPED)
+
+  expect(answer.text).toBe('2 held, 2 not healthy')
+})
+
+test('the open pane follows the inhibitors as they change', async ($, on) => {
+  const clock = mock.clock(on)
+  const processes = { children: CHILDREN, parents: PARENTS }
+  panelHost(on, processes)
+
+  await $.session.start(TERMINAL)
+  await $.command.run(TYPED)
+  const ui = await $.ui.mount(PANEL)
+  processes.children = []
+  await clock.advance(REFRESH_MS)
+
+  expect((await ui.findAll({ type: 'Text' })).map(line => line.text)).toEqual(['No inhibitor is held.'])
+})
+
+test('a closed pane reads the inhibitors no more', async ($, on) => {
+  const clock = mock.clock(on)
+  const seen = panelHost(on, { children: CHILDREN, parents: PARENTS })
+
+  await $.session.start(TERMINAL)
+  await $.command.run(TYPED)
+  const psRuns = seen.psRuns
+  seen.opened = []
+  await clock.advance(REFRESH_MS * 3)
+
+  expect(seen.psRuns).toBe(psRuns)
+})
+
+test('a headless session gets the inhibitors as text and no pane', async ($, on) => {
+  mock.clock(on)
+  const seen = panelHost(on, { children: CHILDREN, parents: PARENTS }, { surfaces: [] })
+
+  await $.session.start(HEADLESS)
+  const answer = await $.command.run(TYPED)
+
+  expect(answer.text).toBe(TABLE.join('\n'))
+  expect(seen.opened).toEqual([])
 })

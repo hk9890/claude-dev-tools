@@ -1,4 +1,4 @@
 {
   "description": "Holds a systemd sleep inhibitor while Claude works",
-  "modules": ["./register.ts"]
+  "modules": ["./register.tsx"]
 }

@@ -88,7 +88,7 @@
     {
       "name": "keep-awake-linux",
       "source": "./plugins/keep-awake-linux",
-      "description": "Prevents Linux system sleep while Claude Code is actively working and shows it in the status line — releases automatically when idle or on session exit",
+      "description": "Prevents Linux system sleep while Claude Code is actively working — releases automatically when idle or on session exit; /keep-awake-panel shows the inhibitors every session holds in a live pane",
       "version": "1.36.0",
       "author": {
         "name": "Hans Kohlreiter",
