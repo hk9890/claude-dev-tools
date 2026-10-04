@@ -17,22 +17,31 @@ const THROWAWAY_TARGET = /\/scratchpad\/|(?:^|[\s"'=])\/tmp\/|mktemp|\$\{?TMPDIR
 const HEREDOC = /(?<!<)<<(?!<)(-?)\s*(['"]?)([A-Za-z_]\w*)\2/
 const SHELL = /\b(?:bash|sh|zsh)\b/
 
-// A push, a change of branch or a pull-request command changes what the status line shows.
+// A push, a change of branch, or a command that opens or closes a pull request changes what the
+// status line shows. A command that only reads a pull request does not.
+const PUSHES = new RegExp(String.raw`(?:^|[;&|(])\s*git(?:${GIT_OPTION})*\s+push\b`, 'm')
 const CHANGES_STATUS_LINE = new RegExp(
-  String.raw`(?:^|[;&|(])\s*(?:git(?:${GIT_OPTION})*\s+(?:push|switch|checkout)|gh\s+pr)\b`,
+  String.raw`(?:^|[;&|(])\s*(?:git(?:${GIT_OPTION})*\s+(?:push|switch|checkout)|gh\s+pr\s+(?:create|merge|close|reopen))\b`,
   'm',
 )
 
 const FAILED_CHECK = ['FAILURE', 'ERROR', 'TIMED_OUT', 'CANCELLED', 'ACTION_REQUIRED', 'STARTUP_FAILURE']
 const WAITING_STATE = ['PENDING', 'EXPECTED']
-const STATUS_REFRESH_MS = 5 * 60_000
+const CHECKS_RUNNING = ' checks running'
+
+// The pace while checks run or are due, and the pace for the rest.
+const FAST_REFRESH_MS = 60_000
+const SLOW_REFRESH_MS = 5 * 60_000
+
+// GitHub registers the checks of a push late, so this many refreshes look for them at the fast pace.
+const REFRESHES_AFTER_PUSH = 5
 
 type Check = { status?: string; conclusion?: string; state?: string }
 type PullRequest = { number: number; state: string; statusCheckRollup: Check[] }
 
-let hasStatusLine = false
 let latestRefresh = 0
-let poll: Timer | undefined
+let nextRefresh: Timer | undefined
+let refreshesForNewChecks = 0
 
 // The lines the shell runs. A `<<` with no closing line is not a heredoc, and no line is left out.
 function commandLines(command: string) {
@@ -75,7 +84,7 @@ function checksLabel(checks: Check[]) {
   const isRunning = (check: Check) =>
     WAITING_STATE.includes(check.state ?? '') || (check.status !== undefined && check.status !== 'COMPLETED')
 
-  return checks.some(isRunning) ? ' checks running' : ' checks passed'
+  return checks.some(isRunning) ? CHECKS_RUNNING : ' checks passed'
 }
 
 // gh finds a pull request by the local branch name. A push can name the remote branch differently
@@ -113,15 +122,23 @@ async function worktreeLabel($: EngineInterface) {
   return branch === '' ? name : `${name} on ${branch}${await pullRequestLabel($, branch)}`
 }
 
+// Asked at each refresh: the desktop app joins a session after it started, and can leave it.
+async function hasStatusLine($: EngineInterface) {
+  return (await $.session.surfaces()).some(surface => surface === 'terminal' || surface === 'desktop')
+}
+
 // A refresh that a later one overtook is dropped, and one whose git did not run clears the status.
-// The poll runs only while there is a worktree to show: a check can finish with no local event.
-// It stops when git says the session left the worktree, not when git did not run.
+// Each refresh plans the next one, because a check can finish with no local event. No next one is
+// planned where no surface draws the status line, or when git says the session left the worktree.
 async function showWorktree($: EngineInterface) {
-  if (!hasStatusLine) {
+  const refresh = ++latestRefresh
+  nextRefresh?.cancel()
+  nextRefresh = undefined
+
+  if (!(await hasStatusLine($))) {
     return
   }
 
-  const refresh = ++latestRefresh
   let label: string | undefined
   let hasGitRun = true
 
@@ -137,12 +154,13 @@ async function showWorktree($: EngineInterface) {
 
   $.ui.status(label)
 
-  if (label !== undefined) {
-    poll ??= $.clock.every(STATUS_REFRESH_MS, () => void showWorktree($))
-  } else if (hasGitRun) {
-    poll?.cancel()
-    poll = undefined
+  if (label === undefined && hasGitRun) {
+    return
   }
+
+  const isFast = refreshesForNewChecks > 0 || label?.endsWith(CHECKS_RUNNING) === true
+  refreshesForNewChecks = Math.max(0, refreshesForNewChecks - 1)
+  nextRefresh = $.clock.after(isFast ? FAST_REFRESH_MS : SLOW_REFRESH_MS, () => void showWorktree($))
 }
 
 export const register: Register = on => {
@@ -154,6 +172,10 @@ export const register: Register = on => {
     }
 
     const ran = await next(e)
+
+    if (PUSHES.test(e.command)) {
+      refreshesForNewChecks = REFRESHES_AFTER_PUSH
+    }
 
     if (CHANGES_STATUS_LINE.test(e.command)) {
       void showWorktree($)
@@ -169,19 +191,18 @@ export const register: Register = on => {
     return ran
   })
 
-  // A mod that loads into a running session finds the desktop app attached already.
-  on('session.start', ($, e, next) => {
-    hasStatusLine = e.isInteractive || e.surface === 'desktop'
+  on('session.start', async ($, e, next) => {
+    const started = await next(e)
     void showWorktree($)
 
-    return next(e)
+    return started
   })
 
   // The desktop app joins a session that started with no surface.
-  on('session.attach', { surface: 'desktop' }, ($, e, next) => {
-    hasStatusLine = true
+  on('session.attach', { surface: 'desktop' }, async ($, e, next) => {
+    const attached = await next(e)
     void showWorktree($)
 
-    return next(e)
+    return attached
   })
 }

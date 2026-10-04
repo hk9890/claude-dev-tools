@@ -1,10 +1,12 @@
 import { expect, mock, test } from 'claude-code/testing'
-import type { On, ProcessRunResult } from 'claude-code'
+import type { On, ProcessRunResult, RenderSurface } from 'claude-code'
 
 const SESSION = { cwd: '/repo', surface: 'terminal', isInteractive: true } as const
 const HEADLESS = { cwd: '/repo', surface: null, isInteractive: false } as const
 const PASSED = { status: 'COMPLETED', conclusion: 'SUCCESS' }
 const REFRESH_MS = 5 * 60_000
+const FAST_REFRESH_MS = 60_000
+const RUNNING = { status: 'IN_PROGRESS' }
 const TEN_MINUTES = 10 * 60_000
 
 type Answer = { value: ProcessRunResult }
@@ -22,6 +24,7 @@ function host(on: On, answers: Record<string, Answer | Error | (() => Promise<An
     ran: [] as string[],
     commands: [] as string[],
   }
+  const surfaces: RenderSurface[] = []
 
   on('process.run', ($, e) => {
     seen.commands.push(e.argv.join(' '))
@@ -48,8 +51,22 @@ function host(on: On, answers: Record<string, Answer | Error | (() => Promise<An
 
     return { result: 'ok' }
   })
-  on('session.start', ($, e) => ({ cwd: e.cwd }))
-  on('session.attach', ($, e) => ({ clientId: e.clientId }))
+  on('session.start', ($, e) => {
+    surfaces.push(...(e.surface === null ? [] : [e.surface]))
+
+    return { cwd: e.cwd }
+  })
+  on('session.attach', ($, e) => {
+    surfaces.push(e.surface)
+
+    return { clientId: e.clientId }
+  })
+  on('session.detach', ($, e) => {
+    surfaces.splice(surfaces.indexOf(e.surface), 1)
+
+    return { clientId: e.clientId }
+  })
+  on('session.surfaces', () => ({ value: surfaces }))
 
   return seen
 }
@@ -395,6 +412,75 @@ test('a push refreshes the status line at once', async ($, on) => {
   expect(seen.status).toEqual(['fix-login on fix/login', 'fix-login on fix/login PR#12 open'])
 })
 
+// GitHub registers the checks of a push late: the refresh at the push does not see them yet.
+test('after a push gh is asked once per minute for 5 minutes, then once per 5 minutes', async ($, on) => {
+  const clock = mock.clock(on)
+  const seen = host(on, {
+    'git rev-parse': ran('/repo/.claude/worktrees/fix-login\n'),
+    'git branch': ran('fix/login\n'),
+    'gh pr': ran(JSON.stringify({ number: 12, state: 'OPEN', statusCheckRollup: [PASSED] })),
+  })
+  const askedGh = () => seen.commands.filter(command => command.startsWith('gh pr')).length
+
+  await $.session.start(SESSION)
+  await clock.settle()
+  await $.tool.call({ tool: 'Bash', command: 'git push' })
+  await clock.settle()
+  expect(askedGh()).toBe(2)
+
+  await clock.advance(5 * FAST_REFRESH_MS)
+  expect(askedGh()).toBe(7)
+
+  await clock.advance(REFRESH_MS - 1)
+  expect(askedGh()).toBe(7)
+
+  await clock.advance(1)
+  expect(askedGh()).toBe(8)
+})
+
+test('while checks run gh is asked once per minute', async ($, on) => {
+  const clock = mock.clock(on)
+  const answers: Record<string, Answer> = {
+    'git rev-parse': ran('/repo/.claude/worktrees/fix-login\n'),
+    'git branch': ran('fix/login\n'),
+    'gh pr': ran(JSON.stringify({ number: 12, state: 'OPEN', statusCheckRollup: [PASSED, RUNNING] })),
+  }
+  const seen = host(on, answers)
+
+  await $.session.start(SESSION)
+  await clock.settle()
+  await clock.advance(2 * FAST_REFRESH_MS)
+  answers['gh pr'] = ran(JSON.stringify({ number: 12, state: 'OPEN', statusCheckRollup: [PASSED, PASSED] }))
+  await clock.advance(FAST_REFRESH_MS)
+
+  expect(seen.status).toEqual([
+    'fix-login on fix/login PR#12 open checks running',
+    'fix-login on fix/login PR#12 open checks running',
+    'fix-login on fix/login PR#12 open checks running',
+    'fix-login on fix/login PR#12 open checks passed',
+  ])
+
+  await clock.advance(REFRESH_MS - 1)
+  expect(seen.status).toHaveLength(4)
+})
+
+test('the status line stops when the desktop app leaves a headless session', async ($, on) => {
+  const clock = mock.clock(on)
+  const seen = host(on, {
+    'git rev-parse': ran('/repo/.claude/worktrees/fix-login\n'),
+    'git branch': ran('fix/login\n'),
+  })
+
+  await $.session.start(HEADLESS)
+  await $.session.attach({ surface: 'desktop', clientId: 'desktop:default' })
+  await clock.settle()
+  await $.session.detach({ surface: 'desktop', clientId: 'desktop:default', reason: 'detach' })
+  const ranUntilDetach = seen.commands.length
+  await clock.advance(6 * TEN_MINUTES)
+
+  expect(seen.commands).toHaveLength(ranUntilDetach)
+})
+
 test('a change of branch refreshes the status line at once', async ($, on) => {
   const clock = mock.clock(on)
   const answers: Record<string, Answer> = {
@@ -412,7 +498,7 @@ test('a change of branch refreshes the status line at once', async ($, on) => {
   expect(seen.status).toEqual(['fix-login on fix/login', 'fix-login on fix/logout'])
 })
 
-test('a pull-request command refreshes the status line, another command does not', async ($, on) => {
+test('a command that opens a pull request refreshes the status line, one that reads it does not', async ($, on) => {
   const clock = mock.clock(on)
   const seen = host(on, {
     'git rev-parse': ran('/repo/.claude/worktrees/fix-login\n'),
@@ -421,7 +507,9 @@ test('a pull-request command refreshes the status line, another command does not
 
   await $.session.start(SESSION)
   await clock.settle()
-  await $.tool.call({ tool: 'Bash', command: 'git commit -m "fix: push the gh pr text"' })
+  await $.tool.call({ tool: 'Bash', command: 'git commit -m "fix: push the gh pr create text"' })
+  await $.tool.call({ tool: 'Bash', command: 'gh pr checks 12' })
+  await $.tool.call({ tool: 'Bash', command: 'gh pr view 12 --json state' })
   await clock.settle()
   expect(seen.status).toHaveLength(1)
 
