@@ -247,6 +247,25 @@ test('an inhibitor that logind refuses at once is not tried again', async ($, on
   expect(seen.toasts).toEqual(['sleep is not blocked: systemd-inhibit exited with 1'])
 })
 
+// The session ends and the next turn starts before the first inhibitor's loop saw its child end.
+test('an inhibitor that takes over and fails at once is one more start and one toast', async ($, on) => {
+  const clock = mock.clock(on)
+  const seen = host(on)
+
+  await $.turn.start({ text: 'go', turnId: 't1' })
+  await clock.advance(STARTUP_MS)
+  await Promise.all([
+    $.session.end({ reason: 'prompt_input_exit', sessionId: 's1', resume: { id: 's1' } }),
+    $.turn.start({ text: 'again', turnId: 't2' }),
+  ])
+  await clock.settle()
+  seen.exit(1)
+  await clock.advance(STARTUP_MS)
+
+  expect(seen.started).toHaveLength(2)
+  expect(seen.toasts).toEqual(['sleep is not blocked: systemd-inhibit exited with 1'])
+})
+
 test('without systemd-inhibit the mod says so once', async ($, on) => {
   const clock = mock.clock(on)
   const seen = host(on, { canStart: false })
@@ -324,8 +343,9 @@ function ran(lines: string[]): { value: ProcessRunResult } {
 
 // Stands for the host of the panel: answers `ps` from `processes`, which a test changes in place,
 // and keeps the panes open in `seen.opened`, which a test empties as the person closing the pane.
+// A surface that seats no pane is `seen.isPlaced = false`.
 function panelHost(on: On, processes: { children: string[]; parents: string[] }, { surfaces = ['terminal'] as RenderSurface[] } = {}) {
-  const seen = { opened: [] as string[], psRuns: 0 }
+  const seen = { opened: [] as string[], isPlaced: true, psRuns: 0 }
 
   on('process.run', ($, e) => {
     seen.psRuns += 1
@@ -335,13 +355,14 @@ function panelHost(on: On, processes: { children: string[]; parents: string[] },
   on('ui.open', ($, e) => {
     seen.opened.push(e.id)
 
-    return { value: { isPlaced: true } }
+    return { value: seen.isPlaced ? { isPlaced: true } : { isPlaced: false, reason: 'the attached surface places no panes' } }
   })
   on('ui.panes', () => ({
-    value: seen.opened.map(id => ({ id, title: id, isShown: true, isFocused: false, isPlaced: true })),
+    value: seen.opened.map(id => ({ id, title: id, isShown: true, isFocused: false, isPlaced: seen.isPlaced })),
   }))
   on('command.register', ($, e) => ({ value: { command: e.name } }))
   on('session.start', ($, e) => ({ cwd: e.cwd }))
+  on('session.end', ($, e) => ({ sessionId: e.sessionId }))
   on('session.surfaces', () => ({ value: surfaces }))
   on('session.id', () => ({ value: 's1' }))
 
@@ -385,6 +406,26 @@ test('two inhibitors of one session with a claude parent are both a duplicate', 
   expect(lines).toContain('duplicate: one session holds two blocks. This is a defect of the plugin.')
 })
 
+// `claude --resume` in two terminals: each process holds the one block it owes.
+test('one session open in two Claude processes holds two active blocks', async ($, on) => {
+  mock.clock(on)
+  panelHost(on, {
+    children: [
+      `  101   11    97 ${INHIBIT} --why=Claude session s1 --mode=block sleep 1800`,
+      `  104   12     5 ${INHIBIT} --why=Claude session s1 --mode=block sleep 1800`,
+    ],
+    parents: ['   11 claude', '   12 claude'],
+  })
+
+  await $.session.start(TERMINAL)
+  await $.command.run(TYPED)
+  const ui = await $.ui.mount(PANEL)
+  const lines = (await ui.findAll({ type: 'Text' })).map(line => line.text ?? '')
+
+  expect(lines.filter(line => line.trim() === '● active')).toHaveLength(2)
+  expect(lines.filter(line => line.trim() === '● duplicate')).toEqual([])
+})
+
 test('the open pane follows the inhibitors as they change', async ($, on) => {
   const clock = mock.clock(on)
   const processes = { children: CHILDREN, parents: PARENTS }
@@ -410,6 +451,53 @@ test('a closed pane reads the inhibitors no more', async ($, on) => {
   await clock.advance(REFRESH_MS * 3)
 
   expect(seen.psRuns).toBe(psRuns)
+})
+
+// A /clear ends the session and keeps the pane; no `session.start` follows it.
+test('the open pane follows the inhibitors after a /clear', async ($, on) => {
+  const clock = mock.clock(on)
+  const processes = { children: CHILDREN, parents: PARENTS }
+  panelHost(on, processes)
+
+  await $.session.start(TERMINAL)
+  await $.command.run(TYPED)
+  const ui = await $.ui.mount(PANEL)
+  await $.session.end({ reason: 'clear', sessionId: 's1', resume: { id: 's1' } })
+  processes.children = []
+  await clock.advance(REFRESH_MS)
+
+  expect((await ui.findAll({ type: 'Text' })).map(line => line.text)).toEqual([...HEADER, ...NO_BLOCK])
+})
+
+// A reload starts the module again and keeps the pane.
+test('a pane that stayed open over a reload is followed again', async ($, on) => {
+  const clock = mock.clock(on)
+  const seen = panelHost(on, { children: CHILDREN, parents: PARENTS })
+  seen.opened = ['keep-awake-info']
+
+  await $.session.start(TERMINAL)
+  await clock.advance(REFRESH_MS)
+
+  expect(seen.psRuns).toBe(2)
+})
+
+test('a pane that waits undrawn gets the text, and is followed once a surface seats it', async ($, on) => {
+  const clock = mock.clock(on)
+  const seen = panelHost(on, { children: CHILDREN, parents: PARENTS })
+  seen.isPlaced = false
+
+  await $.session.start(TERMINAL)
+  const answer = await $.command.run(TYPED)
+  const psRuns = seen.psRuns
+  await clock.advance(REFRESH_MS)
+
+  expect(answer.text).toBe([...INFO.slice(0, 2), '', ...INFO.slice(2, 6), '', ...INFO.slice(6)].join('\n'))
+  expect(seen.psRuns).toBe(psRuns)
+
+  seen.isPlaced = true
+  await clock.advance(REFRESH_MS)
+
+  expect(seen.psRuns).toBe(psRuns + 2)
 })
 
 test('a headless session gets the inhibitors as text and no pane', async ($, on) => {

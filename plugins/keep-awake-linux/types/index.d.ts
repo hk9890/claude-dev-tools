@@ -1,7 +1,6 @@
 export type KeepAwakeInhibitor = {
   session: string
   pid: number
-  parent: string
   ageSeconds: number
   status: 'active' | 'orphan' | 'duplicate'
   isThisSession: boolean

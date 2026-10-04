@@ -113,7 +113,8 @@ function blockSleep($: EngineInterface, idleMs: number) {
 async function loadInhibitors($: EngineInterface): Promise<KeepAwakeInhibitor[] | string> {
   try {
     const thisSession = await $.session.id()
-    const children = await $.process.run(['ps', '-C', 'systemd-inhibit', '-o', 'pid=,ppid=,etimes=,args='])
+    // -ww: an exported COLUMNS cuts the arguments off before --who.
+    const children = await $.process.run(['ps', '-C', 'systemd-inhibit', '-ww', '-o', 'pid=,ppid=,etimes=,args='])
     const held = [...children.stdout.matchAll(/^\s*(\d+)\s+(\d+)\s+(\d+)\s+(.*)$/gm)]
       .filter(([, , , , args = '']) => args.includes(WHO))
       .map(([, pid, parentPid, ageSeconds, args = '']) => ({
@@ -128,20 +129,17 @@ async function loadInhibitors($: EngineInterface): Promise<KeepAwakeInhibitor[] 
     }
 
     const parents = await $.process.run(['ps', '-o', 'pid=,comm=', '-p', held.map(one => one.parentPid).join(',')])
-    const parentNames = new Map(
-      [...parents.stdout.matchAll(/^\s*(\d+)\s+(.*)$/gm)].map(([, pid, name = '']) => [Number(pid), name] as const),
-    )
-    const owned = held.map(({ parentPid, ...one }) => ({ ...one, parent: parentNames.get(parentPid) ?? 'gone' }))
+    const claudePids = new Set([...parents.stdout.matchAll(/^\s*(\d+)\s+claude$/gm)].map(([, pid]) => Number(pid)))
 
-    return owned.map(one => ({
+    // One session open in two Claude processes holds two blocks by right: a duplicate has one parent.
+    return held.map(({ parentPid, ...one }) => ({
       ...one,
       isThisSession: one.session === thisSession,
-      status:
-        one.parent !== 'claude'
-          ? 'orphan'
-          : owned.some(other => other !== one && other.session === one.session && other.parent === 'claude')
-            ? 'duplicate'
-            : 'active',
+      status: !claudePids.has(parentPid)
+        ? 'orphan'
+        : held.some(other => other.pid !== one.pid && other.session === one.session && other.parentPid === parentPid)
+          ? 'duplicate'
+          : 'active',
     }))
   } catch (error) {
     return `ps did not run (${String(error)}).`
@@ -204,15 +202,22 @@ function infoText(list: KeepAwakeInhibitor[]) {
   return [headline, detail, ...(rows.length === 0 ? [] : ['', columns, TABLE_RULE, ...table, '', ...notes])].join('\n')
 }
 
-function stopPanelRefresh() {
-  panelRefresh?.cancel()
-  panelRefresh = undefined
+function startPanelRefresh($: EngineInterface) {
+  panelRefresh ??= $.clock.every(REFRESH_MS, () => void refreshPanel($))
 }
 
+// The timer runs for as long as the engine lists the pane: a /clear and a reload both keep it open.
 async function refreshPanel($: EngineInterface) {
-  if (!(await $.ui.panes()).some(pane => pane.id === PANEL)) {
-    stopPanelRefresh()
+  const pane = (await $.ui.panes()).find(one => one.id === PANEL)
 
+  if (pane === undefined) {
+    panelRefresh?.cancel()
+    panelRefresh = undefined
+
+    return
+  }
+
+  if (!pane.isPlaced) {
     return
   }
 
@@ -237,6 +242,11 @@ export const register: Register = (on, options) => {
       description: 'Show in a pane which Claude sessions block system sleep',
     })
 
+    // A reload drops the timer and keeps the pane.
+    if ((await $.ui.panes()).some(pane => pane.id === PANEL)) {
+      startPanelRefresh($)
+    }
+
     return next(e)
   })
 
@@ -253,12 +263,11 @@ export const register: Register = (on, options) => {
 
     await update($, inhibitors, () => loaded)
     const { isPlaced } = await $.ui.open({ id: PANEL, title: TITLE })
+    startPanelRefresh($)
 
     if (!isPlaced) {
       return { text: infoText(loaded) }
     }
-
-    panelRefresh ??= $.clock.every(REFRESH_MS, () => void refreshPanel($))
 
     const { headline, detail } = info(loaded)
 
@@ -335,7 +344,6 @@ export const register: Register = (on, options) => {
 
   on('session.end', ($, e, next) => {
     release()
-    stopPanelRefresh()
 
     return next(e)
   })

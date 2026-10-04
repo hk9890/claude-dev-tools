@@ -17,7 +17,7 @@ An agent drives the plugins with the first form — `-p` writes the reply to std
 
 - **Skills** — invoke by *describing the use case*, not by name; confirm it triggers, then check the output.
 - **Mods** — load the one plugin with `claude -p "<prompt>" --plugin-dir plugins/<plugin> --debug-file <file>`; the debug file has a `hooks module <plugin>@inline loaded` line and a line for every hook the engine skipped. [OVERVIEW.md](OVERVIEW.md) has the expression that lists the mods. Then confirm the effect:
-  - `keep-awake-linux` — `claude -p "/keep-awake-info" --plugin-dir plugins/keep-awake-linux`.
+  - `keep-awake-linux` — send any prompt and find `$.process.spawn (keep-awake-linux): systemd-inhibit` in the debug file. `claude -p "/keep-awake-info" --plugin-dir plugins/keep-awake-linux` lists the blocks of the other sessions alone: a command starts no turn, so that run holds none.
   - `tasks` — `claude -p "/tasks-board" --plugin-dir plugins/tasks`.
   - `worktree-flow` — ask for `git worktree add ../x` and read the refusal.
   - `revier` — ask for `revier agent focus no-such-project` and read the refusal; the command moves nothing where the guard fails.
