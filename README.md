@@ -12,7 +12,7 @@ A plugin marketplace for [Claude Code](https://claude.ai/code). Each plugin is a
 | [`challenge`](plugins/challenge/) | Project-agnostic adversarial passes — `grill` (stress-test a plan), `kiss` (cut accidental complexity), `are-you-sure` (re-check finished work), `what-do-you-mean` (re-pitch a message that did not land). |
 | [`github-releases`](plugins/github-releases/) | Language-agnostic GitHub release workflow with quality gates, semver, and release notes. |
 | [`catppuccin-themes`](plugins/catppuccin-themes/) | Catppuccin color themes for Claude Code: Latte, Frappe, Macchiato, Mocha. |
-| [`keep-awake-linux`](plugins/keep-awake-linux/) | A mod that blocks Linux system sleep while Claude Code works, releasing on idle or session exit, with its state in the status line — `keep-awake-inspect` reads what logind holds. Needs Claude Code 2.1.287+. |
+| [`keep-awake-linux`](plugins/keep-awake-linux/) | A mod that blocks Linux system sleep while Claude Code works, releasing on idle or session exit — `/keep-awake-info` shows in a live pane which Claude sessions block sleep. Needs Claude Code 2.1.287+. |
 | [`html-visualization`](plugins/html-visualization/) | Browser HTML that sends the user's response back to Claude — `html-visualize-ask`, `html-visualize-feedback`, `html-visualize-page`. |
 | [`project-auto-work`](plugins/project-auto-work/) | Unattended audits that report but never write code — `test-tests` (mutation-based test-suite strength) and `test-app` (exploratory app testing). |
 | [`instruction-writing`](plugins/instruction-writing/) | Standards for the artifacts a harness reads — `writing-project-docs` (the canonical doc set) and `writing-skills` (skill authoring). |
