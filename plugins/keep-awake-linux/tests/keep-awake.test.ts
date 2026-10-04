@@ -381,7 +381,7 @@ test('two inhibitors of one session with a claude parent are both a duplicate', 
   const ui = await $.ui.mount(PANEL)
   const lines = (await ui.findAll({ type: 'Text' })).map(line => line.text ?? '')
 
-  expect(lines.filter(line => /● duplicate /.test(line))).toHaveLength(2)
+  expect(lines.filter(line => line.trim() === '● duplicate')).toHaveLength(2)
   expect(lines).toContain('duplicate: one session holds two blocks. This is a defect of the plugin.')
 })
 
