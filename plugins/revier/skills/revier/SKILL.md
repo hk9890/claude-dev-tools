@@ -13,7 +13,7 @@ Installed: !`revier version 2>/dev/null || echo "STOP: revier is not on PATH. Te
 
 ## The focus rule
 
-revier also places and raises windows, and the user is typing in one of them while you work. This skill uses five commands, and `--help`. Each leaves every window where it is:
+revier also places and raises windows, and the user is typing in one of them while you work. This skill uses the commands below, and `--help`. Each leaves every window where it is:
 
 | Command | Gives |
 |---|---|
@@ -35,9 +35,12 @@ The JSON is an array with one element per named project. Each element gives:
 - `.project.git_url`: its remote.
 - `.project.remote`: set for a link alone. The path, `.path_exists` and each `.state.dir` are then its host's, not this machine's.
 - `.running`: whether its workspace is open.
-- `.agents[]`: every agent in it, where the table shows one. Each has a `.panel`, a `.state.status` and a `.state.activity`, the title of what it works on. One with a `.ref` sits in a panel on this machine, and one without runs on a link's host. A `.state.dir` is the directory the agent works in now, set where revier knows one other than `.project.path`: a git worktree for example. An agent with no `.state.dir` works in `.project.path`, or revier has no directory for it. A project with no agent has no `.agents`.
+- `.agents[]`: every agent in it, where the table shows one. A project with no agent has no `.agents`. Each agent gives:
+  - `.panel`, `.state.status`, and `.state.activity`, the title of what it works on.
+  - `.ref`: set for an agent in a panel on this machine. One without it runs on a link's host.
+  - `.state.dir`: the directory the agent works in now, set where revier knows one other than `.project.path`: a git worktree for example. An agent without it works in `.project.path`, or revier has no directory for it: read `.project.path` in both cases.
 
-You are the entry in your own project, the one `revier status` names, whose `.panel` equals `$KITTY_WINDOW_ID` where the `runtime` line of `revier status` says kitty, or `$TMUX_PANE` where it says tmux. Every other entry is another agent, in your own project too.
+Your own entry is in the project that `revier status` names. Its `.panel` equals `$KITTY_WINDOW_ID` where the `runtime` line of `revier status` says kitty, or `$TMUX_PANE` where it says tmux. Every other entry is another agent, in your own project too.
 
 ## Another project's source
 
