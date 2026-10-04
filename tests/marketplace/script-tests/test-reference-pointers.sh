@@ -40,8 +40,9 @@ for ref in "${REFS[@]}"; do
   base="$(basename "$ref")"
 
   # -l stops at the first hit per file; excluding the reference itself keeps a
-  # file that names its own filename from vouching for itself.
-  hit="$(grep -rlF "$base" "$REPO_ROOT/plugins/$plugin" | grep -vxF "$ref" | head -n 1)"
+  # file that names its own filename from vouching for itself. A NOTICE.md
+  # credits a file's source and no skill reads it, so it vouches for nothing.
+  hit="$(grep -rlF --exclude=NOTICE.md "$base" "$REPO_ROOT/plugins/$plugin" | grep -vxF "$ref" | head -n 1)"
 
   if [[ -n "$hit" ]]; then
     ok "$rel <- ${hit#"$REPO_ROOT"/}"
