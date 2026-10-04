@@ -13,9 +13,10 @@ Interview the user relentlessly until you reach a shared understanding. Map the 
 
 Work the tree in **rounds**. The **frontier** is every decision whose prerequisites are already
 settled — the questions you can ask *now* without guessing at answers you have not heard yet. Ask
-the whole frontier, then wait for the answers before recomputing it. Each round's answers reshape
-the tree: settled decisions push the frontier outward and unblock the questions that depended on
-them.
+the whole frontier, then wait for the answers before recomputing it. A question whose answer
+depends on another question still open in this round belongs to a later round. Each round's
+answers reshape the tree: settled decisions push the frontier outward and unblock the questions
+that depended on them.
 
 ## Asking a round
 
