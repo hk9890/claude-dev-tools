@@ -202,13 +202,39 @@ CREDENTIAL_RE = re.compile(
 
 LONG_HEX_RE = re.compile(r"\b[0-9a-fA-F]{32,}\b")
 
-# Patterns that suggest a commit was made
-COMMIT_RE = re.compile(r"\bcommit\b|\bgit commit\b", re.IGNORECASE)
-PR_RE = re.compile(r"\bpull.?request\b|\bgh pr create\b|\bpr url\b", re.IGNORECASE)
+# Outcome signals are read from the Bash command that ran, never from prose or
+# from tool output: text that only names a commit, a pull request or a test
+# command (a question, a file the model read) is not an outcome.
+#
+# A tool counts only where a command starts — the start of the string, after a
+# shell separator or `do`/`then`/`else` — optionally behind launchers
+# (`timeout 60`, `env`, `VAR=x`, `python -m`, `mise exec --`). `grep pytest f`
+# and `git commit -m "Fix pytest"` name a test tool without running it. The
+# cost is a run wrapped in quotes (`ssh host 'pytest'`), which is not seen.
+# Heredoc bodies are dropped first: they are data for the command, and a body
+# line that starts with a tool name would otherwise sit at a command start.
+HEREDOC_BODY_RE = re.compile(
+    r"(<<-?\s*['\"]?(\w+)['\"]?[^\n]*)\n.*?^\s*\2[ \t]*$", re.DOTALL | re.MULTILINE
+)
+_CMD_START = (
+    r"(?:^|&&|\|\||[;|(\n]|\$\(|\b(?:do|then|else)\s)\s*"
+    r"(?:(?:timeout\s+\S+|time|sudo|nice|exec|command|env(?:\s+-u\s+\S+)*"
+    r"|mise\s+(?:exec|x)\s+--|uv\s+run|poetry\s+run|[^\s=]*python[\d.]*\s+-m"
+    r"|[^\s=]+\.sh|\w+=\S*)\s+)*"
+)
 
-# Patterns that suggest tests were run
+# `git commit`, with git's own options allowed before the subcommand
+# (`git -C <dir> commit`, `git -c k=v commit`). The lookahead ends the word
+# at `commit`: `commit-graph`, `commit-tree` and a `-c commit.gpgsign=false`
+# key are not the subcommand.
+COMMIT_CMD_RE = re.compile(
+    _CMD_START + r"git(?:\s+-\S+(?:\s+[^-\s]\S*)?)*\s+commit(?![\w.-])"
+)
+PR_CMD_RE = re.compile(_CMD_START + r"gh\s+pr\s+create\b")
+
 TEST_RUN_RE = re.compile(
-    r"\b(pytest|npm test|go test|cargo test|make test|bun test|mise r(un)? test|\.\/test)\b",
+    _CMD_START
+    + r"(pytest|npm test|go test|cargo test|make test|bun test|mise r(un)? test|\./test)\b",
     re.IGNORECASE,
 )
 TEST_PASS_RE = re.compile(
@@ -232,6 +258,12 @@ CANCELLED_PARALLEL_RE = re.compile(r"cancelled:\s*parallel tool call", re.IGNORE
 HARNESS_REFUSAL_RE = re.compile(
     r"this session is isolated in the worktree", re.IGNORECASE
 )
+
+# A user rejection of a tool use. The harness writes the phrase at the start of
+# the result, and it counts only there and only under is_error: a command that
+# ran can print the phrase (this repo's own tests and docs contain it), and so
+# can a file the model read.
+USER_REJECTION_RE = re.compile(r"\s*The user doesn't want to proceed with this tool use")
 
 # The skill-load banner, which the harness writes as a user text block before
 # the first attributed turn of an episode. In a cached install its path carries
@@ -397,7 +429,7 @@ class Episode:
         self.ended_in_commit = False
         self.ended_in_pr = False
         self.tests_run = False
-        self._tests_pass_seen = False  # raw TEST_PASS_RE hit; see tests_passed
+        self.tests_passed = False
 
         # Trigger classification
         self.trigger_type = "ambient"  # or "explicit"
@@ -409,16 +441,6 @@ class Episode:
     def friction_score(self):
         """Normalized friction score (0=smooth, higher=rockier)."""
         return self._compute_friction()
-
-    @property
-    def tests_passed(self):
-        """True only when a pass indicator AND a detected test run coincide.
-
-        TEST_PASS_RE alone false-positives on incidental "pass" text in
-        unrelated tool output; gating on tests_run keeps the pair coherent
-        (never "passed" without a run).
-        """
-        return self.tests_run and self._tests_pass_seen
 
     def to_summary_record(self):
         """Return a JSON-serializable summary dict (no raw content)."""
@@ -623,6 +645,10 @@ def parse_file(filepath, alias_to_canonical, seen_uuids=None):
     # banner precedes the episode it opens, so the map is always populated by
     # the time an episode starts.
     plugin_versions = {}
+    # tool_use id -> Bash command, held until its tool_result arrives, so the
+    # result can be read against the command that produced it (the outcome
+    # signals).
+    bash_commands = {}
 
     session_id = os.path.splitext(os.path.basename(filepath))[0]
     # filepath should be used as-is for the source_file field (full path)
@@ -730,18 +756,15 @@ def parse_file(filepath, alias_to_canonical, seen_uuids=None):
                     # Count AskUserQuestion
                     if tool_name == "AskUserQuestion":
                         current.ask_user_questions += 1
+                    if tool_name == "Bash":
+                        command = block.get("input", {}).get("command")
+                        if isinstance(command, str):
+                            bash_commands[block.get("id")] = HEREDOC_BODY_RE.sub(r"\1", command)
                     # Record for retry detection
                     current.record_tool_call(tool_name, block.get("input", {}))
 
                 last_asst_content_blocks = msg_content
             in_first_turn_of_episode = False
-
-            # Outcome signals from assistant message text
-            msg_str = json.dumps(record.get("message", {}))
-            if COMMIT_RE.search(msg_str):
-                current.ended_in_commit = True
-            if PR_RE.search(msg_str):
-                current.ended_in_pr = True
 
         elif rtype == "user":
             msg = record.get("message", {})
@@ -773,36 +796,38 @@ def parse_file(filepath, alias_to_canonical, seen_uuids=None):
                     btype = block.get("type")
 
                     if btype == "tool_result":
-                        block_content = block.get("content", "")
+                        result_text = _tool_result_text(block.get("content", ""))
                         is_error = block.get("is_error") is True
-                        # Error signal: is_error == True, EXCEPT two kinds of
+                        # Error signal: is_error == True, EXCEPT three kinds of
                         # is_error result where no tool ever ran:
+                        #   - harness guard refusals, counted in harness_refusals
                         #   - cancelled siblings of a parallel tool batch, which the
                         #     user interrupted ("Cancelled: parallel tool call")
-                        #   - harness guard refusals, counted in harness_refusals
-                        # Counting either one inflates tool_errors (weighted 3.0).
+                        #   - user rejections, counted in permission_denials
+                        # Counting any of them inflates tool_errors (weighted 3.0).
+                        tool_ran = True
                         if is_error:
-                            result_text = _tool_result_text(block_content)
                             if HARNESS_REFUSAL_RE.search(result_text):
                                 current.harness_refusals += 1
-                            elif not CANCELLED_PARALLEL_RE.search(result_text):
+                                tool_ran = False
+                            elif CANCELLED_PARALLEL_RE.search(result_text):
+                                tool_ran = False
+                            elif USER_REJECTION_RE.match(result_text):
+                                current.permission_denials += 1
+                                tool_ran = False
+                            else:
                                 current.tool_errors += 1
 
-                        # Permission denial: user rejected the tool use.
-                        # Guard with is_error == True to avoid false positives when
-                        # file content read by the model happens to contain the phrase
-                        # (e.g. docs/MONITORING.md describes the detector strings).
-                        if (isinstance(block_content, str)
-                                and is_error
-                                and ("doesn't want to proceed" in block_content
-                                     or "tool use was rejected" in block_content.lower())):
-                            current.permission_denials += 1
-                        # Outcome signals from tool output
-                        if isinstance(block_content, str):
-                            if TEST_RUN_RE.search(block_content):
-                                current.tests_run = True
-                            if TEST_PASS_RE.search(block_content):
-                                current._tests_pass_seen = True
+                        command = bash_commands.pop(block.get("tool_use_id"), "")
+                        if tool_ran and TEST_RUN_RE.search(command):
+                            current.tests_run = True
+                            if not is_error and TEST_PASS_RE.search(result_text):
+                                current.tests_passed = True
+                        if not is_error:
+                            if COMMIT_CMD_RE.search(command):
+                                current.ended_in_commit = True
+                            if PR_CMD_RE.search(command):
+                                current.ended_in_pr = True
 
                         # Interruption signal: toolUseResult.interrupted == True
                         # Note: toolUseResult is at the top-level of the user record,
