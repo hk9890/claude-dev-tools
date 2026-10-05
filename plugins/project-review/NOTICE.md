@@ -16,6 +16,11 @@ skill), used under the MIT license:
   `improve-codebase-architecture` skill in
   [v1.2.0](https://github.com/mattpocock/skills/releases/tag/v1.2.0)
 
+`skills/project-review-session/SKILL.md` is adapted from the `retro` skill of the same source at
+commit [`d81f3a1`](https://github.com/mattpocock/skills/blob/d81f3a1/skills/engineering/retro/SKILL.md):
+the text is upstream's, with the frontmatter, the style-guide skills it loads, and the name of
+the coding-standards document changed to fit this plugin.
+
 ## MIT License (mattpocock/skills)
 
 Copyright (c) 2026 Matt Pocock
