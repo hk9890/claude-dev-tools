@@ -105,7 +105,8 @@ catches the duties a change created and did not discharge. Documentation accurac
 staleness → `project-review-docs`; empirical test-suite
 strength — mutation kill rate, flakiness, unit-test isolation, which lines the tests
 actually execute → `project-auto-work:test-tests`, which proves what this skill can
-only read; pure formatting → linters. Challenging a single design decision
+only read; pure formatting → linters; what one coding session shows the agent's
+environment lacks → `project-review-session`. Challenging a single design decision
 interactively is `challenge:kiss` — the architecture dimension here is
 its audit-mode counterpart, not a replacement.
 
