@@ -20,7 +20,9 @@ skill), used under the MIT license:
 commit [`d81f3a1`](https://github.com/mattpocock/skills/blob/d81f3a183412e71a5b1e84ca21bc1a35eea03a60/skills/engineering/retro/SKILL.md):
 the text is upstream's, with the frontmatter, the style-guide skills it names, and the name of
 the coding-standards document changed to fit this plugin. Upstream's step 1, which loads its
-style guide, is removed, and the step that reads the session names `$ARGUMENTS`.
+style guide, is removed; each remaining step gains a completion criterion, and the step that
+reads the session names `$ARGUMENTS`; the Files section is shortened to what the two
+`instruction-writing` skills do not already own.
 
 ## MIT License (mattpocock/skills)
 
