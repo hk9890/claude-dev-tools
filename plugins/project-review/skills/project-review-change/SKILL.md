@@ -131,7 +131,7 @@ Correctness bugs, reuse, and simplification → the general code review. Whether
 documents themselves are right → `project-review-docs`. Rule debt in files this change
 never touched, plus consistency, layout and architecture → `project-review-codebase`,
 whose rules dimension runs this same procedure over the whole tree. Empirical test-suite
-strength → `project-auto-work:test-tests`. What one coding session shows the agent's
-environment lacks → `project-review-session`.
+strength → `project-auto-work:test-tests`. A retrospective on one coding session →
+`project-review-session`.
 
 **This review never edits.** Every finding is a report the developer acts on.
