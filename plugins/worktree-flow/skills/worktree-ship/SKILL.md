@@ -18,6 +18,8 @@ A run **resumes**: it can start in the main checkout with nothing done, in a wor
 
 Read the project's own workflow (AGENTS.md or CLAUDE.md routing, a change-workflow or contributing doc, `CLAUDE.local.md`, a PR template) and record: the remote to push to, the branch naming convention, the **gates** a PR needs green plus the setup a fresh checkout needs, how the product is run by hand (a running doc such as `docs/RUNNING.md`), the commit style, and the PR template where there is one. Where the project documents a step, its rule replaces the generic one below.
 
+Done when each item of that list is recorded, or noted as not documented.
+
 ## 2. Enter a worktree
 
 Where `git rev-parse --path-format=absolute --git-dir --git-common-dir` prints two different paths, the session is in a worktree already. Look up its PR with `gh pr view <pushed-branch> --json number,state,headRefOid,mergeable,body`:
@@ -31,7 +33,7 @@ Otherwise:
 2. Call `EnterWorktree` with a bare kebab-case name, for example `fix-login` — before starting any subagent: a subagent already running when the session enters a worktree loses its Bash.
 3. Run the setup from step 1.
 
-**Shipped already** — `git status --porcelain` prints nothing, the PR is `OPEN` with a `headRefOid` equal to `git rev-parse HEAD`, the **Review** line of its body names that commit, and, where the run has an argument, the PR's diff carries that whole change. Then go to step 8 and change nothing; where `mergeable` is `CONFLICTING`, report that the PR needs the base branch merged in before it can merge.
+**Shipped already** — `git status --porcelain` prints nothing, the PR is `OPEN` with a `headRefOid` equal to `git rev-parse HEAD`, the **Review** line of its body names that commit, and, where the run has an argument, the PR's diff carries that whole change. A **Review** line that records the rules review as skipped does not count while `project-review:project-review-change` is in your available skills: go to step 7 for the rules review, and the code review stands where that review applies no fix. Otherwise go to step 8 and change nothing; where `mergeable` is `CONFLICTING`, report that the PR needs the base branch merged in before it can merge.
 
 `<pushed-branch>` is the branch's upstream without the remote name (`git rev-parse --abbrev-ref @{upstream}`): `gh` finds a PR by the local branch name, and step 6 can push under another one. With no upstream, or with the base branch as upstream, nothing was pushed: there is no `<pushed-branch>` and no PR.
 
@@ -51,9 +53,13 @@ Run the built product the way step 1 recorded, with the `run` skill where the pr
 
 Fix what the drive shows broken, then return to step 4. Keep each command and what it showed for the PR body. A part that cannot be driven here, for example one that needs an interactive terminal, is reported as not driven, with what the user must check by hand.
 
+Done when each part of the change is driven and shows nothing broken, or is reported as not driven with what the user must check by hand.
+
 ## 6. Commit, push, open the PR
 
 Commit in the project's style. Push with upstream tracking: to `<pushed-branch>` where there is one, else under the project's branch convention where it has one (`git push -u <remote> HEAD:<branch-name>`). Read [the PR body template](references/pr-body.md) and write the body in its shape to a file outside the worktree. Open the PR with `gh pr create --body-file`; where step 2 found an `OPEN` PR, bring its body up to date with `gh pr edit <pr-number> --body-file`.
+
+Done when `git status --porcelain` prints nothing, and `gh pr view <pushed-branch> --json state,headRefOid`, with `<pushed-branch>` read again after the push, prints `OPEN` and the commit of `git rev-parse HEAD`.
 
 ## 7. Review and fix
 
@@ -69,3 +75,5 @@ Done when the rules review has finished or was skipped under item 1, the code re
 ## 8. Report and stop
 
 Report the PR URL, the worktree path, each gate and each drive with its result, the review findings applied, the open questions of the rules review and the fixes it did not apply, and every step this run skipped. Stay in the worktree: `/worktree-flow:worktree-merge` removes it.
+
+Done when the report holds each of these items, or says that it does not apply.

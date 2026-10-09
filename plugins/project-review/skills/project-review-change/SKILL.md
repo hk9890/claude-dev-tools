@@ -6,8 +6,7 @@ argument-hint: "[--fix] [pr-number|branch|path]"
 ---
 
 Review of one change against **this project's own documents**. It asks a single
-question: does the change do what the project wrote down that it must? Correctness bugs,
-design, and simplification are a different review and are not judged here.
+question: does the change do what the project wrote down that it must?
 
 The review is read-only. With `--fix`, step 5 then applies the fixes it settled.
 
@@ -48,9 +47,9 @@ One adversarial agent does the whole review. There is no workflow and no level a
    Then take the diff — `git diff HEAD` for a dirty tree, `git diff <base>...<branch>` for a
    branch (`HEAD` for the current one), `gh pr diff <n>` for a pull request. `git diff HEAD`
    holds the staged and the unstaged changes; an untracked file is in no diff, so add each
-   one `git status` printed to the file list. Use the three-dot form for a branch so the
-   comparison is against the merge base, not against whatever the base branch has since
-   gained.
+   one `git ls-files --others --exclude-standard` prints to the file list. Use the three-dot
+   form for a branch so the comparison is against the merge base, not against whatever the
+   base branch has since gained.
 
    **Prove the subject exists before you spawn anything.** Step 3 tells the reviewer agent
    to take the diff itself, so a ref that does not resolve or a range with no files in it
@@ -69,12 +68,14 @@ One adversarial agent does the whole review. There is no workflow and no level a
 
    `--fix` edits the working tree, so it holds only for a subject checked out here: the
    default subject, with or without a path, or a pull request or branch whose head commit
-   is `git rev-parse HEAD` (`gh pr view <n> --json headRefOid` prints a pull request's).
-   For any other subject the run goes on as one without `--fix`: say so now, with the
-   reason.
+   is `git rev-parse HEAD` (`gh pr view <n> --json headRefOid` prints a pull request's)
+   while `git status --porcelain` prints nothing: other edits in the tree make its files
+   differ from the diff under review. For any other subject the run goes on as one without
+   `--fix`: say so now, with the reason.
 
-   A repository with no `AGENTS.md` and no document it routes to has no standard to
-   measure against. Say so and stop here rather than paying for an agent run to discover it.
+   A repository with neither `AGENTS.md` nor `CLAUDE.md`, or with no document they route
+   to, has no standard to measure against. Say so and stop here rather than paying for an
+   agent run to discover it.
 
    Done when you can name the subject in one sentence, list the files it touches, and say
    whether `--fix` still holds.
@@ -131,7 +132,8 @@ One adversarial agent does the whole review. There is no workflow and no level a
 
    Done when the review carries one of the four verdict labels and every entry in
    `## Recommended actions` is tagged `settled` or `open`. An entry the reviewer left
-   untagged counts as `open`.
+   untagged counts as `open`. Where the reviewer reports instead that the project has no
+   standard to measure against, relay that and end the run.
 
 4. **Relay the review.** Surface the agent's verdict and findings as it wrote them; do not
    re-derive or re-label them. Then follow `<SKILL_DIR>/../../references/decision-split.md`
@@ -157,18 +159,13 @@ One adversarial agent does the whole review. There is no workflow and no level a
    questions step 4 put to the user, and `## Suggested rule additions` stay proposals.
 
    Where an edit was made, run every command under `## Checks run` again on the edited
-   tree and report each result. A command that passed in the review and fails now means an
-   action was not settled. Undo the batch one action at a time, the last one first, and
-   run the command after each, until it passes: name each undone action as not applied,
-   with the command. Where it still fails with the whole batch undone, the batch is not
-   the cause: report the command as failing without it. Undo by editing: the tree can hold
-   uncommitted work that a restore from git destroys.
+   tree and report each result. A command that passed in the review and fails now goes
+   first in the report: the batch stays in the tree, for the caller to correct.
 
    Leave the result uncommitted: the commit belongs to whoever asked for the review.
 
    Done when every settled action is applied, or named with the reason it was not, and
-   every command that passed in the review passes on the result, or is reported as failing
-   with the batch undone.
+   every command under `## Checks run` has run again, with its result reported.
 
 ## Not covered
 

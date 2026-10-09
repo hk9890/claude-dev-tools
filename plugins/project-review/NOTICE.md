@@ -19,7 +19,8 @@ skill), used under the MIT license:
 `skills/project-review-session/SKILL.md` is adapted from the `retro` skill of the same source at
 commit [`d81f3a1`](https://github.com/mattpocock/skills/blob/d81f3a183412e71a5b1e84ca21bc1a35eea03a60/skills/engineering/retro/SKILL.md):
 the text is upstream's, with the frontmatter, the style-guide skills it names, and the name of
-the coding-standards document changed to fit this plugin. Upstream's step 1, which loads its
+the coding-standards document changed to fit this plugin; the first use of that name points at
+the Files section. Upstream's step 1, which loads its
 style guide, is removed; each remaining step gains a completion criterion, and the step that
 reads the session names `$ARGUMENTS`, the directory its extracts go to, the records it reads
 in full, and the repo under review, and the last step reports what was not read; the Files section

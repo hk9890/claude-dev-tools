@@ -31,7 +31,7 @@ Read what the project already carries and record two lists.
 | `TESTING.md` | a test suite, a test task, a lint or format gate, or a CI job that runs one |
 | `RELEASING.md` | a release workflow, a publish or tag script, or a version manifest the project bumps |
 | `CHANGE-WORKFLOW.md` | a PR template, commit hooks, branch protection, or a stated commit/branch convention |
-| `REVIEWING.md` | a review rule a generic reviewer could not guess, or a convention visible across the source that no tool checks — comments, naming, error handling |
+| `REVIEWING.md` | a review rule or a source-wide convention — comments, naming, error handling — where no tool checks it and a generic reviewer could not guess it |
 | `RUNNING.md` | an entrypoint a human starts by hand — CLI, server, app |
 | `MONITORING.md` | logs, metrics, traces, or usage data the project produces and someone reads |
 
