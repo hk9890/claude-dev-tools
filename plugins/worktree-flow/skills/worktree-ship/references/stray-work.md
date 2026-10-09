@@ -10,7 +10,7 @@ Stop and ask the user, with nothing moved yet, in three cases:
 
 - **The run has an argument.** Show `git status --short` and `git log --oneline @{upstream}..HEAD`, and ask whether that work belongs to the change (leave out the log where the branch has no upstream). Where it does not, leave it where it is, go on with step 2 of the skill, and name the work left on the main checkout in the report of step 8.
 - **The main checkout is on another branch than `<base-branch>`**, and that branch is not a `worktree-ship-stray/*` one. Ask which change to ship, and move nothing off that branch unless the user says so.
-- **A `worktree-ship-stray/*` branch exists.** A stopped run left it. Show the branch and its `git log --oneline <base-branch>..<branch>`, and ask whether this run continues that move. Where `<base-branch>` holds uncommitted files as well, they are newer than that move: ask what happens to them, and continue only once that `git status` command prints nothing. Where the run continues it, the worktree's name is the last segment of the branch, and **Move out** goes on where it stopped: at item 2 where the checkout is on that branch, at item 4 where it is on `<base-branch>`.
+- **A `worktree-ship-stray/*` branch exists.** A stopped run left it. Show the branch and its `git log --oneline <base-branch>..<branch>`, and ask whether this run continues that move. Where `<base-branch>` holds uncommitted files as well, they are newer than that move: ask what happens to them, and continue only once `git status --porcelain -- ':/' ':(top,exclude).claude/worktrees'` prints nothing. Where the run continues it, the worktree's name is the last segment of the branch, and **Move out** goes on where it stopped: at item 2 where the checkout is on that branch, at item 4 where it is on `<base-branch>`.
 
 With no argument, on `<base-branch>`, and with no such branch, the stray work is the change: move it without a question.
 
@@ -23,7 +23,7 @@ In the main checkout:
 3. `git switch <base-branch>`.
 4. Where the branch has an upstream and `git rev-list @{upstream}..HEAD` prints commits: once that `git status` command prints nothing and `git merge-base --is-ancestor HEAD worktree-ship-stray/<worktree-name>` succeeds, `git reset --hard @{upstream}`.
 
-Where git refuses a command, stop and ask the user: the reset destroys what the branch does not hold.
+Where git refuses a command, or the check of item 4 fails, stop and ask the user: the reset destroys what the branch does not hold.
 
 Done when that `git status` command prints nothing, and `git rev-list @{upstream}..HEAD` prints nothing where the branch has an upstream. Then go on with step 2 of the skill, which enters the worktree. A worktree a stopped run left under the name is entered with its `path`.
 
