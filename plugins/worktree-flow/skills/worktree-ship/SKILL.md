@@ -42,7 +42,7 @@ Otherwise the session is in the main checkout:
 4. Call `EnterWorktree` with the name, or with the `path` of the worktree a stopped run left under that name — before starting any subagent: a subagent already running when the session enters a worktree loses its Bash. Then **bring in** the stray work.
 5. Run the setup from step 1.
 
-**Bring in** — in the worktree, whose name is the last path segment of `git rev-parse --show-toplevel`, for the `<worktree-name>-stray` branch and the stash entry whose subject is `On <branch>: <worktree-name>` (`git stash list --format='%H %gd %gs'` prints its commit, its `stash@{n}`, and its subject), each where it exists:
+**Bring in** — in the worktree, whose name is the last path segment of `git rev-parse --show-toplevel`, for the `<worktree-name>-stray` branch and the stash entry whose subject ends in `: <worktree-name>` (`git stash list --format='%H %gd %gs'` prints its commit, its `stash@{n}`, and its subject), each where it exists:
 
 1. `git merge <worktree-name>-stray`: a new worktree fast-forwards, and a worktree that holds the commits already stays as it is.
 2. `git stash apply <stash-commit>`. Once `git status --porcelain` lists the files the stash held, list the stash again and `git stash drop` the `stash@{n}` of that commit: another session can push an entry in between.
