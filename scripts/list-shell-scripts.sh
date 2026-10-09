@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# dummy-case2: committed stray line
 # list-shell-scripts.sh — the tracked-file set `mise run lint` and the CI `shellcheck`
 # job both check. Shared here so the two cannot drift apart (CHANGE-WORKFLOW.md states
 # that the job mirrors the gate).
