@@ -13,7 +13,7 @@ Use the `commit-commands:commit` skill (or `commit-commands:commit-push-pr`) for
 These gates apply at PR-open time; re-run at merge time only if new commits landed since the last green run. Each is named for what it checks, and the same names are used in [RELEASING.md](RELEASING.md).
 
 - **Test-Run** (always) — `bash tests/run-all.sh` must pass. Mirrored by the CI `test` job.
-- **Plugin-Structure-Check** (plugin changes only) — run `plugin-dev:plugin-validator` on every changed plugin; zero errors required. Skip it when the change touches none of `.claude-plugin/plugin.json`, `agents/`, `skills/`, `commands/`, or `hooks/`. Put its summary line in the PR body: the validator is an agent, so no CI job can enforce it and nothing audits it afterwards. It ships in the external `plugin-dev` plugin ([TESTING.md](TESTING.md)).
+- **Plugin-Structure-Check** (plugin changes only) — run `plugin-dev:plugin-validator` on every changed plugin; zero errors required. Skip it when the change touches none of `.claude-plugin/plugin.json`, `agents/`, `skills/`, `commands/`, or `hooks/`. Put its summary line in the PR body: the validator is an agent, so no CI job can enforce it and nothing audits it afterwards. A result stands for the commit it ran on: rerun it for a plugin whose files changed since, and name the commit in the summary line. It ships in the external `plugin-dev` plugin ([TESTING.md](TESTING.md)).
 - **Docs-Route-Check** (doc changes only) — `validate-routes.py` must exit 0; the Docs validation section in TESTING.md carries the commands.
 - **Shell-Lint** (any shell script change: a `*.sh`, or an extensionless script under a plugin's `bin/`) — `mise run lint` must pass. Mirrored by the CI `shellcheck` job.
 
