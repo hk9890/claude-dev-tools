@@ -10,3 +10,5 @@ for dir in "$REPO_ROOT/plugins"/*/; do
 done
 
 exec claude "${plugin_args[@]}" "$@"
+# dummy-case3: part one
+# dummy-case3: part two
