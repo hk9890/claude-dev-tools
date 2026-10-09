@@ -29,7 +29,7 @@ Where `git rev-parse --path-format=absolute --git-dir --git-common-dir` prints t
 
 Otherwise the session is in the main checkout:
 
-1. `git fetch`, and choose the worktree's name: bare kebab-case, for example `fix-login`. Where `git branch --list '*-stray'` prints a branch, a stopped run left its move unfinished: take that branch's worktree name.
+1. `git fetch`, and choose the worktree's name: bare kebab-case, for example `fix-login`. Where `git branch --list '*-stray'` prints a branch, a stopped run left its move unfinished: take that branch's worktree name, and where it prints more than one, ask the user which.
 2. Look for **stray work**, which belongs to this change and moves with it: uncommitted files (`git status --porcelain -- ':/' ':(top,exclude).claude/worktrees'`, which leaves out the worktrees the harness keeps there), and commits the remote lacks (`git rev-list <remote>/<base-branch>..HEAD`). Where the checkout holds stray work on another branch than `<base-branch>`, stop and ask the user which change to ship. Where there is stray work, or item 1 found a stopped run, take the stray work off the main checkout now, because a session inside a worktree cannot run git on another checkout:
    - `git branch <worktree-name>-stray`, where that branch is not there yet. It keeps the commits, and it marks the move for a run that resumes.
    - Where there are uncommitted files, `git stash push --include-untracked -m <worktree-name>`: every worktree shares the stash, so the message is what tells this entry from another session's.
@@ -42,9 +42,11 @@ Otherwise the session is in the main checkout:
 
 **Bring in** — in the worktree, for the `<worktree-name>-stray` branch and the stash entry whose message is `<worktree-name>` (`git stash list --format='%H %gd %gs'` prints its commit and its `stash@{n}`), each where it exists:
 
-1. Where `git rev-list HEAD..<worktree-name>-stray` prints commits, `git reset --hard <worktree-name>-stray`: the worktree holds nothing of its own yet.
-2. `git stash apply <stash-commit>`. Once `git status --porcelain` lists the files the stash held, `git stash drop 'stash@{n}'`.
-3. `git branch -D <worktree-name>-stray`.
+1. `git merge <worktree-name>-stray`: a new worktree fast-forwards, and a worktree that holds the commits already stays as it is.
+2. `git stash apply <stash-commit>`. Once `git status --porcelain` lists the files the stash held, list the stash again and `git stash drop` the `stash@{n}` of that commit: another session can push an entry in between.
+3. Once `git rev-list HEAD..<worktree-name>-stray` prints nothing, `git branch -D <worktree-name>-stray`.
+
+Where the merge or the apply stops on a conflict with work the worktree holds, stop and ask the user.
 
 **Shipped already** — `git status --porcelain` prints nothing, the PR is `OPEN` with a `headRefOid` equal to `git rev-parse HEAD`, the **Review** line of its body names that commit, and, where the run has an argument, the PR's diff carries that whole change. A **Review** line that records the rules review as skipped does not count while `project-review:project-review-change` is in your available skills: go to step 7 for the rules review, and the code review stands where that review applies no fix. Otherwise go to step 8 and change nothing; where `mergeable` is `CONFLICTING`, report that the PR needs the base branch merged in before it can merge.
 
