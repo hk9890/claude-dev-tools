@@ -143,7 +143,8 @@ Codebase consistency, layout, and architecture — including test code →
 `project-review-codebase`; whether one change obeys the rules these docs state →
 `project-review-change`, which reads them as a standard rather than auditing them;
 empirical test-suite strength →
-`project-auto-work:test-tests`. Challenging a single design decision
+`project-auto-work:test-tests`; a retrospective on one coding session →
+`project-review-session`. Challenging a single design decision
 interactively → `challenge:kiss`. **Writing or fixing the docs** — the file set,
 where a piece of content belongs, the worked examples →
 `instruction-writing:writing-project-docs`; this skill only audits what is there.
