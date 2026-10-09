@@ -30,10 +30,12 @@ Where `git rev-parse --path-format=absolute --git-dir --git-common-dir` prints t
 Otherwise the session is in the main checkout:
 
 1. `git fetch`, and choose the worktree's name: bare kebab-case, for example `fix-login`, and not the last path segment of a worktree that `git worktree list` prints.
-2. Look for **stray work**, which a run started here takes into the worktree: uncommitted files (`git status --porcelain -- ':/' ':(top,exclude).claude/worktrees'`, which leaves out the worktrees the harness keeps there), commits the upstream lacks (`git rev-list @{upstream}..HEAD`, where the branch has an upstream), and the branch of a stopped run (`git branch --list 'worktree-ship-stray/*'`). Where one of the three prints a line, read [the stray-work move](references/stray-work.md) and do its **Ask first** and **Move out** now, before item 4: they leave the main checkout clean, and can replace the name.
+2. Run three checks: `git status --porcelain -- ':/' ':(top,exclude).claude/worktrees'`, `git rev-list @{upstream}..HEAD` where the branch has an upstream, and `git branch --list 'worktree-ship-stray/*'`. Where one of them prints a line, the main checkout holds **stray work**, or the branch a stopped move left: read [the stray-work move](references/stray-work.md) and do its **Ask first** and **Move out** now, because the work must leave the main checkout before item 4.
 3. Where the harness setting `worktree.baseRef` is `head` (`.claude/settings.local.json` or `.claude/settings.json`), the worktree branches from local HEAD: fast-forward the default branch, or the change starts from a stale base.
-4. Call `EnterWorktree` with the name — before starting any subagent: a subagent already running when the session enters a worktree loses its Bash. Where item 2 moved stray work out, do the **Bring in** of the stray-work move.
+4. Call `EnterWorktree` with the name, or with the `path` of the worktree where a continued move has one already — before starting any subagent: a subagent already running when the session enters a worktree loses its Bash. Where item 2 moved stray work out, do the **Bring in** of the stray-work move.
 5. Run the setup from step 1.
+
+Done when the session is in a worktree, the setup has run, and `git branch --list 'worktree-ship-stray/<worktree-name>'` prints nothing.
 
 **Shipped already** — `git status --porcelain` prints nothing, the PR is `OPEN` with a `headRefOid` equal to `git rev-parse HEAD`, the **Review** line of its body names that commit, and, where the run has an argument, the PR's diff carries that whole change. A **Review** line that records the rules review as skipped does not count while `project-review:project-review-change` is in your available skills: go to step 7 for the rules review, and the code review stands where that review applies no fix. Otherwise go to step 8 and change nothing; where `mergeable` is `CONFLICTING`, report that the PR needs the base branch merged in before it can merge.
 
@@ -76,6 +78,6 @@ Done when the rules review has finished or was skipped under item 1, the code re
 
 ## 8. Report and stop
 
-Report the PR URL, the worktree path, each gate and each drive with its result, the review findings applied, the open questions of the rules review and the fixes it did not apply, every step this run skipped, and the next step: the user starts `/worktree-flow:worktree-merge`, which merges the PR and removes the worktree. Stay in the worktree.
+Report the PR URL, the worktree path, each gate and each drive with its result, the review findings applied, the open questions of the rules review and the fixes it did not apply, every step this run skipped, the stray work left on the main checkout, and the next step: the user starts `/worktree-flow:worktree-merge`, which merges the PR and removes the worktree. Stay in the worktree.
 
 Done when the report holds each of these items, or says that it does not apply.
