@@ -39,7 +39,7 @@ This means that the review agent should be responsible for imposing coding stand
 A candidate names the file it changes, by absolute path:
 
 - `CLAUDE.md`/`AGENTS.md`: these files are pushed to the context window of any agent working in the repo. They are for **navigation pointers** to other files, and little else.
-- The repo's coding-standards document, the one its `AGENTS.md` routes to for coding rules: this file is read during review, not implementation.
+- The repo's coding-standards document, the one its `AGENTS.md` routes to for a review (`docs/REVIEWING.md` in the canonical doc set): this file is read during review, not implementation.
 - Docs: reference files, pointed to by other files. Look for an existing doc before proposing a new one.
 - Skills: for user-invoked commands, or for docs whose description must sit in the agent's context window.
 

@@ -26,12 +26,12 @@ Read what the project already carries and record two lists.
 | Topic doc | Earned by |
 |---|---|
 | `OVERVIEW.md` | any repo past a trivial layout — earned by default |
-| `CODING.md` | lint/format/build config, a task runner, or a convention visible across the source |
+| `CODING.md` | build or code-generation config, a task runner, or a mechanism every change of a kind must use — a registration step, a layer boundary |
 | `DOCUMENTING.md` | a docs lint or link gate, a doc tree beyond `docs/*.md`, or a stated doc convention |
-| `TESTING.md` | a test suite, a test task, or a CI test job |
+| `TESTING.md` | a test suite, a test task, a lint or format gate, or a CI job that runs one |
 | `RELEASING.md` | a release workflow, a publish or tag script, or a version manifest the project bumps |
 | `CHANGE-WORKFLOW.md` | a PR template, commit hooks, branch protection, or a stated commit/branch convention |
-| `REVIEWING.md` | a review rule local to this repo that a generic reviewer could not guess |
+| `REVIEWING.md` | a convention visible across the source that no tool checks — comments, naming, error handling — or a review rule local to this repo that a generic reviewer could not guess |
 | `RUNNING.md` | an entrypoint a human starts by hand — CLI, server, app |
 | `MONITORING.md` | logs, metrics, traces, or usage data the project produces and someone reads |
 

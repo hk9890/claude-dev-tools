@@ -13,15 +13,20 @@ Read, in this order:
 
 1. **`AGENTS.md`** (or `CLAUDE.md`) — its routing table names the documents that carry
    rules. Take the list from there rather than assuming a layout.
-2. **`docs/CODING.md`** — rules for creating and changing files.
-3. **`docs/TESTING.md`** — rules for writing tests, the gates, and when each applies.
-4. **`docs/DOCUMENTING.md`**, where the project has one — what `CODING.md` is to the source
+2. **`docs/CODING.md`** — what a change needs in order to work: where code goes, which
+   mechanism it must use, and the duties it triggers.
+3. **`docs/REVIEWING.md`** — the quality rules a finished change is held to: how the code
+   must look, and what it must withstand. Its out-of-scope list **binds this review**:
+   never report something it declares out of scope or already covered by a checker.
+4. **`docs/TESTING.md`** — rules for writing tests, the gates, and when each applies.
+5. **`docs/DOCUMENTING.md`**, where the project has one — what `CODING.md` is to the source
    tree, this is to the doc tree, and its local rules beat any generic doc standard. A
    change that adds or edits Markdown is judged against it.
-5. **`docs/OVERVIEW.md`** — read it because `CODING.md` sends you there for where a file
+6. **`docs/OVERVIEW.md`** — read it because `CODING.md` sends you there for where a file
    belongs. It is a map, not a rule set: judge placement against it, nothing else.
-6. **`docs/REVIEWING.md`** — the local delta. Its out-of-scope list **binds this review**:
-   never report something it declares out of scope or already covered by a checker.
+
+A rule binds from whichever of these documents states it: a quality rule that sits in
+`CODING.md` is checked like one in `REVIEWING.md`.
 
 A project that names its documents differently gets the same split applied to whatever
 `AGENTS.md` routes to: a document stating rules a change can break is part of the

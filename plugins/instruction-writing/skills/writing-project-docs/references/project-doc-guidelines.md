@@ -14,8 +14,10 @@ Every fact has **one home**, decided on two axes — and content can satisfy one
 other:
 
 - **Topic** — what the fact is about.
-- **Audience** — who it serves. Two files can share a topic and differ by audience: `CODING.md`
-  instructs the agent about to change a file, `CONTRIBUTING.md` orients the human proposing a change.
+- **Audience** — who it serves, and at which moment. Two files can share a topic and differ by
+  audience: `CODING.md` instructs the agent about to change a file, `CONTRIBUTING.md` orients the
+  human proposing a change. Two can share a topic and differ by moment: `CODING.md` is read before
+  the code exists, `REVIEWING.md` once it works.
 
 Write into the file that owns the fact, not merely one where the statement is true. Accurate content
 in the wrong file is still a defect: the reader who loaded that file for its topic pays for it, and
@@ -35,7 +37,7 @@ The homes most often got wrong:
 |---|---|
 | Routing — which doc to load for which task | `AGENTS.md`, alone. No topic doc re-lists the files, docs or skills it routes to, or restates its summary. Binds `OVERVIEW.md` hardest, which is next to it in subject. |
 | How a change lands — commit, branch, PR, merge, pre-handoff gates | `CHANGE-WORKFLOW.md` |
-| What a reviewer must check in this repo | `REVIEWING.md`, never scattered into `CODING.md` |
+| How finished code must look, and what a reviewer must check in this repo | `REVIEWING.md`, never scattered into `CODING.md`, which holds only what a change needs in order to work |
 | How this repository's own docs are written, and what it decided not to document | `DOCUMENTING.md`, never `CODING.md`, which owns the source tree |
 | Driving the built product by hand | `RUNNING.md` — not `TESTING.md`, which owns the automated suites, and not `MONITORING.md`, which owns reading the evidence afterwards |
 

@@ -17,7 +17,7 @@ Use the `commit-commands:commit` skill for the standard flow.
 
 1. Open PR against `main`.
 2. Fill in the PR template (summary + test plan).
-3. One approval required before merge.
+3. Review the PR against [REVIEWING.md](REVIEWING.md); one approval required before merge.
 4. Squash-merge; delete branch after merge.
 
 ## Worktrees

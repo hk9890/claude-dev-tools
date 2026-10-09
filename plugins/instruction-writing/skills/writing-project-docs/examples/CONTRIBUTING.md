@@ -12,8 +12,9 @@ from [AGENTS.md](AGENTS.md) instead.)
 
 ## Before you open a PR
 
-- Lint and tests pass (commands live in [docs/CODING.md](docs/CODING.md) and [docs/TESTING.md](docs/TESTING.md)).
+- Lint and tests pass (commands live in [docs/TESTING.md](docs/TESTING.md)).
 - Your change respects the architectural boundaries described in [docs/CODING.md](docs/CODING.md).
+- It meets the quality rules a review holds it to — see [docs/REVIEWING.md](docs/REVIEWING.md).
 
 ## Where things live
 
