@@ -7,6 +7,9 @@
 # and "load `plugin:skill`" sentence under plugins/ whose plugin half is a plugin of this
 # repo, and requires the target to be model-invocable.
 #
+# It matches those two phrasings in Markdown and nothing else: an invocation worded another
+# way ("call the Skill tool with the one it needs") is not checked.
+#
 # Exit codes: 0 — all assertions passed; 1 — one or more failed.
 set -uo pipefail
 
@@ -37,7 +40,7 @@ else
 fi
 
 mapfile -t HITS < <(
-  grep -rnoE --include='*.md' --include='*.js' \
+  grep -rnoE --include='*.md' \
     '([Ii]nvoke|[Ll]oad) (the )?`[a-z0-9-]+:[a-z0-9-]+`' "$REPO_ROOT/plugins" | sort -u
 )
 
