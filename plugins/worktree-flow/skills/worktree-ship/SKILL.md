@@ -40,13 +40,15 @@ Otherwise the session is in the main checkout:
 4. Call `EnterWorktree` with the name, or with the `path` of the worktree a stopped run left under that name — before starting any subagent: a subagent already running when the session enters a worktree loses its Bash. Then **bring in** the stray work.
 5. Run the setup from step 1.
 
-**Bring in** — in the worktree, for the `<worktree-name>-stray` branch and the stash entry whose message is `<worktree-name>` (`git stash list --format='%H %gd %gs'` prints its commit and its `stash@{n}`), each where it exists:
+**Bring in** — in the worktree, whose name is the last path segment of `git rev-parse --show-toplevel`, for the `<worktree-name>-stray` branch and the stash entry whose message is `<worktree-name>` (`git stash list --format='%H %gd %gs'` prints its commit and its `stash@{n}`), each where it exists:
 
 1. `git merge <worktree-name>-stray`: a new worktree fast-forwards, and a worktree that holds the commits already stays as it is.
 2. `git stash apply <stash-commit>`. Once `git status --porcelain` lists the files the stash held, list the stash again and `git stash drop` the `stash@{n}` of that commit: another session can push an entry in between.
 3. Once `git rev-list HEAD..<worktree-name>-stray` prints nothing, `git branch -D <worktree-name>-stray`.
 
 Where git refuses the merge or the apply, or stops it on a conflict with work the worktree holds, stop and ask the user.
+
+Done when `git branch --list <worktree-name>-stray` prints nothing and `git stash list` holds no entry with that message.
 
 **Shipped already** — `git status --porcelain` prints nothing, the PR is `OPEN` with a `headRefOid` equal to `git rev-parse HEAD`, the **Review** line of its body names that commit, and, where the run has an argument, the PR's diff carries that whole change. A **Review** line that records the rules review as skipped does not count while `project-review:project-review-change` is in your available skills: go to step 7 for the rules review, and the code review stands where that review applies no fix. Otherwise go to step 8 and change nothing; where `mergeable` is `CONFLICTING`, report that the PR needs the base branch merged in before it can merge.
 
