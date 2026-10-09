@@ -10,7 +10,7 @@ The user has asked for a **retrospective**. You are suggesting improvements to t
 
 ## Steps
 
-1. Read the primary sources for the session to review. `$ARGUMENTS` names it; where that is empty, it is the current session. This may mean searching through session logs on this machine. Done when you have read the session to its last record, its subagents' records included, or have named the part you did not read.
+1. Read the primary sources for the session to review. `$ARGUMENTS` names it; where that is empty, it is the current session. This may mean searching through session logs on this machine. The **repo** under review is the checkout that session ran in, which can be another directory than the current one: read its files there. Done when you have read the session to its last record, its subagents' records included, or have named the part you did not read.
 
 2. Look for candidates for improvement in these categories. Done when every category carries a candidate or is cleared, and every candidate quotes the session moment that shows it.
 
@@ -38,7 +38,7 @@ This means that the review agent should be responsible for imposing coding stand
 
 A candidate names the file it changes:
 
-- `CLAUDE.md`/`AGENTS.md`: these files are pushed to the context window of any agent working in this repo. They are for **navigation pointers** to other files, and little else.
+- `CLAUDE.md`/`AGENTS.md`: these files are pushed to the context window of any agent working in the repo. They are for **navigation pointers** to other files, and little else.
 - The project's coding-standards document, the one its `AGENTS.md` routes to for coding rules: this file is read during review, not implementation.
 - Docs: reference files, pointed to by other files. Look for an existing doc before proposing a new one.
 - Skills: for user-invoked commands, or for docs whose description must sit in the agent's context window.
