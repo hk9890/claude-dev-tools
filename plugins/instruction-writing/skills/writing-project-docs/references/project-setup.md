@@ -93,7 +93,7 @@ Content outside a file's boundary is a defect even when every statement in it is
 
 - **Audience**: AI agents, when they create or change a file in the repo — the implementer, whose one job is a change that works.
 - **Inside**: what a change needs in order to work — build and code-generation commands, where code goes, and which mechanism of this repo a change must use — short, with examples pointing to real classes/files.
-- **Not inside**: how finished code must look — style, comments, naming, and every other rule a reviewer can apply to the diff (→`docs/REVIEWING.md`); the text of a rule a tool checks (→ that tool's configuration; the gate that runs it →`docs/TESTING.md`); end-user usage, release process, observability, PR/merge etiquette.
+- **Not inside**: how finished code must look — style, comments, naming, and every other rule a reviewer can apply to the finished diff as a local edit (→`docs/REVIEWING.md`); the text of a rule a tool checks (→ that tool's configuration; the gate that runs it →`docs/TESTING.md`); end-user usage, release process, observability, PR/merge etiquette.
 - **Boundary vs `REVIEWING.md`**: CODING is read before the code exists, REVIEWING once it works. A rule belongs here when breaking it leaves the change not working, or built in the wrong place or on the wrong mechanism, so that the fix is a rewrite. A rule a reviewer can apply to the finished diff as a local edit belongs there: the implementer explores and debugs, and a rule that can wait for the diff costs it attention for nothing.
 - Example: [../examples/docs/CODING.md](../examples/docs/CODING.md)
 

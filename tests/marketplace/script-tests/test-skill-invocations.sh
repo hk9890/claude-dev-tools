@@ -4,8 +4,8 @@
 # The `Skill` tool cannot load a user-only skill (`disable-model-invocation: true`), and
 # nothing reports the miss: the caller names the skill, the model finds none by that
 # name, and the step is skipped or improvised. This walks every "invoke `plugin:skill`"
-# sentence under plugins/ whose plugin half is a plugin of this repo, and requires the
-# target to be model-invocable.
+# and "load `plugin:skill`" sentence under plugins/ whose plugin half is a plugin of this
+# repo, and requires the target to be model-invocable.
 #
 # Exit codes: 0 — all assertions passed; 1 — one or more failed.
 set -uo pipefail
@@ -20,8 +20,10 @@ fail() { printf 'FAIL: %s\n' "$1"; FAIL=$((FAIL + 1)); }
 
 # True when the SKILL.md at $1 carries no `disable-model-invocation: true` in its frontmatter.
 model_invocable() {
-  ! awk 'NR==1 && $0=="---"{inb=1; next} inb && $0=="---"{exit} inb' "$1" \
-    | grep -q '^disable-model-invocation:[[:space:]]*true'
+  awk 'NR==1 && $0=="---"{inb=1; next}
+       inb && $0=="---"{exit}
+       inb && /^disable-model-invocation:[ \t]*true/{user_only=1; exit}
+       END{exit user_only}' "$1"
 }
 
 # The predicate has to be able to fail, or every assertion below passes for nothing.
@@ -36,7 +38,7 @@ fi
 
 mapfile -t HITS < <(
   grep -rnoE --include='*.md' --include='*.js' \
-    '[Ii]nvoke (the )?`[a-z0-9-]+:[a-z0-9-]+`' "$REPO_ROOT/plugins" | sort -u
+    '([Ii]nvoke|[Ll]oad) (the )?`[a-z0-9-]+:[a-z0-9-]+`' "$REPO_ROOT/plugins" | sort -u
 )
 
 CHECKED=0
@@ -47,8 +49,10 @@ for hit in "${HITS[@]}"; do
   ref="$(sed -E 's/.*`([a-z0-9-]+:[a-z0-9-]+)`.*/\1/' <<< "$hit")"
   plugin="${ref%%:*}"
   skill="${ref#*:}"
-  # A plugin this repo does not ship is not checkable from here.
+  # A plugin this repo does not ship is not checkable from here. An agent is not a skill:
+  # the `Agent` tool starts it.
   [[ -d "$REPO_ROOT/plugins/$plugin" ]] || continue
+  [[ -f "$REPO_ROOT/plugins/$plugin/agents/$skill.md" ]] && continue
 
   CHECKED=$((CHECKED + 1))
   label="${file#"$REPO_ROOT"/}:$line invokes $ref"

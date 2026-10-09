@@ -45,10 +45,12 @@ One adversarial agent does the whole review. There is no workflow and no level a
    git rev-parse --abbrev-ref origin/HEAD 2>/dev/null || echo "no origin/HEAD — ask which branch is the base"
    ```
 
-   Then take the diff — `git diff` for a dirty tree, `git diff <base>...<branch>` for a
-   branch (`HEAD` for the current one), `gh pr diff <n>` for a pull request. Use the
-   three-dot form for a branch so the comparison is against the merge base, not against
-   whatever the base branch has since gained.
+   Then take the diff — `git diff HEAD` for a dirty tree, `git diff <base>...<branch>` for a
+   branch (`HEAD` for the current one), `gh pr diff <n>` for a pull request. `git diff HEAD`
+   holds the staged and the unstaged changes; an untracked file is in no diff, so add each
+   one `git status` printed to the file list. Use the three-dot form for a branch so the
+   comparison is against the merge base, not against whatever the base branch has since
+   gained.
 
    **Prove the subject exists before you spawn anything.** Step 3 tells the reviewer agent
    to take the diff itself, so a ref that does not resolve or a range with no files in it
@@ -59,6 +61,9 @@ One adversarial agent does the whole review. There is no workflow and no level a
    git rev-parse --verify --quiet "<the ref you resolved>" >/dev/null || echo "ref does not resolve — stop and ask which branch is the base"
    git diff --name-only "<the range you resolved>" | head -50
    ```
+
+   A pull request carries its own base, so a missing `origin/HEAD` does not matter for it:
+   `gh pr diff <n> --name-only` is its proof and its file list.
 
    An empty file list is not a clean review. Say the subject contains no changes, and stop.
 
@@ -125,7 +130,8 @@ One adversarial agent does the whole review. There is no workflow and no level a
    that the review ran inline rather than on the reviewer agent.
 
    Done when the review carries one of the four verdict labels and every entry in
-   `## Recommended actions` is tagged `settled` or `open`.
+   `## Recommended actions` is tagged `settled` or `open`. An entry the reviewer left
+   untagged counts as `open`.
 
 4. **Relay the review.** Surface the agent's verdict and findings as it wrote them; do not
    re-derive or re-label them. Then follow `<SKILL_DIR>/../../references/decision-split.md`
@@ -145,20 +151,24 @@ One adversarial agent does the whole review. There is no workflow and no level a
 5. **Apply the settled batch**, with `--fix` only. Without it the run ends at step 4.
 
    Make every change the `settled` entries of `## Recommended actions` name, as the
-   reviewer stated it and nothing beyond it. The `open` entries stay the questions step 4
-   put to the user, and `## Suggested rule additions` stay proposals.
+   reviewer stated it and nothing beyond it. The batch edits files in the working tree and
+   nothing else: name a settled action of another kind — a commit message, a branch name,
+   a pull request field — as not applied, with that reason. The `open` entries stay the
+   questions step 4 put to the user, and `## Suggested rule additions` stay proposals.
 
    Where an edit was made, run every command under `## Checks run` again on the edited
    tree and report each result. A command that passed in the review and fails now means an
    action was not settled. Undo the batch one action at a time, the last one first, and
    run the command after each, until it passes: name each undone action as not applied,
-   with the command. Undo by editing: the tree can hold uncommitted work that a restore
-   from git destroys.
+   with the command. Where it still fails with the whole batch undone, the batch is not
+   the cause: report the command as failing without it. Undo by editing: the tree can hold
+   uncommitted work that a restore from git destroys.
 
    Leave the result uncommitted: the commit belongs to whoever asked for the review.
 
-   Done when every settled action is applied, or named with the reason it was not, and no
-   command that passed in the review fails on the result.
+   Done when every settled action is applied, or named with the reason it was not, and
+   every command that passed in the review passes on the result, or is reported as failing
+   with the batch undone.
 
 ## Not covered
 

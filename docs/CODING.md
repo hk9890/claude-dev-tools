@@ -62,7 +62,6 @@ A mod is a plugin whose `hooks/hooks.json` names a hooks module under `modules`;
 - **Footprint** — a mod runs unsandboxed, so reach only the `$` namespaces the feature needs; the `calls:` line `claude plugin validate` prints is the footprint a user audits before installing.
 - **Where nothing draws** — panes and the status line show in the terminal and the desktop app only. Do not settle it at `session.start`: the desktop app joins after it, with a `session.attach` event, and can leave. Read `$.session.surfaces()` when the feature runs: `tasks` does at each `/tasks-board` and answers as text where neither is attached.
 - **Command names** — a name registered with `$.command.register` is global. Lead it with the plugin's domain word (`tasks-board`); `/tasks` is Claude Code's own.
-- **Minimum version** — say "needs Claude Code 2.1.287+" in the plugin's `README.md` row.
 - **Generated files** — a `--plugin-dir` load writes `.claude-plugin/types/` and `tsconfig.json` into the plugin; both are gitignored. After one such load, `npx -p typescript tsc -p plugins/<plugin>` type-checks the module and its tests.
 
 ## SKILL.md conventions
@@ -117,6 +116,4 @@ Declare `argument-hint` and consume `$ARGUMENTS` together, or the skill advertis
 argument-hint: "[what-to-review]"
 ```
 
-- Name the shape in a short bracketed placeholder; the slash-command picker truncates anything longer.
-- Spell out an **enum-valued** argument instead: `[low|medium|high|ultra]`, not `[level]`.
-- State what an empty argument does — default it ("with no argument, review the whole test suite") or ask.
+State what an empty argument does — default it ("with no argument, review the whole test suite") or ask.

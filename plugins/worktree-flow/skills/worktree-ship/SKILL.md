@@ -59,7 +59,7 @@ Commit in the project's style. Push with upstream tracking: to `<pushed-branch>`
 
 Two reviews run on the PR, one after the other. After each one that applied a fix, repeat steps 4 and 5, commit, and push: the second review then reads the head the first one fixed.
 
-1. **Rules.** Invoke `project-review:project-review-change` with the argument `--fix <pr-number>`, where that skill is in your available skills: it holds the change against the project's own written rules, applies the fixes it settled, and leaves the open ones as questions. Carry those to step 8 unanswered and go on. In a project with no written rules it says so and reviews nothing: report that as its result. Where the skill is not in your available skills, report the rules review as skipped, never as passed, and give the reason, as far as you can tell which: the `project-review` plugin is not installed, or is installed at a version whose skill only the user can start.
+1. **Rules.** Invoke `project-review:project-review-change` with the argument `--fix <pr-number>`, where that skill is in your available skills: it holds the change against the project's own written rules, applies the fixes it settled, names each one it did not apply, and leaves the open ones as questions. Carry the open questions to step 8 unanswered, with the fixes it did not apply, and go on. In a project with no written rules it says so and reviews nothing: report that as its result. Where the skill is not in your available skills, report the rules review as skipped, never as passed, and give the reason, as far as you can tell which: the `project-review` plugin is not installed, or is installed at a version whose skill only the user can start.
 2. **Code.** Invoke the `code-review` skill with the argument `xhigh --fix <pr-number>`. It runs in the background: wait for its completion notification, then read which findings it applied.
 
 Then bring the PR body up to date with `gh pr edit <pr-number> --body-file`: the gate and drive results, the **Review** line with the PR's head commit, and every other part the fixes made stale.
@@ -68,4 +68,4 @@ Done when the rules review has finished or was skipped under item 1, the code re
 
 ## 8. Report and stop
 
-Report the PR URL, the worktree path, each gate and each drive with its result, the review findings applied, the open questions of the rules review, and every step this run skipped. Stay in the worktree: `/worktree-flow:worktree-merge` removes it.
+Report the PR URL, the worktree path, each gate and each drive with its result, the review findings applied, the open questions of the rules review and the fixes it did not apply, and every step this run skipped. Stay in the worktree: `/worktree-flow:worktree-merge` removes it.

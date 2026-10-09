@@ -18,7 +18,9 @@ How a finished change must look. Each is a condition to check on the diff.
   Review the skill at plugins/my-plugin/skills/my-skill/SKILL.md
   ```
 
-  It is an aid, not a gate: of the two `plugin-dev` agents, only `plugin-dev:plugin-validator` blocks a PR ([CHANGE-WORKFLOW.md](CHANGE-WORKFLOW.md)).
+  It is an aid, not a gate: only `plugin-dev:plugin-validator` blocks a PR ([CHANGE-WORKFLOW.md](CHANGE-WORKFLOW.md)).
+- **`argument-hint` shape.** The hint names the shape in a short bracketed placeholder, because the slash-command picker truncates anything longer, and spells out an enum-valued argument: `[low|medium|high|ultra]`, not `[level]`.
+- **Minimum version of a mod.** The `README.md` row of a mod says "needs Claude Code 2.1.287+".
 
 ## Out of scope / non-blocking
 
