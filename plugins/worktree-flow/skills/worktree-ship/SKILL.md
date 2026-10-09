@@ -8,7 +8,7 @@ argument-hint: "[change-to-make]"
 
 **Ship this change as a reviewed PR:** $ARGUMENTS
 
-With no argument, ship the change the current worktree holds; where the session is in no worktree, or its worktree holds no change, ask what to change. The run ends at an open PR; merging belongs to `/worktree-flow:worktree-merge`, which the user starts.
+With no argument, ship the change the checkout holds: the current worktree's, or the **stray work** on the main checkout (step 2). Where it holds none, ask what to change. The run ends at an open PR; merging belongs to `/worktree-flow:worktree-merge`, which the user starts.
 
 A run **resumes**: it can start in the main checkout with nothing done, in a worktree with the change half made, or on a PR already reviewed. Each step states the result it leaves, and a step whose result already stands is skipped. A gate or drive result stands only for the tree it ran on.
 
@@ -27,11 +27,19 @@ Where `git rev-parse --path-format=absolute --git-dir --git-common-dir` prints t
 - **No PR, or an `OPEN` one** — stay in the worktree, and run the setup from step 1 where it has not run.
 - **A `MERGED` or `CLOSED` one** — stop and report: the worktree belongs to a finished change, and a new change needs a new worktree.
 
-Otherwise:
+Otherwise the session is in the main checkout:
 
-1. `git fetch`. Where the harness setting `worktree.baseRef` is `head` (`.claude/settings.local.json` or `.claude/settings.json`), the worktree branches from local HEAD: fast-forward the default branch first, or the change starts from a stale base.
-2. Call `EnterWorktree` with a bare kebab-case name, for example `fix-login` — before starting any subagent: a subagent already running when the session enters a worktree loses its Bash.
-3. Run the setup from step 1.
+1. `git fetch`, and choose the worktree's name: bare kebab-case, for example `fix-login`.
+2. Look for **stray work**, which belongs to this change and moves with it: uncommitted files (`git status --porcelain -- ':/' ':(top,exclude).claude/worktrees'`, which leaves out the worktrees the harness keeps there), and commits the remote lacks (`git rev-list <remote>/<base-branch>..HEAD`). A `<name>-stray` branch or a stash entry with a worktree's name is stray work a stopped run left: take its name and go to item 4. Where the checkout holds stray work on another branch than `<base-branch>`, stop and ask the user which change to ship. Otherwise take the stray work off the main checkout now, because a session inside a worktree cannot run git on another checkout:
+   - Where there are uncommitted files, `git stash push --include-untracked -m <worktree-name>`: every worktree shares the stash, so the message is what tells this entry from another session's.
+   - Where the remote lacks commits, `git branch <worktree-name>-stray`, then `git reset --hard <remote>/<base-branch>`.
+
+   Done when that `git status` command and `git rev-list <remote>/<base-branch>..HEAD` both print nothing.
+3. Where the harness setting `worktree.baseRef` is `head` (`.claude/settings.local.json` or `.claude/settings.json`), the worktree branches from local HEAD: fast-forward the default branch, or the change starts from a stale base.
+4. Call `EnterWorktree` with the name — before starting any subagent: a subagent already running when the session enters a worktree loses its Bash. Then bring the stray work in:
+   - Where the `<worktree-name>-stray` branch exists, `git reset --hard <worktree-name>-stray` in the new worktree, which holds nothing yet. Once `git rev-parse HEAD` prints that branch's commit, delete the branch.
+   - Where the stash entry exists, find its commit by its message in `git stash list --format='%H %gs'`, and `git stash apply <stash-commit>`. Once `git status --porcelain` lists the files the stash held, drop the entry.
+5. Run the setup from step 1.
 
 **Shipped already** — `git status --porcelain` prints nothing, the PR is `OPEN` with a `headRefOid` equal to `git rev-parse HEAD`, the **Review** line of its body names that commit, and, where the run has an argument, the PR's diff carries that whole change. A **Review** line that records the rules review as skipped does not count while `project-review:project-review-change` is in your available skills: go to step 7 for the rules review, and the code review stands where that review applies no fix. Otherwise go to step 8 and change nothing; where `mergeable` is `CONFLICTING`, report that the PR needs the base branch merged in before it can merge.
 
@@ -74,6 +82,6 @@ Done when the rules review has finished or was skipped under item 1, the code re
 
 ## 8. Report and stop
 
-Report the PR URL, the worktree path, each gate and each drive with its result, the review findings applied, the open questions of the rules review and the fixes it did not apply, and every step this run skipped. Stay in the worktree: `/worktree-flow:worktree-merge` removes it.
+Report the PR URL, the worktree path, each gate and each drive with its result, the review findings applied, the open questions of the rules review and the fixes it did not apply, every step this run skipped, and the next step: the user starts `/worktree-flow:worktree-merge`, which merges the PR and removes the worktree. Stay in the worktree.
 
 Done when the report holds each of these items, or says that it does not apply.
