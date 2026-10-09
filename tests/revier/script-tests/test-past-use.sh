@@ -48,15 +48,17 @@ cat > "$FAKE/events" <<'EOF'
 {"time":"2026-10-06T09:00:00+02:00","event":"go","project":"toggled","target":"home"}
 {"time":"2026-10-06T09:01:00+02:00","event":"go","project":"toggled","target":"home"}
 {"time":"2026-10-06T09:02:00+02:00","event":"go","project":"toggled","target":"home"}
+{"time":"2026-10-06T09:03:00+02:00","event":"go agent","project":"toggled","agent":"claude","session":"s-3"}
 {"time":"2026-10-06T10:00:00+02:00","event":"go","project":"busy","target":"home","launched":true}
 {"time":"2026-10-06T10:00:01+02:00","event":"agent session","project":"busy","agent":"claude","session":"s-1","dir":"/src/busy"}
 {"time":"2026-10-07T10:00:00+02:00","event":"agent session","project":"busy","agent":"claude","session":"s-1","dir":"/src/busy"}
-{"time":"2026-10-08T10:00:00+02:00","event":"agent session","project":"busy","agent":"claude","session":"s-1","dir":"/src/busy"}
+{"time":"2026-10-08T10:00:00+02:00","event":"agent session","project":"busy","agent":"claude","session":"s-1","dir":"/src/busy/wt"}
 {"time":"2026-10-08T11:00:00+02:00","event":"action","project":"busy","action":"build"}
-{"time":"2026-10-08T12:00:00+02:00","event":"agent session","project":"far","agent":"claude","session":"s-2","dir":"/src/app"}
-{"time":"2026-10-08T12:00:05+02:00","event":"agent session","host":"box","project":"app","agent":"claude","session":"s-2","dir":"/src/app"}
-{"time":"2026-10-08T12:30:00+02:00","event":"action","host":"box","project":"app","action":"sync"}
-{"time":"2026-10-08T13:00:00+02:00","event":"go","host":"box","project":"other","target":"home"}
+{"time":"2026-10-08T10:00:00Z","event":"agent session","host":"box","project":"app","agent":"claude","session":"s-2","dir":"/src/app"}
+{"time":"2026-10-08T12:00:05+02:00","event":"agent session","project":"far","agent":"claude","session":"s-2"}
+{"time":"2026-10-08T12:10:00+02:00","event":"action","project":"quiet","action":"build"}
+{"time":"2026-10-08T10:30:00Z","event":"action","host":"box","project":"app","action":"sync"}
+{"time":"2026-10-08T11:00:00Z","event":"go","host":"box","project":"other","target":"home"}
 {"time":"2026-10-08T14:00:00+02:00","event":"action","host":"elsewhere","project":"far","action":"sync"}
 EOF
 
@@ -65,19 +67,26 @@ assert_eq "exit 0 on events" 0 $?
 assert_eq "arguments reach revier events" "events --days 3" "$(cat "$FAKE/args")"
 assert_contains "stderr of revier passes through" "no events from gone" "$(cat "$FAKE/stderr")"
 
-assert_eq "active days rank first, then go presses" "busy toggled other far far" "$(jq -r .project <<< "$out" | xargs)"
+assert_eq "active days rank first, then go presses, then the newest event" "busy toggled other far far quiet" "$(jq -r .project <<< "$out" | xargs)"
 assert_eq "the days with an event" "2026-10-06 2026-10-07 2026-10-08" "$(jq -r 'select(.project == "busy") | .days | join(" ")' <<< "$out")"
 assert_eq "a count per event kind" '{"go":1,"action":1}' "$(jq -c 'select(.project == "busy") | .events' <<< "$out")"
 assert_eq "the last event time" "2026-10-08T11:00:00+02:00" "$(jq -r 'select(.project == "busy") | .last' <<< "$out")"
-assert_eq "a session seen on three days is listed once" '[{"agent":"claude","session":"s-1","dir":"/src/busy"}]' "$(jq -c 'select(.project == "busy") | .sessions' <<< "$out")"
+assert_eq "the last event time of two UTC offsets is the newest one" "2026-10-08T10:30:00Z" "$(jq -r 'select(.host == "box" and .project == "far") | .last' <<< "$out")"
+assert_eq "a session seen on three days is listed once, in its newest directory" '[{"agent":"claude","session":"s-1","dir":"/src/busy/wt"}]' "$(jq -c 'select(.project == "busy") | .sessions' <<< "$out")"
+assert_eq "a session that only a go agent names is listed" '[{"agent":"claude","session":"s-3","dir":null}]' "$(jq -c 'select(.project == "toggled") | .sessions' <<< "$out")"
 
 assert_eq "a link and its host project are one row" 1 "$(jq -c 'select(.host == "box" and (.project == "far" or .project == "app"))' <<< "$out" | wc -l)"
 assert_eq "the link row names its host" "box" "$(jq -r 'select(.project == "far" and .sessions != []) | .host' <<< "$out")"
 assert_eq "another host's project with the name of a link stays its own row" "elsewhere" "$(jq -r 'select(.project == "far" and .sessions == []) | .host' <<< "$out")"
 assert_eq "a session both machines saw is listed once" 1 "$(jq 'select(.host == "box" and .project == "far") | .sessions | length' <<< "$out")"
+assert_eq "a line without a directory keeps the one its session has" "/src/app" "$(jq -r 'select(.host == "box" and .project == "far") | .sessions[0].dir' <<< "$out")"
 assert_eq "the host's action counts for the link" 1 "$(jq 'select(.host == "box" and .project == "far") | .events.action' <<< "$out")"
 assert_eq "a host project without a link keeps its host" "box" "$(jq -r 'select(.project == "other") | .host' <<< "$out")"
 assert_eq "a project of this machine has no host" "null" "$(jq -r 'select(.project == "busy") | .host' <<< "$out")"
+
+usage=$(run --help 2>&1)
+assert_eq "--help: exit 0" 0 $?
+assert_contains "--help: the usage of the script, not rows" "Usage: past-use.py" "$usage"
 
 touch "$FAKE/no-events"
 message=$(run 2>&1 >/dev/null)

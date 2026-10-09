@@ -2,7 +2,7 @@
 name: revier
 description: "revier: the other projects on this machine, the agents running in them, and their source."
 when_to_use: "Use when a task needs another project on this machine, or another agent the user runs: finding where a project is checked out to read its source, seeing which agents run and in what state, prompting one of them, or finding which projects the user worked in over the last days. Triggers on 'revier', 'the agent in <project>', 'the projects I worked on'. Not for subagents this session spawns itself."
-allowed-tools: Bash(revier version*), Bash(revier --help*), Bash(revier status*), Bash(revier list*), Bash(revier events*), Bash(python3 *past-use.py*), Bash(revier agent --help*), Bash(revier agent wait*)
+allowed-tools: Bash(revier version*), Bash(revier --help*), Bash(revier status*), Bash(revier list*), Bash(revier events*), Bash(revier agent --help*), Bash(revier agent wait*)
 ---
 
 # revier

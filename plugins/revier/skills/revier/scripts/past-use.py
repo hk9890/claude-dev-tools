@@ -9,6 +9,10 @@ project that is toggled often above one that is worked in all day.
 
 A link and the project it points to are one row, under the link's name: the
 revier on the host records the same agent session under its own name.
+
+`revier events` prints the oldest event first, so the last event read for a
+project is its newest. The times are not compared as text: two machines write
+them with two UTC offsets.
 """
 
 import json
@@ -36,34 +40,35 @@ def links():
 
 
 def main():
-    events = [json.loads(line) for line in revier("events", *sys.argv[1:]).splitlines() if line.strip()]
+    if sys.argv[1:2] in (["--help"], ["-h"], ["help"]):
+        print(__doc__)
+        return
+
+    events = [json.loads(line) for line in revier("events", *sys.argv[1:]).split("\n") if line.strip()]
     link_of = links()
     host_of = {name: host for (host, _), name in link_of.items()}
 
     rows = {}
-    for event in events:
+    for position, event in enumerate(events):
         host, project = event.get("host"), event["project"]
-        if (host, project) in link_of:
-            project = link_of[(host, project)]
-            host = None
-        if host is None:
-            host = host_of.get(project)
+        project = link_of.get((host, project), project)
+        host = host or host_of.get(project)
 
-        row = rows.setdefault((host, project), {"days": set(), "events": {}, "sessions": {}, "last": ""})
+        row = rows.setdefault((host, project), {"days": set(), "events": {}, "sessions": {}})
         row["days"].add(event["time"][:10])
-        row["last"] = max(row["last"], event["time"])
+        row["last"], row["position"] = event["time"], position
         kind = event["event"]
-        if kind == "agent session":
-            row["sessions"].setdefault(
-                event["session"],
-                {"agent": event.get("agent"), "session": event["session"], "dir": event.get("dir")},
-            )
-        else:
+        if kind != "agent session":
             row["events"][kind] = row["events"].get(kind, 0) + 1
+        if "session" in event:
+            session = row["sessions"].setdefault(
+                event["session"], {"agent": None, "session": event["session"], "dir": None}
+            )
+            session.update({key: event[key] for key in ("agent", "dir") if key in event})
 
     ranked = sorted(
         rows.items(),
-        key=lambda item: (len(item[1]["days"]), item[1]["events"].get("go", 0), item[1]["last"]),
+        key=lambda item: (len(item[1]["days"]), item[1]["events"].get("go", 0), item[1]["position"]),
         reverse=True,
     )
     for (host, project), row in ranked:
