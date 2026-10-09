@@ -24,7 +24,7 @@ Done when each item of that list is recorded, or noted as not documented.
 
 Where `git rev-parse --path-format=absolute --git-dir --git-common-dir` prints two different paths, the session is in a worktree already. Look up its PR with `gh pr view <pushed-branch> --json number,state,headRefOid,mergeable,body`:
 
-- **No PR, or an `OPEN` one** — stay in the worktree, and run the setup from step 1 where it has not run. Where `git branch --list 'worktree-ship-stray/<worktree-name>'` prints a branch, with the last path segment of `git rev-parse --show-toplevel` as the name, a stopped run left **stray work** for this worktree: read [the stray-work move](references/stray-work.md) and do its **Bring in**.
+- **No PR, or an `OPEN` one** — stay in the worktree. Where `git branch --list 'worktree-ship-stray/<worktree-name>'` prints a branch, with the last path segment of `git rev-parse --show-toplevel` as the name, a stopped run left **stray work** for this worktree: read [the stray-work move](references/stray-work.md) and do its **Bring in**. Then run the setup from step 1 where it has not run.
 - **A `MERGED` or `CLOSED` one** — stop and report: the worktree belongs to a finished change, and a new change needs a new worktree.
 
 Otherwise the session is in the main checkout:
@@ -32,7 +32,7 @@ Otherwise the session is in the main checkout:
 1. `git fetch`, and choose the worktree's name: bare kebab-case, for example `fix-login`, and not the last path segment of a worktree that `git worktree list` prints.
 2. Run three checks: `git status --porcelain -- ':/' ':(top,exclude).claude/worktrees'`, `git rev-list @{upstream}..HEAD` where the branch has an upstream, and `git branch --list 'worktree-ship-stray/*'`. Where one of them prints a line, the main checkout holds **stray work**, or the branch a stopped move left: read [the stray-work move](references/stray-work.md) and do its **Ask first** and **Move out** now, because the work must leave the main checkout before item 4.
 3. Where the harness setting `worktree.baseRef` is `head` (`.claude/settings.local.json` or `.claude/settings.json`), the worktree branches from local HEAD: fast-forward the default branch, or the change starts from a stale base.
-4. Call `EnterWorktree` with the name, or with the `path` of the worktree where a continued move has one already — before starting any subagent: a subagent already running when the session enters a worktree loses its Bash. Where item 2 moved stray work out, do the **Bring in** of the stray-work move.
+4. Call `EnterWorktree` with the name, or with the `path` of the worktree where a continued move has one already — before starting any subagent: a subagent already running when the session enters a worktree loses its Bash. Where item 2 moved stray work out or continued a move, do the **Bring in** of the stray-work move.
 5. Run the setup from step 1.
 
 Done when the session is in a worktree, the setup has run, and `git branch --list 'worktree-ship-stray/<worktree-name>'` prints nothing.
