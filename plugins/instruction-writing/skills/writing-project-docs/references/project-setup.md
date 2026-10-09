@@ -66,7 +66,7 @@ Content outside a file's boundary is a defect even when every statement in it is
 ### `CONTRIBUTING.md` (optional)
 
 - **Audience**: human contributors — the human counterpart to `AGENTS.md`.
-- **Inside**: dev-environment setup, build/test/run from source, and how to propose a change; **routes** to `CODING.md` / `TESTING.md` / `CHANGE-WORKFLOW.md` rather than restating them.
+- **Inside**: dev-environment setup, build/test/run from source, and how to propose a change; **routes** to `CODING.md` / `TESTING.md` / `REVIEWING.md` / `CHANGE-WORKFLOW.md` rather than restating them.
 - **Not inside**: end-user usage (→`README.md`), AI routing (→`AGENTS.md`), deep architecture (→`docs/OVERVIEW.md`), release internals (→`docs/RELEASING.md`); no duplicated command reference.
 - Example: [../examples/CONTRIBUTING.md](../examples/CONTRIBUTING.md)
 
@@ -91,16 +91,17 @@ Content outside a file's boundary is a defect even when every statement in it is
 
 ### `docs/CODING.md`
 
-- **Audience**: AI agents, when they create or change a file in the repo.
-- **Inside**: build commands and the coding rules/guidelines needed when modifying files — short, with examples pointing to real classes/files.
-- **Not inside**: end-user usage, release process, observability, PR/merge etiquette.
+- **Audience**: AI agents, when they create or change a file in the repo — the implementer, whose one job is a change that works.
+- **Inside**: what a change needs in order to work — build and code-generation commands, where code goes, and which mechanism of this repo a change must use — short, with examples pointing to real classes/files.
+- **Not inside**: how finished code must look — style, comments, naming, and every other rule a reviewer can apply to the finished diff as a local edit (→`docs/REVIEWING.md`); the text of a rule a tool checks (→ that tool's configuration; the gate that runs it →`docs/TESTING.md`); end-user usage, release process, observability, PR/merge etiquette.
+- **Boundary vs `REVIEWING.md`**: CODING is read before the code exists, REVIEWING once it works. A rule belongs here when breaking it leaves the change not working, or built in the wrong place or on the wrong mechanism, so that the fix is a rewrite. A rule a reviewer can apply to the finished diff as a local edit belongs there: the implementer explores and debugs, and a rule that can wait for the diff costs it attention for nothing.
 - Example: [../examples/docs/CODING.md](../examples/docs/CODING.md)
 
 ### `docs/DOCUMENTING.md`
 
 - **Audience**: AI agents, when they create or change a Markdown file in this repository.
 - **Inside**: the local delta of this standard — doc gates and lint, citation and link conventions, any doc tree beyond the canonical set and what each owns, and the decisions taken about what the project documents and what it leaves out.
-- **Not inside**: the standard itself (→ the `instruction-writing:writing-project-docs` skill), source-tree rules (→`docs/CODING.md`), and the content of the docs themselves.
+- **Not inside**: the standard itself (→ the `instruction-writing:writing-project-docs` skill), source-tree rules (→`docs/CODING.md`, `docs/REVIEWING.md`), and the content of the docs themselves.
 - **Boundary vs `CODING.md`**: CODING owns a change to the source tree, DOCUMENTING a change to the doc tree.
 - **Precedence**: where a local rule conflicts with the standard, the local rule wins.
 - **Recorded decisions**: prose, in whatever shape the project keeps them. `project-review:project-review-docs` reads them and leaves out a gap a decision settles; a decision never makes a false claim acceptable.
@@ -137,9 +138,10 @@ Content outside a file's boundary is a defect even when every statement in it is
 
 ### `docs/REVIEWING.md`
 
-- **Audience**: AI agents, when they review a PR or a diff.
-- **Inside**: repo-specific review priorities, must-check rules, and out-of-scope / non-blocking conventions — the **local delta** the generic `project-review-*` skills cannot know. State only what is local and link the skills (*Local delta*).
-- **Not inside**: generic review checklists (those live in the `project-review-*` skills), implementation rules.
+- **Audience**: AI agents, when they review a PR or a diff — the reviewer, whose job is to make a working change clean and to check that it holds.
+- **Inside**: the repo's quality rules — how finished code must look (style no tool checks, comments, naming) and the must-check rules for what it has to withstand — each written as a condition a reviewer can check on the diff, with the correct form stated, so that a finding has one fix; plus review priorities and out-of-scope / non-blocking conventions. All of it is the **local delta** the generic `project-review-*` skills cannot know: state only what is local and link the skills (*Local delta*).
+- **Not inside**: generic review checklists (those live in the `project-review-*` skills); what a change needs in order to work — where code goes, which mechanism it uses (→`docs/CODING.md`); the text of a rule a tool checks (→ that tool's configuration).
+- **Reach**: a rule here is applied only where a review runs. When that is — before a PR, before a merge — is `docs/CHANGE-WORKFLOW.md`'s to state.
 - **Precedence**: where local policy conflicts with a skill's default lens, the local rule wins.
 - Example: [../examples/docs/REVIEWING.md](../examples/docs/REVIEWING.md)
 

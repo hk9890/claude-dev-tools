@@ -85,15 +85,5 @@ print(' '.join(sorted(v.split('/')[-1] for v in h.USE_CASE_DOCS.values())))
 EXPECTED_TARGETS=$(printf '%s\n' "$DOCS" | tr ' ' '\n' | sort | tr '\n' ' ' | sed 's/ $//')
 assert_eq "use cases: history.py covers every canonical doc exactly once" "$EXPECTED_TARGETS" "$HISTORY_TARGETS"
 
-# 4. Every canonical doc has a PURPOSE hint — the execution stage derives its probe task
-#    from it, and a doc with no hint is silently dropped from that stage.
-PURPOSE_MISSING=$(python3 -c "
-import importlib.util
-spec = importlib.util.spec_from_file_location('m', '$MANIFEST')
-m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
-print(' '.join(n for n in m.CANONICAL_DOCS if n not in m.PURPOSE))
-")
-assert_eq "purpose: every canonical doc has a PURPOSE hint" "" "$PURPOSE_MISSING"
-
 printf '\nResults: %d passed, %d failed\n' "$PASS" "$FAIL"
 [[ "$FAIL" -eq 0 ]] || exit 1

@@ -14,7 +14,7 @@ Every route below is **mandatory, not advisory**. Load the document BEFORE the f
 
 ### Coding and file changes
 
-**MUST read [docs/CODING.md](docs/CODING.md) before creating or editing ANY file under `plugins/` or `scripts/`, or `.claude-plugin/marketplace.json`.** It owns plugin scaffolding and registration, dependency declarations, runtime path resolution, the mod conventions, the `SKILL.md` conventions, and the shell-lint rule.
+**MUST read [docs/CODING.md](docs/CODING.md) before creating or editing ANY file under `plugins/` or `scripts/`, or `.claude-plugin/marketplace.json`.** It owns plugin scaffolding and registration, dependency declarations, runtime path resolution, the mod conventions, and the `SKILL.md` conventions.
 
 ### Writing project docs
 
@@ -34,7 +34,7 @@ Every route below is **mandatory, not advisory**. Load the document BEFORE the f
 
 ### Reviewing changes
 
-**MUST read [docs/REVIEWING.md](docs/REVIEWING.md) before reviewing a PR or a diff.** It carries the local review priorities and out-of-scope conventions the generic review skills cannot know.
+**MUST read [docs/REVIEWING.md](docs/REVIEWING.md) before reviewing a PR or a diff.** It carries the quality rules a finished change is held to, and the local review priorities and out-of-scope conventions the generic review skills cannot know.
 
 ### Releasing plugins
 

@@ -10,7 +10,7 @@ Every route below is **mandatory, not advisory**. Load the document BEFORE the f
 
 ### Coding and file changes
 
-**MUST read [docs/CODING.md](docs/CODING.md) before creating or editing ANY file under `internal/` or `cmd/`.** It owns the package boundaries, the error-wrapping convention, and the rules no linter catches.
+**MUST read [docs/CODING.md](docs/CODING.md) before creating or editing ANY file under `internal/` or `cmd/`.** It owns the build commands, the package boundaries, and the steps that add an endpoint.
 
 ### Writing project docs
 
@@ -34,7 +34,7 @@ Every route below is **mandatory, not advisory**. Load the document BEFORE the f
 
 ### Reviewing changes
 
-**MUST read [docs/REVIEWING.md](docs/REVIEWING.md) before reviewing a PR or a diff.** It carries the local review priorities and out-of-scope conventions the generic review skills cannot know.
+**MUST read [docs/REVIEWING.md](docs/REVIEWING.md) before reviewing a PR or a diff.** It carries the quality rules a finished change is held to — error wrapping, comments, naming — and the review priorities and out-of-scope conventions the generic review skills cannot know.
 
 ### Release
 

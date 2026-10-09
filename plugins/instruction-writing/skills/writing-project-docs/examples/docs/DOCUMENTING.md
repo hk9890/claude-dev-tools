@@ -26,7 +26,7 @@ gap somewhere else.
 
 - **No prose architecture doc.** `docs/OVERVIEW.md` maps the packages and stops. The layer
   boundaries are stated in `docs/CODING.md` and blocking at review ([REVIEWING.md](REVIEWING.md));
-  a third copy in prose would only drift from both.
+  a second copy in prose would only drift from the first.
 - **No endpoint list in prose.** `api/openapi.yaml` is the single home for the API surface. The
   list that used to sit in `README.md` disagreed with the handlers twice and was removed.
 - **The hotfix release path stays undocumented.** [RELEASING.md](RELEASING.md) covers the normal

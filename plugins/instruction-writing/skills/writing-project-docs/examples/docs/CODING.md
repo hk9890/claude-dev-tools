@@ -1,6 +1,6 @@
 # Coding
 
-Repository-specific implementation constraints.
+What a change to this repository needs in order to work.
 
 ## Building from source
 
@@ -30,11 +30,3 @@ make generate   # regenerates mocks under internal/mocks/
 ```
 
 Re-run after changing any interface in `internal/store/` or `internal/api/`.
-
-## Linting
-
-```bash
-make lint       # golangci-lint with repo config at .golangci.yml
-```
-
-Rules live in `.golangci.yml`; the gate that runs it is in [TESTING.md](TESTING.md).
