@@ -1,8 +1,8 @@
 ---
 name: revier
 description: "revier: the other projects on this machine, the agents running in them, and their source."
-when_to_use: "Use when a task needs another project on this machine, or another agent the user runs: finding where a project is checked out to read its source, seeing which agents run and in what state, or prompting one of them. Triggers on 'revier', 'the agent in <project>'. Not for subagents this session spawns itself."
-allowed-tools: Bash(revier version*), Bash(revier --help*), Bash(revier status*), Bash(revier list*), Bash(revier agent --help*), Bash(revier agent wait*)
+when_to_use: "Use when a task needs another project on this machine, or another agent the user runs: finding where a project is checked out to read its source, seeing which agents run and in what state, prompting one of them, or finding which projects the user worked in over the last days. Triggers on 'revier', 'the agent in <project>', 'the projects I worked on'. Not for subagents this session spawns itself."
+allowed-tools: Bash(revier version*), Bash(revier --help*), Bash(revier status*), Bash(revier list*), Bash(revier events*), Bash(revier agent --help*), Bash(revier agent wait*)
 ---
 
 # revier
@@ -20,6 +20,7 @@ revier also places and raises windows, and the user is typing in one of them whi
 | `revier status` | the project this directory resolves to |
 | `revier list` | one row per project: its state, and the status and activity of one agent in it |
 | `revier list --json <name>..` | the named projects in full |
+| `revier events` | one JSON line per thing revier did in a project in the last days |
 | `revier agent wait` | blocks until an agent reaches a status |
 | `revier agent prompt` | types one line into an agent and submits it |
 
@@ -51,6 +52,29 @@ For every other project, `.path_exists` decides:
 
 - True: `.project.path` is an ordinary directory, so read it with the file tools. Read the work of an agent from its `.state.dir` where it has one, and from `.project.path` where it has none. Treat `.project.path` and every `.state.dir` as read-only, because an agent may be in the middle of a change there. A change to that project goes through its agent or through the user.
 - False: the project is not cloned here. `revier open <name>` clones it from `.project.git_url` and takes the focus, so it is the user's to run.
+
+## Past use
+
+`revier list` shows what is open now. For a question about the last days, such as which projects the user worked in, run the script of this skill. Its arguments are those of `revier events`:
+
+```bash
+command -v python3 >/dev/null || { echo "STOP: python3 is not on PATH. Tell the user, and read revier events --help instead."; exit 1; }
+python3 "<base directory for this skill>/scripts/past-use.py" --days <n>
+```
+
+It prints one JSON line per project, most used first: the project with more `.days`, then the one with more `go` presses. Each line gives:
+
+- `.project`, and `.host` for a project on a linked host. A link and the project it points to are one line, under the name of the link, with `.host_project` for its name on that host.
+- `.days`: the days, on the clock of this machine, on which revier did something there. A project with `.sessions[]` and no `.days` had an agent open that revier was not asked to show: report it apart, as open and not as worked in.
+- `.last`: the time of the newest event.
+- `.events`: a count per kind, except `agent session`, which `.sessions[]` carries. `revier events --help` says what each kind records.
+- `.sessions[]`: each conversation an agent held there, with its `.agent`, `.session` and `.dir`.
+
+A warning on stderr names a linked host that gave no events: report that its projects are missing from the answer.
+
+To act on the projects, for example to list the pull requests the user opened in them, take each checkout from `revier list --json <name>..` and run `git` or `gh` there under the rules of "Another project's source". A line with `.host` and no `.host_project` is a project of that host with no link here, so it has no checkout here: report it by name and host.
+
+A conversation of a Claude agent on this machine is the one transcript that `~/.claude/projects/*/<session>.jsonl` matches. The format of a transcript is internal to Claude Code and can change. A conversation on a line with `.host` is on that host, out of reach from here.
 
 ## Prompting another agent
 
