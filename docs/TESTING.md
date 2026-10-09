@@ -111,4 +111,4 @@ The `plugin-dev:plugin-validator` agent checks a plugin's manifest, component fr
 Validate the plugin at plugins/my-plugin
 ```
 
-The same plugin ships `plugin-dev:skill-reviewer`, a dev-time aid for `SKILL.md` quality rather than a gate — see [CODING.md](CODING.md).
+The same plugin ships `plugin-dev:skill-reviewer`, a review aid for `SKILL.md` quality rather than a gate — see [REVIEWING.md](REVIEWING.md).

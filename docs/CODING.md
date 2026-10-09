@@ -1,6 +1,6 @@
 # Coding Guide
 
-Rules for creating or changing files in this plugin marketplace.
+What a change to this plugin marketplace needs in order to work.
 
 ## Adding a new plugin
 
@@ -51,10 +51,6 @@ Every skill is loaded with a `Base directory for this skill: <absolute path>` li
 
 `project-review:project-review-docs` is the worked example: it loads `instruction-writing:writing-project-docs`, passes the base directory as `standardDir`, and rejects a missing or relative value before spawning an agent.
 
-## Shell scripts
-
-Every tracked `*.sh` — under `scripts/`, `tests/`, or a plugin's `bin/` — must pass `mise run lint` ([TESTING.md](TESTING.md)). An extensionless `bin/` script is still covered: `scripts/list-shell-scripts.sh` finds it by shebang.
-
 ## Mods
 
 A mod is a plugin whose `hooks/hooks.json` names a hooks module under `modules`; Claude Code 2.1.287 and later runs it in-process. Claude Code's built-in `plugin-authoring` skill carries the API and the write-validate-test loop — load it first. **Local delta:**
@@ -71,11 +67,7 @@ A mod is a plugin whose `hooks/hooks.json` names a hooks module under `modules`;
 
 ## SKILL.md conventions
 
-For every `SKILL.md` under `plugins/<plugin-name>/skills/<skill-name>/`. The authoring rubric — invocation choice, description writing, information hierarchy, pruning — is [`plugins/instruction-writing/skills/writing-skills/SKILL.md`](../plugins/instruction-writing/skills/writing-skills/SKILL.md); read it first, and run `plugin-dev:skill-reviewer` on the result afterwards (a dev-time aid, not a release gate — only `plugin-dev:plugin-validator` is; both ship in the external `plugin-dev` plugin, [TESTING.md](TESTING.md)):
-
-```
-Review the skill at plugins/my-plugin/skills/my-skill/SKILL.md
-```
+For every `SKILL.md` under `plugins/<plugin-name>/skills/<skill-name>/`. The authoring rubric — invocation choice, description writing, information hierarchy, pruning — is [`plugins/instruction-writing/skills/writing-skills/SKILL.md`](../plugins/instruction-writing/skills/writing-skills/SKILL.md); read it first.
 
 ### Naming
 
