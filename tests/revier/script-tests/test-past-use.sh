@@ -38,11 +38,14 @@ case "$1" in
 esac
 EOF
 chmod +x "$FAKE/revier"
-run() { PATH="$FAKE:$PATH" python3 "$SCRIPT" "$@"; }
+# TZ is two hours east of UTC, so a host line of 22:30Z is on the next day here.
+run() { TZ=UTC-2 PATH="$FAKE:$PATH" python3 "$SCRIPT" "$@"; }
 
 cat > "$FAKE/list" <<'EOF'
 [{"project": {"name": "busy", "path": "/src/busy"}},
- {"project": {"name": "far", "path": "/src/app", "remote": {"host": "box", "project": "app"}}}]
+ {"project": {"name": "far", "path": "/src/app", "remote": {"host": "box", "project": "app"}}},
+ {"project": {"name": "far2", "path": "/src/app", "remote": {"host": "box", "project": "app"}}},
+ {"project": {"name": "api", "path": "/src/api", "remote": {"host": "box", "project": "api-v2"}}}]
 EOF
 cat > "$FAKE/events" <<'EOF'
 {"time":"2026-10-06T09:00:00+02:00","event":"go","project":"toggled","target":"home"}
@@ -60,6 +63,10 @@ cat > "$FAKE/events" <<'EOF'
 {"time":"2026-10-08T10:30:00Z","event":"action","host":"box","project":"app","action":"sync"}
 {"time":"2026-10-08T11:00:00Z","event":"go","host":"box","project":"other","target":"home"}
 {"time":"2026-10-08T14:00:00+02:00","event":"action","host":"elsewhere","project":"far","action":"sync"}
+{"time":"2026-10-08T15:00:00+02:00","event":"go","project":"far2","target":"home"}
+{"time":"2026-10-08T13:30:00Z","event":"go","host":"box","project":"api-v2","target":"home"}
+{"time":"2026-10-08T13:40:00Z","event":"go","host":"box","project":"api","target":"home"}
+{"time":"2026-10-08T22:30:00.123456789Z","event":"action","host":"box","project":"app","action":"sync"}
 EOF
 
 out=$(run --days 3 2>"$FAKE/stderr")
@@ -67,20 +74,24 @@ assert_eq "exit 0 on events" 0 $?
 assert_eq "arguments reach revier events" "events --days 3" "$(cat "$FAKE/args")"
 assert_contains "stderr of revier passes through" "no events from gone" "$(cat "$FAKE/stderr")"
 
-assert_eq "active days rank first, then go presses, then the newest event" "busy toggled other far far quiet" "$(jq -r .project <<< "$out" | xargs)"
-assert_eq "the days with an event" "2026-10-06 2026-10-07 2026-10-08" "$(jq -r 'select(.project == "busy") | .days | join(" ")' <<< "$out")"
+assert_eq "active days rank first, then go presses, then the newest event" "far busy toggled api api other far quiet" "$(jq -r .project <<< "$out" | xargs)"
+assert_eq "a day with agent session lines alone is no day" "2026-10-06 2026-10-08" "$(jq -r 'select(.project == "busy") | .days | join(" ")' <<< "$out")"
 assert_eq "a count per event kind" '{"go":1,"action":1}' "$(jq -c 'select(.project == "busy") | .events' <<< "$out")"
 assert_eq "the last event time" "2026-10-08T11:00:00+02:00" "$(jq -r 'select(.project == "busy") | .last' <<< "$out")"
-assert_eq "the last event time of two UTC offsets is the newest one" "2026-10-08T10:30:00Z" "$(jq -r 'select(.host == "box" and .project == "far") | .last' <<< "$out")"
+assert_eq "the last event time of two UTC offsets is the newest one" "2026-10-08T22:30:00.123456789Z" "$(jq -r 'select(.host_project == "app") | .last' <<< "$out")"
+assert_eq "a day is a date on the clock of this machine" "2026-10-08 2026-10-09" "$(jq -r 'select(.host_project == "app") | .days | join(" ")' <<< "$out")"
 assert_eq "a session seen on three days is listed once, in its newest directory" '[{"agent":"claude","session":"s-1","dir":"/src/busy/wt"}]' "$(jq -c 'select(.project == "busy") | .sessions' <<< "$out")"
 assert_eq "a session that only a go agent names is listed" '[{"agent":"claude","session":"s-3","dir":null}]' "$(jq -c 'select(.project == "toggled") | .sessions' <<< "$out")"
 
-assert_eq "a link and its host project are one row" 1 "$(jq -c 'select(.host == "box" and (.project == "far" or .project == "app"))' <<< "$out" | wc -l)"
-assert_eq "the link row names its host" "box" "$(jq -r 'select(.project == "far" and .sessions != []) | .host' <<< "$out")"
-assert_eq "another host's project with the name of a link stays its own row" "elsewhere" "$(jq -r 'select(.project == "far" and .sessions == []) | .host' <<< "$out")"
-assert_eq "a session both machines saw is listed once" 1 "$(jq 'select(.host == "box" and .project == "far") | .sessions | length' <<< "$out")"
-assert_eq "a line without a directory keeps the one its session has" "/src/app" "$(jq -r 'select(.host == "box" and .project == "far") | .sessions[0].dir' <<< "$out")"
-assert_eq "the host's action counts for the link" 1 "$(jq 'select(.host == "box" and .project == "far") | .events.action' <<< "$out")"
+assert_eq "a link and its host project are one row" "far" "$(jq -r 'select(.project == "app" or .host_project == "app") | .project' <<< "$out")"
+assert_eq "two links to one host project are one row, with the events of both" 1 "$(jq 'select(.host_project == "app") | .events.go' <<< "$out")"
+assert_eq "the second link has no row of its own" "" "$(jq -r 'select(.project == "far2") | .project' <<< "$out")"
+assert_eq "the link row names its host" "box" "$(jq -r 'select(.host_project == "app") | .host' <<< "$out")"
+assert_eq "another host's project with the name of a link stays its own row" "null" "$(jq -r 'select(.project == "far" and .host == "elsewhere") | .host_project' <<< "$out")"
+assert_eq "a link and an unlinked project of its host with the same name are two rows" "api-v2 null" "$(jq -r 'select(.project == "api") | .host_project' <<< "$out" | sort | xargs)"
+assert_eq "a session both machines saw is listed once" 1 "$(jq 'select(.host_project == "app") | .sessions | length' <<< "$out")"
+assert_eq "a line without a directory keeps the one its session has" "/src/app" "$(jq -r 'select(.host_project == "app") | .sessions[0].dir' <<< "$out")"
+assert_eq "the host's actions count for the link" 2 "$(jq 'select(.host_project == "app") | .events.action' <<< "$out")"
 assert_eq "a host project without a link keeps its host" "box" "$(jq -r 'select(.project == "other") | .host' <<< "$out")"
 assert_eq "a project of this machine has no host" "null" "$(jq -r 'select(.project == "busy") | .host' <<< "$out")"
 
