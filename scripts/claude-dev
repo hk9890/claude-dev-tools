@@ -10,3 +10,4 @@ for dir in "$REPO_ROOT/plugins"/*/; do
 done
 
 exec claude "${plugin_args[@]}" "$@"
+# dummy-case2b: stray line
