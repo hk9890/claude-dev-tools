@@ -8,7 +8,7 @@ argument-hint: "[change-to-make]"
 
 **Ship this change as a reviewed PR:** $ARGUMENTS
 
-With no argument, ship the change the current worktree holds; where the session is in no worktree, or its worktree holds no change, ask what to change. The run ends at an open PR; merging belongs to `/worktree-flow:worktree-merge`, which the user starts.
+With no argument, ship the change the checkout holds: the current worktree's, or the **stray work** on the main checkout (step 2). Where it holds none and step 2 finds no stopped run, ask what to change. The run ends at an open PR; merging belongs to `/worktree-flow:worktree-merge`, which the user starts.
 
 A run **resumes**: it can start in the main checkout with nothing done, in a worktree with the change half made, or on a PR already reviewed. Each step states the result it leaves, and a step whose result already stands is skipped. A gate or drive result stands only for the tree it ran on.
 
@@ -16,7 +16,7 @@ A run **resumes**: it can start in the main checkout with nothing done, in a wor
 
 `gh auth status` must succeed; where it fails, stop and tell the user to install `gh` or run `gh auth login`.
 
-Read the project's own workflow (AGENTS.md or CLAUDE.md routing, a change-workflow or contributing doc, `CLAUDE.local.md`, a PR template) and record: the remote to push to, the branch naming convention, the **gates** a PR needs green plus the setup a fresh checkout needs, how the product is run by hand (a running doc such as `docs/RUNNING.md`), the commit style, and the PR template where there is one. Where the project documents a step, its rule replaces the generic one below.
+Read the project's own workflow (AGENTS.md or CLAUDE.md routing, a change-workflow or contributing doc, `CLAUDE.local.md`, a PR template) and record: the remote to push to and its base branch, the branch naming convention, the **gates** a PR needs green plus the setup a fresh checkout needs, how the product is run by hand (a running doc such as `docs/RUNNING.md`), the commit style, and the PR template where there is one. Where the project documents a step, its rule replaces the generic one below.
 
 Done when each item of that list is recorded, or noted as not documented.
 
@@ -24,14 +24,18 @@ Done when each item of that list is recorded, or noted as not documented.
 
 Where `git rev-parse --path-format=absolute --git-dir --git-common-dir` prints two different paths, the session is in a worktree already. Look up its PR with `gh pr view <pushed-branch> --json number,state,headRefOid,mergeable,body`:
 
-- **No PR, or an `OPEN` one** — stay in the worktree, and run the setup from step 1 where it has not run.
+- **No PR, or an `OPEN` one** — stay in the worktree. Where `git branch --list 'worktree-ship-stray/<worktree-name>'` prints a branch, with the last path segment of `git rev-parse --show-toplevel` as the name, a stopped run left **stray work** for this worktree: read [the stray-work move](references/stray-work.md) and do its **Bring in**. Then run the setup from step 1 where it has not run.
 - **A `MERGED` or `CLOSED` one** — stop and report: the worktree belongs to a finished change, and a new change needs a new worktree.
 
-Otherwise:
+Otherwise the session is in the main checkout:
 
-1. `git fetch`. Where the harness setting `worktree.baseRef` is `head` (`.claude/settings.local.json` or `.claude/settings.json`), the worktree branches from local HEAD: fast-forward the default branch first, or the change starts from a stale base.
-2. Call `EnterWorktree` with a bare kebab-case name, for example `fix-login` — before starting any subagent: a subagent already running when the session enters a worktree loses its Bash.
-3. Run the setup from step 1.
+1. `git fetch`, and choose the worktree's name: bare kebab-case, for example `fix-login`, and not the last path segment of a worktree that `git worktree list` prints.
+2. Run three checks: `git status --porcelain -- ':/' ':(top,exclude).claude/worktrees'`, `git rev-list @{upstream}..HEAD` where the branch has an upstream, and `git branch --list 'worktree-ship-stray/*'`. Where one of them prints a line, the main checkout holds **stray work**, or the branch a stopped move left: read [the stray-work move](references/stray-work.md) and do its **Ask first** and **Move out** now, because the work must leave the main checkout before item 4.
+3. Where the harness setting `worktree.baseRef` is `head` (`.claude/settings.local.json` or `.claude/settings.json`), the worktree branches from local HEAD: fast-forward the default branch, or the change starts from a stale base.
+4. Call `EnterWorktree` with the name, or with the `path` of the worktree where a continued move has one already — before starting any subagent: a subagent already running when the session enters a worktree loses its Bash. Where item 2 moved stray work out or continued a move, do the **Bring in** of the stray-work move.
+5. Run the setup from step 1.
+
+Done when the session is in a worktree, the setup has run, and `git branch --list 'worktree-ship-stray/<worktree-name>'` prints nothing.
 
 **Shipped already** — `git status --porcelain` prints nothing, the PR is `OPEN` with a `headRefOid` equal to `git rev-parse HEAD`, the **Review** line of its body names that commit, and, where the run has an argument, the PR's diff carries that whole change. A **Review** line that records the rules review as skipped does not count while `project-review:project-review-change` is in your available skills: go to step 7 for the rules review, and the code review stands where that review applies no fix. Otherwise go to step 8 and change nothing; where `mergeable` is `CONFLICTING`, report that the PR needs the base branch merged in before it can merge.
 
@@ -74,6 +78,6 @@ Done when the rules review has finished or was skipped under item 1, the code re
 
 ## 8. Report and stop
 
-Report the PR URL, the worktree path, each gate and each drive with its result, the review findings applied, the open questions of the rules review and the fixes it did not apply, and every step this run skipped. Stay in the worktree: `/worktree-flow:worktree-merge` removes it.
+Report the PR URL, the worktree path, each gate and each drive with its result, the review findings applied, the open questions of the rules review and the fixes it did not apply, every step this run skipped, the stray work left on the main checkout, and the next step: the user starts `/worktree-flow:worktree-merge`, which merges the PR and removes the worktree. Stay in the worktree.
 
 Done when the report holds each of these items, or says that it does not apply.
