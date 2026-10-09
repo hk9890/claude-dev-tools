@@ -59,12 +59,12 @@ Commit in the project's style. Push with upstream tracking: to `<pushed-branch>`
 
 Two reviews run on the PR, one after the other. After each one that applied a fix, repeat steps 4 and 5, commit, and push: the second review then reads the head the first one fixed.
 
-1. **Rules.** Invoke `project-review:project-review-change` with the argument `--fix <pr-number>`, where that skill is in your available skills: it holds the change against the project's own written rules, applies the fixes it settled, and leaves the open ones as questions. Carry those to step 8 unanswered and go on. In a project with no written rules it says so and reviews nothing: report that as its result. Where the skill is not in your available skills, report the rules review as skipped, never as passed, and give the reason: the `project-review` plugin is not installed, or is installed at a version whose skill only the user can start.
+1. **Rules.** Invoke `project-review:project-review-change` with the argument `--fix <pr-number>`, where that skill is in your available skills: it holds the change against the project's own written rules, applies the fixes it settled, and leaves the open ones as questions. Carry those to step 8 unanswered and go on. In a project with no written rules it says so and reviews nothing: report that as its result. Where the skill is not in your available skills, report the rules review as skipped, never as passed, and give the reason, as far as you can tell which: the `project-review` plugin is not installed, or is installed at a version whose skill only the user can start.
 2. **Code.** Invoke the `code-review` skill with the argument `xhigh --fix <pr-number>`. It runs in the background: wait for its completion notification, then read which findings it applied.
 
 Then bring the PR body up to date with `gh pr edit <pr-number> --body-file`: the gate and drive results, the **Review** line with the PR's head commit, and every other part the fixes made stale.
 
-Done when the rules review has finished or was skipped under item 1, the code review has finished, their fixes are pushed with every gate green, and the **Review** line names the PR's head commit.
+Done when the rules review has finished or was skipped under item 1, the code review has finished, their fixes are pushed with every gate green and the drive repeated on that tree, and the **Review** line names the PR's head commit.
 
 ## 8. Report and stop
 

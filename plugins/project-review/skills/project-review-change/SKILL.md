@@ -124,19 +124,23 @@ One adversarial agent does the whole review. There is no workflow and no level a
    procedure path in full, apply it to the subject, produce the same sections, and state
    that the review ran inline rather than on the reviewer agent.
 
+   Done when the review carries one of the four verdict labels and every entry in
+   `## Recommended actions` is tagged `settled` or `open`.
+
 4. **Relay the review.** Surface the agent's verdict and findings as it wrote them; do not
    re-derive or re-label them. Then follow `<SKILL_DIR>/../../references/decision-split.md`
    over the tagged actions — "this change" is what was reviewed. This review takes no
    `html-viz` flag, so the reference's **Without it** branch applies. With `--fix`, say
    that step 5 applies the settled batch now, in place of the reference's line on where
-   the user stops it. Done when every open item has been put to the user and the settled
-   batch has been named.
+   the user stops it.
 
    Keep `## Suggested rule additions` visibly apart from the findings when you relay it.
    Merging the two is the one failure that turns this review into an ordinary code review.
 
    For a "did you really check X?" follow-up, **re-run the skill**; never answer from the
    review text alone.
+
+   Done when every open item has been put to the user and the settled batch has been named.
 
 5. **Apply the settled batch**, with `--fix` only. Without it the run ends at step 4.
 
@@ -146,9 +150,10 @@ One adversarial agent does the whole review. There is no workflow and no level a
 
    Where an edit was made, run every command under `## Checks run` again on the edited
    tree and report each result. A command that passed in the review and fails now means an
-   action was not settled: undo exactly that action's edit, run the command again, and
-   name the action as not applied, with the command. Undo by editing: the tree can hold
-   uncommitted work that a restore from git destroys.
+   action was not settled. Undo the batch one action at a time, the last one first, and
+   run the command after each, until it passes: name each undone action as not applied,
+   with the command. Undo by editing: the tree can hold uncommitted work that a restore
+   from git destroys.
 
    Leave the result uncommitted: the commit belongs to whoever asked for the review.
 

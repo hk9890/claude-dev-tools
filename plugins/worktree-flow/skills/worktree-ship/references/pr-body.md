@@ -13,7 +13,7 @@ Use this template for the PR body:
 
 - **Gate:** `<command>`: <passed, failed, or skipped, and why>
 - **Driven:** `<command>`: <what it showed, or not driven, and what to check by hand>
-- **Review:** `project-review-change --fix`: <fixes applied and open questions, or skipped and why>; `code-review xhigh --fix`: <findings applied>, through `<head commit>`
+- **Review:** `project-review-change --fix`: <fixes applied and open questions, or no written rules, or skipped and why>; `code-review xhigh --fix`: <findings applied>, through `<head commit>`
 - <optional: **Before:** output or failing test run>
   <optional: **After:** output or passing test run>
 
