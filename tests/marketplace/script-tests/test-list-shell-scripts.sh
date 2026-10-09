@@ -24,14 +24,17 @@ FIXTURE="$(mktemp -d)"
 trap 'rm -rf "$FIXTURE"' EXIT
 mkdir -p "$FIXTURE/plugins/demo/bin"
 printf '#!/usr/bin/env bash\necho hi\n' > "$FIXTURE/plugins/demo/bin/tool"
+printf '#!/usr/bin/env -S bash -eu\necho hi\n' > "$FIXTURE/plugins/demo/bin/strict"
+printf '#!/usr/bin/env bash\necho hi\n' > "$FIXTURE/plugins/demo/bin/helper.sh"
 printf '#!/usr/bin/env node\n' > "$FIXTURE/plugins/demo/bin/server"
 git -C "$FIXTURE" init -q && git -C "$FIXTURE" add -A
 fixture_output="$(cd "$FIXTURE" && bash "$SCRIPT")"
+fixture_expected=$'plugins/demo/bin/helper.sh\nplugins/demo/bin/strict\nplugins/demo/bin/tool'
 
-if [[ "$fixture_output" == "plugins/demo/bin/tool" ]]; then
-  ok "extensionless bash script under a plugin bin/ is included, a node one beside it is not"
+if [[ "$fixture_output" == "$fixture_expected" ]]; then
+  ok "each shell script under a plugin bin/ is listed once, shebang flags or a .sh extension included; a node one beside them is not"
 else
-  fail "fixture: expected plugins/demo/bin/tool alone, got: $fixture_output"
+  fail "fixture: expected $fixture_expected, got: $fixture_output"
 fi
 
 if grep -qF "plugins/html-visualization/bin/server.js" <<<"$output"; then

@@ -12,7 +12,7 @@ set -uo pipefail
 git ls-files '*.sh'
 
 git ls-files 'plugins/*/bin/*' | while IFS= read -r f; do
-  if head -n1 "$f" | grep -qE '^#!.*/(env[[:space:]]+)?(bash|sh|dash|ksh|zsh)$'; then
+  if [[ "$f" != *.sh ]] && head -n1 "$f" | grep -qE '^#!.*/(env[[:space:]]+(-S[[:space:]]+)?)?(bash|sh|dash|ksh|zsh)([[:space:]]|$)'; then
     printf '%s\n' "$f"
   fi
 done
