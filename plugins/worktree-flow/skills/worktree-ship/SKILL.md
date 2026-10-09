@@ -8,7 +8,7 @@ argument-hint: "[change-to-make]"
 
 **Ship this change as a reviewed PR:** $ARGUMENTS
 
-With no argument, ship the change the checkout holds: the current worktree's, or the **stray work** on the main checkout (step 2). Where it holds none, ask what to change. The run ends at an open PR; merging belongs to `/worktree-flow:worktree-merge`, which the user starts.
+With no argument, ship the change the checkout holds: the current worktree's, or the **stray work** on the main checkout (step 2). Where it holds none and step 2 finds no stopped run, ask what to change. The run ends at an open PR; merging belongs to `/worktree-flow:worktree-merge`, which the user starts.
 
 A run **resumes**: it can start in the main checkout with nothing done, in a worktree with the change half made, or on a PR already reviewed. Each step states the result it leaves, and a step whose result already stands is skipped. A gate or drive result stands only for the tree it ran on.
 
@@ -29,18 +29,20 @@ Where `git rev-parse --path-format=absolute --git-dir --git-common-dir` prints t
 
 Otherwise the session is in the main checkout:
 
-1. `git fetch`, and choose the worktree's name: bare kebab-case, for example `fix-login`. Where `git branch --list '*-stray'` prints a branch, a stopped run left its move unfinished: take that branch's worktree name, and where it prints more than one, ask the user which.
-2. Look for **stray work**, which belongs to this change and moves with it: uncommitted files (`git status --porcelain -- ':/' ':(top,exclude).claude/worktrees'`, which leaves out the worktrees the harness keeps there), and commits the remote lacks (`git rev-list <remote>/<base-branch>..HEAD`). Where the checkout holds stray work on another branch than `<base-branch>`, or holds stray work while item 1 found a stopped run, stop and ask the user which change to ship. Where there is stray work, take it off the main checkout now, because a session inside a worktree cannot run git on another checkout:
+1. `git fetch`, and choose the worktree's name: bare kebab-case, for example `fix-login`, and not the last path segment of a worktree that `git worktree list` prints. Where `git branch --list '*-stray'` prints a branch, a stopped run left its move unfinished: take that branch's worktree name instead, and where it prints more than one, ask the user which.
+2. Look for **stray work**, which belongs to this change and moves with it: uncommitted files (`git status --porcelain -- ':/' ':(top,exclude).claude/worktrees'`, which leaves out the worktrees the harness keeps there), and commits the remote lacks (`git rev-list <remote>/<base-branch>..HEAD`; on another branch than `<base-branch>`, `git rev-list HEAD --not --remotes=<remote>`). Where the checkout holds stray work on another branch than `<base-branch>`, or holds stray work while item 1 found a stopped run, stop and ask the user which change to ship. Where there is stray work, take it off the main checkout now, because a session inside a worktree cannot run git on another checkout:
    - `git branch <worktree-name>-stray`. It keeps the commits, and it marks the move for a run that resumes.
    - Where there are uncommitted files, `git stash push --include-untracked -m <worktree-name>`: every worktree shares the stash, so the message is what tells this entry from another session's.
    - Where the remote lacks commits, `git reset --hard <remote>/<base-branch>`.
 
-   Done when that `git status` command and `git rev-list <remote>/<base-branch>..HEAD` both print nothing.
+   Where git refuses the branch or the stash, stop and ask the user: the reset destroys what those two did not save.
+
+   Done when that `git status` command and that `git rev-list` command both print nothing.
 3. Where the harness setting `worktree.baseRef` is `head` (`.claude/settings.local.json` or `.claude/settings.json`), the worktree branches from local HEAD: fast-forward the default branch, or the change starts from a stale base.
 4. Call `EnterWorktree` with the name, or with the `path` of the worktree a stopped run left under that name — before starting any subagent: a subagent already running when the session enters a worktree loses its Bash. Then **bring in** the stray work.
 5. Run the setup from step 1.
 
-**Bring in** — in the worktree, whose name is the last path segment of `git rev-parse --show-toplevel`, for the `<worktree-name>-stray` branch and the stash entry whose message is `<worktree-name>` (`git stash list --format='%H %gd %gs'` prints its commit and its `stash@{n}`), each where it exists:
+**Bring in** — in the worktree, whose name is the last path segment of `git rev-parse --show-toplevel`, for the `<worktree-name>-stray` branch and the stash entry whose subject is `On <branch>: <worktree-name>` (`git stash list --format='%H %gd %gs'` prints its commit, its `stash@{n}`, and its subject), each where it exists:
 
 1. `git merge <worktree-name>-stray`: a new worktree fast-forwards, and a worktree that holds the commits already stays as it is.
 2. `git stash apply <stash-commit>`. Once `git status --porcelain` lists the files the stash held, list the stash again and `git stash drop` the `stash@{n}` of that commit: another session can push an entry in between.
@@ -48,7 +50,7 @@ Otherwise the session is in the main checkout:
 
 Where git refuses the merge or the apply, or stops it on a conflict with work the worktree holds, stop and ask the user.
 
-Done when `git branch --list <worktree-name>-stray` prints nothing and `git stash list` holds no entry with that message.
+Done when `git branch --list <worktree-name>-stray` prints nothing and `git stash list` holds no entry with that subject.
 
 **Shipped already** — `git status --porcelain` prints nothing, the PR is `OPEN` with a `headRefOid` equal to `git rev-parse HEAD`, the **Review** line of its body names that commit, and, where the run has an argument, the PR's diff carries that whole change. A **Review** line that records the rules review as skipped does not count while `project-review:project-review-change` is in your available skills: go to step 7 for the rules review, and the code review stands where that review applies no fix. Otherwise go to step 8 and change nothing; where `mergeable` is `CONFLICTING`, report that the PR needs the base branch merged in before it can merge.
 
