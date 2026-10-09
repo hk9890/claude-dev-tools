@@ -10,9 +10,9 @@ The user has asked for a **retrospective**. You are suggesting improvements to t
 
 ## Steps
 
-1. Read the primary sources for the session to review. `$ARGUMENTS` names it; where that is empty, it is the current session. This may mean searching through session logs on this machine. The **repo** under review is the checkout that session ran in, which can be another directory than the current one: read its files there. Done when you have read the session to its last record, its subagents' records included, or have named the part you did not read.
+1. Read the primary sources for the session to review. `$ARGUMENTS` names it; where that is empty, it is the current session. This may mean searching through session logs on this machine. Write each extract you make of them into a new directory that only this run writes to, and print its path: one that `mktemp -d` makes, or a new subdirectory of your scratchpad directory. Another retrospective may run on this machine at the same time. An extract that shortens records is an index: use it to find records, then read from the transcript each record this step's criterion names and each one you quote. The **repo** under review is the checkout that session ran in, which can be another directory than the current one: read its files there. Done when you have read the session to its last record, its subagents' records included, with every failed tool result and every message the user typed in full; where a record cannot be read in full, done when you have named it and said why.
 
-2. Look for candidates for improvement in these categories. Done when every category carries a candidate or is cleared, and every candidate quotes the session moment that shows it.
+2. Look for candidates for improvement in these categories. Done when every category carries a candidate or is cleared, and every candidate quotes, from a record read in full, the session moment that shows it.
 
 - **Navigation**: how easy was it for the agent to find the right files? Are there hidden dependencies between files? Would a **navigation pointer** make it easier? _Use when_ the session took a long time to find a piece of information.
 - **Automated checks**: are there automated checks that could catch errors the agent made? Linting, typing, tests, filesystem linters? Read the repo's own check command first (its `package.json`/build-tool `lint`/`check` scripts, its CI workflow), so a check that already exists but sits unwired or silently broken is the finding, not a reinvention. A repo with no **guardrail** (no pre-commit hook and no CI job running its lint/typecheck/test command) is itself a finding: an un-linted repo is a standing missed opportunity, not a neutral default. _Use when_ the agent made a mistake an automated check could have caught, or the repo has no guardrail at all.
@@ -22,7 +22,7 @@ The user has asked for a **retrospective**. You are suggesting improvements to t
 - **No-ops**: look for instructions in steering files that don't modify the agent's behavior. _Use when_ the steering files are large and unwieldy.
 - **Information access**: look for opportunities to increase the agent's access to information. Teeing dev server logs, readonly access to third-party services. _Use when_ a crucial piece of information was not available to the agent.
 
-3. Present these candidates to the user, in order of severity, then the cleared categories. Stop there: the user picks which candidate to apply.
+3. Present these candidates to the user, in order of severity, then the cleared categories, then each part of the session you did not read. Stop there: the user picks which candidate to apply.
 
 ## Reference
 
@@ -36,7 +36,7 @@ This means that the review agent should be responsible for imposing coding stand
 
 ### Files
 
-A candidate names the file it changes:
+A candidate names the file it changes, by absolute path:
 
 - `CLAUDE.md`/`AGENTS.md`: these files are pushed to the context window of any agent working in the repo. They are for **navigation pointers** to other files, and little else.
 - The repo's coding-standards document, the one its `AGENTS.md` routes to for coding rules: this file is read during review, not implementation.
