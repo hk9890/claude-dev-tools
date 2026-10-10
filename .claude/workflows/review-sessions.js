@@ -1,7 +1,7 @@
 export const meta = {
   name: 'review-sessions',
   description: 'Pick local sessions that used this marketplace\'s plugins and review each for plugin problems',
-  whenToUse: 'To find what to improve in the plugins from real sessions. args: {perBucket, sinceDays}; two agents per picked session.',
+  whenToUse: 'To find what to improve in the plugins from real sessions. args: {perBucket, sinceDays}; one agent for the pick, at most two per picked session.',
   phases: [
     { title: 'Pick', detail: 'scripts/pick-sessions.py pick' },
     { title: 'Review', detail: 'one reviewer per picked session' },
@@ -30,7 +30,7 @@ const PICKS = {
           errors: { type: 'number' },
           output_tokens: { type: 'number' },
         },
-        required: ['session', 'bucket', 'skills', 'versions'],
+        required: ['session', 'bucket', 'skills', 'versions', 'subagents', 'pushback', 'errors', 'output_tokens'],
       },
     },
   },
@@ -57,10 +57,13 @@ const FINDINGS = {
   required: ['findings'],
 }
 
+const sessionId = session => session.split('/').pop().replace(/\.jsonl$/, '')
+
 const READ_TRANSCRIPT = session => `
-Render the transcript to a file in your scratchpad directory and read that file in parts:
+Render the transcript to the file ${sessionId(session)}.txt in your scratchpad directory and read that file in parts:
   python3 scripts/pick-sessions.py render ${session}
-Its subagent transcripts are the agent-*.jsonl files below the directory of the same name without ".jsonl"; render one where the main transcript leaves a question open.
+Keep to that file name: other agents render other sessions into the same directory at the same time.
+Its subagent transcripts are the agent-*.jsonl files below the directory of the same name without ".jsonl"; render one, to a file named after it, where the main transcript leaves a question open.
 Read docs/MONITORING.md first. Change no file in the repository.`
 
 phase('Pick')
@@ -76,6 +79,7 @@ const reviewed = await pipeline(
     `Review one Claude Code session for problems that a plugin under plugins/ in this repository caused.
 Session: ${pick.session}
 Picked for: ${pick.bucket}. Plugin skills used: ${pick.skills.join(', ')}. Plugin versions: ${pick.versions.join(', ') || 'dev checkout'}.
+The pick counted ${pick.pushback} user pushbacks, ${pick.errors} failed tool results and ${pick.output_tokens} output tokens in the main transcript and its ${pick.subagents} subagent transcripts together: what the main transcript does not show is in a subagent transcript.
 ${READ_TRANSCRIPT(pick.session)}
 
 A finding is a place where the agent or the user lost time or got a wrong result, and a change to a plugin file would have prevented it: an instruction that is wrong, unclear or missing, a skill the agent loaded and then did not follow, a skill that fired for the wrong request, a plugin guard that refused valid work. Open the plugin file and confirm that it says, or omits, what you claim.

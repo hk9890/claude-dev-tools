@@ -19,10 +19,16 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # Results with is_error set where no tool failed: Claude Code refused a command it
 # could not prove stays in the worktree, or skipped the siblings of an interrupted batch.
-ISOLATION_REFUSAL = "this session is isolated in the worktree"
+# The refusal opens "This session is isolated" in a session and "This agent is isolated"
+# in a subagent. Claude Code wraps some of its own errors in ERROR_TAG.
+ISOLATION_REFUSAL = "is isolated in the worktree"
 CANCELLED_SIBLING = "Cancelled: parallel tool call"
+ERROR_TAG = "<tool_use_error>"
 
 INTERRUPT = "[Request interrupted by user"
+# One interrupt writes several records in the same second: a marker, a rejection for each
+# call of a parallel batch, and a marker in each subagent it stopped.
+TIMESTAMP_SECOND = len("2026-01-01T00:00:00")
 
 # A cached install carries the plugin version in the skill-load banner; a dev checkout has none.
 BANNER_RE = re.compile(
@@ -64,8 +70,9 @@ def subagent_files(session_file):
 
 def summarize(session_file, plugins):
     subagents = subagent_files(session_file)
-    skills, versions, counted_messages = set(), set(), set()
-    pushback = errors = output_tokens = 0
+    skills, versions, pushback_seconds = set(), set(), set()
+    tokens_by_message = {}
+    errors = 0
     started = None
 
     for path in [session_file, *subagents]:
@@ -74,27 +81,29 @@ def summarize(session_file, plugins):
             if record.get("type") == "assistant":
                 if record.get("attributionPlugin") in plugins and record.get("attributionSkill"):
                     skills.add(record["attributionSkill"])
-                # One API message spans several records, each repeating its usage.
+                # One API message spans several records, and its usage grows up to the last.
                 message = record.get("message") or {}
-                if message.get("id") not in counted_messages:
-                    counted_messages.add(message.get("id"))
-                    output_tokens += (message.get("usage") or {}).get("output_tokens", 0)
+                message_id = message.get("id")
+                tokens = (message.get("usage") or {}).get("output_tokens", 0)
+                tokens_by_message[message_id] = max(tokens_by_message.get(message_id, 0), tokens)
             elif record.get("type") == "user":
                 denial = record.get("toolDenialKind")
+                second = (record.get("timestamp") or "")[:TIMESTAMP_SECOND]
                 for block in blocks(record):
                     text = block_text(block)
                     if block.get("type") == "text":
-                        pushback += text.startswith(INTERRUPT)
+                        if text.startswith(INTERRUPT):
+                            pushback_seconds.add(second)
                         banner = BANNER_RE.search(text)
                         if banner and banner[1] in plugins:
                             versions.add(banner[2])
                     elif block.get("type") == "tool_result" and block.get("is_error"):
                         if denial == "user-rejected":
-                            pushback += 1
+                            pushback_seconds.add(second)
                         elif not (
                             denial
                             or ISOLATION_REFUSAL in text.lower()
-                            or text.startswith(CANCELLED_SIBLING)
+                            or text.removeprefix(ERROR_TAG).startswith(CANCELLED_SIBLING)
                         ):
                             errors += 1
 
@@ -105,9 +114,9 @@ def summarize(session_file, plugins):
         "skills": sorted(skills),
         "versions": sorted(versions),
         "subagents": len(subagents),
-        "pushback": pushback,
+        "pushback": len(pushback_seconds),
         "errors": errors,
-        "output_tokens": output_tokens,
+        "output_tokens": sum(tokens_by_message.values()),
     }
 
 
@@ -152,7 +161,7 @@ def render(args):
                 if block.get("type") == "text":
                     emit(speaker, block_text(block))
                 elif block.get("type") == "tool_use":
-                    emit(f"{speaker} TOOL {block.get('name')}", json.dumps(block.get("input")))
+                    emit(f"{speaker} TOOL {block.get('name')}", json.dumps(block.get("input"), ensure_ascii=False))
         elif record.get("type") == "user":
             for block in blocks(record):
                 if block.get("type") == "text":

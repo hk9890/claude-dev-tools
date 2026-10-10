@@ -136,7 +136,7 @@ The table cannot catch sessions where attribution was absent entirely. For those
 
 A trial that runs beside the phases above. It finds plugin problems in sessions nobody watched.
 
-Run the `review-sessions` workflow ([`.claude/workflows/review-sessions.js`](../.claude/workflows/review-sessions.js)) from the repo root. It takes `{perBucket, sinceDays}`, 1 and 7 by default, and starts two agents per picked session:
+Run the `review-sessions` workflow ([`.claude/workflows/review-sessions.js`](../.claude/workflows/review-sessions.js)) from the repo root. It takes `{perBucket, sinceDays}`, 1 and 7 by default, and starts one agent for the pick and at most two per picked session:
 
 1. **Pick** — `python3 scripts/pick-sessions.py pick` prints the sessions to review as JSON.
 2. **Review** — one agent per session reads it with `python3 scripts/pick-sessions.py render <session.jsonl>` and reports each plugin problem with the plugin file at fault, a quote, and a fix.
@@ -150,7 +150,7 @@ A candidate is a session modified in the window with at least one turn attribute
 
 | Bucket | Signal |
 |---|---|
-| `pushback` | User interrupts plus tool calls the user rejected |
+| `pushback` | Seconds in which the user interrupted the agent or rejected a tool call. One interrupt counts once, whatever the number of parallel calls and subagents it stopped |
 | `errors` | Failed tool results. Leaves out the three kinds the indexer leaves out ([Reading the numbers](#reading-the-numbers)) and permission-rule denials |
 | `output_tokens` | Output tokens, each API message counted once |
 | `random` | A random draw from the candidates no other bucket took; `--seed` repeats it |

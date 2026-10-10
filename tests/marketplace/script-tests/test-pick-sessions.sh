@@ -45,12 +45,12 @@ def assistant(message_id, tokens, plugin="demo", content=None):
     }
 
 
-def user_text(text):
-    return {"type": "user", "message": {"content": [{"type": "text", "text": text}]}}
+def user_text(text, at="2026-01-01T00:00:00.000Z"):
+    return {"type": "user", "timestamp": at, "message": {"content": [{"type": "text", "text": text}]}}
 
 
-def error(text, denial=None):
-    record = {"type": "user", "message": {"content": [{"type": "tool_result", "is_error": True, "content": text}]}}
+def error(text, denial=None, at="2026-01-01T00:00:00.000Z"):
+    record = {"type": "user", "timestamp": at, "message": {"content": [{"type": "tool_result", "is_error": True, "content": text}]}}
     if denial:
         record["toolDenialKind"] = denial
     return record
@@ -70,20 +70,29 @@ with tempfile.TemporaryDirectory() as tmp:
     (plugins / "demo").mkdir(parents=True)
     project = projects / "proj"
 
-    tool_call = [{"type": "tool_use", "name": "Bash", "input": {"command": "make"}}]
+    tool_calls = [
+        {"type": "tool_use", "name": "Bash", "input": {"command": "make"}},
+        {"type": "tool_use", "name": "Bash", "input": {"command": "echo für"}},
+    ]
+    rejection = "The user doesn't want to proceed with this tool use."
     write(project / "pushback.jsonl", [
         user_text("Base directory for this skill: /home/u/.claude/plugins/cache/market/demo/1.2.0/skills/skill"),
-        assistant("m1", 10, content=tool_call),
+        assistant("m1", 3, content=tool_calls),
         assistant("m1", 10),
-        user_text("[Request interrupted by user]"),
-        error("The user doesn't want to proceed with this tool use.", denial="user-rejected"),
+        user_text("[Request interrupted by user]", at="2026-01-01T00:01:00.100Z"),
+        error(rejection, denial="user-rejected", at="2026-01-01T00:02:00.100Z"),
+        error(rejection, denial="user-rejected", at="2026-01-01T00:02:00.130Z"),
+        user_text("[Request interrupted by user for tool use]", at="2026-01-01T00:02:00.150Z"),
         error("exit status 1 " + "x" * 100),
         error("This session is isolated in the worktree /w, refusing"),
         error("Cancelled: parallel tool call Bash(ls) errored"),
+        error("<tool_use_error>Cancelled: parallel tool call Bash(ls) errored</tool_use_error>"),
         error("Refusing to write: it is a symbolic link", denial="permission-rule"),
     ])
     write(project / "pushback" / "subagents" / "workflows" / "wf_1" / "agent-1.jsonl", [
         assistant("m2", 5),
+        user_text("[Request interrupted by user]", at="2026-01-01T00:02:00.900Z"),
+        error("This agent is isolated in the worktree /w, refusing"),
         error("exit status 2"),
     ])
     write(project / "errors.jsonl", [assistant("m3", 1), error("a"), error("b"), error("c")])
@@ -103,9 +112,9 @@ with tempfile.TemporaryDirectory() as tmp:
           {name: s["bucket"] for name, s in by_name.items()})
 
     pushback = by_name["pushback"]
-    check("pushback counts the interrupt and the user rejection", 2, pushback["pushback"])
+    check("pushback counts an interrupt once: its rejections, its markers and the subagent it stopped", 2, pushback["pushback"])
     check("errors skip refusals, cancelled siblings and denials, and include subagents", 2, pushback["errors"])
-    check("output tokens count each message once, subagents included", 15, pushback["output_tokens"])
+    check("output tokens take the full usage of a message, subagents included", 15, pushback["output_tokens"])
     check("version comes from the skill banner", ["1.2.0"], pushback["versions"])
     check("subagent transcripts are counted", 1, pushback["subagents"])
     check("skills hold the attributed skill", ["demo:skill"], pushback["skills"])
@@ -114,6 +123,7 @@ with tempfile.TemporaryDirectory() as tmp:
     for label, needle in [
         ("render labels a user turn", "USER: [Request interrupted by user]"),
         ("render labels a tool call with its skill", 'ASSISTANT [demo:skill] TOOL Bash: {"command": "make"}'),
+        ("render keeps the non-ASCII text of a tool input", 'TOOL Bash: {"command": "echo für"}'),
         ("render labels a failed result", "ERROR: exit status 1"),
         ("render caps an event and says how much it cut", "[... 74 more chars]"),
     ]:
