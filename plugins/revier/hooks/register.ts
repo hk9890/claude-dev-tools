@@ -25,6 +25,9 @@ const FOCUS_MOVER = new RegExp(String.raw`${LEAD}revier\s+${SUBCOMMAND}(?![\w-])
 // revier reads its flags before it acts: with one of these it prints and changes no window.
 const CHANGES_NO_WINDOW = /\s(?:--dry-run|--help|-h)(?![\w=-])/
 
+// `agent new` alone has `--no-focus`: with it the tab opens and nothing is focused or raised.
+const OPENS_UNFOCUSED = new RegExp(String.raw`^${LEAD}revier\s+agent\s+new\s(?:.*\s)?--no-focus(?![\w=-])`)
+
 // A line that ends in `\` continues on the next. A double-quoted string still runs its command
 // substitutions, so it stays from the first one on. Its escaped characters are blanked first: an
 // escaped `$(` or backtick is text and starts none.
@@ -50,7 +53,7 @@ function movesFocus(command: string) {
     .split(/\r?\n/)
     .flatMap(line => line.match(FOCUS_MOVER) ?? [])
 
-  return runs.some(run => !CHANGES_NO_WINDOW.test(run))
+  return runs.some(run => !CHANGES_NO_WINDOW.test(run) && !OPENS_UNFOCUSED.test(run))
 }
 
 export const register: Register = on => {
