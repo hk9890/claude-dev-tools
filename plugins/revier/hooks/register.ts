@@ -14,16 +14,20 @@ const SUBSTITUTION = /\$\(|`/
 // `revier` must sit in command position: first on a line or after `;`, `&`, `|`, `(` or a
 // backtick, then past any assignment (`A=b revier`), keyword (`do revier`) or wrapper that runs its
 // arguments (`timeout 30 revier`). A development build run by path (`./bin/revier`) passes. The
-// match ends at a `;`, `&` or `|`, so it holds the arguments of that one command.
+// match ends at a `;`, `&` or `|`, so it holds the arguments of that one command. It is captured in
+// a lookahead: a command substitution in those arguments is a match of its own.
 const ASSIGNMENT = String.raw`\w+=\S*`
 const KEYWORD = String.raw`if|then|elif|else|while|until|do|time|!|\{`
 const WRAPPER = String.raw`(?:command|exec|env|nohup|setsid|timeout|xargs|revier\s+each\s+--)(?:\s+(?:-\S+|\d\S*))*`
 const LEAD = String.raw`(?:^|[;&|(\`])\s*(?:(?:${ASSIGNMENT}|${KEYWORD}|${WRAPPER})\s+)*`
 const SUBCOMMAND = String.raw`(?:open|go|popup|shutdown|agent\s+(?:new|focus)|shell\s+new|session\s+restore)`
-const FOCUS_MOVER = new RegExp(String.raw`${LEAD}revier\s+${SUBCOMMAND}(?![\w-])[^;&|]*`, 'g')
+const FOCUS_MOVER = new RegExp(String.raw`(?=(${LEAD}revier\s+${SUBCOMMAND}(?![\w-])[^;&|]*))`, 'g')
 
 // revier reads its flags before it acts: with one of these it prints and changes no window.
 const CHANGES_NO_WINDOW = /\s(?:--dry-run|--help|-h)(?![\w=-])/
+
+// `agent new` alone has `--no-focus`: with it the tab opens and nothing is focused or raised.
+const OPENS_UNFOCUSED = new RegExp(String.raw`^${LEAD}revier\s+agent\s+new\s(?:.*\s)?--no-focus(?![\w=-])`)
 
 // A line that ends in `\` continues on the next. A double-quoted string still runs its command
 // substitutions, so it stays from the first one on. Its escaped characters are blanked first: an
@@ -48,9 +52,9 @@ function runnable(command: string) {
 function movesFocus(command: string) {
   const runs = runnable(command)
     .split(/\r?\n/)
-    .flatMap(line => line.match(FOCUS_MOVER) ?? [])
+    .flatMap(line => Array.from(line.matchAll(FOCUS_MOVER), ([, run]) => run))
 
-  return runs.some(run => !CHANGES_NO_WINDOW.test(run))
+  return runs.some(run => !CHANGES_NO_WINDOW.test(run) && !OPENS_UNFOCUSED.test(run))
 }
 
 export const register: Register = on => {

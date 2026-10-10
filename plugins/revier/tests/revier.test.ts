@@ -52,6 +52,20 @@ const DENIED = [
   'revier \\\n  open demo',
   'revier open demo # --dry-run',
   "python3 - <<'EOF'\nprint('x')\nEOF\nrevier open demo",
+  'revier agent new -p x',
+  'revier agent new -p x --no-focusx',
+  'revier agent new -p x --no-focus=false',
+  'revier agent new -p x; echo --no-focus',
+  'revier agent new -p x # --no-focus',
+  'revier agent new -p x --no-focus; revier agent new -p y',
+  'revier shell new -p x --no-focus',
+  'revier agent focus x --no-focus',
+  'revier open x --no-focus',
+  'revier open x; revier agent new -p x --no-focus',
+  'revier agent new -p x --no-focus $(revier open y)',
+  'revier agent new --no-focus -p "$(revier agent new -p y)"',
+  'revier agent new --no-focus -p `revier go web`',
+  'revier session restore --dry-run $(revier open y)',
 ]
 
 const ALLOWED = [
@@ -90,6 +104,13 @@ const ALLOWED = [
   'echo "$(date) \\`revier open\\` stays text"',
   'grep -E "revier open|revier go" README.md',
   'cat > notes.md <<EOF\nrevier open demo\nEOF',
+  'revier agent new --no-focus',
+  'revier agent new -p x --no-focus',
+  'revier agent new --no-focus -p x',
+  'for p in a b; do revier agent new -p $p --no-focus; done',
+  'address=$(revier agent new -p x --no-focus)',
+  'timeout 30 revier agent new -p x --no-focus',
+  'revier agent new -p "$(basename "$PWD")" --no-focus',
 ]
 
 for (const command of DENIED) {
