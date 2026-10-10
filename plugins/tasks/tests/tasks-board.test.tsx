@@ -131,6 +131,26 @@ test('running /tasks-board again redraws the pane with the new state', async ($,
   expect(await ui.findAll({ type: 'Text', text: 'none' })).toHaveLength(2)
 })
 
+test('a started issue that waits on a blocker is drawn once, under In progress', async ($, on) => {
+  const started = { id: 'rep-5', type: 'task', priority: 1, title: 'Port the pane' }
+  const waiting = { ...started, blocked_by: ['rep-4'], blocked_by_refs: [{ id: 'rep-4' }] }
+  host(on, { inProgress: [...IN_PROGRESS, started], ready: [], blocked: [...BLOCKED, waiting] })
+
+  await $.session.start(HEADLESS)
+  const answer = await $.command.run(TYPED)
+
+  expect(answer.text).toBe(
+    [
+      'In progress (2)',
+      '  rep-1 P2 task Rewrite the guard',
+      '  rep-5 P1 task Port the pane (blocked by rep-4)',
+      'Ready (0)',
+      'Blocked (1)',
+      '  rep-4 P3 feature Status line (blocked by rep-1)',
+    ].join('\n'),
+  )
+})
+
 test('with no store, /tasks-board prints taskmgr\'s own line and opens no pane', async ($, on) => {
   const seen = host(on, "taskmgr: no .tasks directory found — run 'taskmgr init' to create one")
 

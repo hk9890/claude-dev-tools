@@ -7,4 +7,4 @@ allowed-tools: Bash(taskmgr *)
 
 # taskmgr
 
-!`taskmgr guide 2>/dev/null || echo "STOP: taskmgr is not on PATH, so the guide did not print. Read references/troubleshooting.md in this skill's directory and follow it."`
+!`taskmgr commands tree >/dev/null 2>&1 && taskmgr guide 2>/dev/null || echo "STOP: taskmgr v0.11.0 or later is not on PATH, so the guide did not print. Read references/troubleshooting.md in this skill's directory and follow it."`

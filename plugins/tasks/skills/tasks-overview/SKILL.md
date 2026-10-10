@@ -11,4 +11,6 @@ argument-hint: "[scope]"
 Load `tasks:tasks-core`.
 
 Report where the tracker stands: what is ready, what is blocked and behind what, what is in
-progress. $ARGUMENTS narrows it — with no argument, everything open.
+progress. Start from `taskmgr tree`, and take the blockers' titles from `taskmgr blocked`.
+$ARGUMENTS narrows it: an issue ID is a subtree, any other scope is a filter. With no argument,
+everything open.
