@@ -113,7 +113,7 @@ You may use one of these, you may use several, it is unlikely you will use all o
 
 List every gate with its command and its result, then every command that drove the change by hand with what it showed.
 
-`worktree-flow:worktree-review` owns the **Review** line of this list: it adds the line after the last review.
+`worktree-flow:worktree-review` owns the **Review** line of this list: it adds the line after the last review, and brings the **Gate** and **Driven** lines up to date where it ran them again.
 
 Add a before and after pair where the change has an effect a reviewer can see. Execution-based evidence is the strongest: test results, console output. Show the exact test that failed before and passes now, as pseudocode. Add a screenshot only where the project has a place to host the image; `gh` cannot upload one into a PR body.
 

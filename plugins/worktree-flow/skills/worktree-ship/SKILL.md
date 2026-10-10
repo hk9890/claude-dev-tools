@@ -37,7 +37,7 @@ Otherwise the session is in the main checkout:
 
 Done when the session is in a worktree, the setup has run, and `git branch --list 'worktree-ship-stray/<worktree-name>'` prints nothing.
 
-**Pushed already** — `git status --porcelain` prints nothing, the PR is `OPEN` with a `headRefOid` equal to `git rev-parse HEAD`, and, where the run has an argument, the PR's diff carries that whole change. Go to step 7, where the review tells whether this head is reviewed and runs what is missing. Where `mergeable` is `CONFLICTING`, report that the PR needs the base branch merged in before it can merge.
+**Shipped already** — `git status --porcelain` prints nothing, the PR is `OPEN` with a `headRefOid` equal to `git rev-parse HEAD`, that commit starts with the commit after `through` in the **Review** line of its body, and, where the run has an argument, the PR's diff carries that whole change. A **Review** line that records the rules review as skipped does not count while `project-review:project-review-change` is in your available skills: go to step 7, where the review runs what is missing. Otherwise go to step 8 and change nothing; where `mergeable` is `CONFLICTING`, report that the PR needs the base branch merged in before it can merge.
 
 `<pushed-branch>` is the branch's upstream without the remote name (`git rev-parse --abbrev-ref @{upstream}`): `gh` finds a PR by the local branch name, and step 6 can push under another one. With no upstream, or with the base branch as upstream, nothing was pushed: there is no `<pushed-branch>` and no PR.
 
@@ -69,12 +69,14 @@ Done when `git status --porcelain` prints nothing, and `gh pr view <pushed-branc
 
 Invoke `worktree-flow:worktree-review` with the argument `<pr-number>`.
 
-Where it pushed a fix, read the body again with `gh pr view <pr-number> --json body` and bring it up to date with `gh pr edit <pr-number> --body-file`: the gate and drive results, and every other part the fixes made stale. The **Review** line stays as the review wrote it.
+Where it pushed a fix, read the body again with `gh pr view <pr-number> --json body` and bring the parts the fixes made stale up to date with `gh pr edit <pr-number> --body-file`. The list under `## Evidence` stays as the review left it.
 
-Done when the review has finished, and the body carries the gate and drive results of the PR's head.
+Where the review stops before it records its result, the PR is not reviewed: go to step 8 and report the reason.
+
+Done when the PR's head commit starts with the commit after `through` in the **Review** line of the body, or the review stopped and its reason is kept for step 8.
 
 ## 8. Report and stop
 
-Report the PR URL, the worktree path, each gate and each drive with its result, the review findings applied, the open questions of the rules review and the fixes it did not apply, every step this run skipped, the stray work left on the main checkout, and the next step: the user starts `/worktree-flow:worktree-merge`, which merges the PR and removes the worktree. Stay in the worktree.
+Report the PR URL, the worktree path, each gate and each drive with its result, the review findings applied, the open questions of the rules review and the fixes it did not apply, every step this run skipped, the stray work left on the main checkout, and, for a reviewed PR, the next step: the user starts `/worktree-flow:worktree-merge`, which merges the PR and removes the worktree. Stay in the worktree.
 
 Done when the report holds each of these items, or says that it does not apply.
