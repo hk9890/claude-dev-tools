@@ -17,7 +17,7 @@ A plugin's skills, agents, and workflows run in whatever repository the user ins
 Depend on a specific technology only where the dependency is declared:
 
 - Another plugin → `dependencies` in `plugin.json` (below).
-- Another plugin, used only where it is installed → no entry: check that its skill is in the session's available skills, and state what the caller does without it. `worktree-flow:worktree-ship` is the worked example: where `project-review-change` is absent, its step 7 reports the rules review as skipped.
+- Another plugin, used only where it is installed → no entry: check that its skill is in the session's available skills, and state what the caller does without it. `worktree-flow:worktree-review` is the worked example: where `project-review-change` is absent, it reports the rules review as skipped.
 - A CLI tool or runtime → a load-time check that stops with guidance when it is missing (below).
 - A whole platform → name the plugin for it, so the constraint is visible before install. `keep-awake-linux` is the worked example: logind is the point of the plugin, and where `systemd-inhibit` is absent its mod holds nothing and says so once in a toast.
 

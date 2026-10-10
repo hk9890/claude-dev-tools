@@ -37,7 +37,7 @@ Otherwise the session is in the main checkout:
 
 Done when the session is in a worktree, the setup has run, and `git branch --list 'worktree-ship-stray/<worktree-name>'` prints nothing.
 
-**Shipped already** — `git status --porcelain` prints nothing, the PR is `OPEN` with a `headRefOid` equal to `git rev-parse HEAD`, the **Review** line of its body names that commit, and, where the run has an argument, the PR's diff carries that whole change. A **Review** line that records the rules review as skipped does not count while `project-review:project-review-change` is in your available skills: go to step 7 for the rules review, and the code review stands where that review applies no fix. Otherwise go to step 8 and change nothing; where `mergeable` is `CONFLICTING`, report that the PR needs the base branch merged in before it can merge.
+**Pushed already** — `git status --porcelain` prints nothing, the PR is `OPEN` with a `headRefOid` equal to `git rev-parse HEAD`, and, where the run has an argument, the PR's diff carries that whole change. Go to step 7, where the review tells whether this head is reviewed and runs what is missing. Where `mergeable` is `CONFLICTING`, report that the PR needs the base branch merged in before it can merge.
 
 `<pushed-branch>` is the branch's upstream without the remote name (`git rev-parse --abbrev-ref @{upstream}`): `gh` finds a PR by the local branch name, and step 6 can push under another one. With no upstream, or with the base branch as upstream, nothing was pushed: there is no `<pushed-branch>` and no PR.
 
@@ -67,14 +67,11 @@ Done when `git status --porcelain` prints nothing, and `gh pr view <pushed-branc
 
 ## 7. Review and fix
 
-Two reviews run on the PR, one after the other. After each one that applied a fix, repeat steps 4 and 5, commit, and push: the second review then reads the head the first one fixed.
+Invoke `worktree-flow:worktree-review` with the argument `<pr-number>`.
 
-1. **Rules.** Invoke `project-review:project-review-change` with the argument `--fix <pr-number>`, where that skill is in your available skills: it holds the change against the project's own written rules, applies the fixes it settled, names each one it did not apply, and leaves the open ones as questions. Carry the open questions to step 8 unanswered, with the fixes it did not apply, and go on. In a project with no written rules it says so and reviews nothing: report that as its result. Where the skill is not in your available skills, report the rules review as skipped, never as passed, and give the reason, as far as you can tell which: the `project-review` plugin is not installed, or is installed at a version whose skill only the user can start.
-2. **Code.** Invoke the `code-review` skill with the argument `xhigh --fix <pr-number>`. It runs in the background: wait for its completion notification, then read which findings it applied.
+Where it pushed a fix, read the body again with `gh pr view <pr-number> --json body` and bring it up to date with `gh pr edit <pr-number> --body-file`: the gate and drive results, and every other part the fixes made stale. The **Review** line stays as the review wrote it.
 
-Then bring the PR body up to date with `gh pr edit <pr-number> --body-file`: the gate and drive results, the **Review** line with the PR's head commit, and every other part the fixes made stale.
-
-Done when the rules review has finished or was skipped under item 1, the code review has finished, their fixes are pushed with every gate green and the drive repeated on that tree, and the **Review** line names the PR's head commit.
+Done when the review has finished, and the body carries the gate and drive results of the PR's head.
 
 ## 8. Report and stop
 
