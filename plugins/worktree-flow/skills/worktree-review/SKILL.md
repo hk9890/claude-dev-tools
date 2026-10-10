@@ -1,7 +1,7 @@
 ---
 name: worktree-review
-description: "Review a PR and push the fixes: the project's rules review, then the code review, with the result recorded in the PR body."
-when_to_use: "Use when the user asks for a PR to be reviewed and the fixes pushed. Triggers on 'review the PR and push the fixes'. Also loaded by name at the review step of a project's change workflow or of `worktree-ship`. Not for a plain 'review this PR' or a code review alone, with or without `--fix` (`code-review`), nor for the rules review alone (`project-review:project-review-change`)."
+description: "Review a PR and push the fixes: the project's rules review, then the code review."
+when_to_use: "Use when the user asks to 'review the PR and push the fixes'. Also loaded by name at the review step of a project's change workflow or of `worktree-ship`. Not for a review without a push, with or without `--fix` (`code-review`), nor for the rules review alone (`project-review:project-review-change`)."
 argument-hint: "[pr-number]"
 ---
 
@@ -21,7 +21,7 @@ With no argument, review the PR that this branch was pushed to. The run ends at 
 - **Head** — `git rev-parse HEAD` equals `headRefOid`: both reviews edit the tree, and a checkout that differs from the PR gives a review of something else. Where they differ, name the way in: a worktree that holds the PR's branch, in step with the remote (`gh pr checkout <pr-number>` in it).
 - **Tree** — `git status --porcelain` prints nothing: other edits would mix with the fixes.
 
-**Reviewed already** — `headRefOid` starts with the commit after `through` in the **Review** line of the body. Go to step 5: the report is the whole run. One case runs again: where that line records the rules review as skipped and `project-review:project-review-change` is in your available skills, go on with step 2 and run the **Rules** review of step 3. Run the **Code** review only where the rules review applied a fix; else its part of the old line stands, and step 4 keeps it.
+**Reviewed already** — `headRefOid` starts with the commit after `through` in the **Review** line of the body. Go to step 5: the report is the whole run. One case runs again: where that line records the rules review as skipped and `project-review:project-review-change` is in your available skills, go on with step 2 and run the **Rules** review of step 3, and the **Code** review only where the rules review applied a fix.
 
 Done when the five checks hold, and the run is one of three: the full review, the rules review alone, or the report alone.
 
@@ -46,17 +46,17 @@ After each review that applied a fix, do these three in order before you go on, 
 2. Repeat each drive of the change: a drive is a run of the built product by hand that shows the change working, and the ones to repeat are those this session ran and those the **Driven** lines of the PR body name. Fix what a drive shows broken, then return to item 1.
 3. Commit in the project's style, and push the commit to the PR's head branch: `git push <remote> HEAD:<headRefName>`, with the remote of the branch's upstream, or the one that holds the PR's repository where the branch has none. Where the remote rejects the push, the PR's head moved during the review: stop and report it, and leave the commit local.
 
-Done when the rules review has finished or was skipped, the code review has finished or stands under step 1, each gate is clear on the final tree, each drive is repeated on it, `git status --porcelain` prints nothing, and `gh pr view <pr-number> --json headRefOid` prints the commit of `git rev-parse HEAD`.
+Done when the rules review has finished or was skipped, the code review has finished or stands under step 1, the three items are done after each fix, `git status --porcelain` prints nothing, and `gh pr view <pr-number> --json headRefOid` prints the commit of `git rev-parse HEAD`.
 
 ## 4. Record the review
 
 Read the body again with `gh pr view <pr-number> --json body`, and edit it with `gh pr edit <pr-number> --body-file`, from a file outside the checkout:
 
-- Put the **Review** line in the list under `## Evidence` where the body has that heading, else as the last line. It takes the place of an older **Review** line.
+- Put the **Review** line in the list under `## Evidence` where the body has that heading, else as the last line. It takes the place of an older **Review** line; where the code review did not run again, its part of the older line stays.
 - Bring each **Gate** and **Driven** line whose command this run ran again up to date.
 
 ```markdown
-- **Review:** `project-review-change --fix`: <fixes applied, fixes not applied and open questions, or no written rules, or skipped and why>; `code-review xhigh --fix`: <findings applied>, through `<head commit>`
+- **Review:** `project-review-change --fix`: <fixes applied, fixes not applied and open questions, or no written rules, or skipped and why>; `code-review xhigh --fix`: <findings applied, and findings not applied>, through `<head commit>`
 ```
 
 `<head commit>` is the full commit that `git rev-parse HEAD` prints after the last push: a later run reads it to tell whether the head was reviewed.

@@ -51,6 +51,8 @@ Done when the diff carries the whole change and its tests.
 
 Run every gate. Fix and rerun until all are green. A gate that also fails on the base branch was broken before this change: report it and ask the user. Keep each gate's command and result for the PR body; a gate that cannot run here is reported as skipped, never as passed.
 
+Done when each gate is green, or reported as skipped, or red on the base branch too with the user's answer to go on.
+
 ## 5. Drive the change by hand
 
 Run the built product the way step 1 recorded, with the `run` skill where the project documents nothing, and use the change the way its user reaches it. A gate proves the tests; this step proves the feature.
@@ -77,6 +79,6 @@ Done when the PR's head commit starts with the commit after `through` in the **R
 
 ## 8. Report and stop
 
-Report the PR URL, the worktree path, each gate and each drive with its result, the review findings applied, the open questions of the rules review and the fixes it did not apply, every step this run skipped, the stray work left on the main checkout, and, for a reviewed PR, the next step: the user starts `/worktree-flow:worktree-merge`, which merges the PR and removes the worktree. Stay in the worktree.
+Report the PR URL, the worktree path, each gate and each drive with its result, each review with its outcome, the open questions of the rules review and the fixes it did not apply, every step this run skipped, the stray work left on the main checkout, and, for a reviewed PR, the next step: the user starts `/worktree-flow:worktree-merge`, which merges the PR and removes the worktree. Stay in the worktree.
 
 Done when the report holds each of these items, or says that it does not apply.
