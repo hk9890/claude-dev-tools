@@ -10,5 +10,6 @@ argument-hint: "[scope]"
 
 Load `tasks:tasks-core`.
 
-Turn this conversation into a set of filed tasks. $ARGUMENTS narrows which of it — with no
-argument, everything actionable in it is a candidate.
+Turn this conversation into a set of filed tasks. File the set in one call, on standard input with
+`taskmgr create --from -`, so that a refused entry files none of them. $ARGUMENTS narrows which of
+the conversation — with no argument, everything actionable in it is a candidate.
