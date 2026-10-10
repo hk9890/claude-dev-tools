@@ -23,6 +23,6 @@ Internal changes (maintainer or agent-orchestrated) use feature-branch PRs as th
 
 1. Branch off `master` per the convention above and push it to `origin`.
 2. Open a PR — every applicable gate must pass before opening.
-3. Merge after review, with all five CI jobs green ([TESTING.md](TESTING.md)). The review has two lenses: the rules in [REVIEWING.md](REVIEWING.md) (`/project-review:project-review-change --fix <pr>`), then the general code review (`/code-review`); `/worktree-flow:worktree-ship` runs both. Merges use GitHub's default merge-commit style, producing `Merge pull request #N from hk9890/<branch>` subjects — `hk9890/` is the owner namespace, not part of the branch name.
+3. Merge after review, with all five CI jobs green ([TESTING.md](TESTING.md)). The review is `/worktree-flow:worktree-review <pr>`, which applies [REVIEWING.md](REVIEWING.md); `/worktree-flow:worktree-ship` runs it. Merges use GitHub's default merge-commit style, producing `Merge pull request #N from hk9890/<branch>` subjects — `hk9890/` is the owner namespace, not part of the branch name.
 
 External contributors fork the repo and open a PR from their fork branch; no direct branch push to origin. The same checklist applies.
