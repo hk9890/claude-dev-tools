@@ -1,4 +1,4 @@
-# taskmgr is unavailable
+# taskmgr is missing or too old
 
 Every skill in this plugin works from what `taskmgr guide` prints. Without it there is no command
 surface, and a body written without the store's standard is refused by its gate.
@@ -6,8 +6,7 @@ surface, and a body written without the store's standard is refused by its gate.
 The plugin needs taskmgr v0.11.0 or later. `taskmgr version` tells an older install from a missing
 one; the commands below cure both.
 
-Tell the user what is missing, offer the install below, and resume once this skill, loaded again,
-prints the guide.
+Tell the user what is missing and offer the install below.
 
 ## Install or upgrade it
 
@@ -20,7 +19,7 @@ mise use -g "github:hk9890/task-manager@latest"
 go install github.com/hk9890/task-manager/cmd/taskmgr@latest   # ...or with Go directly
 ```
 
-Confirm that `taskmgr version` prints v0.11.0 or later.
+Confirm with `taskmgr version`.
 
 Then **load this skill again**. Its guide line runs only when the skill loads, so a copy loaded
 before the install keeps showing the `STOP` line however many commands you run afterwards.
