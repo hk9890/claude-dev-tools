@@ -42,10 +42,15 @@ async function loadBoard($: EngineInterface): Promise<TasksBoard | string> {
       return failed.stderr.trim()
     }
 
+    // taskmgr lists a started issue that waits on a blocker in both views; it is drawn once, under
+    // In progress, as the blocked view's row, which names the blockers.
+    const waiting = issues(blocked.stdout)
+    const started = issues(inProgress.stdout).map(issue => waiting.find(({ id }) => id === issue.id) ?? issue)
+
     return {
-      inProgress: issues(inProgress.stdout),
+      inProgress: started,
       ready: issues(ready.stdout),
-      blocked: issues(blocked.stdout),
+      blocked: waiting.filter(issue => !started.includes(issue)),
     }
   } catch (error) {
     return `taskmgr did not run (${String(error)}). The tasks-core skill has the install steps.`
