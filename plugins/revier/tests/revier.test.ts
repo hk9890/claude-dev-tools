@@ -62,6 +62,10 @@ const DENIED = [
   'revier agent focus x --no-focus',
   'revier open x --no-focus',
   'revier open x; revier agent new -p x --no-focus',
+  'revier agent new -p x --no-focus $(revier open y)',
+  'revier agent new --no-focus -p "$(revier agent new -p y)"',
+  'revier agent new --no-focus -p `revier go web`',
+  'revier session restore --dry-run $(revier open y)',
 ]
 
 const ALLOWED = [
@@ -106,6 +110,7 @@ const ALLOWED = [
   'for p in a b; do revier agent new -p $p --no-focus; done',
   'address=$(revier agent new -p x --no-focus)',
   'timeout 30 revier agent new -p x --no-focus',
+  'revier agent new -p "$(basename "$PWD")" --no-focus',
 ]
 
 for (const command of DENIED) {
