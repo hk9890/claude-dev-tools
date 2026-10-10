@@ -1,6 +1,6 @@
 # Monitoring Plugin Usage
 
-The session-analysis workflow: index Claude Code transcripts into episode records, score friction, then judge sampled episodes with Claude Code itself.
+Two ways to read Claude Code transcripts for how the plugins did: the session-analysis phases, which index episode records and judge a sample, and the [session review pilot](#session-review-pilot), which picks whole sessions and reviews them for plugin problems.
 
 ## Data source
 
@@ -131,3 +131,31 @@ All four dimension keys must be present — score `null` with a rationale saying
 `summary.md`'s unmatched-plugin table lists plugins attributed in transcripts that resolved to no known marketplace plugin. Plugins from *other* marketplaces (e.g. `commit-commands` from `claude-plugins-official`) belong there; only a stale name of one of this repo's own plugins is actionable.
 
 The table cannot catch sessions where attribution was absent entirely. For those: read `summary.md` for skills with zero or unexpectedly low episode counts, sample session JSONL files from `~/.claude/projects/` for projects where those plugins should have been active, then compare assistant turns carrying no `attributionSkill` against the skill descriptions. Manual and judgment-based — no tool automates it.
+
+## Session review pilot
+
+A trial that runs beside the phases above. It finds plugin problems in sessions nobody watched.
+
+Run the `review-sessions` workflow ([`.claude/workflows/review-sessions.js`](../.claude/workflows/review-sessions.js)) from the repo root. It takes `{perBucket, sinceDays}`, 1 and 7 by default, and starts two agents per picked session:
+
+1. **Pick** — `python3 scripts/pick-sessions.py pick` prints the sessions to review as JSON.
+2. **Review** — one agent per session reads it with `python3 scripts/pick-sessions.py render <session.jsonl>` and reports each plugin problem with the plugin file at fault, a quote, and a fix.
+3. **Verify** — a second agent tries to refute each finding; the workflow returns the ones that survive.
+
+Nothing stores the result: file a surviving finding in the tracker by hand, with the plugin version from the pick.
+
+### Reading a pick
+
+A candidate is a session modified in the window with at least one turn attributed to a plugin under `plugins/`. Each bucket takes its top `--per-bucket` candidates, in this order, and a session lands in one bucket only:
+
+| Bucket | Signal |
+|---|---|
+| `pushback` | User interrupts plus tool calls the user rejected |
+| `errors` | Failed tool results. Leaves out the three kinds the indexer leaves out ([Reading the numbers](#reading-the-numbers)) and permission-rule denials |
+| `output_tokens` | Output tokens, each API message counted once |
+| `random` | A random draw from the candidates no other bucket took; `--seed` repeats it |
+
+- Every signal includes the session's subagent transcripts, which the Phase 1 indexer never reads.
+- `versions` is empty for a dev checkout or a `--plugin-dir` run, and holds two entries where a plugin updated mid-session.
+- A refusal by a plugin's own guard (`worktree-flow`, `revier`) counts in no signal.
+- `output_tokens` ranks long sessions first, whatever their quality.
