@@ -1,7 +1,7 @@
 ---
 name: project-review-change
 description: "Rules review of one change against the project's own written rules; read-only unless --fix, which applies the settled fixes."
-when_to_use: "Use when the user asks whether a change obeys the project's rules. Triggers on 'rules review'. Also loaded by name when another skill needs the rules review. Not for correctness bugs or simplification (`code-review`), an audit of the docs (`project-review-docs`), or the whole tree (`project-review-codebase`)."
+when_to_use: "Use when the user asks whether a change obeys the project's rules. Triggers on 'rules review'. Also loaded by name when another skill needs the rules review. Not for correctness bugs or simplification (`code-review`), a PR reviewed with its fixes pushed (`worktree-flow:worktree-review`), an audit of the docs (`project-review-docs`), or the whole tree (`project-review-codebase`)."
 argument-hint: "[--fix] [pr-number|branch|path]"
 ---
 

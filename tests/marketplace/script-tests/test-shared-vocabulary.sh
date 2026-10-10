@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test-shared-vocabulary.sh — pin the two places this marketplace deliberately
+# test-shared-vocabulary.sh — pin the places this marketplace deliberately
 # duplicates prose, so a one-sided edit fails instead of drifting quietly.
 #
 # 1. decision-split.md exists twice, in project-auto-work and project-review.
@@ -14,6 +14,12 @@
 #    whether constant-time comparison was a SHOULD or a statement of fact. The
 #    contract now lives once in submit-contract.md; these checks stop a mode file
 #    from growing its own copy back.
+#
+# 3. worktree-flow states the test for a reviewed PR head in two skills.
+#    worktree-ship needs it to skip its own steps on a resumed run, and
+#    worktree-review needs it to skip the reviews. A change to one copy alone
+#    lets them disagree: worktree-ship then reports a head as shipped that
+#    worktree-review would review again.
 #
 # Exit codes: 0 — all assertions passed; 1 — one or more failed.
 set -uo pipefail
@@ -106,6 +112,27 @@ if [[ -f "$CONTRACT" ]]; then
   else
     fail "submit-contract.md — no mention of timingSafeEqual; the CSRF check is described weaker than it is"
   fi
+fi
+
+# ── 3. The test for a reviewed PR head, in two skills ────────────────────────
+SHIP="$REPO_ROOT/plugins/worktree-flow/skills/worktree-ship/SKILL.md"
+REVIEW="$REPO_ROOT/plugins/worktree-flow/skills/worktree-review/SKILL.md"
+
+for f in "$SHIP" "$REVIEW"; do
+  [[ -f "$f" ]] || fail "missing $f"
+done
+
+if [[ -f "$SHIP" && -f "$REVIEW" ]]; then
+  for phrase in \
+    'starts with the commit after `through` in the **Review** line' \
+    'records the rules review as skipped' \
+    '`project-review:project-review-change` is in your available skills'; do
+    if grep -Fq "$phrase" "$SHIP" && grep -Fq "$phrase" "$REVIEW"; then
+      ok "reviewed head: both skills say \"${phrase}\""
+    else
+      fail "reviewed head: \"${phrase}\" is missing from worktree-ship or worktree-review — edit both or they drift"
+    fi
+  done
 fi
 
 printf '\nResults: %d passed, %d failed\n' "$PASS" "$FAIL"
