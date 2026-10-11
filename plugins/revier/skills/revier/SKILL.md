@@ -96,7 +96,10 @@ Where the "Installed" line shows a revier before 0.14.0, read "On a revier befor
      revier agent new --no-focus -p <name>
      ```
 
-     The focus stays where it is. On kitty, a workspace window that does not hold the keyboard shows the new tab, so tell the user that the project has a new agent tab. The address names an agent once the harness in the tab has started: run `revier agent wait <agent> --until idle --timeout 30`, and run it again, for one minute at most, while it fails with an error that is not the timeout.
+     The focus stays where it is. On kitty, a workspace window that does not hold the keyboard shows the new tab, so tell the user that the project has a new agent tab. The address names an agent once the harness in the tab has started: run `revier agent wait <agent> --until idle --timeout 30`. It ends in one of three ways:
+     - It prints `idle`: go to step 4.
+     - It exits 2 on the timeout: the agent is there and is not idle, so run `revier list --json <name>` again and continue with step 3.
+     - It fails with another error: the harness has not started, so run the `wait` again. After one minute of that error, report the message of revier to the user and stop here.
    - An agent with no `.ref`: report that it runs on the other machine, out of reach from here.
    - Several agents: pick by `.state.activity` and address it as `<project>:<panel>`. Ask the user when the activity does not decide it.
 3. Read its `.state.status`. An `idle` agent takes a prompt. `prompt` refuses an agent at `attention` and one at `unknown`. For `attention`, follow "An agent at attention". The state of one at `unknown` cannot be read: report that to the user. For a `running` one, wait first and read the status the wait prints:
@@ -130,22 +133,22 @@ Where the "Installed" line shows a revier before 0.14.0, read "On a revier befor
 
 ### An agent at attention
 
-An agent at `attention` shows a dialog, often a permission question, so the answer belongs to its user. Report the agent and its status to the user, and send no key.
+An agent at `attention` shows a dialog, often a permission question, so the answer belongs to its user. Report the agent and its status to the user, send no key, and stop here: steps 4 to 6 need an agent that is past its dialog.
 
-Answer the dialog yourself only where the user asked for that in this session:
+Answer the dialog yourself only where the user asked for that in this session. Then these steps take the place of the report:
 
 1. Read the dialog with `revier agent read <agent> --screen --lines <n>`.
-2. Send the keys for the answer the user asked for. `send-keys` types into an agent whatever its status, and a key lands on whatever the panel shows, so send only keys that the screen from step 1 offers:
+2. Send the keys for the answer the user asked for. A key lands on whatever the panel shows, so send only keys that the screen from step 1 offers:
 
    ```bash
    revier agent send-keys <agent> <key>..
    ```
 
-3. Read the screen again. The dialog is answered when the screen shows it no more: go back to the step that sent you here, and wait for the turn.
+3. Read the screen again. The dialog is answered when the screen shows it no more: go back to the step that sent you here, and wait for the turn. Where the screen still shows a dialog, send no further key: report the text of the dialog to the user and stop here.
 
 ### On a revier before 0.14.0
 
-An older revier has no `agent read`, no `agent send-keys` and no `--no-focus`. Follow the steps above with these changes:
+Follow the steps above with these changes:
 
 - Step 2, no agent and `.running` is true: `revier agent new -p <name>` takes the focus, so give the command to the user.
 - Step 4: revier gives no answer back, so word the prompt as an instruction that needs no answer.
