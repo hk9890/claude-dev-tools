@@ -43,7 +43,7 @@ Done when the session is in a worktree, the setup has run, and `git branch --lis
 
 ## 3. Implement
 
-Read what the worktree holds: `git status`, and `git diff --merge-base <remote>/<base-branch>`, which leaves out what landed on the base branch since the worktree left it. Where the change implements issues of a tracker, mark each one as in progress there before the first edit, and before a subagent or a workflow gets the work. With `tasks:tasks-core` in your available skills, load it for the command.
+Read what the worktree holds: `git status`, and `git diff --merge-base <remote>/<base-branch>`, which leaves out what landed on the base branch since the worktree left it. Where the change implements issues of a tracker, mark each one as in progress there before the first edit, and before a subagent or a workflow gets the work. Where the tracker is taskmgr and `tasks:tasks-core` is in your available skills, load it for the command.
 
 Make the part of the change that is missing, and add or update the tests that cover it.
 
