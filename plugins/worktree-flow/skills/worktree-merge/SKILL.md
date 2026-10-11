@@ -12,12 +12,14 @@ With no argument, `<pr>` is the pushed branch: the upstream of the current branc
 
 ## 1. Check
 
-`gh pr view <pr> --json number,state,headRefOid,baseRefName,mergeStateStatus`. Stop and report at the first failure:
+`gh auth status` must succeed; where it fails, stop and tell the user to install `gh` or run `gh auth login`.
+
+`gh pr view <pr> --json number,state,headRefName,headRefOid,baseRefName,mergeStateStatus`. Stop and report at the first failure:
 
 - **Worktree** — `git status --porcelain` in the PR's worktree prints nothing, and `git rev-parse HEAD` equals `headRefOid`. Anything else is work the removal would destroy.
 - **State** — `OPEN` or `MERGED`; `CLOSED` stops the run.
-- **Base**, for an `OPEN` PR — a `mergeStateStatus` of `DIRTY` is a conflict with the base branch: stop and report it. `UNKNOWN` means GitHub has not computed it yet: read it again. `BEHIND` means the head lacks commits of the base branch, and the merge would fail: run `gh pr update-branch <pr>`, then `git pull --ff-only` in the PR's worktree, and read `headRefOid` again; `git rev-parse HEAD` equals the new one.
-- **CI**, for an `OPEN` PR — `gh pr checks <pr> --watch`; any failed check stops the run. `no checks reported` directly after a push or a branch update means the checks are not registered yet: run it again. Where it still prints that a minute later, the project has no checks: go on.
+- **Base**, for an `OPEN` PR — a `mergeStateStatus` of `DIRTY` is a conflict with the base branch: stop and report it. `UNKNOWN` means GitHub has not computed it yet: read it again; where it is still `UNKNOWN` a minute later, stop and report. `BEHIND` means the head lacks commits of the base branch, and the merge would fail: run `gh pr update-branch <pr>`, then `git pull --ff-only` in the PR's worktree, and read `headRefOid` again; `git rev-parse HEAD` equals the new one.
+- **CI**, for an `OPEN` PR — `gh pr checks <pr> --watch`; any failed check stops the run. `no checks reported` can mean the checks are not registered yet: run it again for up to a minute. Where it still prints that, the project has no checks: go on.
 
 ## 2. Merge
 
