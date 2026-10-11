@@ -9,6 +9,6 @@ allowed-tools: Bash(taskmgr *)
 
 !`taskmgr commands tree >/dev/null 2>&1 && taskmgr guide 2>/dev/null || echo "STOP: taskmgr v0.11.0 or later is not on PATH, so the guide did not print. Read references/troubleshooting.md in this skill's directory and follow it."`
 
-## Status before work
+## Status before implementation
 
-Before the first edit for an issue, run `taskmgr update <id> --status in_progress`: the status tells the user and every other session that the issue is taken. A session that hands the work to a subagent or a workflow sets the status itself, before the hand-off.
+Before the first edit that implements an issue, run `taskmgr update <id> --status in_progress`: the status tells the user and every other session that the issue is taken. A session that hands the implementation to a subagent or a workflow sets the status itself, before the hand-off.

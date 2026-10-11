@@ -43,11 +43,13 @@ Done when the session is in a worktree, the setup has run, and `git branch --lis
 
 ## 3. Implement
 
-Read what the worktree holds: `git status`, and `git diff --merge-base <remote>/<base-branch>`, which leaves out what landed on the base branch since the worktree left it. Where the change implements issues of a tracker, mark each one as in progress there before the first edit, and before a subagent or a workflow gets the work. Where the tracker is taskmgr and `tasks:tasks-core` is in your available skills, load it for the command.
+Read what the worktree holds: `git status`, and `git diff --merge-base <remote>/<base-branch>`, which leaves out what landed on the base branch since the worktree left it.
+
+Where the change implements issues of a tracker, mark each one that is not started as in progress there before the first edit, and before a subagent or a workflow gets the work. Where the tracker is taskmgr and `tasks:tasks-core` is in your available skills, load it for the command. An issue is reported as not marked, with the reason, where its tracker has no in-progress status or this session cannot set it.
 
 Make the part of the change that is missing, and add or update the tests that cover it.
 
-Done when the diff carries the whole change and its tests, and each issue it implements is in progress in its tracker.
+Done when the diff carries the whole change and its tests, and each issue it implements is in progress or further on in its tracker, or is reported as not marked.
 
 ## 4. Run the gates
 
@@ -83,6 +85,6 @@ Done when the PR's head commit starts with the commit after `through` in the **R
 
 ## 8. Report and stop
 
-Report the PR URL, the worktree path, each gate and each drive with its result, each review with its outcome, the open questions of the rules review and the fixes it did not apply, every step this run skipped, the stray work left on the main checkout, and, for a reviewed PR, the next step: the user starts `/worktree-flow:worktree-merge`, which merges the PR and removes the worktree. Stay in the worktree.
+Report the PR URL, the worktree path, each gate and each drive with its result, each review with its outcome, the open questions of the rules review and the fixes it did not apply, every step this run skipped, each issue not marked as in progress with the reason, the stray work left on the main checkout, and, for a reviewed PR, the next step: the user starts `/worktree-flow:worktree-merge`, which merges the PR and removes the worktree. Stay in the worktree.
 
 Done when the report holds each of these items, or says that it does not apply.
