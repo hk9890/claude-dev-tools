@@ -16,7 +16,7 @@ A run **resumes**: it can start in the main checkout with nothing done, in a wor
 
 `gh auth status` must succeed; where it fails, stop and tell the user to install `gh` or run `gh auth login`.
 
-Read the project's own workflow (AGENTS.md or CLAUDE.md routing, a change-workflow or contributing doc, `CLAUDE.local.md`, a PR template) and record: the remote to push to and its base branch, the branch naming convention, the **gates** a PR needs green plus the setup a fresh checkout needs, how the product is run by hand (a running doc such as `docs/RUNNING.md`), the commit style, and the PR template where there is one. Where the project documents a step, its rule replaces the generic one below.
+Read the project's own workflow (AGENTS.md or CLAUDE.md routing, a change-workflow or contributing doc, `CLAUDE.local.md`, a PR template) and record: the remote to push to and its base branch, the branch naming convention, the **gates** a PR needs green plus the setup a fresh checkout needs, how the product is run by hand (a running doc such as `docs/RUNNING.md`), the commit style, and the PR template where there is one. Where the project documents a step, its rule replaces the generic one below. Where it documents no base branch, record the default branch of the remote, which `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name` prints.
 
 Done when each item of that list is recorded, or noted as not documented.
 
@@ -63,7 +63,9 @@ Done when each part of the change is driven and shows nothing broken, or is repo
 
 ## 6. Commit, push, open the PR
 
-Commit in the project's style. Push with upstream tracking: to `<pushed-branch>` where there is one, else under the project's branch convention where it has one (`git push -u <remote> HEAD:<branch-name>`). Read [the PR body template](references/pr-body.md) and write the body in its shape to a file outside the worktree. Open the PR with `gh pr create --body-file`; where step 2 found an `OPEN` PR, bring its body up to date with `gh pr edit <pr-number> --body-file`.
+A run opens one PR, and its base is `<base-branch>`, the base branch step 1 recorded. The change builds on a PR that is not merged where `git rev-list <remote>/<base-branch>..HEAD` prints the `headRefOid` of an open PR other than this run's own (`gh pr list --state open --json number,headRefOid`): stop and report the two ways on: that PR merges first, or both changes go into one PR.
+
+Commit in the project's style. Push with upstream tracking: to `<pushed-branch>` where there is one, else under the project's branch convention where it has one (`git push -u <remote> HEAD:<branch-name>`). Read [the PR body template](references/pr-body.md) and write the body in its shape to a file outside the worktree. Open the PR with `gh pr create --base <base-branch> --body-file <file>`; where step 2 found an `OPEN` PR, bring its body up to date with `gh pr edit <pr-number> --body-file`.
 
 Done when `git status --porcelain` prints nothing, and `gh pr view <pushed-branch> --json state,headRefOid`, with `<pushed-branch>` read again after the push, prints `OPEN` and the commit of `git rev-parse HEAD`.
 

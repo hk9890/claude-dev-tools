@@ -10,6 +10,8 @@ argument-hint: "[pr-number]"
 
 With no argument, `<pr>` is the pushed branch: the upstream of the current branch without the remote name (`git for-each-ref --format='%(upstream:short)' refs/heads/<current-branch>`, which still answers after the remote branch is deleted), because `gh` finds a PR by the local branch name and a push can use another one. With no upstream, or with the default branch as upstream, ask for the PR number. A PR the user already merged on GitHub is the common case: the same steps apply.
 
+The run merges the PR as it is: it edits no file of the PR and pushes no commit. The one action that moves the head is the `gh pr update-branch` of the **Base** check, with its `git pull --ff-only`. A stop ends the run with a report of what stopped it. A repair is a new change that the user starts.
+
 ## 1. Check
 
 `gh auth status` must succeed; where it fails, stop and tell the user to install `gh` or run `gh auth login`.
@@ -18,6 +20,7 @@ With no argument, `<pr>` is the pushed branch: the upstream of the current branc
 
 - **Worktree** — `git status --porcelain` in the PR's worktree prints nothing, and `git rev-parse HEAD` equals `headRefOid`. Anything else is work the removal would destroy.
 - **State** — `OPEN` or `MERGED`; `CLOSED` stops the run.
+- **Target** — `baseRefName` equals the default branch of the remote, which `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name` prints. A PR into another branch stops the run: its merge leaves the commits off the default branch.
 - **Base**, for an `OPEN` PR — a `mergeStateStatus` of `DIRTY` is a conflict with the base branch: stop and report it. `UNKNOWN` means GitHub has not computed it yet: read it again; where it is still `UNKNOWN` a minute later, stop and report. `BEHIND` means the head lacks commits of the base branch, and the merge would fail: run `gh pr update-branch <pr>`, then `git pull --ff-only` in the PR's worktree, and read `headRefOid` again; it is another commit than before, and `git rev-parse HEAD` equals it.
 - **CI**, for an `OPEN` PR — `gh pr checks <pr> --watch`; any failed check stops the run. `no checks reported` can mean the checks are not registered yet: run it again for up to a minute. Where it still prints that, the project has no checks: go on. Then apply **Base** to a new read of `mergeStateStatus`, because the first value is from before the checks and the base branch can move while they run; an update there needs **CI** again. `BLOCKED` at this point is a rule of the base branch that the PR does not meet, a missing approval for example: stop and report it.
 
@@ -29,13 +32,13 @@ For an `OPEN` PR: `gh pr merge <pr>` with the project's documented method. Where
 2. **The method of the last merged PRs** — `git fetch`, then `gh pr list --state merged --base <baseRefName> --limit 5 --json number,mergeCommit`, and `git show -s --format='%p | %s' <oid>` for each `mergeCommit`. Two parents is `--merge`; one parent with a subject that ends in `(#<number>)` is `--squash`; one parent otherwise is `--rebase`. The answer counts where all the PRs agree and the repository allows the method.
 3. **`--merge`**, where the repository allows it; else ask the user which of the allowed methods to take.
 
-Leave out `--delete-branch`: it also switches branches locally, which fails while another worktree holds the base branch. Done when `gh pr view <pr> --json state` prints `MERGED`.
+Leave out `--delete-branch`: it also switches branches locally, which fails while another worktree holds the base branch. Where GitHub refuses the merge, a conflict with the base branch for example, stop and report its message. Done when `gh pr view <pr> --json state` prints `MERGED`.
 
 ## 3. Remove the worktree
 
 Step 1 proved the worktree clean and pushed, and the PR is merged, so forcing loses no tracked and no untracked file. It does delete the gitignored ones, which `git status --porcelain` leaves out.
 
-`git status --porcelain --ignored` in the worktree lists them, on the lines that start with `!!`. Pass over three kinds of entry: a symlink (`test -L`), which the harness added; one the project's setup or build makes again, a dependency, build or cache directory; and one that `diff -rq <entry> <same path in the main checkout>` finds equal, because the main checkout holds it already. The main checkout is the first line of `git worktree list`. Each entry left is **the user's file**: stop and ask whether to copy it to the same path in the main checkout or to drop it. Where that path exists there already, the copy replaces each file that `diff -rq` reports as different: name those files in the question.
+`git status --porcelain --ignored` in the worktree lists them, on the lines that start with `!!`. Pass over three kinds of entry: a symlink (`test -L`), which the harness added; one the project's setup or build makes again, a dependency, build or cache directory; and one that `diff -rq <entry> <same path in the main checkout>` finds equal, because the main checkout holds it already. The main checkout is the first line of `git worktree list`. Each entry left is **the user's file**: ask whether to copy it to the same path in the main checkout or to drop it. Where that path exists there already, the copy replaces each file that `diff -rq` reports as different: name those files in the question.
 
 Copy with `cp -a` before the removal. Onto a directory that exists already, copy with `cp -a <entry>/. <same path>/`: the plain form puts the copy inside that directory.
 
