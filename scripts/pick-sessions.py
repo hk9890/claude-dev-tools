@@ -45,6 +45,7 @@ TIMESTAMP_SECOND = len("2026-01-01T00:00:00")
 # has none (plugins/<plugin>/skills/<skill>).
 BANNER_RE = re.compile(r"Base directory for this skill:\s*(\S+)/skills/([A-Za-z0-9_-]+)")
 VERSION_RE = re.compile(r"\d+\.\d+\.\d+")
+WORKTREE_RE = re.compile(r"/\.claude/worktrees/([^/]+)/")
 SLASH_COMMAND_RE = re.compile(r"<command-name>/([^<\s]+)</command-name>")
 
 RANKED_BUCKETS = ("pushback", "errors", "output_tokens")
@@ -88,13 +89,12 @@ def skill_load(text, plugins):
     banner = BANNER_RE.match(text)
     if not banner:
         return None
-    parts = Path(banner[1]).parts
-    if VERSION_RE.fullmatch(parts[-1]):
-        plugin, label = parts[-2], parts[-1]
+    root = Path(banner[1])
+    if VERSION_RE.fullmatch(root.name):
+        plugin, label = root.parent.name, root.name
     else:
-        plugin = parts[-1]
-        in_worktree = "worktrees" in parts and parts[parts.index("worktrees") - 1] == ".claude"
-        label = f"dev@{parts[parts.index('worktrees') + 1]}" if in_worktree else "dev@main"
+        worktree = WORKTREE_RE.search(banner[1])
+        plugin, label = root.name, (f"dev@{worktree[1]}" if worktree else "dev@main")
     if plugin not in plugins:
         return None
     return f"{plugin}:{banner[2]}", plugin, label
@@ -112,7 +112,7 @@ def summarize(session_file, plugins):
     usage = defaultdict(lambda: {"versions": set(), "turns": 0, "model_invoked": 0, "slash_invoked": 0})
 
     def owned(skill):
-        return isinstance(skill, str) and skill.split(":")[0] in plugins
+        return isinstance(skill, str) and ":" in skill and skill.split(":")[0] in plugins
 
     for path in [session_file, *subagents]:
         loaded = {}
@@ -122,12 +122,11 @@ def summarize(session_file, plugins):
             if record.get("type") == "assistant":
                 skill, plugin = record.get("attributionSkill"), record.get("attributionPlugin")
                 if skill and plugin in plugins:
-                    earlier = [load for load in session_loads if load[0] <= timestamp]
                     label = (
                         loaded.get(skill)
                         or loaded.get(plugin)
-                        or next((l for _, name, _, l in reversed(earlier) if name == skill), None)
-                        or next((l for _, _, name, l in reversed(earlier) if name == plugin), None)
+                        or next((l for at, name, _, l in reversed(session_loads) if at <= timestamp and name == skill), None)
+                        or next((l for at, _, name, l in reversed(session_loads) if at <= timestamp and name == plugin), None)
                         or "unknown"
                     )
                     usage[skill]["versions"].add(label)
@@ -149,9 +148,11 @@ def summarize(session_file, plugins):
                     if block.get("type") == "text":
                         if text.startswith(INTERRUPT):
                             pushback_seconds.add(second)
-                        for command in SLASH_COMMAND_RE.findall(text):
-                            if owned(command):
-                                usage[command]["slash_invoked"] += 1
+                        # The user types in the session only: a workflow subagent repeats the request that started it.
+                        if path == session_file:
+                            for command in SLASH_COMMAND_RE.findall(text):
+                                if owned(command):
+                                    usage[command]["slash_invoked"] += 1
                         load = skill_load(text, plugins)
                         if load:
                             skill, plugin, label = load
@@ -255,9 +256,9 @@ def pick(args):
         session["bucket"] = "random"
         picked.append(session)
 
-    marketplace = json.loads((plugins_dir.parent / ".claude-plugin" / "marketplace.json").read_text())
+    marketplace = json.loads((plugins_dir.parent / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
     version = marketplace["metadata"]["version"]
-    now = datetime.now()
+    now = datetime.now().astimezone()
     run_dir = args.review_dir / "runs" / f"{now:%Y-%m-%dT%H%M%S}-{socket.gethostname()}-v{version}"
     run_dir.mkdir(parents=True)
     for session in picked:
@@ -290,8 +291,8 @@ def pick(args):
 
 def record(args):
     run_dir = Path(args.run_dir)
-    picks = {s["session_id"]: s for s in json.loads((run_dir / "picks.json").read_text())["sessions"]}
-    reviews = json.loads(Path(args.result).read_text())
+    picks = {s["session_id"]: s for s in json.loads((run_dir / "picks.json").read_text(encoding="utf-8"))["sessions"]}
+    reviews = json.loads(Path(args.result).read_text(encoding="utf-8"))
     unknown = [r["session_id"] for r in reviews if r["session_id"] not in picks]
     if unknown:
         sys.exit(f"error: not a session of {run_dir / 'picks.json'}: {', '.join(unknown)}")
@@ -343,7 +344,7 @@ def main():
     commands = parser.add_subparsers(dest="command", required=True)
 
     pick_parser = commands.add_parser("pick", help="start a run: pick the sessions, copy their transcripts, print the picks as JSON")
-    pick_parser.add_argument("--review-dir", type=Path, default=os.environ.get("SESSION_REVIEW_DIR"), help="the review store (default: $SESSION_REVIEW_DIR)")
+    pick_parser.add_argument("--review-dir", type=Path, default=os.environ.get("SESSION_REVIEW_DIR") or None, help="the review store (default: $SESSION_REVIEW_DIR)")
     pick_parser.add_argument("--projects-dir", default=os.path.expanduser("~/.claude/projects"))
     pick_parser.add_argument("--plugins-dir", default=REPO_ROOT / "plugins")
     pick_parser.add_argument("--since-days", type=float, default=7, help="only sessions modified in the last N days (default: 7)")

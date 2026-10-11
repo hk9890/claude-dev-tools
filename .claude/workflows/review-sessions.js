@@ -16,6 +16,7 @@ const sinceDays = args?.sinceDays ?? 7
 const PICKS = {
   type: 'object',
   properties: {
+    error: { type: 'string', description: 'what the command printed where it failed; absent where it printed the JSON' },
     run_dir: { type: 'string' },
     candidates: { type: 'number' },
     already_reviewed: { type: 'number' },
@@ -49,7 +50,7 @@ const FINDINGS = {
         type: 'object',
         properties: {
           artifact: { type: 'string', description: 'repo path of the skill, hook or other plugin file at fault' },
-          version: { type: 'string', description: 'the version label of the skill use that shows the problem, one of those the prompt lists' },
+          version: { type: 'string', description: 'the version label of the skill use that shows the problem, one of those the prompt lists; "unknown" where no skill use shows it, as with a hook' },
           problem: { type: 'string' },
           quote: { type: 'string', description: 'short verbatim excerpt of the transcript that shows the problem' },
           fix: { type: 'string', description: 'the change to the artifact that prevents it' },
@@ -89,9 +90,10 @@ Read docs/MONITORING.md first. Change no file in the repository.`
 
 phase('Pick')
 const picks = await agent(
-  `Run \`mise run pick-sessions -- pick --per-bucket ${perBucket} --since-days ${sinceDays}\` from the repository root and return the JSON it prints, unchanged. Where the command fails, return nothing and report its error.`,
+  `Run \`mise run pick-sessions -- pick --per-bucket ${perBucket} --since-days ${sinceDays}\` from the repository root and return the JSON it prints, unchanged. Where the command fails, return what it printed in \`error\`, with an empty run_dir and no sessions.`,
   { label: 'pick', phase: 'Pick', schema: PICKS, effort: 'low' },
 )
+if (!picks?.run_dir) throw new Error(`the pick failed: ${picks?.error ?? 'its agent returned nothing'}`)
 log(`${picks.sessions.length} of ${picks.candidates} candidate sessions picked, ${picks.already_reviewed} reviewed by an earlier run: ${picks.run_dir}`)
 
 const uses = pick => Object.entries(pick.skill_versions).map(([skill, versions]) => `${skill} at ${versions.join(' and ')}`).join('; ')
@@ -121,9 +123,11 @@ Refute a finding where the quote is not in the transcript, the plugin file does 
 ${review.findings.map((finding, i) => `Finding ${i + 1}:\n${JSON.stringify(finding, null, 1)}`).join('\n\n')}`,
       { label: `verify:${pick.bucket}`, phase: 'Verify', schema: VERDICTS },
     )
+    // With no verifier the review did not finish: the session stays for a later run.
+    if (!check) return null
     // A finding with no verdict was not checked, so it does not survive.
     return review.findings.map((finding, i) => {
-      const verdict = check?.verdicts.find(v => v.number === i + 1)
+      const verdict = check.verdicts.find(v => v.number === i + 1)
       return { ...finding, refuted: verdict?.refuted ?? true, reason: verdict?.reason ?? 'the verifier gave no verdict' }
     })
   },

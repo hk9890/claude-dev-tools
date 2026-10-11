@@ -68,8 +68,8 @@ def write(path, session_records):
     path.write_text("".join(json.dumps(r) + "\n" for r in session_records))
 
 
-def run(*argv):
-    return subprocess.run([sys.executable, SCRIPT, *argv], capture_output=True, text=True)
+def run(*argv, **kwargs):
+    return subprocess.run([sys.executable, SCRIPT, *argv], capture_output=True, text=True, **kwargs)
 
 
 with tempfile.TemporaryDirectory() as tmp:
@@ -105,6 +105,7 @@ with tempfile.TemporaryDirectory() as tmp:
         assistant("m8", 1, at="2026-01-01T00:03:05.000Z"),
     ])
     write(project / "pushback" / "subagents" / "workflows" / "wf_1" / "agent-1.jsonl", [
+        user_text("[Workflow harness — user request] The harness relays the user request.\n  <command-name>/demo:skill</command-name>"),
         assistant("m2", 5, skill="other"),
         user_text("[Request interrupted by user]", at="2026-01-01T00:02:00.900Z"),
         error("This agent is isolated in the worktree /w, refusing"),
@@ -117,7 +118,8 @@ with tempfile.TemporaryDirectory() as tmp:
     ])
     write(project / "quiet.jsonl", [
         user_text("<command-name>/demo:skill</command-name>"),
-        banner("/repo/.claude/worktrees/wt/plugins/demo/skills/skill"),
+        user_text("<command-name>/demo</command-name>"),
+        banner("/home/u/worktrees/repo/.claude/worktrees/wt/plugins/demo/skills/skill"),
         banner("/tmp/bundled-skills/2.1.0/abc/plugin-authoring"),
         assistant("m5", 1),
     ])
@@ -161,8 +163,9 @@ with tempfile.TemporaryDirectory() as tmp:
           and (run_dir / "transcripts" / "pushback" / "subagents" / "workflows" / "wf_1" / "agent-1.jsonl").is_file())
 
     usage = (run_dir / "usage.md").read_text()
-    check("usage counts sessions, turns, Skill calls and slash commands per skill", True,
+    check("usage counts sessions, turns, Skill calls and the slash commands the user typed per skill", True,
           "| `demo:skill` | 4 | 6 | 1 | 1 | 1.2.0, 1.3.0, dev@main, dev@wt, unknown |" in usage)
+    check("a command with the bare name of a plugin is no skill of it", False, "| `demo` |" in usage)
     check("usage lists a shipped skill that no session used", True, "- `demo:idle`" in usage and "- `demo:other`" not in usage)
 
     review = Path(tmp, "result.json")
@@ -193,6 +196,9 @@ with tempfile.TemporaryDirectory() as tmp:
 
     no_store = run("pick", "--review-dir", str(Path(tmp, "missing")), "--projects-dir", str(projects), "--plugins-dir", str(plugins))
     check("pick stops with no review store, and names the variable", (2, True), (no_store.returncode, "SESSION_REVIEW_DIR" in no_store.stderr))
+    empty_store = run("pick", "--projects-dir", str(projects), "--plugins-dir", str(plugins), cwd=tmp, env={**os.environ, "SESSION_REVIEW_DIR": ""})
+    check("an empty SESSION_REVIEW_DIR is no review store: the working directory does not take its place", (2, False),
+          (empty_store.returncode, Path(tmp, "runs").exists()))
 
     rendered = run("render", str(project / "pushback.jsonl"), "--max-chars", "40").stdout
     for label, needle in [
