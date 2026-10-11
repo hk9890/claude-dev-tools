@@ -28,6 +28,17 @@ const PICKS = {
         required: ['session_id', 'largest_file_mb', 'refused'],
       },
     },
+    release: {
+      type: ['object', 'null'],
+      description: 'null where the checkout has fewer than two release tags',
+      properties: {
+        version: { type: 'string' },
+        previous: { type: 'string' },
+        plugins: { type: 'array', items: { type: 'string' } },
+        candidates: { type: 'number' },
+      },
+      required: ['version', 'previous', 'plugins', 'candidates'],
+    },
     sessions: {
       type: 'array',
       items: {
@@ -36,6 +47,7 @@ const PICKS = {
           session_id: { type: 'string' },
           transcript: { type: 'string' },
           bucket: { type: 'string' },
+          changed_files: { type: 'array', items: { type: 'string' }, description: 'absent where the session ran no plugin the release changed, at the release version' },
           skill_versions: { type: 'object', additionalProperties: { type: 'array', items: { type: 'string' } } },
           subagents: { type: 'number' },
           pushback: { type: 'number' },
@@ -46,7 +58,7 @@ const PICKS = {
       },
     },
   },
-  required: ['run_dir', 'candidates', 'already_reviewed', 'large_transcripts', 'sessions'],
+  required: ['run_dir', 'candidates', 'already_reviewed', 'large_transcripts', 'release', 'sessions'],
 }
 
 const FINDINGS = {
@@ -108,6 +120,15 @@ for (const large of picks.large_transcripts) {
   log(`session ${large.session_id} holds a ${large.largest_file_mb} MB file${large.refused ? ': not picked, GitHub refuses a file above 100 MB' : ''}`)
 }
 
+const release = picks.release
+if (release) {
+  log(`release ${release.version} changed ${release.plugins.join(', ') || 'no plugin'}: ${release.candidates} candidate sessions ran one of them at that version`)
+}
+
+const changes = pick => pick.changed_files
+  ? `\nRelease ${release.version} changed these files of the plugins the session ran at that version: ${pick.changed_files.join(', ')}. Read \`git diff v${release.previous} v${release.version} -- <files>\` first, and look for a problem that this change caused.`
+  : ''
+
 const uses = pick => Object.entries(pick.skill_versions).map(([skill, versions]) => `${skill} at ${versions.join(' and ')}`).join('; ')
 
 const reviewed = await pipeline(
@@ -115,7 +136,7 @@ const reviewed = await pipeline(
   pick => agent(
     `Review one Claude Code session for problems that a plugin under plugins/ in this repository caused.
 Transcript: ${pick.transcript}
-Picked for: ${pick.bucket}. Plugin skills used, each with the plugin version that served it: ${uses(pick)}. A label that starts with "dev@" is a checkout of this repository, not a release.
+Picked for: ${pick.bucket}. Plugin skills used, each with the plugin version that served it: ${uses(pick)}. A label that starts with "dev@" is a checkout of this repository, not a release.${changes(pick)}
 The pick counted ${pick.pushback} user pushbacks, ${pick.errors} failed tool results and ${pick.output_tokens} output tokens in the main transcript and its ${pick.subagents} subagent transcripts together: what the main transcript does not show is in a subagent transcript.
 ${READ_TRANSCRIPT(pick)}
 

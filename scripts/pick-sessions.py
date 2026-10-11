@@ -3,8 +3,8 @@
 
 pick    starts a run folder in the review store: picks the sessions that used a plugin of
         this marketplace and that no earlier run reviewed, a few from each bucket (most
-        user pushback, most tool errors, most output tokens, random), and copies their
-        transcripts into the run.
+        user pushback, most tool errors, most output tokens, a plugin the last release
+        changed, random), and copies their transcripts into the run.
 render  prints one transcript as text an agent can read in parts.
 record  writes the findings of a review into its run folder.
 
@@ -49,6 +49,7 @@ WORKTREE_RE = re.compile(r"/\.claude/worktrees/([^/]+)/")
 SLASH_COMMAND_RE = re.compile(r"<command-name>/([^<\s]+)</command-name>")
 
 RANKED_BUCKETS = ("pushback", "errors", "output_tokens")
+RELEASE_TAG_RE = re.compile(r"v\d+\.\d+\.\d+")
 
 # GitHub refuses a file above 100 MB, so a session that holds one is not picked.
 REFUSED_TRANSCRIPT_MB = 100
@@ -191,6 +192,31 @@ def summarize(session_file, plugins):
     return session, usage
 
 
+def last_release(plugins_dir):
+    """The newest release tag, the one before it, and the files that differ between them, by plugin."""
+
+    def git(*argv):
+        done = subprocess.run(["git", "-C", str(plugins_dir.parent), *argv], capture_output=True, text=True)
+        return done.stdout.splitlines() if done.returncode == 0 else []
+
+    tags = [tag for tag in git("tag", "--list", "--sort=-version:refname") if RELEASE_TAG_RE.fullmatch(tag)]
+    if len(tags) < 2:
+        return None
+    version, previous = tags[:2]
+    changed = defaultdict(list)
+    for path in git("diff", "--name-only", previous, version, "--", plugins_dir.name):
+        plugin, *rest = Path(path).parts[1:]
+        # A release bumps the version in every plugin.json, and no session runs a test.
+        if rest and rest[0] != "tests" and rest !=[".claude-plugin", "plugin.json"]:
+            changed[plugin].append(path)
+    return {"version": version[1:], "previous": previous[1:], "changed": dict(changed)}
+
+
+def released_skills(session, release):
+    """The skills this session ran at the release version."""
+    return [skill for skill, labels in session["skill_versions"].items() if release["version"] in labels]
+
+
 def usage_table(usages, plugins_dir, since_days):
     total = defaultdict(lambda: {"sessions": 0, "versions": set(), "turns": 0, "model_invoked": 0, "slash_invoked": 0})
     for usage in usages:
@@ -270,6 +296,29 @@ def pick(args):
         for session in sorted(unpicked, key=lambda s: -s[bucket])[: args.per_bucket]:
             session["bucket"] = bucket
             picked.append(session)
+    release = last_release(plugins_dir)
+    if release:
+        for session in candidates:
+            plugins_run = sorted({skill.split(":")[0] for skill in released_skills(session, release)})
+            files = [path for plugin in plugins_run for path in release["changed"].get(plugin, [])]
+            if files:
+                session["changed_files"] = files
+        unpicked = [s for s in candidates if "changed_files" in s and "bucket" not in s]
+        random.Random(args.seed).shuffle(unpicked)
+
+        def runs_no_changed_skill(session):
+            folders = [f"/{skill.replace(':', '/skills/')}/" for skill in released_skills(session, release)]
+            return not any(folder in path for folder in folders for path in session["changed_files"])
+
+        for session in sorted(unpicked, key=runs_no_changed_skill)[: args.per_bucket]:
+            session["bucket"] = "changed"
+            picked.append(session)
+        release = {
+            "version": release["version"],
+            "previous": release["previous"],
+            "plugins": sorted(release["changed"]),
+            "candidates": sum("changed_files" in s for s in candidates),
+        }
     unpicked = [s for s in candidates if "bucket" not in s]
     for session in random.Random(args.seed).sample(unpicked, min(args.per_bucket, len(unpicked))):
         session["bucket"] = "random"
@@ -289,6 +338,7 @@ def pick(args):
         "candidates": len(candidates),
         "already_reviewed": len(summaries) - len(unreviewed),
         "large_transcripts": large,
+        "release": release,
         "sessions": picked,
     }
     write_json(run_dir / "run.json", {
@@ -302,6 +352,7 @@ def pick(args):
         "candidates": picks["candidates"],
         "already_reviewed": picks["already_reviewed"],
         "large_transcripts": large,
+        "release": release,
     })
     write_json(run_dir / "picks.json", picks)
     (run_dir / "usage.md").write_text(usage_table([usage for _, usage in summaries], plugins_dir, args.since_days), encoding="utf-8")

@@ -3,6 +3,8 @@
 # review store:
 #   - pick: which sessions are candidates, what each signal counts, which bucket takes
 #     which session, the version label of each skill use, and the run folder it starts
+#   - pick, in a checkout with two release tags: what the release changed, and which
+#     sessions the changed bucket takes
 #   - record: the files of a reviewed run, and that a later pick skips its sessions
 #     until one of them goes on
 #   - render: the labels of the text form, and the per-event cap
@@ -152,6 +154,8 @@ with tempfile.TemporaryDirectory() as tmp:
           {"pushback": "pushback", "errors": "errors", "tokens": "output_tokens", "quiet": "random"},
           {name: s["bucket"] for name, s in by_name.items()})
 
+    check("a checkout with fewer than two release tags has no release", None, result.get("release", "absent"))
+
     pushback = by_name.get("pushback", {})
     check("pushback counts an interrupt once: its rejections, its markers and the subagent it stopped", 2, pushback.get("pushback"))
     check("errors skip refusals, cancelled siblings and denials, and include subagents", 2, pushback.get("errors"))
@@ -240,6 +244,71 @@ with tempfile.TemporaryDirectory() as tmp:
         ("render caps an event and says how much it cut", "[... 74 more chars]"),
     ]:
         check(label, True, needle in rendered)
+
+with tempfile.TemporaryDirectory() as tmp:
+    projects, plugins, store = Path(tmp, "projects"), Path(tmp, "plugins"), Path(tmp, "store")
+    project = projects / "proj"
+    cache = "/home/u/.claude/plugins/cache/market"
+    store.mkdir()
+
+    def git(*argv):
+        subprocess.run(["git", "-C", tmp, "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", *argv], check=True, capture_output=True)
+
+    def release(tag, files):
+        for path, text in files.items():
+            Path(tmp, path).parent.mkdir(parents=True, exist_ok=True)
+            Path(tmp, path).write_text(text)
+        git("add", "-A")
+        git("commit", "-m", tag)
+        git("tag", tag)
+
+    git("init")
+    release("v1.2.0", {
+        ".claude-plugin/marketplace.json": json.dumps({"metadata": {"version": "1.3.0"}}),
+        "plugins/demo/.claude-plugin/plugin.json": "1.2.0",
+        "plugins/demo/skills/skill/SKILL.md": "a",
+        "plugins/demo/skills/other/SKILL.md": "a",
+        "plugins/demo/tests/demo.test.ts": "a",
+        "plugins/bumped/.claude-plugin/plugin.json": "1.2.0",
+        "plugins/bumped/skills/skill/SKILL.md": "a",
+    })
+    release("v1.3.0", {
+        "plugins/demo/.claude-plugin/plugin.json": "1.3.0",
+        "plugins/demo/skills/skill/SKILL.md": "b",
+        "plugins/demo/tests/demo.test.ts": "b",
+        "plugins/bumped/.claude-plugin/plugin.json": "1.3.0",
+    })
+    git("tag", "v1.10.0-rc1")
+    git("tag", "notes")
+
+    def session(name, tokens, path, plugin="demo", skill="skill"):
+        write(project / f"{name}.jsonl", [banner(path), assistant(name, tokens, plugin=plugin, skill=skill)])
+
+    session("old-version", 900, f"{cache}/demo/1.2.0/skills/skill")
+    session("other-skill-a", 5, f"{cache}/demo/1.3.0/skills/other", skill="other")
+    session("other-skill-b", 5, f"{cache}/demo/1.3.0/skills/other", skill="other")
+    session("changed-skill", 5, f"{cache}/demo/1.3.0/skills/skill")
+    session("checkout", 5, "/repo/plugins/demo/skills/skill")
+    session("bumped-only", 5, f"{cache}/bumped/1.3.0/skills/skill", plugin="bumped")
+
+    for seed in ("0", "1", "2"):
+        out = run("pick", "--review-dir", str(store), "--projects-dir", str(projects), "--plugins-dir", str(plugins), "--per-bucket", "1", "--seed", seed)
+        result = json.loads(out.stdout or "{}")
+        by_bucket = {s["bucket"]: s for s in result.get("sessions", [])}
+        check(f"seed {seed}: the changed bucket takes a session that ran the changed skill before one that ran another skill of the plugin",
+              "changed-skill", by_bucket.get("changed", {}).get("session_id"))
+        time.sleep(1.1)
+
+    check("the release is the newest version tag against the one before it; a version bump and a test are no change, and a checkout session is no candidate",
+          {"version": "1.3.0", "previous": "1.2.0", "plugins": ["demo"], "candidates": 3}, result.get("release"))
+    check("run.json records the release", result.get("release"), json.loads(Path(result["run_dir"], "run.json").read_text())["release"])
+    check("the pick names the files the release changed in the plugins the session ran",
+          ["plugins/demo/skills/skill/SKILL.md"], by_bucket.get("changed", {}).get("changed_files"))
+    check("a session at an older version carries no changed files, whatever its bucket",
+          ("old-version", False), (by_bucket["output_tokens"]["session_id"], "changed_files" in by_bucket["output_tokens"]))
+    others = {s["session_id"]: "changed_files" in s for s in result["sessions"] if s["bucket"] == "random"}
+    check("the random bucket takes what is left, and marks a session of the changed plugin there too",
+          True, len(others) == 1 and all(marked == name.startswith("other-skill") for name, marked in others.items()))
 
 print(f"\nResults: {passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)
