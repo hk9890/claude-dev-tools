@@ -20,6 +20,14 @@ const PICKS = {
     run_dir: { type: 'string' },
     candidates: { type: 'number' },
     already_reviewed: { type: 'number' },
+    large_transcripts: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: { session_id: { type: 'string' }, largest_file_mb: { type: 'number' }, refused: { type: 'boolean' } },
+        required: ['session_id', 'largest_file_mb', 'refused'],
+      },
+    },
     sessions: {
       type: 'array',
       items: {
@@ -38,7 +46,7 @@ const PICKS = {
       },
     },
   },
-  required: ['run_dir', 'candidates', 'already_reviewed', 'sessions'],
+  required: ['run_dir', 'candidates', 'already_reviewed', 'large_transcripts', 'sessions'],
 }
 
 const FINDINGS = {
@@ -96,6 +104,10 @@ const picks = await agent(
 if (!picks?.run_dir) throw new Error(`the pick failed: ${picks?.error ?? 'its agent returned nothing'}`)
 log(`${picks.sessions.length} of ${picks.candidates} candidate sessions picked, ${picks.already_reviewed} reviewed by an earlier run: ${picks.run_dir}`)
 
+for (const large of picks.large_transcripts) {
+  log(`session ${large.session_id} holds a ${large.largest_file_mb} MB file${large.refused ? ': not picked, GitHub refuses a file above 100 MB' : ''}`)
+}
+
 const uses = pick => Object.entries(pick.skill_versions).map(([skill, versions]) => `${skill} at ${versions.join(' and ')}`).join('; ')
 
 const reviewed = await pipeline(
@@ -146,4 +158,4 @@ ${JSON.stringify(result, null, 1)}`,
   { label: 'record', phase: 'Record', effort: 'low' },
 )
 
-return { run_dir: picks.run_dir, recorded, sessions: result }
+return { run_dir: picks.run_dir, large_transcripts: picks.large_transcripts, recorded, sessions: result }

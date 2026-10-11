@@ -4,6 +4,7 @@
 #   - pick: which sessions are candidates, what each signal counts, which bucket takes
 #     which session, the version label of each skill use, and the run folder it starts
 #   - record: the files of a reviewed run, and that a later pick skips its sessions
+#     until one of them goes on
 #   - render: the labels of the text form, and the per-event cap
 set -uo pipefail
 
@@ -125,6 +126,13 @@ with tempfile.TemporaryDirectory() as tmp:
     ])
     write(project / "foreign.jsonl", [assistant("m6", 5000, plugin="other-marketplace"), error("a")])
     write(project / "old.jsonl", [assistant("m7", 9000)])
+    write(project / "big.jsonl", [assistant("m9", 1)])
+    oversized = project / "big" / "subagents" / "agent-big.jsonl"
+    oversized.parent.mkdir(parents=True)
+    with open(oversized, "wb") as sparse:
+        sparse.truncate(100 * 1024 * 1024)
+    with open(project / "pushback" / "subagents" / "workflows" / "wf_1" / "journal.jsonl", "wb") as sparse:
+        sparse.truncate(60 * 1024 * 1024)
     last_month = time.time() - 30 * 86400
     os.utime(project / "old.jsonl", (last_month, last_month))
 
@@ -134,7 +142,12 @@ with tempfile.TemporaryDirectory() as tmp:
     result = json.loads(first.stdout or "{}")
     by_name = {s["session_id"]: s for s in result.get("sessions", [])}
 
-    check("a foreign-plugin session and an old session are no candidates", 4, result.get("candidates"))
+    check("a foreign-plugin session, an old session and one with a file of 100 MB are no candidates", 4, result.get("candidates"))
+    check("a session with a file of 100 MB is refused, one with a file of 50 MB or more is listed and stays a candidate",
+          [{"session_id": "big", "largest_file_mb": 100, "refused": True}, {"session_id": "pushback", "largest_file_mb": 60, "refused": False}],
+          result.get("large_transcripts"))
+    check("both are warned about", (True, True),
+          ("session big holds a 100 MB file, not picked" in first.stderr, "session pushback holds a 60 MB file, large" in first.stderr))
     check("each bucket takes its top session, random the rest",
           {"pushback": "pushback", "errors": "errors", "tokens": "output_tokens", "quiet": "random"},
           {name: s["bucket"] for name, s in by_name.items()})
@@ -156,6 +169,7 @@ with tempfile.TemporaryDirectory() as tmp:
     run_record = json.loads((run_dir / "run.json").read_text())
     check("run.json records the version, the arguments and the counts", ("9.9.9", 1, 0, 4, 0),
           tuple(run_record[key] for key in ("marketplace_version", "per_bucket", "seed", "candidates", "already_reviewed")))
+    check("run.json lists the large transcripts too", result.get("large_transcripts"), run_record["large_transcripts"])
     check("picks.json holds what pick printed", result, json.loads((run_dir / "picks.json").read_text()))
     check("the pick points at the copy of the transcript", str(run_dir / "transcripts" / "pushback.jsonl"), pushback.get("transcript"))
     check("the copy holds the session and its subagents", True,
@@ -164,7 +178,7 @@ with tempfile.TemporaryDirectory() as tmp:
 
     usage = (run_dir / "usage.md").read_text()
     check("usage counts sessions, turns, Skill calls and the slash commands the user typed per skill", True,
-          "| `demo:skill` | 4 | 6 | 1 | 1 | 1.2.0, 1.3.0, dev@main, dev@wt, unknown |" in usage)
+          "| `demo:skill` | 5 | 7 | 1 | 1 | 1.2.0, 1.3.0, dev@main, dev@wt, unknown |" in usage)
     check("a command with the bare name of a plugin is no skill of it", False, "| `demo` |" in usage)
     check("usage lists a shipped skill that no session used", True, "- `demo:idle`" in usage and "- `demo:other`" not in usage)
 
@@ -193,6 +207,23 @@ with tempfile.TemporaryDirectory() as tmp:
     check("a later pick skips the reviewed sessions, and keeps one whose review did not finish",
           (2, 2, ["quiet", "tokens"]),
           (second.get("candidates"), second.get("already_reviewed"), sorted(s["session_id"] for s in second.get("sessions", []))))
+
+    check("a reviewed session is no longer listed as large", ["big"], [s["session_id"] for s in second.get("large_transcripts", [])])
+
+    with open(project / "pushback" / "subagents" / "workflows" / "wf_1" / "agent-1.jsonl", "a") as subagent:
+        subagent.write(json.dumps(assistant("m10", 1, skill="other", at="2026-01-02T00:00:00.000Z")) + "\n")
+    time.sleep(1.1)
+    third = json.loads(run(*pick_args).stdout or "{}")
+    check("a reviewed session that went on, in a subagent alone, is picked again",
+          (1, True), (third.get("already_reviewed"), "pushback" in {s["session_id"] for s in third.get("sessions", [])}))
+
+    review.write_text(json.dumps([{"session_id": "pushback", "findings": []}]))
+    run("record", third.get("run_dir", tmp), str(review))
+    time.sleep(1.1)
+    fourth = json.loads(run(*pick_args).stdout or "{}")
+    check("after its second review it is skipped again, with a record in both runs",
+          (2, False, 2),
+          (fourth.get("already_reviewed"), "pushback" in {s["session_id"] for s in fourth.get("sessions", [])}, len(list(store.glob("runs/*/sessions/pushback.json")))))
 
     no_store = run("pick", "--review-dir", str(Path(tmp, "missing")), "--projects-dir", str(projects), "--plugins-dir", str(plugins))
     check("pick stops with no review store, and names the variable", (2, True), (no_store.returncode, "SESSION_REVIEW_DIR" in no_store.stderr))

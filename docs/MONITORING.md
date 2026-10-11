@@ -34,7 +34,7 @@ $SESSION_REVIEW_DIR/runs/<date>T<time>-<host>-v<marketplace version>/
 └── transcripts/<uuid>.jsonl # a copy of the session, with <uuid>/subagents/ beside it
 ```
 
-A session counts as reviewed once `sessions/<uuid>.json` exists in any run, and no later run picks it. Quote a transcript line from the copy, which stays after Claude Code deletes the original.
+A session counts as reviewed once `sessions/<uuid>.json` exists in any run. A later run picks it again only where it went on after that review: its last record is newer than the `ended` of every such file. The whole session is then reviewed again. Quote a transcript line from the copy, which stays after Claude Code deletes the original.
 
 ## Run a review
 
@@ -49,7 +49,7 @@ File each finding of `findings.json` in the tracker by hand, with its version. W
 
 ## Reading a pick
 
-A candidate is a session modified in the window, with at least one turn attributed to a plugin under `plugins/`, that no run has reviewed. Each bucket takes its top `--per-bucket` candidates, in this order, and a session lands in one bucket only:
+A candidate is a session modified in the window, with at least one turn attributed to a plugin under `plugins/`, that no run has reviewed to its end. Each bucket takes its top `--per-bucket` candidates, in this order, and a session lands in one bucket only:
 
 | Bucket | Signal |
 |---|---|
@@ -59,6 +59,7 @@ A candidate is a session modified in the window, with at least one turn attribut
 | `random` | A random draw from the candidates no other bucket took; `--seed` repeats it |
 
 - Every signal includes the session's subagent transcripts.
+- `large_transcripts` lists each unreviewed session that holds a file of 50 MB or more. From 100 MB the session is `refused` and no candidate: GitHub rejects the push of such a file. The workflow logs each entry.
 - A refusal by a plugin's own guard (`worktree-flow`, `revier`) is a `permission-rule` denial and counts in no signal.
 - `output_tokens` ranks long sessions first, whatever their quality.
 - A session attributed to a plugin's former name is no candidate: the pick knows the directory names under `plugins/` only.
@@ -80,4 +81,4 @@ A candidate is a session modified in the window, with at least one turn attribut
 
 ### `usage.md`
 
-One row per skill, over every candidate of the window and the sessions already reviewed. **Model-invoked** counts `Skill` tool calls for the skill, **Slash-invoked** counts `/<plugin>:<skill>` commands the user typed. A skill with `disable-model-invocation: true` has 0 model invocations by design. The list below the table names the skills under `plugins/` that no session of the window used.
+One row per skill, over every session of the window that used a plugin of this marketplace: the candidates, the sessions already reviewed, and the refused ones. **Model-invoked** counts `Skill` tool calls for the skill, **Slash-invoked** counts `/<plugin>:<skill>` commands the user typed. A skill with `disable-model-invocation: true` has 0 model invocations by design. The list below the table names the skills under `plugins/` that no session of the window used.

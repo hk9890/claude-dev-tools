@@ -50,8 +50,9 @@ SLASH_COMMAND_RE = re.compile(r"<command-name>/([^<\s]+)</command-name>")
 
 RANKED_BUCKETS = ("pushback", "errors", "output_tokens")
 
-# GitHub refuses a file above 100 MB.
-LARGE_TRANSCRIPT_BYTES = 50 * 1024 * 1024
+# GitHub refuses a file above 100 MB, so a session that holds one is not picked.
+REFUSED_TRANSCRIPT_MB = 100
+LARGE_TRANSCRIPT_MB = 50
 
 
 def records(path):
@@ -103,10 +104,11 @@ def skill_load(text, plugins):
 def summarize(session_file, plugins):
     """One session with its subagent transcripts: the pick record, and the use of each skill."""
     subagents = subagent_files(session_file)
+    copied = [session_file, *(f for f in (session_file.with_suffix("") / "subagents").rglob("*") if f.is_file())]
     pushback_seconds = set()
     tokens_by_message = {}
     errors = 0
-    started = None
+    started = ended = None
     # A subagent turn has no banner of its own: it runs the version its session loaded last.
     session_loads = []
     usage = defaultdict(lambda: {"versions": set(), "turns": 0, "model_invoked": 0, "slash_invoked": 0})
@@ -119,6 +121,7 @@ def summarize(session_file, plugins):
         for record in records(path):
             timestamp = record.get("timestamp") or ""
             started = started or record.get("timestamp")
+            ended = max(ended or "", timestamp)
             if record.get("type") == "assistant":
                 skill, plugin = record.get("attributionSkill"), record.get("attributionPlugin")
                 if skill and plugin in plugins:
@@ -175,6 +178,8 @@ def summarize(session_file, plugins):
         "session": str(session_file),
         "project": session_file.parent.name,
         "started": started,
+        "ended": ended,
+        "largest_file_mb": max(f.stat().st_size for f in copied) >> 20,
         "skills": list(skill_versions),
         "versions": sorted({label for labels in skill_versions.values() for label in labels}),
         "skill_versions": skill_versions,
@@ -226,16 +231,16 @@ def copy_transcripts(session_file, transcripts_dir):
     subagents = session_file.with_suffix("") / "subagents"
     if subagents.is_dir():
         shutil.copytree(subagents, copy.with_suffix("") / "subagents")
-    for path in [copy, *copy.with_suffix("").rglob("*")]:
-        if path.is_file() and path.stat().st_size > LARGE_TRANSCRIPT_BYTES:
-            print(f"warning: {path} is {path.stat().st_size >> 20} MB; GitHub refuses a file above 100 MB", file=sys.stderr)
     return copy
 
 
 def pick(args):
     plugins_dir = Path(args.plugins_dir)
     plugins = {p.name for p in plugins_dir.iterdir() if p.is_dir()}
-    reviewed = {p.stem for p in args.review_dir.glob("runs/*/sessions/*.json")}
+    reviewed_until = {}
+    for path in args.review_dir.glob("runs/*/sessions/*.json"):
+        ended = json.loads(path.read_text(encoding="utf-8"))["ended"]
+        reviewed_until[path.stem] = max(reviewed_until.get(path.stem, ""), ended)
     cutoff = time.time() - args.since_days * 86400
     recent = (
         f
@@ -243,7 +248,21 @@ def pick(args):
         if f.stat().st_mtime >= cutoff
     )
     summaries = [(session, usage) for session, usage in (summarize(f, plugins) for f in recent) if session["skills"]]
-    candidates = [session for session, _ in summaries if session["session_id"] not in reviewed]
+    # A session that went on after its review is picked again, and reviewed whole.
+    unreviewed = [
+        session
+        for session, _ in summaries
+        if session["session_id"] not in reviewed_until or session["ended"] > reviewed_until[session["session_id"]]
+    ]
+    large = [
+        {"session_id": s["session_id"], "largest_file_mb": s["largest_file_mb"], "refused": s["largest_file_mb"] >= REFUSED_TRANSCRIPT_MB}
+        for s in unreviewed
+        if s["largest_file_mb"] >= LARGE_TRANSCRIPT_MB
+    ]
+    for session in large:
+        verdict = "not picked: GitHub refuses a file above 100 MB" if session["refused"] else "large"
+        print(f"warning: session {session['session_id']} holds a {session['largest_file_mb']} MB file, {verdict}", file=sys.stderr)
+    candidates = [s for s in unreviewed if s["largest_file_mb"] < REFUSED_TRANSCRIPT_MB]
 
     picked = []
     for bucket in RANKED_BUCKETS:
@@ -268,7 +287,8 @@ def pick(args):
     picks = {
         "run_dir": str(run_dir),
         "candidates": len(candidates),
-        "already_reviewed": len(summaries) - len(candidates),
+        "already_reviewed": len(summaries) - len(unreviewed),
+        "large_transcripts": large,
         "sessions": picked,
     }
     write_json(run_dir / "run.json", {
@@ -281,6 +301,7 @@ def pick(args):
         "seed": args.seed,
         "candidates": picks["candidates"],
         "already_reviewed": picks["already_reviewed"],
+        "large_transcripts": large,
     })
     write_json(run_dir / "picks.json", picks)
     (run_dir / "usage.md").write_text(usage_table([usage for _, usage in summaries], plugins_dir, args.since_days), encoding="utf-8")
