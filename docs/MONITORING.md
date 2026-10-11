@@ -26,7 +26,7 @@ SESSION_REVIEW_DIR = "/home/<you>/dev/github/session-data"
 
 ```text
 $SESSION_REVIEW_DIR/runs/<date>T<time>-<host>-v<marketplace version>/
-├── run.json                 # arguments, host, picker commit, candidate counts
+├── run.json                 # arguments, host, picker commit, candidate counts, last release
 ├── picks.json               # what the pick printed
 ├── usage.md                 # skill usage over the window
 ├── findings.json            # the findings that survived, each with its session and version
@@ -56,6 +56,7 @@ A candidate is a session modified in the window, with at least one turn attribut
 | `pushback` | Seconds in which the user interrupted the agent or rejected a tool call. One interrupt counts once, whatever the number of parallel calls and subagents it stopped |
 | `errors` | Failed tool results. Leaves out a call that never ran: a denial, a worktree-isolation refusal by Claude Code, and the cancelled siblings of an interrupted batch |
 | `output_tokens` | Output tokens, each API message counted once |
+| `changed` | The session ran, at the version of the last release, a plugin that the release changed. Sessions that ran a changed skill come first; the draw inside each group is random |
 | `random` | A random draw from the candidates no other bucket took; `--seed` repeats it |
 
 - Every signal includes the session's subagent transcripts.
@@ -63,6 +64,15 @@ A candidate is a session modified in the window, with at least one turn attribut
 - A refusal by a plugin's own guard (`worktree-flow`, `revier`) is a `permission-rule` denial and counts in no signal.
 - `output_tokens` ranks long sessions first, whatever their quality.
 - A session attributed to a plugin's former name is no candidate: the pick knows the directory names under `plugins/` only.
+
+### Last release
+
+`release` names the newest `v<x.y.z>` tag of this checkout, the tag before it, the plugins with a file that differs between the two, and the count of candidates for the `changed` bucket. `git fetch --tags` before a run: the pick reads the local tags only.
+
+- A plugin's `plugin.json` and its `tests/` do not count as a change: every release bumps the first, and no session runs the second.
+- Each picked session that ran a changed plugin at the release version carries `changed_files`, whatever its bucket, and its reviewer reads that diff first.
+- The bucket is empty until a session loads a skill from the new install. A `dev@` session never counts: it ran a checkout, not the release.
+- A session that only a changed hook acted in is no candidate: it carries no version ([Plugin version](#plugin-version)).
 
 ### Plugin version
 
