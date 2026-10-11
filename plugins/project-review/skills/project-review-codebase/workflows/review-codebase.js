@@ -207,6 +207,7 @@ const REPORT_SCHEMA = {
         consistency: { type: 'string', enum: VERDICTS },
         structure: { type: 'string', enum: VERDICTS },
         architecture: { type: 'string', enum: VERDICTS },
+        rules: { type: 'string', enum: VERDICTS },
       },
       required: ['consistency', 'structure', 'architecture'],
     },
@@ -216,7 +217,7 @@ const REPORT_SCHEMA = {
       items: {
         type: 'object',
         properties: {
-          dimension: { type: 'string', enum: ['consistency', 'structure', 'architecture'] },
+          dimension: { type: 'string', enum: ['consistency', 'structure', 'architecture', 'rules'] },
           severity: { type: 'string', enum: ['blocker', 'major', 'minor'] },
           location: { type: 'string' },
           observation: { type: 'string' },
@@ -648,12 +649,14 @@ if (typeof agent === 'function') {
     `record what you dropped or downgraded in cross_dimension_notes. Do this first so a hallucinated or overstated ` +
     `major cannot anchor the report${ultra ? ' (findings already passed a per-finding refutation pass, so treat this as a fast final confirmation, not a re-litigation)' : ''}.\n` +
     `2. Merge and DEDUPE findings across dimensions — the same defect surfaced by two dimensions is ONE finding: keep ` +
-    `the strongest evidence and tag it with the dimension whose recommended action is most actionable.\n` +
+    `the strongest evidence and tag it with the dimension whose recommended action is most actionable. A finding that ` +
+    `only one dimension reported keeps that dimension.\n` +
     `3. Reconcile conflicts the dimension agents could not see: where two dimensions recommend incompatible actions on ` +
     `the same files (e.g. consistency says rename, structure says delete), resolve to one coherent recommendation and ` +
     `note the conflict in cross_dimension_notes.\n` +
     `4. Assign final per-dimension verdicts (clean / minor issues / significant issues / broken) — start from each ` +
     `dimension agent's verdict, adjusting where dedupe, refutation, or your step-1 spot-verify changed the picture` +
+    `${rulesFile ? `; the rules dimension is part of this run, so set dimension_verdicts.rules` : ''}` +
     `${missing.length ? `; a dimension that did not complete (${missing.join(', ')}) gets no verdict better than "minor issues" and a note that it did not run` : ''} — ` +
     `and ONE overall verdict, never cleaner than the worst dimension.\n` +
     `5. Produce recommended_actions: a prioritised list ordered by what the developer should tackle first, each entry's ` +

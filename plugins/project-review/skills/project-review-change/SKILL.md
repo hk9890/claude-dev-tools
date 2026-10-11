@@ -121,23 +121,29 @@ One adversarial agent does the whole review. There is no workflow and no level a
    > document that should carry it. Those are proposals for the documents, never defects
    > in the subject, and they never change the verdict.
    >
+   > Grade every finding `proven` or `plausible` in its Observation.
+   >
    > Tag every entry in `## Recommended actions` `settled` or `open`, leaving none
-   > untagged — read `<the decision-split.md path>` for what the two mean. For each `open`
-   > entry also give the question, the real options including "leave it as is" where that
-   > is one, and your recommendation.
+   > untagged — read `<the decision-split.md path>` for what the two mean. An entry is
+   > `settled` only where every finding it names is proven; an entry for a plausible
+   > finding is `open`. For each `open` entry also give the question, the real options
+   > including "leave it as is" where that is one, and your recommendation.
 
    If the **Agent** tool is unavailable, run the procedure yourself — read the step-2
    procedure path in full, apply it to the subject, produce the same sections, and state
    that the review ran inline rather than on the reviewer agent.
 
-   Done when the review carries one of the four verdict labels and every entry in
-   `## Recommended actions` is tagged `settled` or `open`. An entry the reviewer left
-   untagged counts as `open`. Where the reviewer reports instead that the project has no
-   standard to measure against, relay that and end the run.
+   Done when the review carries one of the four verdict labels, every finding is graded
+   `proven` or `plausible`, and every entry in `## Recommended actions` is tagged
+   `settled` or `open`. An entry the reviewer left untagged counts as `open`. So does an
+   entry tagged `settled` that names a finding not graded `proven`: its question is
+   whether to apply the action as the reviewer stated it. Where the reviewer reports
+   instead that the project has no standard to measure against, relay that and end the
+   run.
 
 4. **Relay the review.** Surface the agent's verdict and findings as it wrote them; do not
    re-derive or re-label them. Then follow `<SKILL_DIR>/../../references/decision-split.md`
-   over the tagged actions — "this change" is what was reviewed. This review takes no
+   over the actions, in the groups step 3 ended on — "this change" is what was reviewed. This review takes no
    `html-viz` flag, so the reference's **Without it** branch applies. With `--fix`, say
    that step 5 applies the settled batch now, in place of the reference's line on where
    the user stops it.
@@ -157,6 +163,9 @@ One adversarial agent does the whole review. There is no workflow and no level a
    nothing else: name a settled action of another kind — a commit message, a branch name,
    a pull request field — as not applied, with that reason. The `open` entries stay the
    questions step 4 put to the user, and `## Suggested rule additions` stay proposals.
+
+   An entry tagged `settled` that names a plausible finding is outside the batch: step 3
+   counted it as `open`. Name it as not applied, with that reason.
 
    Where an edit was made, run every command under `## Checks run` again on the edited
    tree and report each result. A command that passed in the review and fails now goes
