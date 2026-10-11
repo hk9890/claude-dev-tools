@@ -61,10 +61,11 @@ violations. Collect them in a separate list of suggested rule additions, each na
 document that should carry it, and say plainly that these are proposals for the
 documents rather than defects in the subject. They never change the verdict.
 
-**A defect reached through a rule that names nothing.** A finding rests on a rule that
-names the thing the subject got wrong. A rule that asks for quality in general — "code
-must be correct", "keep it simple" — backs no finding: a bug, a duplicate or a simpler
-form reached through it is the general code review's.
+**A defect that only a general rule covers.** A finding rests on a rule that names the
+thing the subject got wrong. A rule that names no specific thing — "code must be
+correct", "keep it simple" — backs no finding. Name the bug, the duplicate or the
+simpler form reached through it in one line, as routed to the general code review. It
+never changes the verdict.
 
 **A stale rule.** Where a document describes a convention the project clearly moved past,
 the subject is not at fault. Say the finding belongs to `project-review-docs` and route
