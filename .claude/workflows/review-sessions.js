@@ -121,11 +121,12 @@ for (const large of picks.large_transcripts) {
 }
 
 const release = picks.release
-if (release) {
-  log(`release ${release.version} changed ${release.plugins.join(', ') || 'no plugin'}: ${release.candidates} candidate sessions ran one of them at that version`)
-}
+log(release
+  ? `release ${release.version} changed ${release.plugins.join(', ') || 'no plugin'}: ${release.candidates} candidate sessions ran one of them at that version`
+  : 'no last release: the checkout has fewer than two release tags, so the changed bucket is empty')
 
-const changes = pick => pick.changed_files
+// The pick agent relays the JSON, and can return an empty list where the pick printed none.
+const changes = pick => pick.changed_files?.length
   ? `\nRelease ${release.version} changed these files of the plugins the session ran at that version: ${pick.changed_files.join(', ')}. Read \`git diff v${release.previous} v${release.version} -- <files>\` first, and look for a problem that this change caused.`
   : ''
 

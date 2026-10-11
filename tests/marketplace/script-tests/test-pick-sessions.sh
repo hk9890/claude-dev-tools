@@ -77,6 +77,8 @@ def run(*argv, **kwargs):
 
 with tempfile.TemporaryDirectory() as tmp:
     projects, plugins, store = Path(tmp, "projects"), Path(tmp, "plugins"), Path(tmp, "store")
+    # A checkout of its own, with no tag: git must not find one above the temporary directory.
+    subprocess.run(["git", "init", tmp], check=True, capture_output=True)
     for skill in ("skill", "other", "idle"):
         (plugins / "demo" / "skills" / skill).mkdir(parents=True)
         (plugins / "demo" / "skills" / skill / "SKILL.md").write_text("---\n---\n")
@@ -246,13 +248,12 @@ with tempfile.TemporaryDirectory() as tmp:
         check(label, True, needle in rendered)
 
 with tempfile.TemporaryDirectory() as tmp:
-    projects, plugins, store = Path(tmp, "projects"), Path(tmp, "plugins"), Path(tmp, "store")
+    projects, plugins = Path(tmp, "projects"), Path(tmp, "plugins")
     project = projects / "proj"
     cache = "/home/u/.claude/plugins/cache/market"
-    store.mkdir()
 
     def git(*argv):
-        subprocess.run(["git", "-C", tmp, "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", *argv], check=True, capture_output=True)
+        subprocess.run(["git", "-C", tmp, "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", "-c", "tag.gpgSign=false", *argv], check=True, capture_output=True)
 
     def release(tag, files):
         for path, text in files.items():
@@ -263,52 +264,58 @@ with tempfile.TemporaryDirectory() as tmp:
         git("tag", tag)
 
     git("init")
-    release("v1.2.0", {
-        ".claude-plugin/marketplace.json": json.dumps({"metadata": {"version": "1.3.0"}}),
-        "plugins/demo/.claude-plugin/plugin.json": "1.2.0",
+    # 1.10.0 is the newer of the two as a version, and the older as text.
+    release("v1.9.0", {
+        ".claude-plugin/marketplace.json": json.dumps({"metadata": {"version": "1.10.0"}}),
+        "plugins/demo/.claude-plugin/plugin.json": "1.9.0",
         "plugins/demo/skills/skill/SKILL.md": "a",
         "plugins/demo/skills/other/SKILL.md": "a",
         "plugins/demo/tests/demo.test.ts": "a",
-        "plugins/bumped/.claude-plugin/plugin.json": "1.2.0",
+        "plugins/bumped/.claude-plugin/plugin.json": "1.9.0",
         "plugins/bumped/skills/skill/SKILL.md": "a",
     })
-    release("v1.3.0", {
-        "plugins/demo/.claude-plugin/plugin.json": "1.3.0",
+    release("v1.10.0", {
+        "plugins/demo/.claude-plugin/plugin.json": "1.10.0",
         "plugins/demo/skills/skill/SKILL.md": "b",
         "plugins/demo/tests/demo.test.ts": "b",
-        "plugins/bumped/.claude-plugin/plugin.json": "1.3.0",
+        "plugins/bumped/.claude-plugin/plugin.json": "1.10.0",
     })
-    git("tag", "v1.10.0-rc1")
+    git("tag", "v1.11.0-rc1")
     git("tag", "notes")
 
-    def session(name, tokens, path, plugin="demo", skill="skill"):
-        write(project / f"{name}.jsonl", [banner(path), assistant(name, tokens, plugin=plugin, skill=skill)])
+    def session(name, tokens, path, plugin="demo", skill="skill", then=()):
+        write(project / f"{name}.jsonl", [banner(path), assistant(name, tokens, plugin=plugin, skill=skill), *then])
 
-    session("old-version", 900, f"{cache}/demo/1.2.0/skills/skill")
-    session("other-skill-a", 5, f"{cache}/demo/1.3.0/skills/other", skill="other")
-    session("other-skill-b", 5, f"{cache}/demo/1.3.0/skills/other", skill="other")
-    session("changed-skill", 5, f"{cache}/demo/1.3.0/skills/skill")
+    session("old-version", 900, f"{cache}/demo/1.9.0/skills/skill")
+    session("other-skill-a", 5, f"{cache}/demo/1.10.0/skills/other", skill="other")
+    session("other-skill-b", 5, f"{cache}/demo/1.10.0/skills/other", skill="other")
+    session("other-skill-failed", 5, f"{cache}/demo/1.10.0/skills/other", skill="other", then=[error("exit status 1")])
+    session("changed-skill", 5, f"{cache}/demo/1.10.0/skills/skill")
     session("checkout", 5, "/repo/plugins/demo/skills/skill")
-    session("bumped-only", 5, f"{cache}/bumped/1.3.0/skills/skill", plugin="bumped")
+    session("bumped-only", 5, f"{cache}/bumped/1.10.0/skills/skill", plugin="bumped")
 
     for seed in ("0", "1", "2"):
+        # A store for each pick: two picks in the same second would start the same run folder.
+        store = Path(tmp, f"store-{seed}")
+        store.mkdir()
         out = run("pick", "--review-dir", str(store), "--projects-dir", str(projects), "--plugins-dir", str(plugins), "--per-bucket", "1", "--seed", seed)
         result = json.loads(out.stdout or "{}")
         by_bucket = {s["bucket"]: s for s in result.get("sessions", [])}
         check(f"seed {seed}: the changed bucket takes a session that ran the changed skill before one that ran another skill of the plugin",
               "changed-skill", by_bucket.get("changed", {}).get("session_id"))
-        time.sleep(1.1)
 
     check("the release is the newest version tag against the one before it; a version bump and a test are no change, and a checkout session is no candidate",
-          {"version": "1.3.0", "previous": "1.2.0", "plugins": ["demo"], "candidates": 3}, result.get("release"))
+          {"version": "1.10.0", "previous": "1.9.0", "plugins": ["demo"], "candidates": 4}, result.get("release"))
     check("run.json records the release", result.get("release"), json.loads(Path(result["run_dir"], "run.json").read_text())["release"])
     check("the pick names the files the release changed in the plugins the session ran",
           ["plugins/demo/skills/skill/SKILL.md"], by_bucket.get("changed", {}).get("changed_files"))
     check("a session at an older version carries no changed files, whatever its bucket",
           ("old-version", False), (by_bucket["output_tokens"]["session_id"], "changed_files" in by_bucket["output_tokens"]))
-    others = {s["session_id"]: "changed_files" in s for s in result["sessions"] if s["bucket"] == "random"}
-    check("the random bucket takes what is left, and marks a session of the changed plugin there too",
-          True, len(others) == 1 and all(marked == name.startswith("other-skill") for name, marked in others.items()))
+    check("a session of the changed plugin carries the changed files in another bucket too",
+          ("other-skill-failed", ["plugins/demo/skills/skill/SKILL.md"]),
+          (by_bucket["errors"]["session_id"], by_bucket["errors"].get("changed_files")))
+    check("the random bucket takes one of the sessions left",
+          True, by_bucket["random"]["session_id"] in {"other-skill-a", "other-skill-b", "checkout", "bumped-only"})
 
 print(f"\nResults: {passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)
