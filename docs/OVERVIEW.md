@@ -6,7 +6,7 @@ A collection of Claude Code plugins. Each plugin lives under `plugins/<plugin-na
 
 ```
 claude-dev-tools/
-  .claude/               # repo-committed Claude Code settings
+  .claude/               # repo-committed Claude Code settings, and saved Workflow-tool scripts (workflows/)
   .claude-plugin/
     marketplace.json     # repo-level manifest: every plugin, its version and description
   .github/               # CI workflows and Dependabot config

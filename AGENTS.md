@@ -42,4 +42,4 @@ Every route below is **mandatory, not advisory**. Load the document BEFORE the f
 
 ### Analyze plugin usage
 
-**MUST read [docs/MONITORING.md](docs/MONITORING.md) before your first read of a `~/.claude/projects/**/*.jsonl` transcript or run of `scripts/analyze-sessions.py`.** It owns the session-analysis workflow and its output schema.
+**MUST read [docs/MONITORING.md](docs/MONITORING.md) before your first read of a `~/.claude/projects/**/*.jsonl` transcript or run of `scripts/analyze-sessions.py`, `scripts/pick-sessions.py`, or the `review-sessions` workflow.** It owns the session-analysis workflow, its output schema, and the session review pilot.
