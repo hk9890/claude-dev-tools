@@ -78,9 +78,7 @@ Directory name and frontmatter `name:` must match. **Sibling skills share one pr
 
 The exception is a plugin whose names trigger on their own, each a distinct concept rather than a generic operation, where a shared prefix would only dilute them — every skill in `challenge` (`grill`, `kiss`, `are-you-sure`, `what-do-you-mean`).
 
-**When renaming a plugin directory or a skill**, add the old-to-new entry to `RENAME_ALIASES` / `SKILL_RENAME_ALIASES` in [`scripts/analyze-sessions.py`](../scripts/analyze-sessions.py) in the same change, or that name's history silently falls into the unmatched bucket ([MONITORING.md](MONITORING.md)).
-
-**When renaming a plugin**, also add the old-to-new entry to the top-level `renames` map in `.claude-plugin/marketplace.json`. Claude Code follows it when an installed name is no longer found and migrates the user's `enabledPlugins`; without it every existing install loses the plugin, and no gate here catches the omission. A stored `theme` setting (`custom:<plugin>:<theme>`) is not migrated: say in the release notes that users select the theme again with `/theme`.
+**When renaming a plugin**, add the old-to-new entry to the top-level `renames` map in `.claude-plugin/marketplace.json`. Claude Code follows it when an installed name is no longer found and migrates the user's `enabledPlugins`; without it every existing install loses the plugin, and no gate here catches the omission. A stored `theme` setting (`custom:<plugin>:<theme>`) is not migrated: say in the release notes that users select the theme again with `/theme`.
 
 ### Frontmatter
 
@@ -105,7 +103,7 @@ when_to_use: "Use when … Triggers on '…', '…'. Does not apply to …"
 ---
 ```
 
-- Do not take Schema B just because a skill *could* auto-invoke: measured pickup from context is low (the Invocation modes section in [MONITORING.md](MONITORING.md)), and every skill that takes it pays the cost.
+- Do not take Schema B just because a skill *could* auto-invoke: measured pickup from context is low (the Model-invoked column of a review run's `usage.md`, [MONITORING.md](MONITORING.md)), and every skill that takes it pays the cost.
 - Never mix them — `disable-model-invocation: true` alongside `when_to_use:` is contradictory.
 - Where a Schema B skill's domain overlaps a sibling's, disambiguate in **both** directions in the same change: exclude the sibling here, add the reverse pointer there. A one-sided carve-out still lets shared queries land on the wrong skill.
 

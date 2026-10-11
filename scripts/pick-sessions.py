@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
-"""Pick local Claude Code sessions worth a review, and render one as plain text.
+"""Pick local Claude Code sessions worth a review, and keep each review run.
 
-pick    prints the sessions that used a plugin of this marketplace, a few from each
-        bucket: most user pushback, most tool errors, most output tokens, and random.
+pick    starts a run folder in the review store: picks the sessions that used a plugin of
+        this marketplace and that no earlier run reviewed, a few from each bucket (most
+        user pushback, most tool errors, most output tokens, random), and copies their
+        transcripts into the run.
 render  prints one transcript as text an agent can read in parts.
+record  writes the findings of a review into its run folder.
+
+The review store is the directory in SESSION_REVIEW_DIR, a checkout of a private repository.
 """
 
 import argparse
@@ -11,8 +16,13 @@ import json
 import os
 import random
 import re
+import shutil
+import socket
+import subprocess
 import sys
 import time
+from collections import defaultdict
+from datetime import datetime
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -30,12 +40,19 @@ INTERRUPT = "[Request interrupted by user"
 # call of a parallel batch, and a marker in each subagent it stopped.
 TIMESTAMP_SECOND = len("2026-01-01T00:00:00")
 
-# A cached install carries the plugin version in the skill-load banner; a dev checkout has none.
-BANNER_RE = re.compile(
-    r"Base directory for this skill:\s*\S*?/([A-Za-z0-9_.-]+)/(\d+\.\d+\.\d+)/skills/"
-)
+# The banner Claude Code writes when it loads a skill. A cached install has the plugin
+# version in the path (<plugin>/<version>/skills/<skill>); a checkout of this repository
+# has none (plugins/<plugin>/skills/<skill>).
+BANNER_RE = re.compile(r"Base directory for this skill:\s*(\S+)/skills/([A-Za-z0-9_-]+)")
+VERSION_RE = re.compile(r"\d+\.\d+\.\d+")
+WORKTREE_RE = re.compile(r"/\.claude/worktrees/([^/]+)/")
+SLASH_COMMAND_RE = re.compile(r"<command-name>/([^<\s]+)</command-name>")
 
 RANKED_BUCKETS = ("pushback", "errors", "output_tokens")
+
+# GitHub refuses a file above 100 MB, so a session that holds one is not picked.
+REFUSED_TRANSCRIPT_MB = 100
+LARGE_TRANSCRIPT_MB = 50
 
 
 def records(path):
@@ -68,19 +85,59 @@ def subagent_files(session_file):
     return sorted(session_file.with_suffix("").glob("subagents/**/agent-*.jsonl"))
 
 
+def skill_load(text, plugins):
+    """The skill a banner loads and the version label of its plugin, for a plugin in `plugins`."""
+    banner = BANNER_RE.match(text)
+    if not banner:
+        return None
+    root = Path(banner[1])
+    if VERSION_RE.fullmatch(root.name):
+        plugin, label = root.parent.name, root.name
+    else:
+        worktree = WORKTREE_RE.search(banner[1])
+        plugin, label = root.name, (f"dev@{worktree[1]}" if worktree else "dev@main")
+    if plugin not in plugins:
+        return None
+    return f"{plugin}:{banner[2]}", plugin, label
+
+
 def summarize(session_file, plugins):
+    """One session with its subagent transcripts: the pick record, and the use of each skill."""
     subagents = subagent_files(session_file)
-    skills, versions, pushback_seconds = set(), set(), set()
+    copied = [session_file, *(f for f in (session_file.with_suffix("") / "subagents").rglob("*") if f.is_file())]
+    pushback_seconds = set()
     tokens_by_message = {}
     errors = 0
-    started = None
+    started = ended = None
+    # A subagent turn has no banner of its own: it runs the version its session loaded last.
+    session_loads = []
+    usage = defaultdict(lambda: {"versions": set(), "turns": 0, "model_invoked": 0, "slash_invoked": 0})
+
+    def owned(skill):
+        return isinstance(skill, str) and ":" in skill and skill.split(":")[0] in plugins
 
     for path in [session_file, *subagents]:
+        loaded = {}
         for record in records(path):
+            timestamp = record.get("timestamp") or ""
             started = started or record.get("timestamp")
+            ended = max(ended or "", timestamp)
             if record.get("type") == "assistant":
-                if record.get("attributionPlugin") in plugins and record.get("attributionSkill"):
-                    skills.add(record["attributionSkill"])
+                skill, plugin = record.get("attributionSkill"), record.get("attributionPlugin")
+                if skill and plugin in plugins:
+                    label = (
+                        loaded.get(skill)
+                        or loaded.get(plugin)
+                        or next((l for at, name, _, l in reversed(session_loads) if at <= timestamp and name == skill), None)
+                        or next((l for at, _, name, l in reversed(session_loads) if at <= timestamp and name == plugin), None)
+                        or "unknown"
+                    )
+                    usage[skill]["versions"].add(label)
+                    usage[skill]["turns"] += 1
+                for block in blocks(record):
+                    invoked = (block.get("input") or {}).get("skill") if block.get("name") == "Skill" else None
+                    if owned(invoked):
+                        usage[invoked]["model_invoked"] += 1
                 # One API message spans several records, and its usage grows up to the last.
                 message = record.get("message") or {}
                 message_id = message.get("id")
@@ -88,15 +145,23 @@ def summarize(session_file, plugins):
                 tokens_by_message[message_id] = max(tokens_by_message.get(message_id, 0), tokens)
             elif record.get("type") == "user":
                 denial = record.get("toolDenialKind")
-                second = (record.get("timestamp") or "")[:TIMESTAMP_SECOND]
+                second = timestamp[:TIMESTAMP_SECOND]
                 for block in blocks(record):
                     text = block_text(block)
                     if block.get("type") == "text":
                         if text.startswith(INTERRUPT):
                             pushback_seconds.add(second)
-                        banner = BANNER_RE.search(text)
-                        if banner and banner[1] in plugins:
-                            versions.add(banner[2])
+                        # The user types in the session only: a workflow subagent repeats the request that started it.
+                        if path == session_file:
+                            for command in SLASH_COMMAND_RE.findall(text):
+                                if owned(command):
+                                    usage[command]["slash_invoked"] += 1
+                        load = skill_load(text, plugins)
+                        if load:
+                            skill, plugin, label = load
+                            loaded[skill] = loaded[plugin] = label
+                            if path == session_file:
+                                session_loads.append((timestamp, skill, plugin, label))
                     elif block.get("type") == "tool_result" and block.get("is_error"):
                         if denial == "user-rejected":
                             pushback_seconds.add(second)
@@ -107,28 +172,97 @@ def summarize(session_file, plugins):
                         ):
                             errors += 1
 
-    return {
+    skill_versions = {skill: sorted(use["versions"]) for skill, use in sorted(usage.items()) if use["turns"]}
+    session = {
+        "session_id": session_file.stem,
         "session": str(session_file),
         "project": session_file.parent.name,
         "started": started,
-        "skills": sorted(skills),
-        "versions": sorted(versions),
+        "ended": ended,
+        "largest_file_mb": max(f.stat().st_size for f in copied) >> 20,
+        "skills": list(skill_versions),
+        "versions": sorted({label for labels in skill_versions.values() for label in labels}),
+        "skill_versions": skill_versions,
         "subagents": len(subagents),
         "pushback": len(pushback_seconds),
         "errors": errors,
         "output_tokens": sum(tokens_by_message.values()),
     }
+    return session, usage
+
+
+def usage_table(usages, plugins_dir, since_days):
+    total = defaultdict(lambda: {"sessions": 0, "versions": set(), "turns": 0, "model_invoked": 0, "slash_invoked": 0})
+    for usage in usages:
+        for skill, use in usage.items():
+            total[skill]["sessions"] += 1
+            total[skill]["versions"] |= use["versions"]
+            for count in ("turns", "model_invoked", "slash_invoked"):
+                total[skill][count] += use[count]
+
+    lines = [
+        "# Skill usage",
+        "",
+        f"The {len(usages)} sessions of the last {since_days:g} days that used a plugin of this marketplace, subagent transcripts included.",
+        "",
+        "| Skill | Sessions | Turns | Model-invoked | Slash-invoked | Versions |",
+        "|---|---|---|---|---|---|",
+    ]
+    for skill, use in sorted(total.items()):
+        lines.append(
+            f"| `{skill}` | {use['sessions']} | {use['turns']} | {use['model_invoked']} | {use['slash_invoked']} | {', '.join(sorted(use['versions']))} |"
+        )
+    shipped = {f"{p.parent.parent.parent.name}:{p.parent.name}" for p in plugins_dir.glob("*/skills/*/SKILL.md")}
+    lines += ["", "## Skills with no use in the window", ""]
+    lines += [f"- `{skill}`" for skill in sorted(shipped - set(total))] or ["None."]
+    return "\n".join(lines) + "\n"
+
+
+def write_json(path, value):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+def copy_transcripts(session_file, transcripts_dir):
+    """Copy a session and its subagent transcripts, in the layout Claude Code keeps them in."""
+    copy = transcripts_dir / session_file.name
+    transcripts_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(session_file, copy)
+    subagents = session_file.with_suffix("") / "subagents"
+    if subagents.is_dir():
+        shutil.copytree(subagents, copy.with_suffix("") / "subagents")
+    return copy
 
 
 def pick(args):
-    plugins = {p.name for p in Path(args.plugins_dir).iterdir() if p.is_dir()}
+    plugins_dir = Path(args.plugins_dir)
+    plugins = {p.name for p in plugins_dir.iterdir() if p.is_dir()}
+    reviewed_until = {}
+    for path in args.review_dir.glob("runs/*/sessions/*.json"):
+        ended = json.loads(path.read_text(encoding="utf-8"))["ended"]
+        reviewed_until[path.stem] = max(reviewed_until.get(path.stem, ""), ended)
     cutoff = time.time() - args.since_days * 86400
     recent = (
         f
         for f in sorted(Path(args.projects_dir).glob("*/*.jsonl"))
         if f.stat().st_mtime >= cutoff
     )
-    candidates = [s for s in (summarize(f, plugins) for f in recent) if s["skills"]]
+    summaries = [(session, usage) for session, usage in (summarize(f, plugins) for f in recent) if session["skills"]]
+    # A session that went on after its review is picked again, and reviewed whole.
+    unreviewed = [
+        session
+        for session, _ in summaries
+        if session["session_id"] not in reviewed_until or session["ended"] > reviewed_until[session["session_id"]]
+    ]
+    large = [
+        {"session_id": s["session_id"], "largest_file_mb": s["largest_file_mb"], "refused": s["largest_file_mb"] >= REFUSED_TRANSCRIPT_MB}
+        for s in unreviewed
+        if s["largest_file_mb"] >= LARGE_TRANSCRIPT_MB
+    ]
+    for session in large:
+        verdict = "not picked: GitHub refuses a file above 100 MB" if session["refused"] else "large"
+        print(f"warning: session {session['session_id']} holds a {session['largest_file_mb']} MB file, {verdict}", file=sys.stderr)
+    candidates = [s for s in unreviewed if s["largest_file_mb"] < REFUSED_TRANSCRIPT_MB]
 
     picked = []
     for bucket in RANKED_BUCKETS:
@@ -141,8 +275,64 @@ def pick(args):
         session["bucket"] = "random"
         picked.append(session)
 
-    json.dump({"candidates": len(candidates), "sessions": picked}, sys.stdout, indent=2)
+    marketplace = json.loads((plugins_dir.parent / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
+    version = marketplace["metadata"]["version"]
+    now = datetime.now().astimezone()
+    run_dir = args.review_dir / "runs" / f"{now:%Y-%m-%dT%H%M%S}-{socket.gethostname()}-v{version}"
+    run_dir.mkdir(parents=True)
+    for session in picked:
+        session["transcript"] = str(copy_transcripts(Path(session["session"]), run_dir / "transcripts"))
+
+    commit = subprocess.run(["git", "-C", str(REPO_ROOT), "rev-parse", "HEAD"], capture_output=True, text=True)
+    picks = {
+        "run_dir": str(run_dir),
+        "candidates": len(candidates),
+        "already_reviewed": len(summaries) - len(unreviewed),
+        "large_transcripts": large,
+        "sessions": picked,
+    }
+    write_json(run_dir / "run.json", {
+        "started": now.isoformat(timespec="seconds"),
+        "host": socket.gethostname(),
+        "marketplace_version": version,
+        "picker_commit": commit.stdout.strip(),
+        "since_days": args.since_days,
+        "per_bucket": args.per_bucket,
+        "seed": args.seed,
+        "candidates": picks["candidates"],
+        "already_reviewed": picks["already_reviewed"],
+        "large_transcripts": large,
+    })
+    write_json(run_dir / "picks.json", picks)
+    (run_dir / "usage.md").write_text(usage_table([usage for _, usage in summaries], plugins_dir, args.since_days), encoding="utf-8")
+
+    json.dump(picks, sys.stdout, indent=2, ensure_ascii=False)
     print()
+
+
+def record(args):
+    run_dir = Path(args.run_dir)
+    picks = {s["session_id"]: s for s in json.loads((run_dir / "picks.json").read_text(encoding="utf-8"))["sessions"]}
+    reviews = json.loads(Path(args.result).read_text(encoding="utf-8"))
+    unknown = [r["session_id"] for r in reviews if r["session_id"] not in picks]
+    if unknown:
+        sys.exit(f"error: not a session of {run_dir / 'picks.json'}: {', '.join(unknown)}")
+
+    survived = []
+    for review in reviews:
+        # A review that did not finish leaves the session for a later run to pick again.
+        if review.get("findings") is None:
+            continue
+        session = picks[review["session_id"]]
+        write_json(run_dir / "sessions" / f"{session['session_id']}.json", {**session, "findings": review["findings"]})
+        survived += [
+            {"session_id": session["session_id"], "bucket": session["bucket"], **finding}
+            for finding in review["findings"]
+            if not finding.get("refuted")
+        ]
+    write_json(run_dir / "findings.json", survived)
+    reviewed = len(list(run_dir.glob("sessions/*.json")))
+    print(f"{reviewed} of {len(picks)} sessions recorded, {len(survived)} findings survived: {run_dir}")
 
 
 def render(args):
@@ -174,7 +364,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest="command", required=True)
 
-    pick_parser = commands.add_parser("pick", help="print the picked sessions as JSON")
+    pick_parser = commands.add_parser("pick", help="start a run: pick the sessions, copy their transcripts, print the picks as JSON")
+    pick_parser.add_argument("--review-dir", type=Path, default=os.environ.get("SESSION_REVIEW_DIR") or None, help="the review store (default: $SESSION_REVIEW_DIR)")
     pick_parser.add_argument("--projects-dir", default=os.path.expanduser("~/.claude/projects"))
     pick_parser.add_argument("--plugins-dir", default=REPO_ROOT / "plugins")
     pick_parser.add_argument("--since-days", type=float, default=7, help="only sessions modified in the last N days (default: 7)")
@@ -187,7 +378,14 @@ def main():
     render_parser.add_argument("--max-chars", type=int, default=600, help="characters kept per message or tool result (default: 600)")
     render_parser.set_defaults(run=render)
 
+    record_parser = commands.add_parser("record", help="write the findings of a review into its run folder")
+    record_parser.add_argument("run_dir", help="the run_dir that pick printed")
+    record_parser.add_argument("result", help="a JSON file: [{session_id, findings: [{..., refuted}] or null}]")
+    record_parser.set_defaults(run=record)
+
     args = parser.parse_args()
+    if args.command == "pick" and not (args.review_dir and args.review_dir.is_dir()):
+        parser.error("no review store: set SESSION_REVIEW_DIR to a checkout of the private session-data repository (docs/MONITORING.md)")
     args.run(args)
 
 

@@ -1,161 +1,84 @@
 # Monitoring Plugin Usage
 
-Two ways to read Claude Code transcripts for how the plugins did: the session-analysis phases, which index episode records and judge a sample, and the [session review pilot](#session-review-pilot), which picks whole sessions and reviews them for plugin problems.
+The session review: pick local Claude Code sessions that used a plugin of this marketplace, review each for plugin problems, and keep every run in a private store.
 
 ## Data source
 
-Claude Code writes transcripts to `~/.claude/projects/<slug>/<uuid>.jsonl`, one JSON record per line:
+Claude Code writes a session to `~/.claude/projects/<slug>/<uuid>.jsonl`, and its subagents to `<uuid>/subagents/**/agent-*.jsonl` beside it, one JSON record per line. It deletes a transcript about 30 days after its last write.
 
 | `type` | Carries |
 |---|---|
-| `assistant` | Claude's turn, plus `attributionPlugin` (plugin directory name, e.g. `tasks`) and `attributionSkill` (namespaced, e.g. `tasks:tasks-core`) while a skill runs — absent on unattributed turns, and never set on any other record type |
-| `user` | The human turn, and the `tool_result` blocks inside its `content` array; a failed tool is `tool_result.is_error == true`, an interrupted turn is `record.toolUseResult.interrupted == true` |
-| `system` | Internal events, e.g. `subtype: "turn_duration"` with `durationMs` |
+| `assistant` | Claude's turn, plus `attributionPlugin` (plugin directory name, e.g. `tasks`) and `attributionSkill` (namespaced, e.g. `tasks:tasks-core`) while a skill runs |
+| `user` | The human turn, and the `tool_result` blocks inside its `content` array. A failed tool is `tool_result.is_error == true`; `toolDenialKind` says who refused a call that never ran (`user-rejected`, `permission-rule`) |
 
-## Phase 1 — offline indexer
+## The review store
 
-Run `mise run analyze-sessions`, or `python3 scripts/analyze-sessions.py` from the repo root — the mise task pins cwd, which decides where `output/` lands. Options append to either form:
+A run is written to the directory in `SESSION_REVIEW_DIR`: a checkout of the private repository `hk9890/session-data`. A transcript holds everything its session read, so no part of a run belongs in this public repository.
 
-```bash
-python3 scripts/analyze-sessions.py                                    # full scan of ~/.claude/projects
-python3 scripts/analyze-sessions.py --projects-dir /path/to/projects   # scan elsewhere
-python3 scripts/analyze-sessions.py --project dt-operator --since-days 2
-python3 scripts/analyze-sessions.py --since 2026-08-30        # episodes since a release
-python3 scripts/analyze-sessions.py --fixture scripts/fixtures/session-fixture.jsonl
+Set the variable in `mise.local.toml` at the repo root, which git ignores:
+
+```toml
+[env]
+SESSION_REVIEW_DIR = "/home/<you>/dev/github/session-data"
 ```
 
-`--project` matches a substring of the project directory name. `--help` lists the rest.
+`git pull` in the store before a run: a session that another machine reviewed is skipped only once its run is here.
 
-The two window filters cut at different levels:
-
-- `--since-days` filters on file mtime — "sessions touched in the window", so a long-lived session modified recently is included whole, old episodes and all.
-- `--since` filters **episodes**, on `started_at` — a date or full ISO timestamp, local time where it carries no zone. This is the one to scope a release with; it sets the mtime prefilter too when `--since-days` is absent. It drops an episode whose first turn has no timestamp, and it does not reach the unmatched-plugin table, which counts everything scanned.
-
-### Output
-
-Under `output/session-analysis/` (relative to cwd, or `--output-dir`); `--fixture` redirects it to `.../fixture/`.
-
-| Path | Contents |
-|---|---|
-| `dataset.json` | One record per episode; no raw message content |
-| `summary.md` | Per-skill aggregates and the unmatched-plugin table |
-| `episodes/` | Sanitized per-episode slice files (sampled subset) |
-
-Each `dataset.json` record carries:
-
-- **Identity** — `episode_id`, `session_id`, `source_file`, `start_line`, `end_line`
-- **Placement in time** — `started_at` (timestamp of the episode's first attributed turn) and `plugin_version` (the installed version that served it, read from the skill-load banner; `null` in a dev checkout, which has no version in its path)
-- **Attribution** — `attribution_skill` (raw attributed name), `attribution_plugin` (canonical), `trigger_type`
-- **Friction** — `turn_count`, `tool_errors`, `harness_refusals`, `interruptions`, `permission_denials`, `user_corrections`, `ask_user_questions`, `retries`, `duration_ms`, `friction_score`
-- **Outcome** — `ended_in_commit`, `ended_in_pr`, `tests_run`, `tests_passed`
-
-### Episode delimiting
-
-An **episode** is a contiguous run of assistant messages sharing one `attributionSkill`. A new one opens when that value changes and the incoming skill resolves to a known marketplace plugin; an unattributed assistant message closes the open one. User messages, `tool_result` blocks, and `system` events between attributed turns join the currently-open episode by position — they never delimit. Records are deduped by `uuid`, so a resumed or copied history counts once; records without a `uuid` are never deduped.
-
-### Rename aliases
-
-`RENAME_ALIASES` (plugin renamed) and `SKILL_RENAME_ALIASES` (skill renamed, or its plugin prefix changed) in [`scripts/analyze-sessions.py`](../scripts/analyze-sessions.py) are the single source of truth, pinned by a fixture test. Skill aliases apply before aggregation, so renamed skills merge into one `summary.md` row while `dataset.json` keeps the raw name. Add an entry in the same change as the rename, or that name's history falls into the unmatched bucket.
-
-### Reading the numbers
-
-`friction_score` is a weighted signal sum divided by `turn_count`, so episodes of different lengths compare directly: 0.0 is smooth, higher is rockier. Tool errors weigh heaviest, interruptions and denials sit in the middle, corrections and questions weigh least — the authoritative weights are `FRICTION_WEIGHTS` and `Episode._compute_friction()` in the script, deliberately not mirrored here, as are the `*_RE` signal patterns. What reading those will not tell you:
-
-- `tool_errors` skips three kinds of `is_error` result where no tool ran. Each counts in at most one signal:
-  - `"Cancelled: parallel tool call"`, the un-run siblings of a batch the user interrupted — in none.
-  - Harness guard refusals — in `harness_refusals`.
-  - User rejections — in `permission_denials`.
-- `harness_refusals` counts the worktree-isolation guard refusing a command it cannot prove stays inside the worktree — over half of all `is_error` results in a 12-day sample. It carries no friction weight: the command never ran and the skill did nothing wrong.
-- `permission_denials` matches the rejection phrase only at the start of a result with `is_error == true`. Without both guards, a file the model read or a failed command that prints the phrase would score a denial.
-- `user_corrections` strips harness-generated blocks (`<command-name>`, `<system-reminder>`, …) before matching, since a slash-command body is not user prose. Fuzzy in both directions — **Phase 2 is the authority** on whether a correction happened.
-- `retries` counts only the first repeat of a `(tool_name, input_repr[:200])` pair.
-- A skill's signals include work that is not the skill's. Attribution holds until the next skill or an unattributed turn closes the episode, so a skill loaded for one step carries the feature work that follows it — `writing-project-docs` episodes averaged 49 turns. Read a per-skill friction average as "friction of the work around this skill", and hold any skill-level claim against the slices before reporting it.
-- The outcome signals are pattern matches over a `Bash` command, read with the `tool_result` that answers it; a command the harness refused or the user rejected sets none. `ended_in_commit`, `ended_in_pr` and `tests_passed` need a result that is not an error, and `tests_passed` also needs pass text in it. `tests_run` needs only a test command that ran: a failed run sets it. Work done through another tool or inside a subagent sets none of them. Coarse signals, not verified outcomes. Only commits and PRs reach `summary.md`; read the test signals from `dataset.json`.
-
-### Invocation modes
-
-Read this before commenting on `summary.md`'s **Model-invoked** column. Every column after **Mode** is an absolute count or an average over the skill's episodes — none is a percentage. **Model-invoked** counts episodes whose `trigger_type` is `explicit`; divide by **Episodes** for the rate.
-
-Mode comes from the skill's frontmatter and only means something beside Model-invoked:
-
-| Mode | Frontmatter | Expected Model-invoked |
-|---|---|---|
-| `user-only` | `user-invocable: true` + `disable-model-invocation: true` | **Always 0** — the `Skill` tool cannot reach it. By design, not a measurement gap. |
-| `library` | `user-invocable: false` | Should equal **Episodes**; a shortfall means some loads bypass the `Skill` tool (Read, file include) and is worth investigating. |
-| `both` | neither flag set | Anything from 0 to **Episodes** — the ratio is how often the model reached for the skill rather than the user picking it. |
-
-`trigger_type` is `explicit` when the assistant invoked the `Skill` tool for this skill in the preceding turn or the episode's own first turn, `ambient` otherwise — already running, loaded through another path, or slash-invoked, which the classifier cannot tell apart. Every `user-only` episode is `ambient` by definition, so never report that the classifier "missed user invocations" without reading Mode first.
-
-### Slice sampling
-
-`episodes/` holds the top N by friction score (`--sample-rocky`, default 5) plus N evenly spaced over the friction-sorted remainder (`--sample-baseline`, default 5) — a stride, not a random draw, so the emitted set is a pure function of the friction ordering. Each slice carries the episode's summary fields plus an `events` array reconstructing the conversation, so the Phase 2 judge reads real content rather than stats. Credential-like strings and long hex are redacted, and each event's text is capped at `--max-slice-chars` (default 2000).
-
-The fixture regression suite for this script lives under `scripts/fixtures/` — see [TESTING.md](TESTING.md).
-
-## Phase 2 — Claude-in-the-loop judging
-
-Claude Code itself judges the slices (your subscription, no API key). Read each slice in `output/session-analysis/episodes/`, score it against the rubric, and write one verdict file per slice to `output/session-analysis/verdicts/`, named to match the slice. To hand the pass to a fresh session:
-
-```
-Judge the episode slices in output/session-analysis/episodes/ using the
-session-analysis rubric. Write verdicts to output/session-analysis/verdicts/.
+```text
+$SESSION_REVIEW_DIR/runs/<date>T<time>-<host>-v<marketplace version>/
+├── run.json                 # arguments, host, picker commit, candidate counts
+├── picks.json               # what the pick printed
+├── usage.md                 # skill usage over the window
+├── findings.json            # the findings that survived, each with its session and version
+├── sessions/<uuid>.json     # one reviewed session: its pick, and every finding with its verdict
+└── transcripts/<uuid>.jsonl # a copy of the session, with <uuid>/subagents/ beside it
 ```
 
-Score each dimension 1–5 with a rationale:
+A session counts as reviewed once `sessions/<uuid>.json` exists in any run. A later run picks it again only where it went on after that review: its last record is newer than the `ended` of every such file. The whole session is then reviewed again. Quote a transcript line from the copy, which stays after Claude Code deletes the original.
 
-| Dimension | What it measures |
-|---|---|
-| `trigger-appropriate` | Was the skill the right tool for the request? |
-| `followed-instructions` | Did Claude follow the skill's instructions faithfully? |
-| `task-completed` | Was the user's underlying task completed? |
-| `user-accepted` | Did the user accept the outcome without correction or retry? |
+## Run a review
 
-```json
-{
-  "episode_id": "<copied from the slice>",
-  "attribution_skill": "<copied from the slice>",
-  "scores": {
-    "trigger-appropriate": { "score": 4, "rationale": "…" },
-    "followed-instructions": { "score": 5, "rationale": "…" },
-    "task-completed": { "score": 3, "rationale": "…" },
-    "user-accepted": { "score": 3, "rationale": "…" }
-  },
-  "notes": "optional — anything that does not fit a dimension"
-}
-```
+Run the `review-sessions` workflow ([`.claude/workflows/review-sessions.js`](../.claude/workflows/review-sessions.js)) from the repo root. It takes `{perBucket, sinceDays}`, 1 and 7 by default, and starts one agent for the pick, at most two per picked session, and one for the record:
 
-All four dimension keys must be present — score `null` with a rationale saying why the slice cannot support one, since an omitted key is indistinguishable from an oversight. Nothing consumes these files yet; the format exists so two judging runs are comparable.
+1. **Pick** — `mise run pick-sessions -- pick` starts the run folder, copies the transcripts, and prints the picks.
+2. **Review** — one agent per session reads it with `python3 scripts/pick-sessions.py render <transcript>` and reports each plugin problem with the plugin file at fault, the version, a quote, and a fix.
+3. **Verify** — a second agent tries to refute each finding.
+4. **Record** — `python3 scripts/pick-sessions.py record <run_dir> <result.json>` writes `sessions/` and `findings.json`; the agent then commits the run in the store and pushes it.
 
-## False-negative pass
+File each finding of `findings.json` in the tracker by hand, with its version. When its fix ships, a finding that a later run reports again for a newer version is a regression.
 
-`summary.md`'s unmatched-plugin table lists plugins attributed in transcripts that resolved to no known marketplace plugin. Plugins from *other* marketplaces (e.g. `commit-commands` from `claude-plugins-official`) belong there; only a stale name of one of this repo's own plugins is actionable.
+## Reading a pick
 
-The table cannot catch sessions where attribution was absent entirely. For those: read `summary.md` for skills with zero or unexpectedly low episode counts, sample session JSONL files from `~/.claude/projects/` for projects where those plugins should have been active, then compare assistant turns carrying no `attributionSkill` against the skill descriptions. Manual and judgment-based — no tool automates it.
-
-## Session review pilot
-
-A trial that runs beside the phases above. It finds plugin problems in sessions nobody watched.
-
-Run the `review-sessions` workflow ([`.claude/workflows/review-sessions.js`](../.claude/workflows/review-sessions.js)) from the repo root. It takes `{perBucket, sinceDays}`, 1 and 7 by default, and starts one agent for the pick and at most two per picked session:
-
-1. **Pick** — `python3 scripts/pick-sessions.py pick` prints the sessions to review as JSON.
-2. **Review** — one agent per session reads it with `python3 scripts/pick-sessions.py render <session.jsonl>` and reports each plugin problem with the plugin file at fault, a quote, and a fix.
-3. **Verify** — a second agent tries to refute each finding; the workflow returns the ones that survive.
-
-Nothing stores the result: file a surviving finding in the tracker by hand, with the plugin version from the pick.
-
-### Reading a pick
-
-A candidate is a session modified in the window with at least one turn attributed to a plugin under `plugins/`. Each bucket takes its top `--per-bucket` candidates, in this order, and a session lands in one bucket only:
+A candidate is a session modified in the window, with at least one turn attributed to a plugin under `plugins/`, that no run has reviewed to its end. Each bucket takes its top `--per-bucket` candidates, in this order, and a session lands in one bucket only:
 
 | Bucket | Signal |
 |---|---|
 | `pushback` | Seconds in which the user interrupted the agent or rejected a tool call. One interrupt counts once, whatever the number of parallel calls and subagents it stopped |
-| `errors` | Failed tool results. Leaves out the three kinds the indexer leaves out ([Reading the numbers](#reading-the-numbers)) and permission-rule denials |
+| `errors` | Failed tool results. Leaves out a call that never ran: a denial, a worktree-isolation refusal by Claude Code, and the cancelled siblings of an interrupted batch |
 | `output_tokens` | Output tokens, each API message counted once |
 | `random` | A random draw from the candidates no other bucket took; `--seed` repeats it |
 
-- Every signal includes the session's subagent transcripts, which the Phase 1 indexer never reads.
-- `versions` is empty for a dev checkout or a `--plugin-dir` run, and holds two entries where a plugin updated mid-session.
-- A refusal by a plugin's own guard (`worktree-flow`, `revier`) counts in no signal.
+- Every signal includes the session's subagent transcripts.
+- `large_transcripts` lists each unreviewed session that holds a file of 50 MB or more. From 100 MB the session is `refused` and no candidate: GitHub rejects the push of such a file. The workflow logs each entry.
+- A refusal by a plugin's own guard (`worktree-flow`, `revier`) is a `permission-rule` denial and counts in no signal.
 - `output_tokens` ranks long sessions first, whatever their quality.
+- A session attributed to a plugin's former name is no candidate: the pick knows the directory names under `plugins/` only.
+
+### Plugin version
+
+`skill_versions` gives, for each skill a session used, the version labels that served it. The source is the banner Claude Code writes when it loads a skill, `Base directory for this skill: <path>`:
+
+| Banner path | Label |
+|---|---|
+| `…/<plugin>/<x.y.z>/skills/<skill>`, a cached install | `x.y.z` |
+| `…/.claude/worktrees/<name>/plugins/<plugin>/skills/<skill>` | `dev@<name>` |
+| `…/plugins/<plugin>/skills/<skill>`, any other checkout | `dev@main` |
+
+- A turn takes the label of the last banner before it in its own transcript: for its skill, else for its plugin.
+- A subagent turn with no banner in its own transcript takes the label its session loaded last before the turn's timestamp. This is an inference: nothing in a subagent transcript confirms it.
+- `unknown` marks a turn with no banner before it. A plugin that acts through a hook alone leaves no version in a transcript.
+- A `dev@` label names a checkout, not a commit: no record holds the commit.
+
+### `usage.md`
+
+One row per skill, over every session of the window that used a plugin of this marketplace: the candidates, the sessions already reviewed, and the refused ones. **Model-invoked** counts `Skill` tool calls for the skill, **Slash-invoked** counts `/<plugin>:<skill>` commands the user typed. A skill with `disable-model-invocation: true` has 0 model invocations by design. The list below the table names the skills under `plugins/` that no session of the window used.
