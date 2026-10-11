@@ -20,10 +20,10 @@ description = "Validate internal cross-references and version mirrors"
 dir = "{{config_root}}"
 run = "python3 scripts/check-internal-consistency.py"
 
-[tasks.analyze-sessions]
-description = "Analyse Claude Code session transcripts (pass options as extra args)"
+[tasks.pick-sessions]
+description = "Session review: pick, render or record (pass the subcommand as extra args)"
 dir = "{{config_root}}"
-run = "python3 scripts/analyze-sessions.py"
+run = "python3 scripts/pick-sessions.py"
 
 [tasks.lint]
 description = "ShellCheck every tracked shell script (reproduces the CI shellcheck job)"

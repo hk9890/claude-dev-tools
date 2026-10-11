@@ -12,7 +12,7 @@ How to run this marketplace's automated suites and validators. To launch and dri
 | `mise run test-html` | html-visualization browser/server tests only |
 | `mise run check-consistency` | Cross-reference and version-mirror validation (`scripts/check-internal-consistency.py`) |
 | `mise run lint` | ShellCheck `--severity=warning` over every tracked shell script (`scripts/list-shell-scripts.sh`) |
-| `mise run analyze-sessions` | Session-transcript analyser — usage in [MONITORING.md](MONITORING.md) |
+| `mise run pick-sessions -- <subcommand>` | Session review picker, with `SESSION_REVIEW_DIR` from `mise.local.toml` — usage in [MONITORING.md](MONITORING.md) |
 
 `bash`, `python3`, `node`, `jq`, and `shellcheck` must already be on PATH: `.mise.toml` declares no `[tools]`, so mise runs the tasks but installs none of them. Absent `node`, the node-backed suites fail rather than skip. The mod suite alone needs `claude` too ([Suites that skip](#suites-that-skip)).
 
@@ -57,18 +57,6 @@ claude plugin test plugins/<plugin>       # the plugin's tests
 - A stub for a `$` call answers `{ value: ... }`; a stub for an event answers the event's own result.
 - Drive time with `mock.clock(on)` and `clock.advance(ms)`.
 - Model a new test on the one nearest in shape: [`worktree-flow.test.ts`](../plugins/worktree-flow/tests/worktree-flow.test.ts) (denied tool calls), [`tasks-board.test.tsx`](../plugins/tasks/tests/tasks-board.test.tsx) (a command and a mounted pane), [`keep-awake.test.ts`](../plugins/keep-awake-linux/tests/keep-awake.test.ts) (a spawned child's life, timers, plugin options).
-
-### analyze-sessions fixture check
-
-`tests/run-all.sh` runs this regression suite via `tests/marketplace/script-tests/test-analyze-sessions.sh`. By hand:
-
-```bash
-python3 scripts/analyze-sessions.py --fixture scripts/fixtures/session-fixture.jsonl
-python3 tests/marketplace/script-tests/check-fixture.py \
-    --actual output/session-analysis/fixture/dataset.json \
-    --expected scripts/fixtures/session-fixture-expected.json \
-    --summary output/session-analysis/fixture/summary.md
-```
 
 ## Docs validation
 
