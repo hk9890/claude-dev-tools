@@ -43,9 +43,11 @@ Done when the session is in a worktree, the setup has run, and `git branch --lis
 
 ## 3. Implement
 
-Read what the worktree holds: `git status`, and `git diff --merge-base <remote>/<base-branch>`, which leaves out what landed on the base branch since the worktree left it. Make the part of the change that is missing, and add or update the tests that cover it.
+Read what the worktree holds: `git status`, and `git diff --merge-base <remote>/<base-branch>`, which leaves out what landed on the base branch since the worktree left it. Where the change implements issues of a tracker, mark each one as in progress there before the first edit, and before a subagent or a workflow gets the work. With `tasks:tasks-core` in your available skills, load it for the command.
 
-Done when the diff carries the whole change and its tests.
+Make the part of the change that is missing, and add or update the tests that cover it.
+
+Done when the diff carries the whole change and its tests, and each issue it implements is in progress in its tracker.
 
 ## 4. Run the gates
 
