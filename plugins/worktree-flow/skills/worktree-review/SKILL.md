@@ -38,7 +38,7 @@ Done when the three items are recorded, or noted as not documented, and each gat
 Two reviews run on the PR, the rules review first:
 
 - **Rules.** Invoke `project-review:project-review-change` with the argument `--fix <pr-number>`, where that skill is in your available skills. Keep its open questions unanswered for step 5, with the fixes it did not apply, and go on. In a project with no written rules it says so and reviews nothing: report that as its result. Where the skill is not in your available skills, report the rules review as skipped, never as passed, and give the reason, as far as you can tell which: the `project-review` plugin is not installed, or is installed at a version whose skill only the user can start.
-- **Code.** Invoke the `code-review` skill with the argument `xhigh --fix <pr-number>`. It runs in the background: wait for its completion notification, then read which findings it applied.
+- **Code.** After the rules review and the push of its fix, read the PR's paths with `gh pr diff <pr-number> --name-only`: that fix can add a path. `<effort>` is `medium` where every path is project documentation: `AGENTS.md`, `CLAUDE.md` or `README.md` at the repository root, or a Markdown file under `docs/` at that root. Else, and where the command fails, it is `xhigh`. Invoke the `code-review` skill with the argument `<effort> --fix <pr-number>`. The review runs in the background: wait for its completion notification, then read which findings it applied.
 
 After each review that applied a fix, do these three in order before you go on, so that the code review reads the head the rules review fixed:
 
@@ -56,7 +56,7 @@ Read the body again with `gh pr view <pr-number> --json body`, and edit it with 
 - Bring each **Gate** and **Driven** line whose command this run ran again up to date.
 
 ```markdown
-- **Review:** `project-review-change --fix`: <fixes applied, fixes not applied and open questions, or no written rules, or skipped and why>; `code-review xhigh --fix`: <findings applied, and findings not applied>, through `<head commit>`
+- **Review:** `project-review-change --fix`: <fixes applied, fixes not applied and open questions, or no written rules, or skipped and why>; `code-review <effort> --fix`: <findings applied, and findings not applied>, through `<head commit>`
 ```
 
 `<head commit>` is the full commit that `git rev-parse HEAD` prints after the last push: a later run reads it to tell whether the head was reviewed.
