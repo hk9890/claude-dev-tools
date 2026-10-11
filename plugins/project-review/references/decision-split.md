@@ -16,9 +16,6 @@ settled or open *means* is a two-file edit, in both plugins, or they drift.
 The review assigns this, not the relay — the workflow where one runs, the
 reviewing agent where none does. Carry each item into the group it came back in.
 
-Settled needs proof: every finding under a settled item is proven. An item that
-rests on a plausible finding is open, whatever its tag says.
-
 ## Relaying
 
 Relay the two groups separately: the settled ones as a batch you can just do, the

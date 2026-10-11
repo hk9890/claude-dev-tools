@@ -16,9 +16,6 @@ settled or open *means* is a two-file edit, in both plugins, or they drift.
 The workflow assigns this, not the relay. Carry each proposal into the group the
 report put it in.
 
-Settled needs proof: every finding under a settled item is proven. An item that
-rests on a plausible finding is open, whatever its tag says.
-
 Two things are open by construction, whatever the tag says: `test-app`'s
 `questions[]`, which exist because the run could not settle them, and any
 `test-tests` proposal resting on a `candidate: true` finding — a possible
