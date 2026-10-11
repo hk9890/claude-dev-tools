@@ -72,7 +72,7 @@ A candidate is a session modified in the window, with at least one turn attribut
 - A plugin's `plugin.json` and its `tests/` do not count as a change: every release bumps the first, and no session runs the second.
 - Each picked session that ran a changed plugin at the release version carries `changed_files`, whatever its bucket, and its reviewer reads that diff first.
 - The bucket is empty until a session loads a skill from the new install. A `dev@` session never counts: it ran a checkout, not the release.
-- A changed hook counts through its plugin: a session shows the plugin's version only where it also ran one of the plugin's skills.
+- A session that only a changed hook acted in is no candidate: it carries no version ([Plugin version](#plugin-version)).
 
 ### Plugin version
 
