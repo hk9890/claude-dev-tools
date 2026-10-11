@@ -370,6 +370,10 @@ async function main() {
     /dimension_verdicts\.rules/.test(withRules.synthesis.prompt || ''));
   truthy('synthesis: a run without the rules dimension is not asked for its verdict',
     deep.synthesis.prompt && !/dimension_verdicts\.rules/.test(deep.synthesis.prompt));
+  // The session behind the enum value had no finding tagged rules. The dedupe step owns
+  // the tag, so the rule sits there, where it cannot contradict the tag of a merged finding.
+  truthy('synthesis: a finding that one dimension reported keeps that dimension',
+    /only one dimension reported keeps that dimension/.test(withRules.synthesis.prompt || ''));
 
   // ── the ultra refutation filter ──────────────────────────────────────────────
   // The kept list IS the ultra rung's product: users pay for the extra pass to get findings
