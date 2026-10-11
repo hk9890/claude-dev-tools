@@ -122,9 +122,10 @@ One adversarial agent does the whole review. There is no workflow and no level a
    > in the subject, and they never change the verdict.
    >
    > Tag every entry in `## Recommended actions` `settled` or `open`, leaving none
-   > untagged — read `<the decision-split.md path>` for what the two mean. For each `open`
-   > entry also give the question, the real options including "leave it as is" where that
-   > is one, and your recommendation.
+   > untagged — read `<the decision-split.md path>` for what the two mean. An entry is
+   > `settled` only where every finding it names is proven; an entry for a plausible
+   > finding is `open`. For each `open` entry also give the question, the real options
+   > including "leave it as is" where that is one, and your recommendation.
 
    If the **Agent** tool is unavailable, run the procedure yourself — read the step-2
    procedure path in full, apply it to the subject, produce the same sections, and state
@@ -157,6 +158,10 @@ One adversarial agent does the whole review. There is no workflow and no level a
    nothing else: name a settled action of another kind — a commit message, a branch name,
    a pull request field — as not applied, with that reason. The `open` entries stay the
    questions step 4 put to the user, and `## Suggested rule additions` stay proposals.
+
+   Apply a `settled` entry only where the reviewer graded every finding it names proven.
+   A `settled` entry that names a plausible finding is an open item: put it to the user
+   as a question, and name it as not applied, with that reason.
 
    Where an edit was made, run every command under `## Checks run` again on the edited
    tree and report each result. A command that passed in the review and fails now goes
