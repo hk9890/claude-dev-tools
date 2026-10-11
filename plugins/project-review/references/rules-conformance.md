@@ -85,7 +85,7 @@ the gate could not run — never pass over it in silence.
 
 | Not this review | Whose it is |
 |---|---|
-| Correctness bugs, and reuse or simplification no document asks for | the general code review |
+| Correctness bugs, and reuse or simplification that no rule names | the general code review |
 | Whether the documents are accurate, complete, or in the right file | `project-review-docs` |
 | Naming and pattern drift where nothing is written down | the consistency dimension of `project-review-codebase` |
 | Pure formatting | the project's linter |
