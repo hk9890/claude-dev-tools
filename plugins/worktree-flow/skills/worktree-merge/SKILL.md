@@ -10,6 +10,8 @@ argument-hint: "[pr-number]"
 
 With no argument, `<pr>` is the pushed branch: the upstream of the current branch without the remote name (`git for-each-ref --format='%(upstream:short)' refs/heads/<current-branch>`, which still answers after the remote branch is deleted), because `gh` finds a PR by the local branch name and a push can use another one. With no upstream, or with the default branch as upstream, ask for the PR number. A PR the user already merged on GitHub is the common case: the same steps apply.
 
+The run merges the PR as it is: it edits no file of the PR and pushes no commit. The one action that moves the head is the `gh pr update-branch` of the **Base** check, with its `git pull --ff-only`. A stop ends the run with a report of what stopped it. A repair is a new change that the user starts.
+
 ## 1. Check
 
 `gh auth status` must succeed; where it fails, stop and tell the user to install `gh` or run `gh auth login`.
@@ -30,7 +32,7 @@ For an `OPEN` PR: `gh pr merge <pr>` with the project's documented method. Where
 2. **The method of the last merged PRs** — `git fetch`, then `gh pr list --state merged --base <baseRefName> --limit 5 --json number,mergeCommit`, and `git show -s --format='%p | %s' <oid>` for each `mergeCommit`. Two parents is `--merge`; one parent with a subject that ends in `(#<number>)` is `--squash`; one parent otherwise is `--rebase`. The answer counts where all the PRs agree and the repository allows the method.
 3. **`--merge`**, where the repository allows it; else ask the user which of the allowed methods to take.
 
-Leave out `--delete-branch`: it also switches branches locally, which fails while another worktree holds the base branch. Done when `gh pr view <pr> --json state` prints `MERGED`.
+Leave out `--delete-branch`: it also switches branches locally, which fails while another worktree holds the base branch. Where GitHub refuses the merge, a conflict with the base branch for example, stop and report its message. Done when `gh pr view <pr> --json state` prints `MERGED`.
 
 ## 3. Remove the worktree
 
