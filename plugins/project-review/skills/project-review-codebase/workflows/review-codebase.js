@@ -207,6 +207,7 @@ const REPORT_SCHEMA = {
         consistency: { type: 'string', enum: VERDICTS },
         structure: { type: 'string', enum: VERDICTS },
         architecture: { type: 'string', enum: VERDICTS },
+        rules: { type: 'string', enum: VERDICTS },
       },
       required: ['consistency', 'structure', 'architecture'],
     },
@@ -216,7 +217,7 @@ const REPORT_SCHEMA = {
       items: {
         type: 'object',
         properties: {
-          dimension: { type: 'string', enum: ['consistency', 'structure', 'architecture'] },
+          dimension: { type: 'string', enum: ['consistency', 'structure', 'architecture', 'rules'] },
           severity: { type: 'string', enum: ['blocker', 'major', 'minor'] },
           location: { type: 'string' },
           observation: { type: 'string' },
@@ -654,6 +655,7 @@ if (typeof agent === 'function') {
     `note the conflict in cross_dimension_notes.\n` +
     `4. Assign final per-dimension verdicts (clean / minor issues / significant issues / broken) — start from each ` +
     `dimension agent's verdict, adjusting where dedupe, refutation, or your step-1 spot-verify changed the picture` +
+    `${rulesFile ? `; the rules dimension is part of this run, so set dimension_verdicts.rules and tag each of its findings with the dimension "rules"` : ''}` +
     `${missing.length ? `; a dimension that did not complete (${missing.join(', ')}) gets no verdict better than "minor issues" and a note that it did not run` : ''} — ` +
     `and ONE overall verdict, never cleaner than the worst dimension.\n` +
     `5. Produce recommended_actions: a prioritised list ordered by what the developer should tackle first, each entry's ` +

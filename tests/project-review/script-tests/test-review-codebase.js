@@ -18,6 +18,7 @@
 //   - dimensionSchema keeps one required core across all three dimensions
 //   - the vocabulary file appears in the architecture procedure only when supplied
 //   - missingDimensions detects a dimension agent that never came back
+//   - the report schema carries the rules dimension and its optional verdict
 //   - the bad-args bailout returns the diagnostic error object without spawning agents
 //   - a broken runtime (no agent hook) fails loudly instead of no-op
 
@@ -285,9 +286,11 @@ async function main() {
   const runReview = async (level, over = {}) => {
     const labels = [];
     const prompts = [];
+    const synthesis = {};
     const agent = async (prompt, opts = {}) => {
       labels.push(opts.label);
       prompts.push(prompt);
+      if (opts.label === 'synthesis') Object.assign(synthesis, { prompt, schema: opts.schema });
       if (opts.label.startsWith('review:')) {
         return {
           dimension: opts.label.split(':')[1],
@@ -321,7 +324,7 @@ async function main() {
         return v;
       })),
     });
-    return { ret, labels, prompts };
+    return { ret, labels, prompts, synthesis };
   };
 
   const deep = await runReview('ultra');
@@ -350,6 +353,23 @@ async function main() {
     withRules.labels.filter((l) => l.startsWith('review:')));
   truthy('orchestration: the rules agent is pointed at the shared procedure file',
     withRules.prompts.some((p) => p.includes('Dimension: RULES') && p.includes('/rules.md')));
+
+  // The report schema must be able to carry what the rules dimension found. Without the
+  // enum value the synthesis agent files each rules finding under another dimension, and
+  // without the property the rules verdict has no field. The property stays optional,
+  // because a run without a rulesFile has no rules dimension to give a verdict to.
+  const reportSchema = (withRules.synthesis.schema || { properties: {} }).properties;
+  const verdicts = reportSchema.dimension_verdicts || { properties: {}, required: [] };
+  truthy('report schema: a finding can carry the rules dimension',
+    reportSchema.findings.items.properties.dimension.enum.includes('rules'));
+  eq('report schema: the rules verdict takes the same labels as the other dimensions',
+    verdicts.properties.consistency, verdicts.properties.rules);
+  eq('report schema: the rules verdict is optional',
+    ['consistency', 'structure', 'architecture'], verdicts.required);
+  truthy('synthesis: a run with the rules dimension is told to set its verdict',
+    /dimension_verdicts\.rules/.test(withRules.synthesis.prompt || ''));
+  truthy('synthesis: a run without the rules dimension is not asked for its verdict',
+    deep.synthesis.prompt && !/dimension_verdicts\.rules/.test(deep.synthesis.prompt));
 
   // ── the ultra refutation filter ──────────────────────────────────────────────
   // The kept list IS the ultra rung's product: users pay for the extra pass to get findings
