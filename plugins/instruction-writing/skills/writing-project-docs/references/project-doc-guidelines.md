@@ -44,11 +44,15 @@ The homes most often got wrong:
 ## Local delta
 
 An installed skill already carries the generic flow. The doc adds only what the skill cannot know —
-this repository's commands, paths, exceptions, and which side wins when they disagree. Name the
-skill, then state the delta:
+this repository's commands, paths, exceptions, and which side wins when they disagree. Hand off
+to the skill with an explicit Skill tool call — a skill named in prose gets skipped — then state
+the delta:
 
-> Use the `commit-commands:commit` skill for the standard flow.
+> Call the Skill tool with `commit-commands:commit` for the standard flow.
 > **Local delta:** add a `Refs: <task-id>` line when a taskmgr task exists for the change.
+
+A skill only the user can start (`disable-model-invocation: true`) is out of the Skill tool's
+reach: tell the user to run `/<plugin>:<skill>` instead.
 
 Restating the skill's own content costs load twice: once to read, and again when the skill changes
 and the copy does not.

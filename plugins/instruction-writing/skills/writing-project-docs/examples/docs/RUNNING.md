@@ -3,8 +3,8 @@
 How an agent launches and drives the widget-service by hand to reproduce a reported bug
 or verify a change. For the automated suites and gates see [TESTING.md](TESTING.md); for
 the evidence trail of what already happened (logs, spans, metrics) see
-[MONITORING.md](MONITORING.md). For the generic launch-and-drive flow use the built-in
-`run` and `verify` skills — this file records only what is specific to this service.
+[MONITORING.md](MONITORING.md). For the generic launch-and-drive flow call the Skill tool
+with `run` — this file records only what is specific to this service.
 
 ## Launch locally
 

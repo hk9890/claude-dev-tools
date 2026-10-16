@@ -77,7 +77,7 @@ Content outside a file's boundary is a defect even when every statement in it is
 - **Inside**: a 2–3 sentence project summary and task → doc/skill routes, every one of them an obligation.
 - **Not inside**: full procedures, README-style prose, content duplicated from the docs it routes to.
 - **No optional routes** (*Obligation*): a use case with a doc behind it reads `MUST read <doc> before <the action that triggers it>` — a release loads `RELEASING.md` first, touching a source file loads `CODING.md` first, searching the repo loads `OVERVIEW.md` first. A preamble states once that loading afterwards does not count. "Load X to understand Y" is advisory phrasing and is a finding.
-- **Conformance** (checked against the example): one `###` section per use case, each naming the doc/skill to load, the action that triggers it, and a one-line reason; skip hollow entries; keep the summary to 2–3 sentences; route to installed skills by name when no local doc exists.
+- **Conformance** (checked against the example): one `###` section per use case, each naming the doc/skill to load, the action that triggers it, and a one-line reason; skip hollow entries; keep the summary to 2–3 sentences; where no local doc exists, route to an installed skill as `MUST call the Skill tool with <plugin:skill> before <the action that triggers it>`, or, for a skill only the user can start (`disable-model-invocation: true`), as `MUST ask the user to run /<plugin:skill> before <the action that triggers it>`.
 - Example: [../examples/AGENTS.md](../examples/AGENTS.md)
 
 ### `docs/OVERVIEW.md`
@@ -148,9 +148,9 @@ Content outside a file's boundary is a defect even when every statement in it is
 ### `docs/RUNNING.md`
 
 - **Audience**: AI agents, when they run the product by hand to reproduce a bug or verify a change.
-- **Inside**: how the *agent* builds, starts, and drives the product by hand (start the webapp and inspect pages, run the CLI/TUI) to reproduce a bug or verify a change — the local delta (launch command, entrypoints, how to reach a state, where output lands). State only what is local and link the `run`/`verify` skills (*Local delta*).
+- **Inside**: how the *agent* builds, starts, and drives the product by hand (start the webapp and inspect pages, run the CLI/TUI) to reproduce a bug or verify a change — the local delta (launch command, entrypoints, how to reach a state, where output lands). State only what is local and hand off to the `run` skill with a Skill tool call (*Local delta*).
 - **Not inside**: automated test suites (→`docs/TESTING.md`), coding/implementation (→`docs/CODING.md`), log inspection (→`docs/MONITORING.md`).
-- **Precedence**: where a local instruction conflicts with the generic `run`/`verify` flow, the local instruction wins. (Boundary vs `MONITORING.md`: see that block.)
+- **Precedence**: where a local instruction conflicts with the generic `run` flow, the local instruction wins. (Boundary vs `MONITORING.md`: see that block.)
 - Example: [../examples/docs/RUNNING.md](../examples/docs/RUNNING.md)
 
 ## Locations & routing

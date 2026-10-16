@@ -12,7 +12,7 @@ Use this template for the PR body:
 ## Evidence
 
 - **Gate:** `<command>`: <passed, failed, or skipped, and why>
-- **Driven:** `<command>`: <what it showed, or not driven, and what to check by hand>
+- **Driven:** `<command>`: <what it showed, or not driven, why, and what to check by hand>
 - <optional: **Before:** output or failing test run>
   <optional: **After:** output or passing test run>
 
