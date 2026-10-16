@@ -29,8 +29,10 @@ docs inline. The workflow returns a structured report; relay it.
 
    The standard this review measures against is **not** in this plugin: the ownership
    contracts and the authoring rules belong to `instruction-writing:writing-project-docs`.
-   Load that skill now — the same "Base directory for this skill" line comes with it, and
-   that path is `STANDARD_DIR`. Take it from the load; never construct it and never search
+   Call the Skill tool with `instruction-writing:writing-project-docs` now, even where it
+   loaded earlier in this session — the
+   same "Base directory for this skill" line comes with it, and that path is
+   `STANDARD_DIR`. Take it from the load; never construct it and never search
    the filesystem for the plugin: a sibling plugin's install directory is not derivable
    from this one's, and a guess selects a stale cached version. If the skill is not installed,
    stop and say so — `project-review` declares it as a dependency, so a missing one means

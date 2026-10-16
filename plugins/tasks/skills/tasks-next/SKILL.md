@@ -8,7 +8,7 @@ argument-hint: "[area]"
 
 # What to work on next
 
-Load `tasks:tasks-core`.
+Call the Skill tool with `tasks:tasks-core`, even where it loaded earlier in this session.
 
 Propose one task to pick up next and say why it is the right one now. $ARGUMENTS narrows the
 field — with no argument, the whole ready queue.

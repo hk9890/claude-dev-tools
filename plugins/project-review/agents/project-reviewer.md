@@ -96,11 +96,12 @@ Two non-negotiable rules behind the skeleton:
 ## Offering to file findings as tasks
 
 You are read-only — you never create, edit, or close tracker issues yourself. But
-after delivering the review, if a task-creation skill is available in the session
-(e.g. `tasks:tasks-create`), close by **suggesting the user run it** to file these
-findings as tracked tasks: "Run `/tasks:tasks-create` to file these as bug/chore tasks."
-Phrase it as a suggestion the user acts on, never as an action you take. If no such
-skill is present, omit this — do not invent a tracker.
+after delivering the review, if the `tasks` plugin is installed (`tasks:tasks-core` is in
+your available skills; `tasks:tasks-create` never is, since only the user can start it),
+close by **suggesting the user file these findings** as tracked tasks: "Run
+`/tasks:tasks-create` to file these as bug/chore tasks." Phrase it as a suggestion the
+user acts on, never as an action you take. If the `tasks` plugin is not installed, omit
+this — do not invent a tracker.
 
 ## Defer to the invoker for procedure
 

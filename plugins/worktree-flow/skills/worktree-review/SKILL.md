@@ -37,8 +37,8 @@ Done when the three items are recorded, or noted as not documented, and each gat
 
 Two reviews run on the PR, the rules review first:
 
-- **Rules.** Invoke `project-review:project-review-change` with the argument `--fix <pr-number>`, where that skill is in your available skills. Keep its open questions unanswered for step 5, with the fixes it did not apply, and go on. In a project with no written rules it says so and reviews nothing: report that as its result. Where the skill is not in your available skills, report the rules review as skipped, never as passed, and give the reason, as far as you can tell which: the `project-review` plugin is not installed, or is installed at a version whose skill only the user can start.
-- **Code.** After the rules review and the push of its fix, read the PR's paths with `gh pr diff <pr-number> --name-only`: that fix can add a path. `<effort>` is `medium` where every path is project documentation: `AGENTS.md`, `CLAUDE.md` or `README.md` at the repository root, or a Markdown file under `docs/` at that root. Else, and where the command fails, it is `xhigh`. Invoke the `code-review` skill with the argument `<effort> --fix <pr-number>`. The review runs in the background: wait for its completion notification, then read which findings it applied.
+- **Rules.** Where `project-review:project-review-change` is in your available skills, call the Skill tool with `project-review:project-review-change` and the argument `--fix <pr-number>`, even where it loaded earlier in this session, and follow it to its last step, then come back to this skill. It starts the reviewer agent `project-review:project-reviewer` with its own prompt; never start that agent outside it. Where the reviewer runs in the background, wait for its completion notification, then continue `project-review-change` from the "Done when" line of the step that started the reviewer. Keep the open questions of the rules review unanswered for the **Review** line and the report, with the fixes it did not apply and its suggested rule additions, and go on without waiting for answers. In a project with no written rules it says so and reviews nothing: report that as its result. Where the skill is not in your available skills, report the rules review as skipped, never as passed, and give the reason, as far as you can tell which: the `project-review` plugin is not installed, or is installed at a version whose skill only the user can start.
+- **Code.** After the rules review and the push of its fix, list the PR's paths with `gh pr diff <pr-number> --name-only`: that fix can add a path. Choose `<effort>` from what the PR changes, and read the full diff with `gh pr diff <pr-number>` only where the paths do not tell. Where it changes only text for people to read, such as a changelog entry or release notes, choose `medium` or lower, also where a tool publishes that text as it stands. Where it changes code, configuration, tests, instructions that an agent reads, or text from which a program takes a decision, such as a version bump, choose `xhigh`. Where you cannot tell, or a command fails, choose `xhigh`. Call the Skill tool with `code-review` and the argument `<effort> --fix <pr-number>`, even where it loaded earlier in this session. The review runs in the background: wait for its completion notification, then read which findings it applied.
 
 After each review that applied a fix, do these three in order before you go on, so that the code review reads the head the rules review fixed:
 
@@ -56,15 +56,15 @@ Read the body again with `gh pr view <pr-number> --json body`, and edit it with 
 - Bring each **Gate** and **Driven** line whose command this run ran again up to date.
 
 ```markdown
-- **Review:** `project-review-change --fix`: <fixes applied, fixes not applied and open questions, or no written rules, or skipped and why>; `code-review <effort> --fix`: <findings applied, and findings not applied>, through `<head commit>`
+- **Review:** `project-review-change --fix`: <fixes applied, fixes not applied and open questions, or no written rules, or skipped and why>; suggested rule additions: <each as `<document>`: <the rule in one sentence>, or none>; `code-review <effort> --fix`: <findings applied, and findings not applied>, through `<head commit>`
 ```
 
-`<head commit>` is the full commit that `git rev-parse HEAD` prints after the last push: a later run reads it to tell whether the head was reviewed.
+`<head commit>` is the full commit that `git rev-parse HEAD` prints after the last push: a later run reads it to tell whether the head was reviewed. Keep `;` and the word `through` out of the text that replaces each placeholder: `;` separates the parts of the line, and the only `through` is the one before `<head commit>`.
 
 Done when `gh pr view <pr-number> --json headRefOid,body` prints a body in which the commit after `through` in the **Review** line is `headRefOid`.
 
 ## 5. Report
 
-Report the PR URL, each review with its outcome, the open questions of the rules review and the fixes it did not apply, and each gate with its result. Where `worktree-ship` invoked this run, carry these items to its report in place of a report of this skill.
+Report the PR URL, each review with its outcome, the open questions of the rules review and the fixes it did not apply, the suggested rule additions of the rules review, each with its document and rule, and each gate with its result. Where `worktree-ship` invoked this run, carry these items to its report in place of a report of this skill.
 
 Done when the report holds each of these items, or says that it does not apply. Where `worktree-ship` invoked this run, done when each item is kept for its step 8.

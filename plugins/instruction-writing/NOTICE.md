@@ -10,7 +10,11 @@ The following files in this plugin are derived from
   [v1.2.0](https://github.com/mattpocock/skills/releases/tag/v1.2.0) — both that skill's
   `SKILL.md` and its `SKILL-MECHANICS.md`, unchanged upstream through v1.2.3. Nearly all of the
   body is upstream text, locally adapted and maintained since; assume any passage traces upstream
-  rather than reading this as a list of the ones that do
+  rather than reading this as a list of the ones that do. The **hand-off** paragraph takes its
+  explicit "Call the Skill tool with" wording and its user-invoked carve-out from upstream's
+  `.agents/invocation.md` at [v1.3.0](https://github.com/mattpocock/skills/releases/tag/v1.3.0);
+  the re-call clause and the testable trigger are locally authored, from this repo's own session
+  transcripts
 - `references/writing-hygiene.md` — the shared hygiene rules both skills point at. Adapted from
   the same upstream skill: single source of truth and duplication, `cache`, relevance and
   sediment, no-ops, negation, and the gloss of `leading word` all trace there, across v1.1.0 and

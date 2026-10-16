@@ -3,12 +3,15 @@
 #
 # The `Skill` tool cannot load a user-only skill (`disable-model-invocation: true`), and
 # nothing reports the miss: the caller names the skill, the model finds none by that
-# name, and the step is skipped or improvised. This walks every "invoke `plugin:skill`"
-# and "load `plugin:skill`" sentence under plugins/ whose plugin half is a plugin of this
-# repo, and requires the target to be model-invocable.
+# name, and the step is skipped or improvised. This walks every "Call the Skill tool with
+# `plugin:skill`" sentence under plugins/ whose plugin half is a plugin of this repo, and
+# requires the target to be model-invocable.
 #
-# It matches those two phrasings in Markdown and nothing else: an invocation worded another
-# way ("call the Skill tool with the one it needs") is not checked.
+# A hand-off worded "invoke `plugin:skill`" or "load `plugin:skill`" fails: the agent skips
+# a skill named in prose, so the writing-skills rubric asks for the explicit call.
+#
+# Both scans read one line at a time: a hand-off wrapped between "with" and the name, or
+# worded another way ("use the `plugin:skill` skill"), is not checked.
 #
 # Exit codes: 0 — all assertions passed; 1 — one or more failed.
 set -uo pipefail
@@ -39,9 +42,19 @@ else
   ok "predicate: a user-only skill is reported as unreachable"
 fi
 
+mapfile -t PROSE < <(
+  grep -rnoE --include='*.md' \
+    '(^|[^[:alpha:]])([Ii]nvoke|[Ll]oad) (the )?`[a-z0-9-]+:[a-z0-9-]+`' "$REPO_ROOT/plugins" | sort -u
+)
+for hit in "${PROSE[@]}"; do
+  file="${hit%%:*}"
+  rest="${hit#*:}"
+  fail "${file#"$REPO_ROOT"/}:${rest%%:*} — a hand-off in prose; write \"Call the Skill tool with\" for a skill, or name the Agent tool for an agent"
+done
+
 mapfile -t HITS < <(
   grep -rnoE --include='*.md' \
-    '([Ii]nvoke|[Ll]oad) (the )?`[a-z0-9-]+:[a-z0-9-]+`' "$REPO_ROOT/plugins" | sort -u
+    '[Cc]all the [Ss]kill tool with `[a-z0-9-]+:[a-z0-9-]+`' "$REPO_ROOT/plugins" | sort -u
 )
 
 CHECKED=0
@@ -52,15 +65,15 @@ for hit in "${HITS[@]}"; do
   ref="$(sed -E 's/.*`([a-z0-9-]+:[a-z0-9-]+)`.*/\1/' <<< "$hit")"
   plugin="${ref%%:*}"
   skill="${ref#*:}"
-  # A plugin this repo does not ship is not checkable from here. An agent is not a skill:
-  # the `Agent` tool starts it.
+  # A plugin this repo does not ship is not checkable from here.
   [[ -d "$REPO_ROOT/plugins/$plugin" ]] || continue
-  [[ -f "$REPO_ROOT/plugins/$plugin/agents/$skill.md" ]] && continue
 
   CHECKED=$((CHECKED + 1))
   label="${file#"$REPO_ROOT"/}:$line invokes $ref"
   target="$REPO_ROOT/plugins/$plugin/skills/$skill/SKILL.md"
-  if [[ ! -f "$target" ]]; then
+  if [[ -f "$REPO_ROOT/plugins/$plugin/agents/$skill.md" ]]; then
+    fail "$label — an agent, which the Agent tool starts, not the Skill tool"
+  elif [[ ! -f "$target" ]]; then
     fail "$label — no such skill"
   elif model_invocable "$target"; then
     ok "$label — model-invocable"

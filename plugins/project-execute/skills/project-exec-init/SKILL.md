@@ -11,7 +11,7 @@ Write only files that are absent. A file that already exists stays exactly as it
 
 ## 1. Load the standard
 
-Invoke `instruction-writing:writing-project-docs` through the `Skill` tool and follow it. It owns the canonical file set, each file's *Inside* / *Not inside* contract, the worked examples, and the authoring rules — this skill decides *which* files to write, that skill decides how each one is written.
+Call the Skill tool with `instruction-writing:writing-project-docs`, even where it loaded earlier in this session, and follow it. It owns the canonical file set, each file's *Inside* / *Not inside* contract, the worked examples, and the authoring rules — this skill decides *which* files to write, that skill decides how each one is written.
 
 `project-execute` declares `instruction-writing` as a dependency, so a skill that fails to load means a broken install: stop and say so.
 

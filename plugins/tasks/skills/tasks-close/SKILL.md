@@ -8,6 +8,6 @@ argument-hint: "[task-id]"
 
 # Close a task
 
-Load `tasks:tasks-core`.
+Call the Skill tool with `tasks:tasks-core`, even where it loaded earlier in this session.
 
 Close $ARGUMENTS. With no argument, the task under discussion.
