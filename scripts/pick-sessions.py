@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""Pick local Claude Code sessions worth a review, and keep each review run.
+"""Pick Claude Code sessions worth a review, and keep each review run.
 
 pick    starts a run folder in the review store: picks the sessions that used a plugin of
         this marketplace and that no earlier run reviewed, a few from each bucket (most
         user pushback, most tool errors, most output tokens, a plugin the last release
-        changed, random), and copies their transcripts into the run.
+        changed, random), and copies their transcripts into the run. With --host it
+        picks the sessions of another machine: it mirrors that machine's transcripts
+        over ssh with rsync first.
 render  prints one transcript as text an agent can read in parts.
 record  writes the findings of a review into its run folder.
 
@@ -54,6 +56,11 @@ RANKED_BUCKETS = ("pushback", "errors", "output_tokens")
 # GitHub refuses a file above 100 MB, so a session that holds one is not picked.
 REFUSED_TRANSCRIPT_MB = 100
 LARGE_TRANSCRIPT_MB = 50
+
+# The host names a folder of the mirror and of the run, so it holds no path separator.
+HOST_RE = re.compile(r"[A-Za-z0-9_][A-Za-z0-9._@-]*")
+# Each host's transcripts, mirrored here so that the next pick copies only what changed.
+MIRROR_DIR = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "claude-dev-tools" / "session-mirrors"
 
 
 def records(path):
@@ -265,8 +272,38 @@ def copy_transcripts(session_file, transcripts_dir):
     return copy
 
 
+def mirror(host):
+    """Bring the mirror of the host's ~/.claude/projects up to date over ssh, and return it."""
+    if not HOST_RE.fullmatch(host):
+        sys.exit(f"error: {host!r} is no ssh host name: use letters, digits and . _ @ -, and start with a letter, a digit or _")
+    target = MIRROR_DIR / host / "projects"
+    target.mkdir(parents=True, exist_ok=True)
+    argv = ["rsync", "-a", "--delete", "-e", "ssh -o BatchMode=yes", f"{host}:.claude/projects/", f"{target}/"]
+    try:
+        done = subprocess.run(argv, capture_output=True, text=True)
+    except FileNotFoundError:
+        sys.exit("error: rsync is not on PATH; the pick of another host needs it here and on the host")
+    if done.returncode:
+        sys.exit(f"error: {' '.join(argv)} exited {done.returncode}:\n{done.stderr.strip()}")
+    return target
+
+
+def latest_copies(summaries):
+    """One summary for each session id: Claude Code can keep a session in two project folders."""
+    latest = {}
+    for session, usage in summaries:
+        kept = latest.get(session["session_id"])
+        if kept:
+            print(f"warning: session {session['session_id']} is in {kept[0]['session']} and {session['session']}; the pick reads the one that ended last", file=sys.stderr)
+        if not kept or session["ended"] > kept[0]["ended"]:
+            latest[session["session_id"]] = (session, usage)
+    return list(latest.values())
+
+
 def pick(args):
     plugins_dir = Path(args.plugins_dir)
+    host = args.host or socket.gethostname()
+    projects_dir = mirror(args.host) if args.host else Path(args.projects_dir)
     plugins = {p.name for p in plugins_dir.iterdir() if p.is_dir()}
     reviewed_until = {}
     for path in args.review_dir.glob("runs/*/sessions/*.json"):
@@ -275,10 +312,10 @@ def pick(args):
     cutoff = time.time() - args.since_days * 86400
     recent = (
         f
-        for f in sorted(Path(args.projects_dir).glob("*/*.jsonl"))
+        for f in sorted(projects_dir.glob("*/*.jsonl"))
         if f.stat().st_mtime >= cutoff
     )
-    summaries = [(session, usage) for session, usage in (summarize(f, plugins) for f in recent) if session["skills"]]
+    summaries = latest_copies([(session, usage) for session, usage in (summarize(f, plugins) for f in recent) if session["skills"]])
     # A session that went on after its review is picked again, and reviewed whole.
     unreviewed = [
         session
@@ -333,7 +370,7 @@ def pick(args):
     marketplace = json.loads((plugins_dir.parent / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
     version = marketplace["metadata"]["version"]
     now = datetime.now().astimezone()
-    run_dir = args.review_dir / "runs" / f"{now:%Y-%m-%dT%H%M%S}-{socket.gethostname()}-v{version}"
+    run_dir = args.review_dir / "runs" / f"{now:%Y-%m-%dT%H%M%S}-{host}-v{version}"
     run_dir.mkdir(parents=True)
     for session in picked:
         session["transcript"] = str(copy_transcripts(Path(session["session"]), run_dir / "transcripts"))
@@ -349,7 +386,7 @@ def pick(args):
     }
     write_json(run_dir / "run.json", {
         "started": now.isoformat(timespec="seconds"),
-        "host": socket.gethostname(),
+        "host": host,
         "marketplace_version": version,
         "picker_commit": commit.stdout.strip(),
         "since_days": args.since_days,
@@ -429,7 +466,9 @@ def main():
 
     pick_parser = commands.add_parser("pick", help="start a run: pick the sessions, copy their transcripts, print the picks as JSON")
     pick_parser.add_argument("--review-dir", type=Path, default=os.environ.get("SESSION_REVIEW_DIR") or None, help="the review store (default: $SESSION_REVIEW_DIR)")
-    pick_parser.add_argument("--projects-dir", default=os.path.expanduser("~/.claude/projects"))
+    source = pick_parser.add_mutually_exclusive_group()
+    source.add_argument("--projects-dir", default=os.path.expanduser("~/.claude/projects"))
+    source.add_argument("--host", help=f"an ssh host: pick its sessions from a mirror of its ~/.claude/projects in {MIRROR_DIR}/<host>, and name the run for it")
     pick_parser.add_argument("--plugins-dir", default=REPO_ROOT / "plugins")
     pick_parser.add_argument("--since-days", type=float, default=7, help="only sessions modified in the last N days (default: 7)")
     pick_parser.add_argument("--per-bucket", type=int, default=2, help="sessions to pick from each bucket (default: 2)")

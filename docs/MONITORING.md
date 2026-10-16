@@ -1,6 +1,6 @@
 # Monitoring Plugin Usage
 
-The session review: pick local Claude Code sessions that used a plugin of this marketplace, review each for plugin problems, and keep every run in a private store.
+The session review: pick the Claude Code sessions of this machine or of an ssh host that used a plugin of this marketplace, review each for plugin problems, and keep every run in a private store.
 
 ## Data source
 
@@ -39,7 +39,7 @@ A session counts as reviewed once `sessions/<uuid>.json` exists in any run. A la
 
 ## Run a review
 
-Run the `review-sessions` workflow ([`.claude/workflows/review-sessions.js`](../.claude/workflows/review-sessions.js)) from the repo root. It takes `{perBucket, sinceDays}`, 1 and 7 by default, and starts one agent for the pick, at most two per picked session, and one for the record:
+Run the `review-sessions` workflow ([`.claude/workflows/review-sessions.js`](../.claude/workflows/review-sessions.js)) from the repo root. It takes `{perBucket, sinceDays, host}`, 1, 7 and this machine by default, and starts one agent for the pick, at most two per picked session, and one for the record:
 
 1. **Pick** — `mise run pick-sessions -- pick` starts the run folder, copies the transcripts, and prints the picks.
 2. **Review** — one agent per session reads it with `python3 scripts/pick-sessions.py render <transcript>` and reports each plugin problem with the plugin file at fault, the version, a quote, and a fix.
@@ -47,6 +47,13 @@ Run the `review-sessions` workflow ([`.claude/workflows/review-sessions.js`](../
 4. **Record** — `python3 scripts/pick-sessions.py record <run_dir> <result.json>` writes `sessions/` and `findings.json`; the agent then commits the run in the store and pushes it.
 
 File each finding of `findings.json` in the tracker by hand, with its version. When its fix ships, a finding that a later run reports again for a newer version is a regression.
+
+### Another machine
+
+Pass the ssh host name as `host`: `{host: "dt-7zykdj4"}`. The pick mirrors the host's `~/.claude/projects` with `rsync` over ssh to `~/.cache/claude-dev-tools/session-mirrors/<host>/projects` (under `$XDG_CACHE_HOME` where set), picks from the mirror, and names the run for the host. The reviews run on this machine.
+
+- The host needs `rsync` and key-based ssh: the pick runs ssh with `BatchMode=yes`, so a password prompt stops it.
+- The mirror stays: the next pick copies only what changed, and drops what the host deleted.
 
 ## Reading a pick
 
@@ -61,6 +68,7 @@ A candidate is a session modified in the window, with at least one turn attribut
 | `random` | A random draw from the candidates no other bucket took; `--seed` repeats it |
 
 - Every signal includes the session's subagent transcripts.
+- A session that two project folders hold, after a project moved, is one candidate: the pick reads the copy whose last record is newest, and warns about the other.
 - `large_transcripts` lists each unreviewed session that holds a file of 50 MB or more. From 100 MB the session is `refused` and no candidate: GitHub rejects the push of such a file. The workflow logs each entry.
 - A refusal by a plugin's own guard (`worktree-flow`, `revier`) is a `permission-rule` denial and counts in no signal.
 - `output_tokens` ranks long sessions first, whatever their quality.
