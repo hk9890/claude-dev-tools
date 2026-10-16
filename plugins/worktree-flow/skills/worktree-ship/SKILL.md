@@ -45,7 +45,7 @@ Done when the session is in a worktree, the setup has run, and `git branch --lis
 
 Read what the worktree holds: `git status`, and `git diff --merge-base <remote>/<base-branch>`, which leaves out what landed on the base branch since the worktree left it.
 
-Where the change implements issues of a tracker, mark each one that is not started as in progress there before the first edit, and before a subagent or a workflow gets the work. Where the tracker is taskmgr and `tasks:tasks-core` is in your available skills, call the Skill tool with it for the command, even where it loaded earlier in this session. An issue is reported as not marked, with the reason, where its tracker has no in-progress status or this session cannot set it.
+Where the change implements issues of a tracker, mark each one that is not started as in progress there before the first edit, and before a subagent or a workflow gets the work. Where the tracker is taskmgr and `tasks:tasks-core` is in your available skills, call the Skill tool with `tasks:tasks-core` for the command, even where it loaded earlier in this session. An issue is reported as not marked, with the reason, where its tracker has no in-progress status or this session cannot set it.
 
 Make the part of the change that is missing, and add or update the tests that cover it.
 
