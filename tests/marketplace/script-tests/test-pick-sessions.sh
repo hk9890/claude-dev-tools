@@ -115,6 +115,7 @@ with tempfile.TemporaryDirectory() as tmp:
         error("<tool_use_error>Cancelled: parallel tool call Bash(ls) errored</tool_use_error>"),
         error("Refusing to write: it is a symbolic link", denial="permission-rule"),
         queued("stop, this is one file", "human"),
+        queued([{"type": "text", "text": "and keep the tests"}, {"type": "image", "source": {}}], "human"),
         queued("a task finished", "task-notification"),
         banner(f"{cache}/1.3.0/skills/skill", at="2026-01-01T00:03:00.000Z"),
         assistant("m8", 1, at="2026-01-01T00:03:05.000Z"),
@@ -255,6 +256,7 @@ with tempfile.TemporaryDirectory() as tmp:
         ("render labels a failed result", "ERROR: exit status 1"),
         ("render caps an event and says how much it cut", "[... 74 more chars]"),
         ("render shows a prompt the user typed while the agent worked", "USER (queued): stop, this is one file"),
+        ("render shows the text of a queued prompt that carries an image", "USER (queued): and keep the tests"),
     ]:
         check(label, True, needle in rendered)
     check("render leaves out a queued task notification", False, "a task finished" in rendered)
@@ -342,6 +344,10 @@ with tempfile.TemporaryDirectory() as tmp:
     write(remote / "new-name" / "moved.jsonl", [assistant("m1", 1, at="2026-01-01T00:00:01.000Z"), assistant("m2", 7, at="2026-01-02T00:00:00.000Z")])
     write(remote / "new-name" / "moved" / "subagents" / "agent-1.jsonl", [assistant("m3", 1)])
     write(remote / "new-name" / "other.jsonl", [assistant("m4", 1)])
+    # Claude Code links a forked subagent's transcript into a second session by its absolute path.
+    linked = remote / "new-name" / "other" / "subagents" / "agent-1.jsonl"
+    linked.parent.mkdir(parents=True)
+    linked.symlink_to(remote / "new-name" / "moved" / "subagents" / "agent-1.jsonl")
 
     # An ssh that runs the command here, in the host's home: rsync calls ssh <options> <host> <command>.
     bin_dir = Path(tmp, "bin")
@@ -363,6 +369,9 @@ cd {home} && exec sh -c "$*"
     result = json.loads(out.stdout or "{}")
     mirrored = cache / "claude-dev-tools" / "session-mirrors" / "box" / "projects"
     check("pick --host mirrors the host's projects, subagents included", True, (mirrored / "new-name" / "moved" / "subagents" / "agent-1.jsonl").is_file())
+    mirrored_link = mirrored / "new-name" / "other" / "subagents" / "agent-1.jsonl"
+    check("the mirror holds the file an absolute link of the host points to, not the link", (True, False),
+          (mirrored_link.is_file(), mirrored_link.is_symlink()))
     run_dir = Path(result.get("run_dir", tmp))
     check("the run is named for the host", (True, "box"),
           ("-box-v9.9.9" in run_dir.name, json.loads((run_dir / "run.json").read_text()).get("host") if (run_dir / "run.json").is_file() else None))
@@ -382,6 +391,18 @@ cd {home} && exec sh -c "$*"
           (unreachable.returncode, "No route to host" in unreachable.stderr, len(list(store.glob("runs/*")))))
     bad = pick_host("../x")
     check("a host that is no plain name is refused", (1, True), (bad.returncode, "no ssh host name" in bad.stderr))
+    empty = pick_host("")
+    check("an empty host is refused, not read as this machine", (1, True), (empty.returncode, "no ssh host name" in empty.stderr))
+
+    # rsync exits 24 where a file vanished on the host during the transfer.
+    vanishing_bin = Path(tmp, "vanishing-bin")
+    vanishing_bin.mkdir()
+    Path(vanishing_bin, "rsync").write_text("#!/bin/sh\necho 'file has vanished: \"/x\"' >&2\nexit 24\n")
+    Path(vanishing_bin, "rsync").chmod(0o755)
+    time.sleep(1.1)
+    vanished = run("pick", "--review-dir", str(store), "--plugins-dir", str(plugins), "--host", "box", "--per-bucket", "1",
+                   env={**env, "PATH": f"{vanishing_bin}:{env['PATH']}"})
+    check("a file that vanished on the host during the transfer does not stop the pick", 0, vanished.returncode)
     both = run("pick", "--review-dir", str(store), "--projects-dir", str(remote), "--host", "box", env=env)
     check("--host and --projects-dir exclude each other", 2, both.returncode)
 

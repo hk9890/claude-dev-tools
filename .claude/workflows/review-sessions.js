@@ -113,7 +113,7 @@ Read docs/MONITORING.md first. Change no file in the repository.`
 
 phase('Pick')
 const picks = await agent(
-  `Run \`mise run pick-sessions -- pick --per-bucket ${perBucket} --since-days ${sinceDays}${host ? ` --host ${host}` : ''}\` from the repository root and return the JSON it prints, unchanged. Where the command fails, return what it printed in \`error\`, with an empty run_dir and no sessions.`,
+  `Run \`mise run pick-sessions -- pick --per-bucket ${perBucket} --since-days ${sinceDays}${host ? ` --host ${host}` : ''}\` from the repository root and return the JSON it prints, unchanged.${host ? ' The pick first mirrors the host\'s transcripts over ssh, which can take minutes: give the command the longest Bash timeout, 600000 ms.' : ''} Where the command fails, return what it printed in \`error\`, with an empty run_dir and no sessions.`,
   { label: 'pick', phase: 'Pick', schema: PICKS, effort: 'low' },
 )
 if (!picks?.run_dir) throw new Error(`the pick failed: ${picks?.error ?? 'its agent returned nothing'}`)

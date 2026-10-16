@@ -18,6 +18,7 @@ import json
 import os
 import random
 import re
+import shlex
 import shutil
 import socket
 import subprocess
@@ -61,6 +62,8 @@ LARGE_TRANSCRIPT_MB = 50
 HOST_RE = re.compile(r"[A-Za-z0-9_][A-Za-z0-9._@-]*")
 # Each host's transcripts, mirrored here so that the next pick copies only what changed.
 MIRROR_DIR = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "claude-dev-tools" / "session-mirrors"
+# rsync exits 24 where a file vanished on the host while it ran: the host deleted it, and the mirror holds the rest.
+RSYNC_VANISHED = 24
 
 
 def records(path):
@@ -278,13 +281,15 @@ def mirror(host):
         sys.exit(f"error: {host!r} is no ssh host name: use letters, digits and . _ @ -, and start with a letter, a digit or _")
     target = MIRROR_DIR / host / "projects"
     target.mkdir(parents=True, exist_ok=True)
-    argv = ["rsync", "-a", "--delete", "-e", "ssh -o BatchMode=yes", f"{host}:.claude/projects/", f"{target}/"]
+    # Claude Code links a forked subagent's transcript by its absolute path on the host:
+    # --copy-unsafe-links copies the file, where -a alone copies a link into this machine.
+    argv = ["rsync", "-a", "--copy-unsafe-links", "--delete", "-e", "ssh -o BatchMode=yes", f"{host}:.claude/projects/", f"{target}/"]
     try:
         done = subprocess.run(argv, capture_output=True, text=True)
     except FileNotFoundError:
         sys.exit("error: rsync is not on PATH; the pick of another host needs it here and on the host")
-    if done.returncode:
-        sys.exit(f"error: {' '.join(argv)} exited {done.returncode}:\n{done.stderr.strip()}")
+    if done.returncode not in (0, RSYNC_VANISHED):
+        sys.exit(f"error: {shlex.join(argv)} exited {done.returncode}:\n{done.stderr.strip()}")
     return target
 
 
@@ -302,8 +307,8 @@ def latest_copies(summaries):
 
 def pick(args):
     plugins_dir = Path(args.plugins_dir)
-    host = args.host or socket.gethostname()
-    projects_dir = mirror(args.host) if args.host else Path(args.projects_dir)
+    host = socket.gethostname() if args.host is None else args.host
+    projects_dir = Path(args.projects_dir) if args.host is None else mirror(args.host)
     plugins = {p.name for p in plugins_dir.iterdir() if p.is_dir()}
     reviewed_until = {}
     for path in args.review_dir.glob("runs/*/sessions/*.json"):
@@ -456,8 +461,7 @@ def render(args):
             # A prompt the user typed while the agent worked: no user record holds it.
             attachment = record.get("attachment") or {}
             if attachment.get("type") == "queued_command" and (attachment.get("origin") or {}).get("kind") == "human":
-                prompt = attachment.get("prompt")
-                emit("USER (queued)", prompt if isinstance(prompt, str) else "")
+                emit("USER (queued)", block_text({"content": attachment.get("prompt")}))
 
 
 def main():
