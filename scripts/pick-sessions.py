@@ -415,6 +415,12 @@ def render(args):
                     emit("USER", block_text(block))
                 elif block.get("type") == "tool_result":
                     emit("ERROR" if block.get("is_error") else "RESULT", block_text(block))
+        elif record.get("type") == "attachment":
+            # A prompt the user typed while the agent worked: no user record holds it.
+            attachment = record.get("attachment") or {}
+            if attachment.get("type") == "queued_command" and (attachment.get("origin") or {}).get("kind") == "human":
+                prompt = attachment.get("prompt")
+                emit("USER (queued)", prompt if isinstance(prompt, str) else "")
 
 
 def main():

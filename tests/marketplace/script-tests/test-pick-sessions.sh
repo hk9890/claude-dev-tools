@@ -7,7 +7,8 @@
 #     sessions the changed bucket takes
 #   - record: the files of a reviewed run, and that a later pick skips its sessions
 #     until one of them goes on
-#   - render: the labels of the text form, and the per-event cap
+#   - render: the labels of the text form, the per-event cap, and the prompts the user
+#     typed while the agent worked
 set -uo pipefail
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
@@ -66,6 +67,11 @@ def error(text, denial=None, at="2026-01-01T00:00:00.000Z"):
     return record
 
 
+def queued(prompt, origin):
+    return {"type": "attachment", "timestamp": "2026-01-01T00:02:30.000Z",
+            "attachment": {"type": "queued_command", "prompt": prompt, "origin": {"kind": origin}}}
+
+
 def write(path, session_records):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("".join(json.dumps(r) + "\n" for r in session_records))
@@ -106,6 +112,8 @@ with tempfile.TemporaryDirectory() as tmp:
         error("Cancelled: parallel tool call Bash(ls) errored"),
         error("<tool_use_error>Cancelled: parallel tool call Bash(ls) errored</tool_use_error>"),
         error("Refusing to write: it is a symbolic link", denial="permission-rule"),
+        queued("stop, this is one file", "human"),
+        queued("a task finished", "task-notification"),
         banner(f"{cache}/1.3.0/skills/skill", at="2026-01-01T00:03:00.000Z"),
         assistant("m8", 1, at="2026-01-01T00:03:05.000Z"),
     ])
@@ -244,8 +252,10 @@ with tempfile.TemporaryDirectory() as tmp:
         ("render keeps the non-ASCII text of a tool input", 'TOOL Bash: {"command": "echo für"}'),
         ("render labels a failed result", "ERROR: exit status 1"),
         ("render caps an event and says how much it cut", "[... 74 more chars]"),
+        ("render shows a prompt the user typed while the agent worked", "USER (queued): stop, this is one file"),
     ]:
         check(label, True, needle in rendered)
+    check("render leaves out a queued task notification", False, "a task finished" in rendered)
 
 with tempfile.TemporaryDirectory() as tmp:
     projects, plugins = Path(tmp, "projects"), Path(tmp, "plugins")
