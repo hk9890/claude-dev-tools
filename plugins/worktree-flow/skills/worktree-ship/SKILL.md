@@ -59,9 +59,9 @@ Done when each gate is green, or reported as skipped, or red on the base branch 
 
 ## 5. Drive the change by hand
 
-Run the built product the way step 1 recorded. Where the project documents nothing and `run` is in your available skills, call the Skill tool with `run`, even where it loaded earlier in this session. Where neither gives a way to run it, report the change as not driven, with that reason and what the user must check by hand. Use the change the way its user reaches it. A gate proves the tests; this step proves the feature.
+Run the built product the way step 1 recorded. Where the project documents nothing and `run` is in your available skills, call the Skill tool with `run`, even where it loaded earlier in this session. Use the change the way its user reaches it. A gate proves the tests; this step proves the feature.
 
-Fix what the drive shows broken, then return to step 4. Keep each command and what it showed for the PR body. A part that cannot be driven here, for example one that needs an interactive terminal, is reported as not driven, with what the user must check by hand.
+Fix what the drive shows broken, then return to step 4. Keep each command and what it showed for the PR body. A change, or a part of it, that cannot be driven here — no documented way to run it and no `run` skill, or it needs an interactive terminal — is reported as not driven, with the reason and what the user must check by hand.
 
 Done when each part of the change is driven and shows nothing broken, or is reported as not driven with what the user must check by hand.
 
