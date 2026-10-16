@@ -31,8 +31,9 @@ Fall back to plain chat in only two cases:
 
 - **Node.js is unavailable** — see pre-flight in `references/serve.md`.
 - **The intent does not fit** — e.g. the user needs structured answers to
-  specific questions (that is ask mode). Say so briefly and handle the request
-  in chat — do NOT silently switch to another mode; the user chooses the mode.
+  specific questions (that is ask mode). Say so briefly, name the command of the
+  mode that fits (`/html-visualization:html-visualize-ask`), and handle the
+  request in chat; the user chooses the mode.
 
 **Rule of thumb**: ask mode asks the user questions; feedback mode shows the user
 content to react to.

@@ -173,6 +173,10 @@ One adversarial agent does the whole review. There is no workflow and no level a
 
    Leave the result uncommitted: the commit belongs to whoever asked for the review.
 
+   The reviewer's closing suggestion to file the findings with `/tasks:tasks-create` now
+   covers only what the batch left: the `open` entries and the actions named as not
+   applied. Repeat it for those alone, and where none is left, leave it out.
+
    Done when every settled action is applied, or named with the reason it was not, and
    every command under `## Checks run` has run again, with its result reported.
 

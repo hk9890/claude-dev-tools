@@ -2,7 +2,7 @@
 
 ## Commits
 
-Use the `commit-commands:commit` skill for the standard flow.
+Call the Skill tool with `commit-commands:commit` for the standard flow.
 
 **Local delta:** one logical change per commit, imperative present tense (`Add widget soft-delete`,
 `Fix pagination off-by-one`), and no `WIP` commits on a branch targeting `main`.
@@ -17,7 +17,7 @@ Use the `commit-commands:commit` skill for the standard flow.
 
 1. Open PR against `main`.
 2. Fill in the PR template (summary + test plan).
-3. Review the PR against [REVIEWING.md](REVIEWING.md) with `/worktree-flow:worktree-review <pr>`; one approval required before merge.
+3. Review the PR against [REVIEWING.md](REVIEWING.md): call the Skill tool with `worktree-flow:worktree-review` and the argument `<pr>`. One approval required before merge.
 4. Squash-merge; delete branch after merge.
 
 ## Worktrees

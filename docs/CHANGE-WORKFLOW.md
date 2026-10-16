@@ -4,7 +4,7 @@ How a change lands here: commit conventions, branch naming, the pre-push gates, 
 
 ## Commits and branches
 
-Use the `commit-commands:commit` skill (or `commit-commands:commit-push-pr`) for the standard flow. **Local delta:** one logical change per commit; imperative present tense ("Add X", "Fix Y", "Remove Z").
+Call the Skill tool with `commit-commands:commit` (or `commit-commands:commit-push-pr`) for the standard flow. **Local delta:** one logical change per commit; imperative present tense ("Add X", "Fix Y", "Remove Z").
 
 `master` is the protected main branch — no direct pushes from any actor. Branch off it with a prefixed slug that says what the branch does (`docs/feature-branch-policy`): `fix/`, `feat/`, `docs/`, `chore/`. Prefixing an issue or task ID is allowed but never required — nothing here parses it.
 
