@@ -10,7 +10,7 @@ argument-hint: "[what-to-run-or-verify]"
 
 Follow the project's own run flow exactly. Do not invent launch commands, entrypoints, or ports — if the project defines no run flow, do nothing and report that running is not configured for this project. A flow counts as defined only if stated in the project's docs (CLAUDE.md/AGENTS.md routing, README) or config (task-runner scripts, container or compose files, service definitions); check those before reporting not configured.
 
-A project states only its local delta and routes the rest to a general run skill. Follow that route where it exists — where it names a skill, call the Skill tool with it, even where it loaded earlier in this session — and let the local instructions win wherever the two conflict.
+A project states only its local delta and routes the rest to a general run skill. Follow that route where it exists, and let the local instructions win wherever the two conflict. Where the route names a skill that is in your available skills, call the Skill tool with it, even where it loaded earlier in this session. Where it names one that is not, only the user can start it: tell the user to run `/<plugin>:<skill>`.
 
 With no scope, start the project, confirm it came up, and ask what to drive.
 
