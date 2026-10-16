@@ -28,8 +28,9 @@ The relay above and the saved report happen first and in full either way, so the
 form adds a surface and takes nothing away — a missing plugin, an absent Node, or
 a closed tab leaves the user exactly where the review would have left them.
 
-**With `html-viz`**, invoke `html-visualization:html-visualize-ask` through the
-`Skill` tool, passing the open items and naming what was reviewed:
+**With `html-viz`**, call the Skill tool with `html-visualization:html-visualize-ask`,
+even where it loaded earlier in this session, passing the open items and naming what
+was reviewed:
 
 ```
 the <N> open decisions from <what was reviewed> — the settled fixes are already agreed

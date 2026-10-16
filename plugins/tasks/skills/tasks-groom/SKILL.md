@@ -8,7 +8,7 @@ argument-hint: "[scope]"
 
 # Groom the tracker
 
-Load `tasks:tasks-core`.
+Call the Skill tool with `tasks:tasks-core`, even where it loaded earlier in this session.
 
 Walk the open tasks and report what has rotted against the store's standard: bodies that no longer
 meet it, duplicates, blocking edges that are not real ordering constraints, and tasks whose context
