@@ -21,8 +21,9 @@ go install github.com/hk9890/task-manager/cmd/taskmgr@latest   # ...or with Go d
 
 Confirm with `taskmgr version`.
 
-Then **load this skill again**. Its guide line runs only when the skill loads, so a copy loaded
-before the install keeps showing the `STOP` line however many commands you run afterwards.
+Then **call the Skill tool with `tasks:tasks-core` again**. Its guide line runs only when the
+skill loads, so a copy loaded before the install keeps showing the `STOP` line however many
+commands you run afterwards.
 
 ## The guide printed, but the store's conventions are missing
 

@@ -37,8 +37,9 @@ report happen first and in full either way, so the form adds a surface and takes
 nothing away — a missing plugin, an absent Node, or a closed tab leaves the user
 exactly where the skill would have left them anyway.
 
-With the flag set, invoke `html-visualization:html-visualize-ask` through the
-`Skill` tool, passing the open items and naming what was run:
+With the flag set, call the Skill tool with `html-visualization:html-visualize-ask`,
+even where it loaded earlier in this session, passing the open items and naming
+what was run:
 
 ```
 the <N> open decisions from <the test-app run|the test-suite audit> — the settled proposals are already agreed

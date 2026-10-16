@@ -31,6 +31,8 @@ Reference that several skills need has two homes. A model-invoked skill of pure 
 
 When user-invoked skills multiply past what you can remember, that cognitive load is cured by a **router skill**: one user-invoked skill naming the others and when to reach for each. It can only hint, never fire them.
 
+A **hand-off** is a step that sends the agent into another skill. Write it as an explicit call — "Call the Skill tool with `plugin:skill`" — add "even where it loaded earlier in this session", and give it a trigger the agent can test. Each part closes a failure seen in real runs: a skill named in prose ("load `x`", "use the `x` skill") gets skipped; a skill that ran earlier in the session gets replayed from memory, its steps dropped; a fuzzy condition ("where a candidate depends on that") never fires. A **user-invoked** target cannot be handed off to: tell the user to run `/plugin:skill` instead.
+
 ## Writing the description
 
 A **context pointer** names out-of-context material and encodes the condition for reaching it. A description is the top-level one (context window → skill); a pointer to a disclosed file is the same object one level down. The pointer's _wording_, not its target, decides when the agent reaches the material and how reliably — so a must-have target behind a weak pointer is a variance bug: sharpen the wording first, and inline the material only if that fails.
@@ -62,7 +64,7 @@ Push too little down and the top bloats; push too much and you hide material the
 
 Every step ends on a **completion criterion**, the condition telling the agent the work is done. Two properties make it a lever:
 
-- **Clarity** — can the agent tell done from not-done? A vague bound ("understanding reached") invites **premature completion**: ending a step before it is genuinely done, attention slipping to _being done_. The visible steps still ahead — the **post-completion steps** — supply the pull; clarity is the resistance. Sharpen the bound first, since that is local and cheap. Only where it is irreducibly fuzzy _and_ you observe the rush, hide the later steps by splitting the sequence — and hiding works only across a real context boundary: a **user-invoked** hand-off, or a subagent dispatch. An inline **model-invoked** call leaves the later steps in context and clears nothing.
+- **Clarity** — can the agent tell done from not-done? A vague bound ("understanding reached") invites **premature completion**: ending a step before it is genuinely done, attention slipping to _being done_. The visible steps still ahead — the **post-completion steps** — supply the pull; clarity is the resistance. Sharpen the bound first, since that is local and cheap. Only where it is irreducibly fuzzy _and_ you observe the rush, hide the later steps by splitting the sequence — and hiding works only across a real context boundary: a split the user crosses by typing the next `/plugin:skill`, or a subagent dispatch. An inline **model-invoked** call leaves the later steps in context and clears nothing.
 - **Demand** — how much it requires. "Every modified model accounted for" forces thorough work where "produce a change list" does not. Demand drives **legwork**, the digging the agent does inside the work, latent in the wording rather than written as its own step. It is not step-bound: "every rule applied" binds flat reference as "every step done" binds a sequence.
 
 The strongest criteria are both checkable and exhaustive.
