@@ -28,9 +28,10 @@ Fall back to plain chat in only two cases:
 - **Node.js is unavailable** — see pre-flight in `references/serve.md`.
 - **The intent does not fit a form** — e.g. it is a single yes/no question, or it
   asks you to annotate existing content (that is feedback mode's shape). Say so
-  briefly and handle the request in chat. Name the command of the mode that fits
-  (`/html-visualization:html-visualize-feedback`) for the user to run, and never
-  call that mode's skill yourself: the user chooses the mode.
+  briefly and handle the request in chat. Where another mode fits, name its
+  command for the user to run — `/html-visualization:html-visualize-feedback` to
+  annotate content, `/html-visualization:html-visualize-page` for a page the user
+  only reads — and never call that mode's skill yourself: the user chooses the mode.
 
 A couple of questions are still fine on a form the user asked for — do not refuse
 on question count alone.

@@ -1,6 +1,6 @@
 # Running a Plugin
 
-How to launch this marketplace's plugins and drive them by hand to reproduce a bug or verify a change. The built-in `run` skill carries the generic launch-and-drive flow; this file records only the local delta. For the automated suites see [TESTING.md](TESTING.md), for usage analysis [MONITORING.md](MONITORING.md).
+How to launch this marketplace's plugins and drive them by hand to reproduce a bug or verify a change. For the generic launch-and-drive flow, call the Skill tool with the built-in `run` skill; this file records only the local delta. For the automated suites see [TESTING.md](TESTING.md), for usage analysis [MONITORING.md](MONITORING.md).
 
 ## Launch all plugins locally
 

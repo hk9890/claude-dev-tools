@@ -146,7 +146,8 @@ One adversarial agent does the whole review. There is no workflow and no level a
    over the actions, in the groups step 3 ended on — "this change" is what was reviewed. This review takes no
    `html-viz` flag, so the reference's **Without it** branch applies. With `--fix`, say
    that step 5 applies the settled batch now, in place of the reference's line on where
-   the user stops it.
+   the user stops it, and hold back the reviewer's suggestion to file the findings with
+   `/tasks:tasks-create` for step 5.
 
    Keep `## Suggested rule additions` visibly apart from the findings when you relay it.
    Merging the two is the one failure that turns this review into an ordinary code review.
@@ -173,9 +174,9 @@ One adversarial agent does the whole review. There is no workflow and no level a
 
    Leave the result uncommitted: the commit belongs to whoever asked for the review.
 
-   The reviewer's closing suggestion to file the findings with `/tasks:tasks-create` now
-   covers only what the batch left: the `open` entries and the actions named as not
-   applied. Repeat it for those alone, and where none is left, leave it out.
+   Where the reviewer closed with a suggestion to file the findings with
+   `/tasks:tasks-create`, give it for what the batch left alone: the `open` entries and
+   the actions named as not applied. Where none is left, leave it out.
 
    Done when every settled action is applied, or named with the reason it was not, and
    every command under `## Checks run` has run again, with its result reported.

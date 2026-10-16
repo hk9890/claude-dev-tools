@@ -69,7 +69,7 @@ never changes the verdict.
 
 **A stale rule.** Where a document describes a convention the project clearly moved past,
 the subject is not at fault. Route the finding to `project-review-docs`, the docs review,
-which the user starts with `/project-review:project-review-docs`.
+and tell the user to start it with `/project-review:project-review-docs`.
 
 ## Running what the documents say to run
 

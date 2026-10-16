@@ -1,8 +1,8 @@
 # Documenting
 
-How documentation is written in this repository. The generic standard — which file owns what, and
-the authoring rules — is the `instruction-writing:writing-project-docs` skill; this file records
-only the local delta, and wins where the two conflict.
+How documentation is written in this repository. For the generic standard — which file owns what,
+and the authoring rules — call the Skill tool with `instruction-writing:writing-project-docs`; this
+file records only the local delta, and wins where the two conflict.
 
 ## Gates
 

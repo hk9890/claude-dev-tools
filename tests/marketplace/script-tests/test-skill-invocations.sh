@@ -12,8 +12,8 @@
 # writing-skills rubric asks for the explicit call.
 #
 # Both scans read each Markdown file whole, so a hand-off wrapped across lines is found.
-# A hand-off whose target the text does not spell out ("call the Skill tool with it") is
-# not checked.
+# Not checked: a hand-off wrapped inside a blockquote, where the next line opens with `>`,
+# and one whose target the text does not spell out ("call the Skill tool with it").
 #
 # Exit codes: 0 — all assertions passed; 1 — one or more failed.
 set -uo pipefail

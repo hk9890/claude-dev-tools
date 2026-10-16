@@ -63,7 +63,7 @@ Run the built product the way step 1 recorded. Where the project documents nothi
 
 Fix what the drive shows broken, then return to step 4. Keep each command and what it showed for the PR body. A change, or a part of it, that cannot be driven here — no documented way to run it and no `run` skill, or it needs an interactive terminal — is reported as not driven, with the reason and what the user must check by hand.
 
-Done when each part of the change is driven and shows nothing broken, or is reported as not driven with what the user must check by hand.
+Done when each part of the change is driven and shows nothing broken, or is reported as not driven with the reason and what the user must check by hand.
 
 ## 6. Commit, push, open the PR
 
