@@ -26,7 +26,7 @@ Done when each case that applies has the user's answer, and the run takes one of
 In the main checkout:
 
 1. `git switch -c worktree-ship-stray/<worktree-name>`.
-2. Where the dirty check prints a line, `git add -A -- ':/' ':(top,exclude).claude/worktrees'`, then `git -c commit.gpgsign=false commit --no-verify -m "worktree-ship: uncommitted stray work"`. That commit is **transport**: **Bring in** takes it apart again.
+2. Where the dirty check prints a line, `git add -A -- ':/' ':(top,exclude,glob)[.]claude/worktrees' ':(top,exclude,glob)[.]claude/worktrees/**'`, then `git -c core.hooksPath=/dev/null -c commit.gpgsign=false commit -m "worktree-ship: uncommitted stray work"`. That commit is **transport**: **Bring in** takes it apart again, and finds it by its subject, which no hook may change. The two exclude terms leave out `.claude/worktrees` and what it holds. Their `[.]` keeps `git add` from refusing them where `.claude/` or `.claude/worktrees` is gitignored; `git status` never refuses, so the dirty check keeps its plain pathspec.
 3. `git switch <base-branch>`.
 4. Where the branch has an upstream and `git rev-list @{upstream}..HEAD` prints commits: once the dirty check prints nothing and `git merge-base --is-ancestor HEAD worktree-ship-stray/<worktree-name>` succeeds, `git reset --hard @{upstream}`.
 
