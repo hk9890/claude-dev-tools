@@ -43,4 +43,4 @@ A candidate names the file it changes, by absolute path:
 - Docs: reference files, pointed to by other files. Look for an existing doc before proposing a new one.
 - Skills: for user-invoked commands, or for docs whose description must sit in the agent's context window.
 
-Which of these files carries what is owned by `instruction-writing:writing-project-docs` for project docs and by `instruction-writing:writing-skills` for skills. Where a candidate depends on that, call the Skill tool with the one it needs.
+Which of these files carries what is owned by `instruction-writing:writing-project-docs` for project docs and by `instruction-writing:writing-skills` for skills. For each candidate that changes a project doc (`AGENTS.md`, `CLAUDE.md`, `README.md`, a file under `docs/`), call the Skill tool with `instruction-writing:writing-project-docs`; for each that changes a skill (a `SKILL.md` or a file it bundles), call it with `instruction-writing:writing-skills`. Call each before you write the candidate, even where it loaded earlier in this session.

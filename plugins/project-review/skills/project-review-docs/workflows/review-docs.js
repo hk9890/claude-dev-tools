@@ -112,7 +112,7 @@ function normalizeArgs(rawArgs) {
   } else if (!standardDir) {
     error = 'standardDir is required — it is the base directory of the instruction-writing:writing-project-docs skill, which owns the authoring rules and the ownership contracts'
   } else if (!standardDir.startsWith('/')) {
-    error = `standardDir must be an absolute path (got ${JSON.stringify(standardDir)}) — load the instruction-writing:writing-project-docs skill and pass the base directory it prints`
+    error = `standardDir must be an absolute path (got ${JSON.stringify(standardDir)}) — call the Skill tool with instruction-writing:writing-project-docs and pass the base directory it prints`
   } else if (!scratchDir.startsWith('/')) {
     error = `scratchDir must be an absolute path (got ${JSON.stringify(scratchDir)}) — the history stage writes there, outside the repo`
   }

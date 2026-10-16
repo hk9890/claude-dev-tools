@@ -3,12 +3,12 @@
 #
 # The `Skill` tool cannot load a user-only skill (`disable-model-invocation: true`), and
 # nothing reports the miss: the caller names the skill, the model finds none by that
-# name, and the step is skipped or improvised. This walks every "invoke `plugin:skill`"
-# and "load `plugin:skill`" sentence under plugins/ whose plugin half is a plugin of this
-# repo, and requires the target to be model-invocable.
+# name, and the step is skipped or improvised. This walks every "Call the Skill tool with
+# `plugin:skill`" sentence under plugins/ whose plugin half is a plugin of this repo, and
+# requires the target to be model-invocable.
 #
-# It matches those two phrasings in Markdown and nothing else: an invocation worded another
-# way ("call the Skill tool with the one it needs") is not checked.
+# A hand-off worded "invoke `plugin:skill`" or "load `plugin:skill`" fails: the agent skips
+# a skill named in prose, so the writing-skills rubric asks for the explicit call.
 #
 # Exit codes: 0 — all assertions passed; 1 — one or more failed.
 set -uo pipefail
@@ -39,9 +39,19 @@ else
   ok "predicate: a user-only skill is reported as unreachable"
 fi
 
-mapfile -t HITS < <(
+mapfile -t PROSE < <(
   grep -rnoE --include='*.md' \
     '([Ii]nvoke|[Ll]oad) (the )?`[a-z0-9-]+:[a-z0-9-]+`' "$REPO_ROOT/plugins" | sort -u
+)
+for hit in "${PROSE[@]}"; do
+  file="${hit%%:*}"
+  rest="${hit#*:}"
+  fail "${file#"$REPO_ROOT"/}:${rest%%:*} — a hand-off in prose; write \"Call the Skill tool with\""
+done
+
+mapfile -t HITS < <(
+  grep -rnoE --include='*.md' \
+    '[Cc]all the Skill tool with `[a-z0-9-]+:[a-z0-9-]+`' "$REPO_ROOT/plugins" | sort -u
 )
 
 CHECKED=0

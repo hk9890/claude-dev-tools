@@ -68,8 +68,8 @@ simpler form reached through it in one line, as routed to the general code revie
 never changes the verdict.
 
 **A stale rule.** Where a document describes a convention the project clearly moved past,
-the subject is not at fault. Say the finding belongs to `project-review-docs` and route
-it there.
+the subject is not at fault. Say the finding belongs to the docs review, and tell the user
+to run `/project-review:project-review-docs`.
 
 ## Running what the documents say to run
 

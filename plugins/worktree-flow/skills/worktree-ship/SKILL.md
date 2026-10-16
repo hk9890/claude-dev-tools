@@ -45,7 +45,7 @@ Done when the session is in a worktree, the setup has run, and `git branch --lis
 
 Read what the worktree holds: `git status`, and `git diff --merge-base <remote>/<base-branch>`, which leaves out what landed on the base branch since the worktree left it.
 
-Where the change implements issues of a tracker, mark each one that is not started as in progress there before the first edit, and before a subagent or a workflow gets the work. Where the tracker is taskmgr and `tasks:tasks-core` is in your available skills, load it for the command. An issue is reported as not marked, with the reason, where its tracker has no in-progress status or this session cannot set it.
+Where the change implements issues of a tracker, mark each one that is not started as in progress there before the first edit, and before a subagent or a workflow gets the work. Where the tracker is taskmgr and `tasks:tasks-core` is in your available skills, call the Skill tool with it for the command, even where it loaded earlier in this session. An issue is reported as not marked, with the reason, where its tracker has no in-progress status or this session cannot set it.
 
 Make the part of the change that is missing, and add or update the tests that cover it.
 
@@ -59,7 +59,7 @@ Done when each gate is green, or reported as skipped, or red on the base branch 
 
 ## 5. Drive the change by hand
 
-Run the built product the way step 1 recorded, with the `run` skill where the project documents nothing, and use the change the way its user reaches it. A gate proves the tests; this step proves the feature.
+Run the built product the way step 1 recorded. Where the project documents nothing and `run` is in your available skills, call the Skill tool with `run`, even where it loaded earlier in this session. Use the change the way its user reaches it. A gate proves the tests; this step proves the feature.
 
 Fix what the drive shows broken, then return to step 4. Keep each command and what it showed for the PR body. A part that cannot be driven here, for example one that needs an interactive terminal, is reported as not driven, with what the user must check by hand.
 
@@ -75,7 +75,7 @@ Done when `git status --porcelain` prints nothing, and `gh pr view <pushed-branc
 
 ## 7. Review and fix
 
-Invoke `worktree-flow:worktree-review` with the argument `<pr-number>`.
+Call the Skill tool with `worktree-flow:worktree-review` and the argument `<pr-number>`, even where it loaded earlier in this session: its steps run from the loaded text, never from memory of an earlier run.
 
 Where it pushed a fix, read the body again with `gh pr view <pr-number> --json body` and bring the parts the fixes made stale up to date with `gh pr edit <pr-number> --body-file`. The list under `## Evidence` stays as the review left it.
 

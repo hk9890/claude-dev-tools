@@ -8,7 +8,7 @@ argument-hint: "[scope]"
 
 # File this conversation as tasks
 
-Load `tasks:tasks-core`.
+Call the Skill tool with `tasks:tasks-core`, even where it loaded earlier in this session.
 
 Turn this conversation into a set of filed tasks. File the set in one call, so that a refused
 entry files none of them, and on standard input, so that no file stays behind:
