@@ -56,7 +56,7 @@ Read the body again with `gh pr view <pr-number> --json body`, and edit it with 
 - Bring each **Gate** and **Driven** line whose command this run ran again up to date.
 
 ```markdown
-- **Review:** `project-review-change --fix`: <fixes applied, fixes not applied and open questions, or no written rules, or skipped and why>; `code-review <effort> --fix`: <findings applied, and findings not applied>, through `<head commit>`
+- **Review:** `project-review-change --fix`: <fixes applied, fixes not applied and open questions, or no written rules, or skipped and why>; suggested rule additions: <each as `<document>`: <the rule in one sentence>, or none>; `code-review <effort> --fix`: <findings applied, and findings not applied>, through `<head commit>`
 ```
 
 `<head commit>` is the full commit that `git rev-parse HEAD` prints after the last push: a later run reads it to tell whether the head was reviewed.
@@ -65,6 +65,6 @@ Done when `gh pr view <pr-number> --json headRefOid,body` prints a body in which
 
 ## 5. Report
 
-Report the PR URL, each review with its outcome, the open questions of the rules review and the fixes it did not apply, and each gate with its result. Where `worktree-ship` invoked this run, carry these items to its report in place of a report of this skill.
+Report the PR URL, each review with its outcome, the open questions of the rules review and the fixes it did not apply, the suggested rule additions of the rules review, each with its document and rule, and each gate with its result. Where `worktree-ship` invoked this run, carry these items to its report in place of a report of this skill.
 
 Done when the report holds each of these items, or says that it does not apply. Where `worktree-ship` invoked this run, done when each item is kept for its step 8.
