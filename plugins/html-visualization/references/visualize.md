@@ -29,7 +29,10 @@ Fall back to plain chat in only two cases:
 - **Node.js is unavailable** — see pre-flight in `references/serve.md`.
 - **The intent does not fit** — e.g. the user needs to answer questions (ask
   mode) or annotate prose (feedback mode). Say so briefly and handle the request
-  in chat — do NOT silently switch to another mode; the user chooses the mode.
+  in chat. Name the command of the mode that fits
+  (`/html-visualization:html-visualize-ask` or
+  `/html-visualization:html-visualize-feedback`) for the user to run, and never
+  call that mode's skill yourself: the user chooses the mode.
 
 ---
 

@@ -46,15 +46,15 @@ Every skill is loaded with a `Base directory for this skill: <absolute path>` li
 
 `../..` stops at the plugin root, and a sibling's install directory is not derivable from this one's — versioned separately in a cached install, unversioned in a dev checkout.
 
-- Load the sibling's skill and take the `Base directory for this skill:` line it prints.
+- Call the Skill tool with the sibling's skill, even where it loaded earlier in the session, and take the `Base directory for this skill:` line it prints.
 - Pass that value in explicitly (a workflow arg, a script flag) and validate it at that boundary.
 - Declare the sibling in `dependencies`, and say in the skill what to do when it is absent — a missing dependency is a broken install, not an optional extra.
 
-`project-review:project-review-docs` is the worked example: it loads `instruction-writing:writing-project-docs`, passes the base directory as `standardDir`, and rejects a missing or relative value before spawning an agent.
+`project-review:project-review-docs` is the worked example: it calls the Skill tool with `instruction-writing:writing-project-docs`, passes the base directory as `standardDir`, and rejects a missing or relative value before spawning an agent.
 
 ## Mods
 
-A mod is a plugin whose `hooks/hooks.json` names a hooks module under `modules`; Claude Code 2.1.287 and later runs it in-process. Claude Code's built-in `plugin-authoring` skill carries the API and the write-validate-test loop — load it first. **Local delta:**
+A mod is a plugin whose `hooks/hooks.json` names a hooks module under `modules`; Claude Code 2.1.287 and later runs it in-process. Claude Code's built-in `plugin-authoring` skill carries the API and the write-validate-test loop: call the Skill tool with `plugin-authoring` before the first edit. **Local delta:**
 
 - **Worked examples** — `keep-awake-linux` (a child process, timers, and a pane a timer refreshes), `worktree-flow` (a `tool.call` guard), `tasks` (a command, a pane, and a `$.state` contract).
 - **Layout** — `hooks/hooks.json` holds `{ "modules": ["./register.ts"] }`, `.tsx` when the module draws. Tests go in `plugins/<plugin>/tests/*.test.ts`, where `claude plugin test` reads them ([TESTING.md](TESTING.md)). A module that keeps `$.state` values declares them in `types/index.d.ts`, named in `plugin.json` as `"types"`.
