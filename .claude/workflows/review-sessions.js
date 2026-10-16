@@ -1,7 +1,7 @@
 export const meta = {
   name: 'review-sessions',
-  description: 'Pick local sessions that used this marketplace\'s plugins, review each for plugin problems, and keep the run in the review store',
-  whenToUse: 'To find what to improve in the plugins from real sessions. args: {perBucket, sinceDays}; one agent for the pick, at most two per picked session, one for the record.',
+  description: 'Pick the sessions of this machine, or of an ssh host, that used this marketplace\'s plugins, review each for plugin problems, and keep the run in the review store',
+  whenToUse: 'To find what to improve in the plugins from real sessions. args: {perBucket, sinceDays, host}; host is an ssh host whose sessions to review, this machine where absent; one agent for the pick, at most two per picked session, one for the record.',
   phases: [
     { title: 'Pick', detail: 'scripts/pick-sessions.py pick' },
     { title: 'Review', detail: 'one reviewer per picked session' },
@@ -12,6 +12,9 @@ export const meta = {
 
 const perBucket = args?.perBucket ?? 1
 const sinceDays = args?.sinceDays ?? 7
+const host = args?.host
+// The host goes into a shell command: the pick takes the same names only.
+if (host !== undefined && !/^[A-Za-z0-9_][A-Za-z0-9._@-]*$/.test(host)) throw new Error(`not an ssh host name: ${JSON.stringify(host)}`)
 
 const PICKS = {
   type: 'object',
@@ -110,7 +113,7 @@ Read docs/MONITORING.md first. Change no file in the repository.`
 
 phase('Pick')
 const picks = await agent(
-  `Run \`mise run pick-sessions -- pick --per-bucket ${perBucket} --since-days ${sinceDays}\` from the repository root and return the JSON it prints, unchanged. Where the command fails, return what it printed in \`error\`, with an empty run_dir and no sessions.`,
+  `Run \`mise run pick-sessions -- pick --per-bucket ${perBucket} --since-days ${sinceDays}${host ? ` --host ${host}` : ''}\` from the repository root and return the JSON it prints, unchanged.${host ? ' The pick first mirrors the host\'s transcripts over ssh, which can take minutes: give the command the longest Bash timeout, 600000 ms.' : ''} Where the command fails, return what it printed in \`error\`, with an empty run_dir and no sessions.`,
   { label: 'pick', phase: 'Pick', schema: PICKS, effort: 'low' },
 )
 if (!picks?.run_dir) throw new Error(`the pick failed: ${picks?.error ?? 'its agent returned nothing'}`)

@@ -7,7 +7,10 @@
 #     sessions the changed bucket takes
 #   - record: the files of a reviewed run, and that a later pick skips its sessions
 #     until one of them goes on
-#   - render: the labels of the text form, and the per-event cap
+#   - render: the labels of the text form, the per-event cap, and the prompts the user
+#     typed while the agent worked
+#   - pick --host: the mirror of another machine over ssh, the run named for it, and one
+#     candidate for a session that two project folders hold
 set -uo pipefail
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
@@ -66,6 +69,11 @@ def error(text, denial=None, at="2026-01-01T00:00:00.000Z"):
     return record
 
 
+def queued(prompt, origin):
+    return {"type": "attachment", "timestamp": "2026-01-01T00:02:30.000Z",
+            "attachment": {"type": "queued_command", "prompt": prompt, "origin": {"kind": origin}}}
+
+
 def write(path, session_records):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("".join(json.dumps(r) + "\n" for r in session_records))
@@ -106,6 +114,9 @@ with tempfile.TemporaryDirectory() as tmp:
         error("Cancelled: parallel tool call Bash(ls) errored"),
         error("<tool_use_error>Cancelled: parallel tool call Bash(ls) errored</tool_use_error>"),
         error("Refusing to write: it is a symbolic link", denial="permission-rule"),
+        queued("stop, this is one file", "human"),
+        queued([{"type": "text", "text": "and keep the tests"}, {"type": "image", "source": {}}], "human"),
+        queued("a task finished", "task-notification"),
         banner(f"{cache}/1.3.0/skills/skill", at="2026-01-01T00:03:00.000Z"),
         assistant("m8", 1, at="2026-01-01T00:03:05.000Z"),
     ])
@@ -244,8 +255,11 @@ with tempfile.TemporaryDirectory() as tmp:
         ("render keeps the non-ASCII text of a tool input", 'TOOL Bash: {"command": "echo für"}'),
         ("render labels a failed result", "ERROR: exit status 1"),
         ("render caps an event and says how much it cut", "[... 74 more chars]"),
+        ("render shows a prompt the user typed while the agent worked", "USER (queued): stop, this is one file"),
+        ("render shows the text of a queued prompt that carries an image", "USER (queued): and keep the tests"),
     ]:
         check(label, True, needle in rendered)
+    check("render leaves out a queued task notification", False, "a task finished" in rendered)
 
 with tempfile.TemporaryDirectory() as tmp:
     projects, plugins = Path(tmp, "projects"), Path(tmp, "plugins")
@@ -316,6 +330,81 @@ with tempfile.TemporaryDirectory() as tmp:
           (by_bucket["errors"]["session_id"], by_bucket["errors"].get("changed_files")))
     check("the random bucket takes one of the sessions left",
           True, by_bucket["random"]["session_id"] in {"other-skill-a", "other-skill-b", "checkout", "bumped-only"})
+
+with tempfile.TemporaryDirectory() as tmp:
+    plugins, store, home, cache = (Path(tmp, name) for name in ("plugins", "store", "home", "cache"))
+    subprocess.run(["git", "init", tmp], check=True, capture_output=True)
+    (plugins / "demo" / "skills" / "skill").mkdir(parents=True)
+    (plugins / "demo" / "skills" / "skill" / "SKILL.md").write_text("---\n---\n")
+    Path(tmp, ".claude-plugin").mkdir()
+    Path(tmp, ".claude-plugin", "marketplace.json").write_text(json.dumps({"metadata": {"version": "9.9.9"}}))
+    store.mkdir()
+    remote = home / ".claude" / "projects"
+    write(remote / "old-name" / "moved.jsonl", [assistant("m1", 1, at="2026-01-01T00:00:01.000Z")])
+    write(remote / "new-name" / "moved.jsonl", [assistant("m1", 1, at="2026-01-01T00:00:01.000Z"), assistant("m2", 7, at="2026-01-02T00:00:00.000Z")])
+    write(remote / "new-name" / "moved" / "subagents" / "agent-1.jsonl", [assistant("m3", 1)])
+    write(remote / "new-name" / "other.jsonl", [assistant("m4", 1)])
+    # Claude Code links a forked subagent's transcript into a second session by its absolute path.
+    linked = remote / "new-name" / "other" / "subagents" / "agent-1.jsonl"
+    linked.parent.mkdir(parents=True)
+    linked.symlink_to(remote / "new-name" / "moved" / "subagents" / "agent-1.jsonl")
+
+    # An ssh that runs the command here, in the host's home: rsync calls ssh <options> <host> <command>.
+    bin_dir = Path(tmp, "bin")
+    bin_dir.mkdir()
+    Path(bin_dir, "ssh").write_text(f"""#!/bin/sh
+while [ "$1" = "-o" ]; do shift 2; done
+[ "$1" = "unreachable" ] && {{ echo "ssh: connect to host unreachable: No route to host" >&2; exit 255; }}
+shift
+cd {home} && exec sh -c "$*"
+""")
+    Path(bin_dir, "ssh").chmod(0o755)
+    env = {**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}", "XDG_CACHE_HOME": str(cache)}
+
+    def pick_host(host):
+        return run("pick", "--review-dir", str(store), "--plugins-dir", str(plugins), "--host", host, "--per-bucket", "1", env=env)
+
+    out = pick_host("box")
+    check("pick --host exits 0", 0, out.returncode)
+    result = json.loads(out.stdout or "{}")
+    mirrored = cache / "claude-dev-tools" / "session-mirrors" / "box" / "projects"
+    check("pick --host mirrors the host's projects, subagents included", True, (mirrored / "new-name" / "moved" / "subagents" / "agent-1.jsonl").is_file())
+    mirrored_link = mirrored / "new-name" / "other" / "subagents" / "agent-1.jsonl"
+    check("the mirror holds the file an absolute link of the host points to, not the link", (True, False),
+          (mirrored_link.is_file(), mirrored_link.is_symlink()))
+    run_dir = Path(result.get("run_dir", tmp))
+    check("the run is named for the host", (True, "box"),
+          ("-box-v9.9.9" in run_dir.name, json.loads((run_dir / "run.json").read_text()).get("host") if (run_dir / "run.json").is_file() else None))
+    check("a session in two project folders is one candidate", 2, result.get("candidates"))
+    moved = next((s for s in result.get("sessions", []) if s["session_id"] == "moved"), {})
+    check("the pick reads the copy that ended last, and copies it", (str(mirrored / "new-name" / "moved.jsonl"), True),
+          (moved.get("session"), (run_dir / "transcripts" / "moved" / "subagents" / "agent-1.jsonl").is_file()))
+    check("the pick warns about the second copy", True, "session moved is in" in out.stderr)
+
+    (remote / "old-name" / "moved.jsonl").unlink()
+    time.sleep(1.1)
+    pick_host("box")
+    check("the mirror drops a file that the host deleted", False, (mirrored / "old-name" / "moved.jsonl").exists())
+
+    unreachable = pick_host("unreachable")
+    check("an rsync that fails stops the pick, with its message and no run", (1, True, 2),
+          (unreachable.returncode, "No route to host" in unreachable.stderr, len(list(store.glob("runs/*")))))
+    bad = pick_host("../x")
+    check("a host that is no plain name is refused", (1, True), (bad.returncode, "no ssh host name" in bad.stderr))
+    empty = pick_host("")
+    check("an empty host is refused, not read as this machine", (1, True), (empty.returncode, "no ssh host name" in empty.stderr))
+
+    # rsync exits 24 where a file vanished on the host during the transfer.
+    vanishing_bin = Path(tmp, "vanishing-bin")
+    vanishing_bin.mkdir()
+    Path(vanishing_bin, "rsync").write_text("#!/bin/sh\necho 'file has vanished: \"/x\"' >&2\nexit 24\n")
+    Path(vanishing_bin, "rsync").chmod(0o755)
+    time.sleep(1.1)
+    vanished = run("pick", "--review-dir", str(store), "--plugins-dir", str(plugins), "--host", "box", "--per-bucket", "1",
+                   env={**env, "PATH": f"{vanishing_bin}:{env['PATH']}"})
+    check("a file that vanished on the host during the transfer does not stop the pick", 0, vanished.returncode)
+    both = run("pick", "--review-dir", str(store), "--projects-dir", str(remote), "--host", "box", env=env)
+    check("--host and --projects-dir exclude each other", 2, both.returncode)
 
 print(f"\nResults: {passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)
