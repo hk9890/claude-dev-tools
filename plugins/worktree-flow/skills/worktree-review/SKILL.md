@@ -52,6 +52,6 @@ Done when, in `gh pr view <pr-number> --json headRefOid,body`, the commit after 
 
 ## 5. Report
 
-Report the PR URL, each review with its outcome, the open questions and the fixes not applied of the rules review with its `/tasks:tasks-create` suggestion, its suggested rule additions with their documents, and each gate with its result. Where `worktree-ship` invoked this run, keep these items for its step 8 in place of this report.
+Report the PR URL, each review with its outcome, the open questions and the fixes not applied of the rules review with its `/tasks:tasks-create` suggestion, its suggested rule additions with their documents, and each gate with its result. Where `worktree-ship` invoked this run, keep these items for its report in place of this one.
 
 Done when the report, or the items kept for `worktree-ship`, hold each item, or say that it does not apply.
