@@ -46,7 +46,7 @@ or reshape the mandatory sections.
 
 ```
 ## Verdict
-<one label from the skill's defined label set>
+<one label from the caller's defined label set>
 
 ## Findings
 For each finding, in this order:
