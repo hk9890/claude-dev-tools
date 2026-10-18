@@ -5,7 +5,8 @@ MIT license:
 
 - [mattpocock/skills](https://github.com/mattpocock/skills) — adapted from the `pr` skill at
   commit [`d81f3a1`](https://github.com/mattpocock/skills/commit/d81f3a1): the Summary, Evidence
-  and Merge Danger template and the one-way door definition trace there. The gate and driven
+  and Merge Danger template, the line on brief prose in the project's terms, and the one-way door
+  definition trace there. The gate and driven
   lines in Evidence, the line about the review line, and the blast radius scale are locally
   authored
 - [humanlayer/skills](https://github.com/humanlayer/skills) — the Summary's list of visuals

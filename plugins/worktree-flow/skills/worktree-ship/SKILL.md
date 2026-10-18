@@ -16,7 +16,7 @@ Record from the project's workflow docs (AGENTS.md or CLAUDE.md routing, a chang
 
 ## 2. Enter a worktree
 
-Where `git rev-parse --git-dir` and `git rev-parse --git-common-dir` print different paths, the session is in a worktree: stay. Look its PR up with `gh pr view <upstream-branch>`, the upstream without the remote name: `gh` finds a PR by the local branch name, and the push can use another one. Where the PR is `MERGED` or `CLOSED`, stop: a new change needs a new worktree.
+Where `git rev-parse --git-dir` and `git rev-parse --git-common-dir` print different paths, the session is in a worktree: stay. Look its PR up with `gh pr view <upstream-branch>`, the upstream without the remote name: `gh` finds a PR by the local branch name, and the push can use another one. With no upstream there is no PR yet. Where the PR is `MERGED` or `CLOSED`, stop: a new change needs a new worktree.
 
 From the main checkout, choose a kebab-case `<worktree-name>`. Where the **dirty check** `git status --porcelain -- ':/' ':(top,exclude).claude/worktrees'` prints a line, or `git rev-list @{upstream}..HEAD` does where the branch has an upstream, or a `worktree-ship-stray/*` branch exists, read [the stray-work move](references/stray-work.md) and do its **Ask first** and **Move out**: work that belongs to the change leaves the main checkout before `EnterWorktree`. Call `EnterWorktree` with the name before you start any subagent: a subagent that runs while the session enters a worktree loses its Bash.
 

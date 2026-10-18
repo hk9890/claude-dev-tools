@@ -6,7 +6,7 @@
 
 Stop and ask the user, with nothing moved yet, where:
 
-- **The run has an argument.** Show the dirty check and `git log --oneline @{upstream}..HEAD`, and ask whether that work belongs to the change. Where it does not, leave it, go on with step 2, and name it in the report.
+- **The run has an argument.** Show the dirty check and, where the branch has an upstream, `git log --oneline @{upstream}..HEAD`, and ask whether that work belongs to the change. Where it does not, leave it, go on with step 2, and name it in the report.
 - **The main checkout is on a branch other than `<base-branch>`** and not on a `worktree-ship-stray/*` one. Ask which change to ship, and leave the work on that branch.
 - **A `worktree-ship-stray/*` branch exists.** Show it with `git log --oneline <branch> --not --remotes`, and ask whether this run continues that move. Where it does not, stop: the branch can hold the only copy of the work. Where `<base-branch>` also holds uncommitted files, ask what happens to them first. A continued move takes the worktree's name from the branch, and **Move out** goes on at item 2 on that branch, at item 4 on `<base-branch>`.
 
