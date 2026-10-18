@@ -85,6 +85,6 @@ Done when the PR's head commit starts with the commit after `through` in the **R
 
 ## 8. Report and stop
 
-Report the PR URL, the worktree path, each gate and each drive with its result, each review with its outcome, the open questions of the rules review and the fixes it did not apply, with its suggestion to file them with `/tasks:tasks-create` where it gave one, the suggested rule additions of the rules review, each with its document and rule, every step this run skipped, each issue not marked as in progress with the reason, the stray work left on the main checkout, and, for a reviewed PR, the next step: the user starts `/worktree-flow:worktree-merge`, which merges the PR and removes the worktree. Stay in the worktree.
+Report the PR URL, the worktree path, each gate and each drive with its result, each item `worktree-flow:worktree-review` carried to this report, or, where step 7 did not run it, the **Review** line of the body, every step this run skipped, each issue not marked as in progress with the reason, the stray work left on the main checkout, and, for a reviewed PR, the next step: the user starts `/worktree-flow:worktree-merge`, which merges the PR and removes the worktree. Stay in the worktree.
 
 Done when the report holds each of these items, or says that it does not apply.
