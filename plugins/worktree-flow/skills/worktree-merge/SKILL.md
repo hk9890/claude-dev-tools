@@ -14,6 +14,8 @@ The run merges the PR as it is: it edits no file of the PR and pushes no commit.
 
 ## 1. Check
 
+Before the checks below, read the project's **workflow**: the doc that the AGENTS.md or CLAUDE.md routing names for a merge or a git write, else a change-workflow or contributing doc, and `CLAUDE.local.md`. It decides two things this skill leaves open: how a branch that is `BEHIND` comes up to date, and the merge method of step 2. Every other rule of this skill stays.
+
 `gh auth status` must succeed; where it fails, stop and tell the user to install `gh` or run `gh auth login`.
 
 `gh pr view <pr> --json number,state,headRefName,headRefOid,baseRefName,mergeStateStatus`. Stop and report at the first failure:
@@ -21,18 +23,20 @@ The run merges the PR as it is: it edits no file of the PR and pushes no commit.
 - **Worktree** — `git status --porcelain` in the PR's worktree prints nothing, and `git rev-parse HEAD` equals `headRefOid`. Anything else is work the removal would destroy.
 - **State** — `OPEN` or `MERGED`; `CLOSED` stops the run.
 - **Target** — `baseRefName` equals the default branch of the remote, which `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name` prints. A PR into another branch stops the run: its merge leaves the commits off the default branch.
-- **Base**, for an `OPEN` PR — a `mergeStateStatus` of `DIRTY` is a conflict with the base branch: stop and report it. `UNKNOWN` means GitHub has not computed it yet: read it again; where it is still `UNKNOWN` a minute later, stop and report. `BEHIND` means the head lacks commits of the base branch, and the merge would fail: run `gh pr update-branch <pr>`, then `git pull --ff-only` in the PR's worktree, and read `headRefOid` again; it is another commit than before, and `git rev-parse HEAD` equals it.
+- **Base**, for an `OPEN` PR — a `mergeStateStatus` of `DIRTY` is a conflict with the base branch: stop and report it. `UNKNOWN` means GitHub has not computed it yet: read it again; where it is still `UNKNOWN` a minute later, stop and report. `BEHIND` means the head lacks commits of the base branch, and the merge would fail. Where the workflow brings a branch up to date another way, a rebase and a force push for example, stop and report `BEHIND` with that way: this run pushes no commit. Else run `gh pr update-branch <pr>`, then `git pull --ff-only` in the PR's worktree, and read `headRefOid` again; it is another commit than before, and `git rev-parse HEAD` equals it.
 - **CI**, for an `OPEN` PR — `gh pr checks <pr> --watch`; any failed check stops the run. `no checks reported` can mean the checks are not registered yet: run it again for up to a minute. Where it still prints that, the project has no checks: go on. Then apply **Base** to a new read of `mergeStateStatus`, because the first value is from before the checks and the base branch can move while they run; an update there needs **CI** again. `BLOCKED` at this point is a rule of the base branch that the PR does not meet, a missing approval for example: stop and report it.
+
+Done when the workflow is read, or noted as not documented, and each check holds.
 
 ## 2. Merge
 
-For an `OPEN` PR: `gh pr merge <pr>` with the project's documented method. Where the project documents none, take the first of these that gives an answer:
+For an `OPEN` PR: `gh pr merge <pr>` with the method that the workflow of step 1 documents. Where it documents none, take the first of these that gives an answer:
 
 1. **The one method the repository allows** — `gh api repos/{owner}/{repo} --jq '{allow_merge_commit, allow_squash_merge, allow_rebase_merge}'` prints `true` for one method alone.
 2. **The method of the last merged PRs** — `git fetch`, then `gh pr list --state merged --base <baseRefName> --limit 5 --json number,mergeCommit`, and `git show -s --format='%p | %s' <oid>` for each `mergeCommit`. Two parents is `--merge`; one parent with a subject that ends in `(#<number>)` is `--squash`; one parent otherwise is `--rebase`. The answer counts where all the PRs agree and the repository allows the method.
 3. **`--merge`**, where the repository allows it; else ask the user which of the allowed methods to take.
 
-Leave out `--delete-branch`: it also switches branches locally, which fails while another worktree holds the base branch. Where GitHub refuses the merge, a conflict with the base branch for example, stop and report its message. Done when `gh pr view <pr> --json state` prints `MERGED`.
+Leave out `--delete-branch`, also where the workflow's method names it: it also switches branches locally, which fails while another worktree holds the base branch, and step 4 deletes the branches. Where GitHub refuses the merge, a conflict with the base branch for example, stop and report its message. Done when `gh pr view <pr> --json state` prints `MERGED`.
 
 ## 3. Remove the worktree
 
@@ -50,7 +54,7 @@ Where it answers that this session is not the owner (the worktree came from anot
 
 Record `git rev-parse HEAD` in the main checkout, then `git fetch --prune` and `git pull --ff-only` on the default branch. Delete the PR's local branch where it still exists (`git branch -d`; `-D` after a squash or rebase merge). Where `git ls-remote --heads origin <head branch>` still finds the remote branch, delete it with `git push origin --delete <head branch>`.
 
-The PR's dependencies were installed in the removed worktree only. The changed files are the PR's own, which an earlier pull can hold already (`gh api --paginate repos/{owner}/{repo}/pulls/<number>/files --jq '.[].filename'` with the `number` of step 1; `gh pr diff` refuses over 300 files), plus `git diff --name-only <recorded head> HEAD`. Where they hold a **dependency input**, a dependency manifest, lockfile or tool-version pin, find the project's setup (AGENTS.md or CLAUDE.md routing, a contributing or change-workflow doc, `CLAUDE.local.md`). Run nothing where the setup has no separate install part, or HEAD lacks the merge (a failed pull, another branch): `git merge-base --is-ancestor <oid> HEAD` fails, `<oid>` from `gh pr view <number> --json mergeCommit --jq .mergeCommit.oid`. Else run the install part alone in the main checkout, between two `git status --porcelain`: config, services or migrations are wrong to repeat there.
+The PR's dependencies were installed in the removed worktree only. The changed files are the PR's own, which an earlier pull can hold already (`gh api --paginate repos/{owner}/{repo}/pulls/<number>/files --jq '.[].filename'` with the `number` of step 1; `gh pr diff` refuses over 300 files), plus `git diff --name-only <recorded head> HEAD`. Where they hold a **dependency input**, a dependency manifest, lockfile or tool-version pin, find the project's setup in the workflow of step 1. Run nothing where the setup has no separate install part, or HEAD lacks the merge (a failed pull, another branch): `git merge-base --is-ancestor <oid> HEAD` fails, `<oid>` from `gh pr view <number> --json mergeCommit --jq .mergeCommit.oid`. Else run the install part alone in the main checkout, between two `git status --porcelain`: config, services or migrations are wrong to repeat there.
 
 Done when the merged branches are deleted and one of these holds: the install ran, with its result and changed files kept for the report; no dependency input changed; nothing ran and the changed inputs are kept for the report.
 
