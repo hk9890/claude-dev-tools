@@ -249,8 +249,9 @@ const REPORT_SCHEMA = {
 
 // ---------------------------------------------------------------------------
 // Shared persona — the adversarial attitude every dimension agent carries
-// (distilled from the project-reviewer agent; that agent's markdown output
-// skeleton is replaced here by the structured schemas).
+// (the project-reviewer agent's posture, plus the local-rule and evidence-bar rules that
+// agent gets from its caller; its markdown output skeleton is replaced here by the
+// structured schemas).
 // ---------------------------------------------------------------------------
 
 const PERSONA =
