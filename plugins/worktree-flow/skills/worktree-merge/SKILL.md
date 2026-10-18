@@ -14,7 +14,7 @@ The run merges the PR as it is: it edits no file of the PR and pushes no commit.
 
 ## 1. Check
 
-Before the checks below, read the project's **workflow**: the doc that the AGENTS.md or CLAUDE.md routing names for a merge or a git write, else a change-workflow or contributing doc, and `CLAUDE.local.md`. It decides two things this skill leaves open: how a branch that is `BEHIND` comes up to date, and the merge method of step 2. Every other rule of this skill stays.
+Before the checks below, read the project's **workflow**: `CLAUDE.local.md`, and the doc that the AGENTS.md or CLAUDE.md routing names for a merge or a git write, else a change-workflow or contributing doc. It decides two things this skill leaves open: how a branch that is `BEHIND` comes up to date, and the merge method of step 2. Every other rule of this skill stays.
 
 `gh auth status` must succeed; where it fails, stop and tell the user to install `gh` or run `gh auth login`.
 
@@ -54,7 +54,7 @@ Where it answers that this session is not the owner (the worktree came from anot
 
 Record `git rev-parse HEAD` in the main checkout, then `git fetch --prune` and `git pull --ff-only` on the default branch. Delete the PR's local branch where it still exists (`git branch -d`; `-D` after a squash or rebase merge). Where `git ls-remote --heads origin <head branch>` still finds the remote branch, delete it with `git push origin --delete <head branch>`.
 
-The PR's dependencies were installed in the removed worktree only. The changed files are the PR's own, which an earlier pull can hold already (`gh api --paginate repos/{owner}/{repo}/pulls/<number>/files --jq '.[].filename'` with the `number` of step 1; `gh pr diff` refuses over 300 files), plus `git diff --name-only <recorded head> HEAD`. Where they hold a **dependency input**, a dependency manifest, lockfile or tool-version pin, find the project's setup in the workflow of step 1. Run nothing where the setup has no separate install part, or HEAD lacks the merge (a failed pull, another branch): `git merge-base --is-ancestor <oid> HEAD` fails, `<oid>` from `gh pr view <number> --json mergeCommit --jq .mergeCommit.oid`. Else run the install part alone in the main checkout, between two `git status --porcelain`: config, services or migrations are wrong to repeat there.
+The PR's dependencies were installed in the removed worktree only. The changed files are the PR's own, which an earlier pull can hold already (`gh api --paginate repos/{owner}/{repo}/pulls/<number>/files --jq '.[].filename'` with the `number` of step 1; `gh pr diff` refuses over 300 files), plus `git diff --name-only <recorded head> HEAD`. Where they hold a **dependency input**, a dependency manifest, lockfile or tool-version pin, find the project's setup in the main checkout after the pull (AGENTS.md or CLAUDE.md routing, a contributing or change-workflow doc, `CLAUDE.local.md`): the merge can change it. Run nothing where the setup has no separate install part, or HEAD lacks the merge (a failed pull, another branch): `git merge-base --is-ancestor <oid> HEAD` fails, `<oid>` from `gh pr view <number> --json mergeCommit --jq .mergeCommit.oid`. Else run the install part alone in the main checkout, between two `git status --porcelain`: config, services or migrations are wrong to repeat there.
 
 Done when the merged branches are deleted and one of these holds: the install ran, with its result and changed files kept for the report; no dependency input changed; nothing ran and the changed inputs are kept for the report.
 
