@@ -38,10 +38,27 @@ function commandLines(command: string) {
   return run
 }
 
+const ASSIGNMENT = /(?:^|[\s;&|(])([A-Za-z_]\w*)=("[^"]*"|'[^']*'|[^\s;&|]*)/g
+const VARIABLE = /\$(?:\{([A-Za-z_]\w*)\}|([A-Za-z_]\w*))/g
+
+// `W=/tmp/x && git worktree add $W` names its target through a variable: the add takes the value
+// of the last assignment before it on its line. A variable with no such assignment stays as written.
+function expandVariables(add: string, before: string) {
+  const values = new Map<string, string>()
+
+  for (const [, name = '', value = ''] of before.matchAll(ASSIGNMENT)) {
+    values.set(name, value.replace(/^(["'])(.*)\1$/, '$2'))
+  }
+
+  return add.replace(VARIABLE, (reference, braced, bare) => values.get(braced ?? bare) ?? reference)
+}
+
 // A throwaway probe is judged by the arguments of the add itself, not by the rest of the command,
 // so each line is matched alone and every add on it must name a throwaway target.
 function addsPersistentWorktree(command: string) {
-  const adds = commandLines(command).flatMap(line => line.match(WORKTREE_ADD) ?? [])
+  const adds = commandLines(command).flatMap(line =>
+    [...line.matchAll(WORKTREE_ADD)].map(match => expandVariables(match[0], line.slice(0, match.index))),
+  )
 
   return adds.some(add => !THROWAWAY_TARGET.test(add))
 }

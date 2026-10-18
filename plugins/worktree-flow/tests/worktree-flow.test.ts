@@ -43,6 +43,10 @@ const DENIED = [
   "cat <<'EOF'\nsome text\nEOF\ngit worktree add ../x",
   'echo $((1 << n))\ngit worktree add ../x',
   'cat <<< EOF\ngit worktree add ../x\nEOF',
+  'W=../x && git worktree add $W',
+  'W=/tmp/probe; W=../x; git worktree add --detach $W HEAD',
+  'W=/tmp/probe\ngit worktree add --detach $W HEAD',
+  'git worktree add --detach $W HEAD; W=/tmp/probe',
 ]
 
 const ALLOWED = [
@@ -51,6 +55,9 @@ const ALLOWED = [
   'git worktree prune',
   'git worktree add --detach /tmp/probe HEAD',
   'git worktree add --detach "$(mktemp -d)" HEAD',
+  'W=/home/me/scratchpad/release && git fetch -q origin && git worktree add -q --detach $W origin/main',
+  'W="/tmp/probe dir" && git worktree add --detach "${W}" HEAD',
+  'git worktree add --detach $TMPDIR/probe HEAD',
   'echo git; worktree add',
   'grep -n "worktree add" docs/CHANGE-WORKFLOW.md',
   'ls .git/worktrees',
