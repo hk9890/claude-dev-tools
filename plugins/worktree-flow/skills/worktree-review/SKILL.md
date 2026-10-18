@@ -7,66 +7,51 @@ argument-hint: "[pr-number]"
 
 **Review this PR and push what the reviews fix:** $ARGUMENTS
 
-With no argument, review the PR that this branch was pushed to. The run ends at a reviewed PR: the merge belongs to `/worktree-flow:worktree-merge`, which the user starts. A gate or a drive result stands only for the tree it ran on.
+**The project's rules come first.** Before step 1, read the docs that the project's AGENTS.md or CLAUDE.md routes for a change, a test run and a review, else its change-workflow, contributing, testing or reviewing doc. Read them on each run, also where this session read them before. Where they and this skill differ, they win.
+
+With no argument, the PR is the one of the current branch's upstream, without the remote name (`git rev-parse --abbrev-ref @{upstream}`): `gh` finds a PR by the local branch name, and a push can use another one. With no upstream, or the default branch as upstream, ask for the PR number. The run ends at a reviewed PR: the user starts `/worktree-flow:worktree-merge`.
 
 ## 1. Check the PR
 
-`gh auth status` must succeed; where it fails, stop and tell the user to install `gh` or run `gh auth login`.
+Stop and report at the first failure:
 
-`gh pr view <pr> --json number,url,state,isCrossRepository,headRefName,headRefOid,body`; the `number` it prints is `<pr-number>`. With no argument, `<pr>` is the pushed branch: the upstream of the current branch without the remote name (`git rev-parse --abbrev-ref @{upstream}`), because `gh` finds a PR by the local branch name and a push can go under another one. Stop and report at the first failure:
+- `gh auth status` succeeds.
+- The PR is `OPEN`, and `isCrossRepository` is `false`: the fixes go to its head branch.
+- `git rev-parse HEAD` equals its `headRefOid`, and `git status --porcelain` prints nothing: both reviews edit this tree. Where the head differs, name the way in: a worktree that holds the PR's branch (`gh pr checkout <pr-number>`).
 
-- **PR** — the lookup finds one. With no upstream, or with the default branch of the remote as upstream, nothing was pushed: ask for the PR number.
-- **State** — `OPEN`.
-- **Repository** — `isCrossRepository` is `false`: the fixes go to the PR's head branch, and this run pushes to no fork.
-- **Head** — `git rev-parse HEAD` equals `headRefOid`: both reviews edit the tree, and a checkout that differs from the PR gives a review of something else. Where they differ, name the way in: a worktree that holds the PR's branch, in step with the remote (`gh pr checkout <pr-number>` in it).
-- **Tree** — `git status --porcelain` prints nothing: other edits would mix with the fixes.
+**Reviewed already** — where `headRefOid` starts with the commit after `through` in the **Review** line of the body, go to step 5. One case runs again: where that line records the rules review as skipped and `project-review:project-review-change` is in your available skills, go on with step 2, then run the **Rules** review of step 3, and the **Code** review only where the rules review applied a fix.
 
-**Reviewed already** — `headRefOid` starts with the commit after `through` in the **Review** line of the body. Go to step 5: the report is the whole run. One case runs again: where that line records the rules review as skipped and `project-review:project-review-change` is in your available skills, go on with step 2 and run the **Rules** review of step 3, and the **Code** review only where the rules review applied a fix.
+Done when the checks hold and the run is known: the full review, the rules review alone, or the report alone.
 
-Done when the five checks hold, and the run is one of three: the full review, the rules review alone, or the report alone.
+## 2. Gates
 
-## 2. Read how the project proves a change
+Run each gate that the project needs green for a PR, after its setup where this checkout lacks it, unless this session has a result of it for this head. A gate is **clear** when it is green, when it cannot run here and is reported as skipped, or when it is red on the base branch too and the user said in this session to go on.
 
-Read the project's own workflow (AGENTS.md or CLAUDE.md routing, a change-workflow or contributing doc, `CLAUDE.local.md`) and record the **gates** a PR needs green, the setup a fresh checkout needs, and the commit style. Where this session recorded them already, as inside `/worktree-flow:worktree-ship`, use that record. Run the setup where it has not run in this checkout.
-
-Read the doc that the AGENTS.md or CLAUDE.md routing names for reviewing a change, a `REVIEWING.md` for example, also where this session read it before. Where it and this skill differ, the doc wins.
-
-Run each gate that this session has no result of for the PR's head. A gate is **clear** when it is green, when it cannot run here and is reported as skipped, or when it is red on the base branch too and the user said in this session to go on. Where a gate is not clear, stop and report it: a review reads a change that works.
-
-Done when the three items are recorded or noted as not documented, the review doc is read or noted as not routed, and each gate is clear on the PR's head.
+Done when each gate is clear; else stop and report it.
 
 ## 3. Review and fix
 
-Two reviews run on the PR, the rules review first:
+- **Rules.** Where `project-review:project-review-change` is in your available skills, call the Skill tool with `project-review:project-review-change` and the argument `--fix <pr-number>`, even where it loaded earlier in this session, and follow it to its last step. Its reviewer agent starts from that skill only; where it runs in the background, wait for its notification and go on from the step that started it. Its relay puts the open items to the user as questions: go on without an answer, and keep the open questions, the fixes it did not apply, its `/tasks:tasks-create` suggestion and its suggested rule additions for steps 4 and 5. Where the skill is not in your available skills, report the rules review as skipped, never as passed, with the reason: the `project-review` plugin is not installed, or its skill at that version is for the user alone.
+- **Code.** After the push of the rules fix, because the code review reads the PR's pushed head, call the Skill tool with `code-review` and the argument `<effort> --fix <pr-number>`, even where it loaded earlier in this session, and wait for its notification. Take `<effort>` from the PR's paths after the rules fix: `medium` where the PR changes only text for people to read, such as release notes; else `xhigh`, also for instructions an agent reads and for text a program decides on, such as a version bump.
 
-- **Rules.** Where `project-review:project-review-change` is in your available skills, call the Skill tool with `project-review:project-review-change` and the argument `--fix <pr-number>`, even where it loaded earlier in this session, and follow it to its last step, then come back to this skill. It starts the reviewer agent `project-review:project-reviewer` with its own prompt; never start that agent outside it. Where the reviewer runs in the background, wait for its completion notification, then continue `project-review-change` from the "Done when" line of the step that started the reviewer. Its relay lists its open items as questions with their options and recommendation: that relay puts them to the user, and the run goes on without an answer. Keep these open questions unanswered and unapplied for the **Review** line and the report, with the fixes it did not apply, its suggestion to file them with `/tasks:tasks-create` where it gave one, and its suggested rule additions. In a project with no written rules it says so and reviews nothing: report that as its result. Where the skill is not in your available skills, report the rules review as skipped, never as passed, and give the reason, as far as you can tell which: the `project-review` plugin is not installed, or is installed at a version whose skill only the user can start.
-- **Code.** After the rules review and the push of its fix, list the PR's paths with `gh pr diff <pr-number> --name-only`: that fix can add a path. Choose `<effort>` from what the PR changes, and read the full diff with `gh pr diff <pr-number>` only where the paths do not tell. Where it changes only text for people to read, such as a changelog entry or release notes, choose `medium` or lower, also where a tool publishes that text as it stands. Where it changes code, configuration, tests, instructions that an agent reads, or text from which a program takes a decision, such as a version bump, choose `xhigh`. Where you cannot tell, or a command fails, choose `xhigh`. Call the Skill tool with `code-review` and the argument `<effort> --fix <pr-number>`, even where it loaded earlier in this session. The review runs in the background: wait for its completion notification, then read which findings it applied.
+After each review that applied a fix, before the next review: run each gate again, repeat each drive (a run of the built product by hand) that this session ran or that the **Driven** lines of the body name, and fix what broke. Then commit in the project's style and `git push <remote> HEAD:<headRefName>`, where `<remote>` is the upstream's remote, else the one that holds the PR's repository. Where the remote rejects the push, the head moved during the review: stop, report it, and keep the commit local.
 
-After each review that applied a fix, do these three in order before you go on, so that the code review reads the head the rules review fixed:
-
-1. Run every gate. Fix what the fix broke and rerun until all are clear.
-2. Repeat each drive of the change: a drive is a run of the built product by hand that shows the change working, and the ones to repeat are those this session ran and those the **Driven** lines of the PR body name. Fix what a drive shows broken, then return to item 1.
-3. Commit in the project's style, and push the commit to the PR's head branch: `git push <remote> HEAD:<headRefName>`, with the remote of the branch's upstream, or the one that holds the PR's repository where the branch has none. Where the remote rejects the push, the PR's head moved during the review: stop and report it, and leave the commit local.
-
-Done when the rules review has finished or was skipped, the code review has finished or stands under step 1, the three items are done after each fix, `git status --porcelain` prints nothing, and `gh pr view <pr-number> --json headRefOid` prints the commit of `git rev-parse HEAD`.
+Done when the rules review finished or is reported as skipped, the code review finished or does not run under step 1, `git status --porcelain` prints nothing, and `gh pr view <pr-number> --json headRefOid` prints `git rev-parse HEAD`.
 
 ## 4. Record the review
 
-Read the body again with `gh pr view <pr-number> --json body`, and edit it with `gh pr edit <pr-number> --body-file`, from a file outside the checkout:
-
-- Put the **Review** line in the list under `## Evidence` where the body has that heading, else as the last line. It takes the place of an older **Review** line; where the code review did not run again, its part of the older line stays.
-- Bring each **Gate** and **Driven** line whose command this run ran again up to date.
+Read the body again with `gh pr view <pr-number> --json body`, then edit it with `gh pr edit <pr-number> --body-file`, from a file outside the checkout. Put the **Review** line in the list under `## Evidence`, else as the last line, in place of an older one; where the code review did not run again, keep its part of the older line. Bring each **Gate** and **Driven** line that this run ran again up to date.
 
 ```markdown
 - **Review:** `project-review-change --fix`: <fixes applied, fixes not applied and open questions, or no written rules, or skipped and why>; suggested rule additions: <each as `<document>`: <the rule in one sentence>, or none>; `code-review <effort> --fix`: <findings applied, and findings not applied>, through `<head commit>`
 ```
 
-`<head commit>` is the full commit that `git rev-parse HEAD` prints after the last push: a later run reads it to tell whether the head was reviewed. Keep `;` and the word `through` out of the text that replaces each placeholder: `;` separates the parts of the line, and the only `through` is the one before `<head commit>`.
+`<head commit>` is the full `git rev-parse HEAD` after the last push: a later run reads it to tell whether the head was reviewed. Keep `;` and the word `through` out of each placeholder's text: they split the line.
 
-Done when `gh pr view <pr-number> --json headRefOid,body` prints a body in which the commit after `through` in the **Review** line is `headRefOid`.
+Done when, in `gh pr view <pr-number> --json headRefOid,body`, the commit after `through` in the **Review** line is `headRefOid`.
 
 ## 5. Report
 
-Report the PR URL, each review with its outcome, the open questions of the rules review and the fixes it did not apply, with its suggestion to file them with `/tasks:tasks-create` where it gave one, the suggested rule additions of the rules review, each with its document and rule, and each gate with its result. Where `worktree-ship` invoked this run, carry these items to its report in place of a report of this skill.
+Report the PR URL, each review with its outcome, the open questions and the fixes not applied of the rules review with its `/tasks:tasks-create` suggestion, its suggested rule additions with their documents, and each gate with its result. Where `worktree-ship` invoked this run, keep these items for its step 8 in place of this report.
 
-Done when the report holds each of these items, or says that it does not apply. Where `worktree-ship` invoked this run, done when each item is kept for its step 8.
+Done when the report, or the items kept for `worktree-ship`, hold each item, or say that it does not apply.
