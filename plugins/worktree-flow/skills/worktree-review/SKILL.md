@@ -7,7 +7,7 @@ argument-hint: "[pr-number]"
 
 **Review this PR and push what the reviews fix:** $ARGUMENTS
 
-**The project's rules come first.** Before step 1, read the docs that the project's AGENTS.md or CLAUDE.md routes for a change, a test run and a review, else its change-workflow, contributing, testing or reviewing doc. Read them on each run, also where this session read them before. Where they and this skill differ, they win.
+**The project's own review rules win over this skill.**
 
 With no argument, the PR is the one of the current branch's upstream, without the remote name (`git rev-parse --abbrev-ref @{upstream}`): `gh` finds a PR by the local branch name, and a push can use another one. With no upstream, or the default branch as upstream, ask for the PR number. The run ends at a reviewed PR: the user starts `/worktree-flow:worktree-merge`.
 

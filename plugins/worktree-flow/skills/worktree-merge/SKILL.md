@@ -8,7 +8,7 @@ argument-hint: "[pr-number]"
 
 **Merge the PR and clean up after it:** $ARGUMENTS
 
-**The project's rules come first.** Before any other command, read the doc that the project's AGENTS.md or CLAUDE.md routes for a merge or a git write, else its change-workflow or contributing doc. Where it and this skill differ, it wins, with three limits: this run edits no file of the PR, moves its head only by the `gh pr update-branch` of step 1, and leaves out `--delete-branch`, which switches branches locally and fails while another worktree holds the base branch. Where its way needs an edit or a push, stop and report that way.
+**The project's own rules for a merge win over this skill.**
 
 With no argument, the PR is the one of the current branch's upstream, without the remote name: `git for-each-ref --format='%(upstream:short)' refs/heads/<branch>`, which still answers after the remote branch is deleted. `gh` finds a PR by the local branch name, and a push can use another one. With no upstream, or the default branch as upstream, ask for the PR number.
 
@@ -26,7 +26,7 @@ Done when each check holds.
 
 ## 2. Merge
 
-For an `OPEN` PR: `gh pr merge <pr>` with the project's method. Where it names none, take the one method the repository allows, else the method of its last merged PRs where they agree (two parents: `--merge`; one parent with a subject that ends in `(#<number>)`: `--squash`; else `--rebase`), else `--merge` where the repository allows it, else ask.
+For an `OPEN` PR: `gh pr merge <pr>` with the project's method. Where it names none, take the one method the repository allows, else the method of its last merged PRs where they agree (two parents: `--merge`; one parent with a subject that ends in `(#<number>)`: `--squash`; else `--rebase`), else `--merge` where the repository allows it, else ask. Leave out `--delete-branch`: it switches branches locally, which fails while another worktree holds the base branch.
 
 Done when `gh pr view <pr> --json state` prints `MERGED`.
 
