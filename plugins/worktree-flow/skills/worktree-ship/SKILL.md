@@ -26,7 +26,7 @@ Done when the session is in a worktree, the setup has run there, and that `git b
 
 ## 3. Implement
 
-Where the change implements tracker issues, mark each one in progress before the first edit; for taskmgr, call the Skill tool with `tasks:tasks-core`, even where it loaded earlier in this session. Make the change and its tests.
+Where the change implements tracker issues, mark each one in progress before the first edit; for taskmgr, where `tasks:tasks-core` is in your available skills, call the Skill tool with it, even where it loaded earlier in this session; else report the issue as not marked. Make the change and its tests.
 
 ## 4. Prove it
 
