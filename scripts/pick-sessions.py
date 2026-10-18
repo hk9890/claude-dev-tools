@@ -20,6 +20,7 @@ import argparse
 import bisect
 import json
 import os
+import posixpath
 import random
 import re
 import shlex
@@ -73,7 +74,7 @@ RSYNC_VANISHED = 24
 LISTING_ENTRY_RE = re.compile(r"^- ([^\s:]+(?::[^\s:]+)?): ", re.M)
 EDIT_TOOLS = ("Edit", "Write", "NotebookEdit")
 # The ways a text of this repository reaches a context, each read from a record of its own kind.
-CHANNELS = ("listing", "skill-body", "skill-reinjected", "instructions", "read")
+CHANNELS = ("listing", "skill-body", "skill-reinjected", "instructions", "read", "attached")
 CONTEXT_TOP = 30
 
 
@@ -295,17 +296,24 @@ class Repository:
         agents = root / "AGENTS.md"
         self.agents_title = agents.read_text(encoding="utf-8").partition("\n")[0] if agents.is_file() else None
         # A checkout also holds files git ignores, scratch folders among them: they are no part of it.
-        tracked = subprocess.run(["git", "-C", str(root), "ls-files"], capture_output=True, text=True, check=True).stdout
-        self.top_level = {path.partition("/")[0] for path in tracked.splitlines()}
+        # -z keeps a non-ASCII path unquoted, whatever core.quotePath says.
+        tracked = subprocess.run(["git", "-C", str(root), "ls-files", "-z"], capture_output=True, text=True, check=True).stdout
+        self.top_level = {path.partition("/")[0] for path in tracked.split("\0") if path}
 
     def root_of(self, instruction):
         path, content = instruction.get("path") or "", instruction.get("content") or ""
         if self.agents_title and path.endswith("/AGENTS.md") and content.partition("\n")[0] == self.agents_title:
-            return path.removesuffix("/AGENTS.md")
+            # A session in a worktree reads the checkout that holds it, and its other worktrees, too.
+            return path.removesuffix("/AGENTS.md").partition("/.claude/worktrees/")[0]
         return None
+
+    def tracked(self, parts):
+        return str(PurePosixPath(*parts)) if parts and parts[0] in self.top_level else None
 
     def file(self, path, roots):
         """The repository path of an absolute path, or None for a file of no checkout or install of it."""
+        # A skill reads a file of its plugin root as <base directory>/../../<file>: one file, one name.
+        path = posixpath.normpath(path)
         parts = PurePosixPath(path).parts
         for i in range(len(parts) - 2):
             if parts[i : i + 3] == ("plugins", "cache", self.marketplace):
@@ -313,22 +321,19 @@ class Repository:
                 plugin, rest = parts[i + 3 : i + 4], parts[i + 5 :]
                 return str(PurePosixPath("plugins", plugin[0], *rest)) if plugin and plugin[0] in self.plugins and rest else None
             if parts[i : i + 3] == ("plugins", "marketplaces", self.marketplace):
-                return str(PurePosixPath(*parts[i + 3 :])) if parts[i + 3 :] else None
+                return self.tracked(parts[i + 3 :])
         for root in sorted(roots, key=len, reverse=True):
             if path.startswith(root + "/"):
                 rest = PurePosixPath(path[len(root) + 1 :]).parts
                 # A worktree of the checkout, in the layout Claude Code keeps them in.
                 if rest[:2] == (".claude", "worktrees"):
                     rest = rest[3:]
-                return str(PurePosixPath(*rest)) if rest and rest[0] in self.top_level else None
+                return self.tracked(rest)
         return None
 
     def skill_file(self, text):
         load = skill_load(text, self.plugins)
-        if not load:
-            return None
-        plugin, skill = load[0].split(":")
-        return f"plugins/{plugin}/skills/{skill}/SKILL.md"
+        return self.listed_file(load[0]) if load else None
 
     def listed_file(self, name):
         plugin, _, rest = name.partition(":")
@@ -363,8 +368,8 @@ def context_of(transcript, repo, roots):
     texts = []  # (record index, channel, file, chars)
     reads = []  # (record index, file, offset, limit)
     loads = []  # (record index, skill file)
-    # A Read result comes after its call, in a record of its own: its size is what the file put in context.
-    read_calls = {}
+    # A Read or edit result comes after its call, in a record of its own: a failed one read or changed nothing.
+    file_calls = {}  # tool_use id: (record index, tool, file, offset, limit)
     edits = []  # record index of each edit of a file of this repository
     calls, compactions, seen = [], [], set()
     index = -1
@@ -376,15 +381,13 @@ def context_of(transcript, repo, roots):
                 seen.add(message.get("id"))
                 calls.append(index)
             for block in blocks(record):
-                if block.get("type") != "tool_use":
+                tool = block.get("name")
+                if block.get("type") != "tool_use" or not (tool == "Read" or tool in EDIT_TOOLS):
                     continue
                 arguments = block.get("input") or {}
                 file = repo.file(arguments.get("file_path") or arguments.get("notebook_path") or "", roots)
-                if block.get("name") == "Read" and file:
-                    reads.append((index, file, arguments.get("offset"), arguments.get("limit")))
-                    read_calls[block.get("id")] = file
-                elif block.get("name") in EDIT_TOOLS and file:
-                    edits.append(index)
+                if file:
+                    file_calls[block.get("id")] = (index, tool, file, arguments.get("offset"), arguments.get("limit"))
         elif kind == "system" and record.get("subtype") == "compact_boundary":
             compactions.append(index)
         elif kind == "attachment":
@@ -398,8 +401,9 @@ def context_of(transcript, repo, roots):
                         texts.append((index, "instructions", file, len(instruction.get("content") or "")))
             elif attachment.get("type") == "skill_listing":
                 for name, chars in listing_entries(attachment.get("content") or ""):
-                    if repo.listed_file(name):
-                        texts.append((index, "listing", repo.listed_file(name), chars))
+                    file = repo.listed_file(name)
+                    if file:
+                        texts.append((index, "listing", file, chars))
             elif attachment.get("type") == "agent_listing_delta":
                 for line in attachment.get("addedLines") or []:
                     for name, chars in listing_entries(line):
@@ -411,15 +415,35 @@ def context_of(transcript, repo, roots):
                     file = repo.skill_file(skill.get("content") or "")
                     if file:
                         texts.append((index, "skill-reinjected", file, len(skill.get("content") or "")))
+            # Claude Code attaches a file's text itself: the files it restores after a compaction, an
+            # @-mention, and a snippet of a read file that changed on disk.
+            elif attachment.get("type") == "file":
+                content = attachment.get("content")
+                body = (content.get("file") or {}).get("content") if isinstance(content, dict) else None
+                file = repo.file(attachment.get("filename") or "", roots)
+                if file and isinstance(body, str):
+                    texts.append((index, "attached", file, len(body)))
+            elif attachment.get("type") == "edited_text_file":
+                file = repo.file(attachment.get("filename") or "", roots)
+                if file:
+                    texts.append((index, "attached", file, len(attachment.get("snippet") or "")))
         elif kind == "user":
             for block in blocks(record):
                 if block.get("type") == "text":
-                    file = repo.skill_file(block_text(block))
+                    text = block_text(block)
+                    file = repo.skill_file(text)
                     if file:
-                        texts.append((index, "skill-body", file, len(block_text(block))))
+                        texts.append((index, "skill-body", file, len(text)))
                         loads.append((index, file))
-                elif block.get("type") == "tool_result" and block.get("tool_use_id") in read_calls:
-                    texts.append((index, "read", read_calls.pop(block["tool_use_id"]), len(block_text(block))))
+                elif block.get("type") == "tool_result" and block.get("tool_use_id") in file_calls:
+                    at, tool, file, offset, limit = file_calls.pop(block["tool_use_id"])
+                    if block.get("is_error"):
+                        continue
+                    if tool == "Read":
+                        reads.append((at, file, offset, limit))
+                        texts.append((index, "read", file, len(block_text(block))))
+                    else:
+                        edits.append(at)
     def carried(at):
         """The API calls after record `at` that sent it: up to the next compaction."""
         end = next((c for c in compactions if c > at), index + 1)
@@ -615,12 +639,14 @@ def pick(args):
         ended = json.loads(path.read_text(encoding="utf-8"))["ended"]
         reviewed_until[path.stem] = max(reviewed_until.get(path.stem, ""), ended)
     cutoff = time.time() - args.since_days * 86400
-    recent = [
+    recent = (
         f
         for f in sorted(projects_dir.glob("*/*.jsonl"))
         if f.stat().st_mtime >= cutoff
-    ]
-    summaries = latest_copies([(session, usage) for session, usage in (summarize(f, plugins) for f in recent) if session["skills"]])
+    )
+    # Every session of the window, plugin use or none: the listing reaches each of them.
+    latest = latest_copies([summarize(f, plugins) for f in recent])
+    summaries = [(session, usage) for session, usage in latest if session["skills"]]
     # A session that went on after its review is picked again, and reviewed whole.
     unreviewed = [
         session
@@ -672,13 +698,8 @@ def pick(args):
         session["bucket"] = "random"
         picked.append(session)
 
-    # Every session of the window, plugin use or none: the listing reaches each of them.
-    newest = {}
-    for f in recent:
-        if f.stem not in newest or f.stat().st_mtime > newest[f.stem].stat().st_mtime:
-            newest[f.stem] = f
     context, loaded_by_session = context_report(
-        newest.values(), Repository(plugins_dir), [usage for _, usage in summaries], args.since_days
+        [Path(session["session"]) for session, _ in latest], Repository(plugins_dir), [usage for _, usage in summaries], args.since_days
     )
     for session in picked:
         session["context_files"] = loaded_by_session.get(session["session_id"], [])

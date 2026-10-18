@@ -166,7 +166,7 @@ const changes = pick => pick.changed_files?.length
 // The scripts count what a file cost and which reads followed it; whether the session needed it is a judgment.
 const judgeContext = pick => pick.context_files.length
   ? `
-Then judge each file of this repository that the session loaded: ${pick.context_files.join(', ')}. Open each one. For each, say whether the session needed it for what it did, which sections the agent acted on and how, which sections it carried and did not need, and what the agent had to find out, or got wrong, that the file could have said. A rule the agent obeyed leaves no trace of its own: count it as used where the session came to the action it governs. Give one context judgment per file.`
+Then judge each file of this repository that the session or one of its subagents loaded: ${pick.context_files.join(', ')}. Open each one. A file the main transcript does not show was loaded in a subagent transcript: render that transcript to judge it. For each, say whether the session needed it for what it did, which sections the agent acted on and how, which sections it carried and did not need, and what the agent had to find out, or got wrong, that the file could have said. A rule the agent obeyed leaves no trace of its own: count it as used where the session came to the action it governs. Give one context judgment per file.`
   : '\nThe session loaded no file of this repository: return an empty context list.'
 
 const uses = pick => Object.entries(pick.skill_versions).map(([skill, versions]) => `${skill} at ${versions.join(' and ')}`).join('; ')
@@ -188,7 +188,7 @@ ${judgeContext(pick)}`,
   async (review, pick) => {
     if (review.findings.length === 0 && review.context.length === 0) return { findings: [], context: [] }
     const check = await agent(
-      `Another agent reviewed a Claude Code session and reports the numbered plugin problems below. Try to refute each one.
+      `Another agent reviewed a Claude Code session and reports the numbered plugin problems and context judgments below. Try to refute each one.
 Transcript: ${pick.transcript}
 ${READ_TRANSCRIPT(pick)}
 

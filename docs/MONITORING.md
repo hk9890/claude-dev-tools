@@ -10,7 +10,7 @@ Claude Code writes a session to `~/.claude/projects/<slug>/<uuid>.jsonl`, and it
 |---|---|
 | `assistant` | Claude's turn, plus `attributionPlugin` (plugin directory name, e.g. `tasks`) and `attributionSkill` (namespaced, e.g. `tasks:tasks-core`) while a skill runs |
 | `user` | The human turn, and the `tool_result` blocks inside its `content` array. A failed tool is `tool_result.is_error == true`; `toolDenialKind` says who refused a call that never ran (`user-rejected`, `permission-rule`) |
-| `attachment` | With `attachment.type` `queued_command` and `attachment.origin.kind` `human`: a prompt the user typed while the agent worked. No `user` record holds it; `render` prints it as `USER (queued)`. The [context cost](#context-cost) reads four more types: `instructions` (the AGENTS.md and CLAUDE.md files loaded, with path and content), `skill_listing` (the listing text, one `- <name>: <text>` entry per skill), `agent_listing_delta` (`addedLines` of the agent listing), `invoked_skills` (each skill body loaded again after a compaction) |
+| `attachment` | With `attachment.type` `queued_command` and `attachment.origin.kind` `human`: a prompt the user typed while the agent worked. No `user` record holds it; `render` prints it as `USER (queued)`. The [context cost](#context-cost) reads six more types: `instructions` (the AGENTS.md and CLAUDE.md files loaded, with path and content), `skill_listing` (the listing text, one `- <name>: <text>` entry per skill), `agent_listing_delta` (`addedLines` of the agent listing), `invoked_skills` (each skill body loaded again after a compaction), `file` (a file's text Claude Code attached itself, mostly the files it restores after a compaction), `edited_text_file` (a snippet of a read file that changed on disk) |
 | `system` | With `subtype` `compact_boundary`: a compaction. The context before it is replaced by a summary |
 
 ## The review store
@@ -111,13 +111,13 @@ One row per skill, over every session of the window that used a plugin of this m
 
 | Section | Counts |
 |---|---|
-| Files | char-reads and characters loaded per file, by channel: `listing` (skill and agent listing entries), `skill-body`, `skill-reinjected` (the copy after a compaction), `instructions` (AGENTS.md), `read` (Read tool results) |
-| Readers | the contexts that read a file, by `session` or subagent `agentType`, and how many edited a file of this repository after the read |
+| Files | char-reads and characters loaded per file, by channel: `listing` (skill and agent listing entries), `skill-body`, `skill-reinjected` (the copy after a compaction), `instructions` (the checkout's AGENTS.md and CLAUDE.md), `read` (Read tool results), `attached` (`file` and `edited_text_file` attachments) |
+| Readers | the contexts that read a file, by `session` or subagent `agentType`, and how many edited a file of this repository after the read with Edit, Write or NotebookEdit |
 | Reference reach | for each skill load, the files of its plugin read with the Read tool after it in the same context: a lower bound, as agents also print references with `cat` |
 | Re-reads | Reads of the same part of a file a context had read already |
 | Trouble per skill version | the failed and the user-rejected tool calls of a skill's turns |
 
-- A path is a file of this repository where it is an install under `plugins/cache/<marketplace name>/`, or lies in a checkout below a top-level entry that git tracks. A checkout is the directory of a loaded AGENTS.md whose first line is this repository's: a change to that line leaves the checkouts of older sessions unrecognized.
-- What Bash commands print, agent system prompts and workflow agent prompts count in no channel.
+- A path is a file of this repository where it is an install under `plugins/cache/<marketplace name>/`, or lies below a top-level entry that git tracks, in a checkout or in the marketplace clone under `plugins/marketplaces/<marketplace name>/`. A checkout is the directory of a loaded AGENTS.md whose first line is this repository's, or the checkout that holds it where that directory is a worktree under `.claude/worktrees/`: a change to that line leaves the checkouts of older sessions unrecognized.
+- What Bash commands print, agent system prompts, workflow agent prompts and a failed Read count in no channel; a failed edit is no edit.
 - Usefulness is the reviewers' judgment in `context-judgments.json`: the counts show cost and what followed a read, not why.
 - `mise run pick-sessions -- context` prints the characters each file put into an average API call, one column per run of the store.
