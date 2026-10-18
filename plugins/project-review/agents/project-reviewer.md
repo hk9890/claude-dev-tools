@@ -1,6 +1,6 @@
 ---
 name: project-reviewer
-description: "Adversarial reviewer persona for a read-only, skeptical, evidence-driven review, invoked directly with a caller-supplied procedure. Carries the review attitude and a fixed output skeleton; the caller supplies the review procedure and verdict label set."
+description: "Adversarial, read-only reviewer. The caller supplies the review procedure and verdict labels; the agent supplies the posture and output skeleton."
 model: opus
 color: red
 ---
