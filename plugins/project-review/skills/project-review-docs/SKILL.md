@@ -30,9 +30,9 @@ docs inline. The workflow returns a structured report; relay it.
    The standard this review measures against is **not** in this plugin: the ownership
    contracts and the authoring rules belong to `instruction-writing:writing-project-docs`.
    Call the Skill tool with `instruction-writing:writing-project-docs` now, even where it
-   loaded earlier in this session — the
-   same "Base directory for this skill" line comes with it, and that path is
-   `STANDARD_DIR`. Take it from the load; never construct it and never search
+   loaded earlier in this session. The "Base directory for this skill" line of its load is
+   `STANDARD_DIR`; where the call answers that the skill is already loaded, take the line
+   from that earlier load in this session. Take it from a load; never construct it and never search
    the filesystem for the plugin: a sibling plugin's install directory is not derivable
    from this one's, and a guess selects a stale cached version. If the skill is not installed,
    stop and say so — `project-review` declares it as a dependency, so a missing one means
@@ -42,21 +42,33 @@ docs inline. The workflow returns a structured report; relay it.
 
 3. Prepare the run — check the prerequisite, then mint a per-run scratch dir. The workflow
    writes its history extracts and session labels to that dir under deterministic names, so
-   two concurrent reviews sharing one directory would read each other's labels. Echo the
-   path: shell state does not survive between commands, so a value you only assign is gone
-   by the time you need it in step 4.
+   two concurrent reviews sharing one directory would read each other's labels. Keep the
+   path `mktemp` prints: shell state does not survive between commands, so a value you only
+   assign is gone by the time you need it in step 4.
+
+   Run each command as its own Bash call: a worktree-isolated session refuses a compound
+   command it cannot verify.
 
    ```bash
-   command -v python3 >/dev/null || { echo "python3 missing — stop and fall back to a manual read"; return 2>/dev/null || exit 1; }
-   ls "<STANDARD_DIR>/references/project-doc-guidelines.md" "<STANDARD_DIR>/references/project-setup.md" "<STANDARD_DIR>/../../references/writing-hygiene.md" >/dev/null || { echo "the standard is incomplete under STANDARD_DIR — stop; the instruction-writing install is broken, and the agents would silently review against fewer rules"; return 2>/dev/null || exit 1; }
-   SCRATCH=$(mktemp -d /tmp/docreview-XXXXXX) && echo "$SCRATCH" || echo "mktemp failed — stop; do not launch without a scratch dir"
+   command -v python3
+   ```
+   ```bash
+   ls "<STANDARD_DIR>/references/project-doc-guidelines.md" "<STANDARD_DIR>/references/project-setup.md" "<STANDARD_DIR>/../../references/writing-hygiene.md"
+   ```
+   ```bash
+   mktemp -d /tmp/docreview-XXXXXX
    ```
 
    Substitute the step-2 `STANDARD_DIR` value literally — the workflow derives the same three
    paths from it and hands them to agents that never load the skill, so a path that does not
    resolve here dead-ends there.
 
-   Done when the scratch path is printed above. If any command failed, stop here.
+   Where `command -v` prints nothing, `python3` is missing: stop and fall back to a manual
+   read. Where `ls` fails, the standard is incomplete under `STANDARD_DIR`: stop, because the
+   instruction-writing install is broken and the agents would review against fewer rules.
+   Where `mktemp` fails, stop: the workflow does not launch without a scratch dir.
+
+   Done when `mktemp` has printed the scratch path.
 
 4. Invoke the **Workflow** tool:
    - `scriptPath`: `<SKILL_DIR>/workflows/review-docs.js`

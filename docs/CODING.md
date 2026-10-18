@@ -46,7 +46,7 @@ Every skill is loaded with a `Base directory for this skill: <absolute path>` li
 
 `../..` stops at the plugin root, and a sibling's install directory is not derivable from this one's — versioned separately in a cached install, unversioned in a dev checkout.
 
-- Call the Skill tool with the sibling's skill, even where it loaded earlier in the session, and take the `Base directory for this skill:` line it prints.
+- Call the Skill tool with the sibling's skill, even where it loaded earlier in the session, and take the `Base directory for this skill:` line it prints. Where it answers that the skill is already loaded, it prints no such line: take the line of that earlier load.
 - Pass that value in explicitly (a workflow arg, a script flag) and validate it at that boundary.
 - Declare the sibling in `dependencies`, and say in the skill what to do when it is absent — a missing dependency is a broken install, not an optional extra.
 

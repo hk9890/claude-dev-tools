@@ -521,9 +521,11 @@ if (typeof agent === 'function') {
   )
 
   let promptIndex = null
+  let historyFailure = null
   try {
     promptIndex = parseManifest(prompts)
   } catch (e) {
+    historyFailure = 'the prompt index from history.py could not be parsed: ' + String(e)
     log('History: could not parse the prompt index — skipping the stage. ' + String(e))
   }
 
@@ -546,13 +548,14 @@ if (typeof agent === 'function') {
         `Judge intent from the text. A follow-up like "ok do that" or "now fix it" carries no topic of its own — read it in sequence and give it the label of the work it continues. Label "none" only when the message genuinely starts no work of these kinds.\n\n` +
         `Write the result to ${b.labels_file} as JSON, exactly this shape:\n` +
         `{"sessions":[{"session_id":"<id from the input>","labels":[{"turn":<the message's turn number>,"use_case":"<label>"}]}]}\n` +
-        `Include every session in the input and every message's turn number unchanged. Then return the file path and the counts.`,
+        `Include every session in the input and every message's turn number unchanged. Write the file with the Write tool, not a shell command. Then return the file path and the counts; where the write failed, return sessions_labelled 0 and the error in notes.`,
         { label: `history:label-${i + 1}`, phase: 'History', model: 'haiku', schema: LABEL_WRITE_SCHEMA }
       )
     ))
     const labelled = labelWrites.filter(Boolean)
-    log(`History: ${labelled.length}/${sessionBatches.length} batch(es) classified, ` +
-        `${labelled.reduce((n, r) => n + (r.sessions_labelled || 0), 0)} session(s) labelled`)
+    const claimed = labelled.reduce((n, r) => n + (r.sessions_labelled || 0), 0)
+    const sent = sessionBatches.reduce((n, b) => n + (b.sessions || 0), 0)
+    log(`History: ${labelled.length}/${sessionBatches.length} batch(es) classified, ${claimed} session(s) labelled`)
 
     // Filter, stratify, and project — all mechanical, so no agent judges any of it.
     const evidenceText = await agent(
@@ -564,7 +567,18 @@ if (typeof agent === 'function') {
     try {
       historySummary = parseManifest(evidenceText)
     } catch (e) {
+      historyFailure = 'the evidence summary from history.py could not be parsed: ' + String(e)
       log('History: could not parse the evidence summary — no history findings this run. ' + String(e))
+    }
+    // The label agents report their own counts, and one whose write failed reports 0 or nothing
+    // at all. Only history.py's count, against the sessions sent out, shows what reached the files.
+    const read = historySummary && (historySummary.sessions_labelled || 0)
+    if (historySummary && read < sent) {
+      const notes = labelled.map(r => r.notes).filter(Boolean)
+      historyFailure = `history.py read labels for ${read} of the ${sent} session(s) sent to the label agents, ` +
+        `which reported ${claimed}: the label files are missing or incomplete` +
+        (notes.length ? ` (${notes.join('; ')})` : '')
+      log(`History: classification failed — ${historyFailure}`)
     }
 
     if (historySummary) {
@@ -645,14 +659,15 @@ if (typeof agent === 'function') {
     `Files the read-review did not cover: ${JSON.stringify(notReviewed)}\n\n` +
     `HISTORY VERDICTS (behavioural: did past sessions in this repo actually open the doc their route points at?):\n${JSON.stringify(historyEntries)}\n` +
     `History coverage: ${JSON.stringify((historySummary && historySummary.coverage) || {})}\n` +
-    `Superseded-route evidence (sessions that ran under an EARLIER wording of a route — not evidence about today's text):\n${JSON.stringify((historySummary && historySummary.historical) || {})}\n\n` +
+    `Superseded-route evidence (sessions that ran under an EARLIER wording of a route — not evidence about today's text):\n${JSON.stringify((historySummary && historySummary.historical) || {})}\n` +
+    `History stage failure: ${historyFailure || 'none'}\n\n` +
     `Do all of the following:\n` +
     `1. Merge and DEDUPE findings (the same defect surfaced twice is ONE finding — cite the strongest evidence).\n` +
     `   When merging, PRESERVE what each recommended_action says it replaces, cuts, or supersedes — the lines it names are the fix, not decoration. A recommended_action that only adds text must say why nothing existing is superseded. Never compress a specific replacement into a general instruction to improve the section.\n` +
     `2. Cross-file reconciliation the batch agents could not see, since each saw only its own batch: sibling contradictions on shared facts; and match any missing canonical doc to a non-standard doc whose content actually IS that topic (rename/link).\n` +
     `3. Raise the mechanical facts no read-review agent covered. CLAUDE.md is excluded from the read-review because the manifest checks it, so a false claude_md_ok is yours to report: CLAUDE.md must be exactly the one-line @AGENTS.md import, and the fix names a destination for each displaced piece — routing to AGENTS.md, topic procedures to docs/<TOPIC>.md, personal or transient notes to .claude.local.md. Every injected tool-block listed above is a finding against the doc holding it, under the same destination rule.\n` +
     `4. Fold the behavioural evidence in. From history: only entries with attribution "doc" are doc findings — an "agent" attribution means the route was written correctly and skipped anyway, which belongs in evidence_summary as an observation, never as a defect in the file. An "insufficient-evidence" attribution is not a finding of any kind.\n` +
-    `5. Write evidence_summary. State that the read-review judged the docs from their text and did not check documented commands, paths, or flags against the code, so a doc that has drifted from the code without contradicting another doc is not caught by this audit. Name any file the read-review did not cover. Then state the evidence per use case: how many valid segments history had and which use cases had none. A use case with no evidence is a gap in THIS AUDIT, never a defect in the doc — say so in those words rather than implying the doc is unused.\n` +
+    `5. Write evidence_summary. State that the read-review judged the docs from their text and did not check documented commands, paths, or flags against the code, so a doc that has drifted from the code without contradicting another doc is not caught by this audit. Name any file the read-review did not cover. Then state the evidence per use case: how many valid segments history had and which use cases had none. A use case with no evidence is a gap in THIS AUDIT, never a defect in the doc — say so in those words rather than implying the doc is unused. Where a history stage failure is given above, say that the history evidence is missing because of that failure, not because the repository has no sessions.\n` +
     `   Report the superseded-route evidence too, in its own short paragraph, and label it as being about wording that no longer exists. Quote the old route and give the ratio of segments that did the work to segments that opened the doc. Where a route has since been rewritten, say whether that evidence supports the rewrite. Never let it change a verdict or a finding about current text — but never drop it either: a route that was ignored under its old wording is the reason the new wording exists.\n` +
     `6. Assign an overall verdict: accurate / minor gaps / significant gaps / misleading. A clean 'accurate' requires no blocker/major AND positive coverage — not merely absence of findings.\n` +
     `7. Tag every finding \`settled\` or \`open\`, leaving none untagged. SETTLED is a doc contradicting another doc or itself, a stale command, a dead link, a missing or misnamed route, CLAUDE.md carrying anything but the one-line import, an injected tool-block — one correct answer, nothing to weigh. OPEN moves content from one file to another (who owns a topic is a judgement), deletes a section someone may be relying on, rewords a route people's habits are built on, adopts a convention the repo has not committed to, or is large enough that "not now" is a real answer. When you can argue it either way it is settled: a doc that contradicts the repo is a bug, and asking permission to fix it wastes the maintainer's attention. For every OPEN finding also fill \`question\` (what is being decided, in ASD-STE100 Simplified Technical English — one idea per sentence, every identifier and abbreviation expanded — naming the file and what it currently says, so a reader outside this audit understands it), \`options\` (the real alternatives, including "leave it as is" wherever that is one), and \`recommendation\` (which option you would pick and the tradeoff that decided it).\n\n` +
