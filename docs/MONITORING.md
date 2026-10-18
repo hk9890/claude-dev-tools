@@ -30,7 +30,9 @@ $SESSION_REVIEW_DIR/runs/<date>T<time>-<host>-v<marketplace version>/
 ├── run.json                 # arguments, host, picker commit, candidate counts, last release
 ├── picks.json               # what the pick printed
 ├── usage.md                 # skill usage over the window
+├── context.json, context.md # what each file of this repository cost in context over the window
 ├── findings.json            # the findings that survived, each with its session and version
+├── context-judgments.json   # the reviewers' judgments of the loaded files that survived
 ├── sessions/<uuid>.json     # one reviewed session: its pick, and every finding with its verdict
 └── transcripts/<uuid>.jsonl # a copy of the session, with <uuid>/subagents/ beside it
 ```
@@ -41,10 +43,10 @@ A session counts as reviewed once `sessions/<uuid>.json` exists in any run. A la
 
 Run the `review-sessions` workflow ([`.claude/workflows/review-sessions.js`](../.claude/workflows/review-sessions.js)) from the repo root. It takes `{perBucket, sinceDays, host}`, 1, 7 and this machine by default, and starts one agent for the pick, at most two per picked session, and one for the record:
 
-1. **Pick** — `mise run pick-sessions -- pick` starts the run folder, copies the transcripts, and prints the picks.
-2. **Review** — one agent per session reads it with `python3 scripts/pick-sessions.py render <transcript>` and reports each plugin problem with the plugin file at fault, the version, a quote, and a fix.
-3. **Verify** — a second agent tries to refute each finding.
-4. **Record** — `python3 scripts/pick-sessions.py record <run_dir> <result.json>` writes `sessions/` and `findings.json`; the agent then commits the run in the store and pushes it.
+1. **Pick** — `mise run pick-sessions -- pick` starts the run folder, copies the transcripts, writes `usage.md` and the [context cost](#context-cost), and prints the picks.
+2. **Review** — one agent per session reads it with `python3 scripts/pick-sessions.py render <transcript>` and reports each plugin problem with the plugin file at fault, the version, a quote, and a fix. It also judges each file of `context_files`: needed or not, the sections used and unused, and what was missing.
+3. **Verify** — a second agent tries to refute each finding and each judgment.
+4. **Record** — `python3 scripts/pick-sessions.py record <run_dir> <result.json>` writes `sessions/`, `findings.json` and `context-judgments.json`; the agent then commits the run in the store and pushes it.
 
 File each finding of `findings.json` in the tracker by hand, with its version. When its fix ships, a finding that a later run reports again for a newer version is a regression.
 
@@ -101,3 +103,20 @@ A candidate is a session modified in the window, with at least one turn attribut
 ### `usage.md`
 
 One row per skill, over every session of the window that used a plugin of this marketplace: the candidates, the sessions already reviewed, and the refused ones. **Model-invoked** counts `Skill` tool calls for the skill, **Slash-invoked** counts `/<plugin>:<skill>` commands the user typed. A skill with `disable-model-invocation: true` has 0 model invocations by design. The list below the table names the skills under `plugins/` that no session of the window used.
+
+### Context cost
+
+`context.md` covers every session of the window, subagents included, with or without plugin use: the skill listing reaches each of them. Sizes are characters. A **char-read** is one character sent in one API call: a text counts once for each call after it, up to the next compaction.
+
+| Section | Counts |
+|---|---|
+| Files | char-reads and characters loaded per file, by channel: `listing` (skill and agent listing entries), `skill-body`, `skill-reinjected` (the copy after a compaction), `instructions` (AGENTS.md), `read` (Read tool results) |
+| Readers | the contexts that read a file, by `session` or subagent `agentType`, and how many edited a file of this repository after the read |
+| Reference reach | for each skill load, the files of its plugin read with the Read tool after it in the same context: a lower bound, as agents also print references with `cat` |
+| Re-reads | Reads of the same part of a file a context had read already |
+| Trouble per skill version | the failed and the user-rejected tool calls of a skill's turns |
+
+- A path is a file of this repository where it is an install under `plugins/cache/<marketplace name>/`, or lies in a checkout below a top-level entry that git tracks. A checkout is the directory of a loaded AGENTS.md whose first line is this repository's: a change to that line leaves the checkouts of older sessions unrecognized.
+- What Bash commands print, agent system prompts and workflow agent prompts count in no channel.
+- Usefulness is the reviewers' judgment in `context-judgments.json`: the counts show cost and what followed a read, not why.
+- `mise run pick-sessions -- context` prints the characters each file put into an average API call, one column per run of the store.

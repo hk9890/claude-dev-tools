@@ -91,7 +91,7 @@ with tempfile.TemporaryDirectory() as tmp:
         (plugins / "demo" / "skills" / skill).mkdir(parents=True)
         (plugins / "demo" / "skills" / skill / "SKILL.md").write_text("---\n---\n")
     Path(tmp, ".claude-plugin").mkdir()
-    Path(tmp, ".claude-plugin", "marketplace.json").write_text(json.dumps({"metadata": {"version": "9.9.9"}}))
+    Path(tmp, ".claude-plugin", "marketplace.json").write_text(json.dumps({"name": "market", "metadata": {"version": "9.9.9"}}))
     store.mkdir()
     project = projects / "proj"
     cache = "/home/u/.claude/plugins/cache/market/demo"
@@ -280,7 +280,7 @@ with tempfile.TemporaryDirectory() as tmp:
     git("init")
     # 1.10.0 is the newer of the two as a version, and the older as text.
     release("v1.9.0", {
-        ".claude-plugin/marketplace.json": json.dumps({"metadata": {"version": "1.10.0"}}),
+        ".claude-plugin/marketplace.json": json.dumps({"name": "market", "metadata": {"version": "1.10.0"}}),
         "plugins/demo/.claude-plugin/plugin.json": "1.9.0",
         "plugins/demo/skills/skill/SKILL.md": "a",
         "plugins/demo/skills/other/SKILL.md": "a",
@@ -337,7 +337,7 @@ with tempfile.TemporaryDirectory() as tmp:
     (plugins / "demo" / "skills" / "skill").mkdir(parents=True)
     (plugins / "demo" / "skills" / "skill" / "SKILL.md").write_text("---\n---\n")
     Path(tmp, ".claude-plugin").mkdir()
-    Path(tmp, ".claude-plugin", "marketplace.json").write_text(json.dumps({"metadata": {"version": "9.9.9"}}))
+    Path(tmp, ".claude-plugin", "marketplace.json").write_text(json.dumps({"name": "market", "metadata": {"version": "9.9.9"}}))
     store.mkdir()
     remote = home / ".claude" / "projects"
     write(remote / "old-name" / "moved.jsonl", [assistant("m1", 1, at="2026-01-01T00:00:01.000Z")])
@@ -405,6 +405,130 @@ cd {home} && exec sh -c "$*"
     check("a file that vanished on the host during the transfer does not stop the pick", 0, vanished.returncode)
     both = run("pick", "--review-dir", str(store), "--projects-dir", str(remote), "--host", "box", env=env)
     check("--host and --projects-dir exclude each other", 2, both.returncode)
+
+with tempfile.TemporaryDirectory() as tmp:
+    projects, store = Path(tmp, "projects"), Path(tmp, "store")
+    store.mkdir()
+    # The checkout under test: its tracked files and the title of its AGENTS.md name it.
+    for path, text in {
+        "AGENTS.md": "# Repo title\n\nRoutes.\n",
+        "docs/CODING.md": "rules\n",
+        "plugins/demo/skills/skill/SKILL.md": "---\n---\n",
+        "plugins/demo/skills/skill/references/r.md": "ref\n",
+        ".claude-plugin/marketplace.json": json.dumps({"name": "market", "metadata": {"version": "9.9.9"}}),
+    }.items():
+        Path(tmp, path).parent.mkdir(parents=True, exist_ok=True)
+        Path(tmp, path).write_text(text)
+    subprocess.run(["git", "init", tmp], check=True, capture_output=True)
+    subprocess.run(["git", "-C", tmp, "add", "-A"], check=True, capture_output=True)
+    plugins = Path(tmp, "plugins")
+
+    checkout, install = "/w/repo", "/c/.claude/plugins/cache/market/demo/1.0.0"
+    agents_md = "# Repo title\n\nRoutes.\n"
+    listing = "- demo:skill: Does a thing.\n- other:x: Foreign.\n- demo:idle: Idle."
+
+    def attachment(kind, **fields):
+        return {"type": "attachment", "timestamp": "2026-01-01T00:00:00.000Z", "attachment": {"type": kind, **fields}}
+
+    def call(message_id, tool, use_id, plugin="demo", **arguments):
+        return assistant(message_id, 1, plugin=plugin, content=[{"type": "tool_use", "id": use_id, "name": tool, "input": arguments}])
+
+    def result(use_id, text, is_error=False, denial=None):
+        record = {"type": "user", "timestamp": "2026-01-01T00:00:00.000Z",
+                  "message": {"content": [{"type": "tool_result", "tool_use_id": use_id, "is_error": is_error, "content": text}]}}
+        if denial:
+            record["toolDenialKind"] = denial
+        return record
+
+    write(projects / "proj" / "s1.jsonl", [
+        attachment("instructions", files=[{"path": f"{checkout}/AGENTS.md", "content": agents_md}, {"path": "/home/u/.claude/CLAUDE.md", "content": "mine"}]),
+        attachment("skill_listing", content=listing),
+        attachment("agent_listing_delta", addedLines=["- demo:reviewer: Reviews.", "- Explore: Searches."]),
+        banner(f"{install}/skills/skill"),
+        call("m1", "Read", "r1", file_path=f"{checkout}/docs/CODING.md"),
+        result("r1", "C" * 100),
+        call("m2", "Read", "r2", file_path=f"{install}/skills/skill/references/r.md"),
+        result("r2", "R" * 50),
+        call("m3", "Read", "r3", file_path=f"{checkout}/docs/CODING.md"),
+        result("r3", "C" * 100),
+        call("m4", "Edit", "e1", file_path=f"{checkout}/.claude/worktrees/wt/plugins/demo/skills/skill/SKILL.md"),
+        result("e1", "exit status 1", is_error=True),
+        call("m5", "Read", "r4", file_path=f"{checkout}/scratch/notes.md"),
+        result("r4", "N" * 10),
+        call("m6", "Bash", "b1", command="make"),
+        result("b1", "The user doesn't want to proceed with this tool use.", is_error=True, denial="user-rejected"),
+        {"type": "system", "subtype": "compact_boundary", "timestamp": "2026-01-01T00:00:00.000Z"},
+        attachment("invoked_skills", skills=[{"path": "plugin:demo:skill", "content": f"Base directory for this skill: {install}/skills/skill\n\nBody."}]),
+        assistant("m7", 1),
+        assistant("m8", 1),
+    ])
+    # A subagent loads no instructions of its own here: it reads the checkout of its session.
+    validator = projects / "proj" / "s1" / "subagents" / "agent-v.jsonl"
+    write(validator, [call("v1", "Read", "r9", plugin="none", file_path=f"{checkout}/docs/CODING.md"), result("r9", "C" * 100), assistant("v2", 1, plugin="none")])
+    validator.with_suffix(".meta.json").write_text(json.dumps({"agentType": "plugin-dev:plugin-validator"}))
+    # Another project with a docs/ of its own and no plugin use.
+    write(projects / "other" / "s2.jsonl", [
+        attachment("instructions", files=[{"path": "/w/other/AGENTS.md", "content": "# Other project\n"}]),
+        call("o1", "Read", "o1", plugin="none", file_path="/w/other/docs/CODING.md"),
+        result("o1", "X" * 100),
+    ])
+
+    def pick_context():
+        out = run("pick", "--review-dir", str(store), "--projects-dir", str(projects), "--plugins-dir", str(plugins), "--per-bucket", "1", "--seed", "0")
+        picks = json.loads(out.stdout or "{}")
+        return out, picks, json.loads(Path(picks.get("run_dir", tmp), "context.json").read_text() or "{}")
+
+    out, picks, context = pick_context()
+    check("pick with the context scan exits 0", 0, out.returncode)
+    files = {entry["file"]: entry for entry in context.get("files", [])}
+    check("every session of the window is scanned, plugin use or none, subagents included", (3, 11), (context.get("contexts"), context.get("api_calls")))
+    check("a listing entry of this marketplace counts, a foreign one does not",
+          {"plugins/demo/skills/skill/SKILL.md": len("- demo:skill: Does a thing.\n"), "plugins/demo/skills/idle/SKILL.md": len("- demo:idle: Idle."),
+           "plugins/demo/agents/reviewer.md": len("- demo:reviewer: Reviews.")},
+          {file: entry["channels"]["listing"]["chars"] for file, entry in files.items() if "listing" in entry["channels"]})
+    check("a text counts once for each API call after it, up to the next compaction", 6 * 28, files["plugins/demo/skills/skill/SKILL.md"]["channels"]["listing"]["char_reads"])
+    check("the skill body and its copy after a compaction are channels of their own",
+          (1, 1, 2), (files["plugins/demo/skills/skill/SKILL.md"]["channels"]["skill-body"]["loads"],
+                      files["plugins/demo/skills/skill/SKILL.md"]["channels"]["skill-reinjected"]["loads"],
+                      files["plugins/demo/skills/skill/SKILL.md"]["channels"]["skill-reinjected"]["char_reads"] // len(f"Base directory for this skill: {install}/skills/skill\n\nBody.")))
+    check("the AGENTS.md of the checkout counts as instructions, the user's own CLAUDE.md does not",
+          ({"instructions": {"loads": 1, "chars": len(agents_md), "char_reads": 6 * len(agents_md)}}, False),
+          (files.get("AGENTS.md", {}).get("channels"), any("CLAUDE.md" in file for file in files)))
+    check("a Read counts the size of its result, in the session and in its subagent", (300, 100 * 5 + 100 * 3 + 100 * 1),
+          (files["docs/CODING.md"]["chars"], files["docs/CODING.md"]["char_reads"]))
+    check("an install path and a worktree path name the file of the repository, an untracked file and another project's do not",
+          (True, False, False), ("plugins/demo/skills/skill/references/r.md" in files, "scratch/notes.md" in files, any("other" in file for file in files)))
+    check("readers: who read the file, and whether an edit of the repository followed",
+          {"plugin-dev:plugin-validator": {"contexts": 1, "edited_after": 0}, "session": {"contexts": 1, "edited_after": 1}},
+          context.get("readers", {}).get("docs/CODING.md"))
+    check("reach: the files of the plugin read after the skill load",
+          {"runs": 1, "read": {"plugins/demo/skills/skill/references/r.md": 1}}, context.get("reach", {}).get("plugins/demo/skills/skill/SKILL.md"))
+    check("a second Read of the same part of a file is a re-read", {"docs/CODING.md": {"contexts": 2, "repeated": 1}}, context.get("rereads"))
+    check("trouble: a failed call and a rejected call of a skill turn, by its version",
+          {"turns": 8, "failed": 1, "rejected": 1}, context.get("trouble", {}).get("demo:skill", {}).get("1.0.0"))
+    s1 = next((s for s in picks.get("sessions", []) if s["session_id"] == "s1"), {})
+    check("a picked session carries the files of this repository it loaded, listing left out",
+          ["AGENTS.md", "docs/CODING.md", "plugins/demo/skills/skill/SKILL.md", "plugins/demo/skills/skill/references/r.md"], s1.get("context_files"))
+    check("context.md names what it does not count", True, "Not counted: what Bash commands print" in Path(picks["run_dir"], "context.md").read_text())
+
+    review = Path(tmp, "result.json")
+    judgment = {"artifact": "docs/CODING.md", "needed": "no", "unused": "all", "missing": "", "quote": "q"}
+    review.write_text(json.dumps([{"session_id": "s1", "findings": [], "context": [{**judgment, "refuted": False}, {**judgment, "refuted": True}]}]))
+    run("record", picks["run_dir"], str(review))
+    check("record keeps the context judgments that survived, with their session",
+          [{"session_id": "s1", **judgment, "refuted": False}], json.loads(Path(picks["run_dir"], "context-judgments.json").read_text()))
+
+    time.sleep(1.1)
+    pick_context()
+    trend = run("context", "--review-dir", str(store), "--top", "2")
+    run_names = sorted(p.name for p in (store / "runs").iterdir())
+    check("context prints each file's characters per API call in each run, the costliest first",
+          (0, f"| `docs/CODING.md` | {900 // 11} | {900 // 11} |"),
+          (trend.returncode, next((line for line in trend.stdout.splitlines() if "docs/CODING.md" in line), None)))
+    check("context names each run in its header", True, all(name in trend.stdout for name in run_names))
+    empty = Path(tmp, "empty-store")
+    empty.mkdir()
+    check("context stops where no run holds a context.json", 1, run("context", "--review-dir", str(empty)).returncode)
 
 print(f"\nResults: {passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)
