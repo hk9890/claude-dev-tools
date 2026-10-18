@@ -47,6 +47,10 @@ const DENIED = [
   'W=/tmp/probe; W=../x; git worktree add --detach $W HEAD',
   'W=/tmp/probe\ngit worktree add --detach $W HEAD',
   'git worktree add --detach $W HEAD; W=/tmp/probe',
+  'echo W=/tmp/probe && git worktree add --detach $W HEAD',
+  'W=/tmp/probe true && git worktree add --detach $W HEAD',
+  '(W=/tmp/probe); git worktree add --detach $W HEAD',
+  'git commit -m "note W=/tmp/probe" && git worktree add --detach $W HEAD',
 ]
 
 const ALLOWED = [

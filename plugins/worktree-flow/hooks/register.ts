@@ -38,7 +38,9 @@ function commandLines(command: string) {
   return run
 }
 
-const ASSIGNMENT = /(?:^|[\s;&|(])([A-Za-z_]\w*)=("[^"]*"|'[^']*'|[^\s;&|]*)/g
+// Only a whole command sets a variable for the commands after it: `echo W=/tmp/x` and the prefix
+// in `W=/tmp/x true` do not, and a subshell's assignment ends with it.
+const ASSIGNMENT = /(?:^|;|&&|\|\|)\s*([A-Za-z_]\w*)=("[^"]*"|'[^']*'|[^\s;&|()]*)\s*(?=;|&&|\|\||$)/g
 const VARIABLE = /\$(?:\{([A-Za-z_]\w*)\}|([A-Za-z_]\w*))/g
 
 // `W=/tmp/x && git worktree add $W` names its target through a variable: the add takes the value
@@ -57,7 +59,8 @@ function expandVariables(add: string, before: string) {
 // so each line is matched alone and every add on it must name a throwaway target.
 function addsPersistentWorktree(command: string) {
   const adds = commandLines(command).flatMap(line =>
-    [...line.matchAll(WORKTREE_ADD)].map(match => expandVariables(match[0], line.slice(0, match.index))),
+    // The match starts on the separator before `git`, which the last assignment must end on.
+    [...line.matchAll(WORKTREE_ADD)].map(match => expandVariables(match[0], line.slice(0, match.index + 1))),
   )
 
   return adds.some(add => !THROWAWAY_TARGET.test(add))
