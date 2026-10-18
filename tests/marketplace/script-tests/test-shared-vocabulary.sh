@@ -15,11 +15,10 @@
 #    contract now lives once in submit-contract.md; these checks stop a mode file
 #    from growing its own copy back.
 #
-# 3. worktree-flow states the test for a reviewed PR head in two skills.
-#    worktree-ship needs it to skip its own steps on a resumed run, and
-#    worktree-review needs it to skip the reviews. A change to one copy alone
-#    lets them disagree: worktree-ship then reports a head as shipped that
-#    worktree-review would review again.
+# 3. worktree-flow states the test for a reviewed PR head once, in
+#    worktree-review. worktree-ship used to carry a second copy to skip its own
+#    steps on a resumed run; it now calls worktree-review, which skips a head it
+#    reviewed. These checks stop worktree-ship from growing that copy back.
 #
 # Exit codes: 0 — all assertions passed; 1 — one or more failed.
 set -uo pipefail
@@ -114,7 +113,7 @@ if [[ -f "$CONTRACT" ]]; then
   fi
 fi
 
-# ── 3. The test for a reviewed PR head, in two skills ────────────────────────
+# ── 3. The test for a reviewed PR head, in worktree-review only ──────────────
 SHIP="$REPO_ROOT/plugins/worktree-flow/skills/worktree-ship/SKILL.md"
 REVIEW="$REPO_ROOT/plugins/worktree-flow/skills/worktree-review/SKILL.md"
 
@@ -123,16 +122,17 @@ for f in "$SHIP" "$REVIEW"; do
 done
 
 if [[ -f "$SHIP" && -f "$REVIEW" ]]; then
-  for phrase in \
-    'starts with the commit after `through` in the **Review** line' \
-    'records the rules review as skipped' \
-    '`project-review:project-review-change` is in your available skills'; do
-    if grep -Fq "$phrase" "$SHIP" && grep -Fq "$phrase" "$REVIEW"; then
-      ok "reviewed head: both skills say \"${phrase}\""
-    else
-      fail "reviewed head: \"${phrase}\" is missing from worktree-ship or worktree-review — edit both or they drift"
-    fi
-  done
+  phrase='starts with the commit after `through` in the **Review** line'
+  if grep -Fq "$phrase" "$REVIEW"; then
+    ok "reviewed head: worktree-review states the test"
+  else
+    fail "reviewed head: worktree-review lost \"${phrase}\""
+  fi
+  if grep -Fq 'commit after `through`' "$SHIP"; then
+    fail "reviewed head: worktree-ship carries its own copy of the test — leave it to worktree-review"
+  else
+    ok "reviewed head: worktree-ship leaves the test to worktree-review"
+  fi
 fi
 
 printf '\nResults: %d passed, %d failed\n' "$PASS" "$FAIL"

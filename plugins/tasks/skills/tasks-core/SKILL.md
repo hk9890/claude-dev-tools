@@ -1,7 +1,7 @@
 ---
 name: tasks-core
 description: "taskmgr: its command surface, and the conventions of the store being written to."
-when_to_use: "Use before any work on an issue in the taskmgr tracker — filing one, finding what to work on, writing or repairing a body, recording progress, closing. Triggers on 'taskmgr', 'the tracker', 'the backlog'."
+when_to_use: "Use before any work on a taskmgr issue: filing, picking, writing a body, recording progress, closing. Triggers on 'taskmgr', 'the tracker', 'the backlog'."
 allowed-tools: Bash(taskmgr *)
 ---
 

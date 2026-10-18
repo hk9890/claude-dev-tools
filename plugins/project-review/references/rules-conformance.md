@@ -81,12 +81,3 @@ Bounded to verification. Never run a command that deploys, publishes, migrates, 
 outside the working tree, or changes git state, whatever a document says: the read-only
 contract wins. Where a gate needs a tool or a plugin that is not installed, report that
 the gate could not run — never pass over it in silence.
-
-## Boundaries
-
-| Not this review | Whose it is |
-|---|---|
-| Correctness bugs, and reuse or simplification that no rule names | the general code review |
-| Whether the documents are accurate, complete, or in the right file | `project-review-docs` |
-| Naming and pattern drift where nothing is written down | the consistency dimension of `project-review-codebase` |
-| Pure formatting | the project's linter |
