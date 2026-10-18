@@ -1,11 +1,11 @@
 export const meta = {
   name: 'review-sessions',
-  description: 'Pick the sessions of this machine, or of an ssh host, that used this marketplace\'s plugins, review each for plugin problems, and keep the run in the review store',
+  description: 'Pick the sessions of this machine, or of an ssh host, that used this marketplace\'s plugins, review each for plugin problems and judge the context its files cost, and keep the run in the review store',
   whenToUse: 'To find what to improve in the plugins from real sessions. args: {perBucket, sinceDays, host}; host is an ssh host whose sessions to review, this machine where absent; one agent for the pick, at most two per picked session, one for the record.',
   phases: [
     { title: 'Pick', detail: 'scripts/pick-sessions.py pick' },
     { title: 'Review', detail: 'one reviewer per picked session' },
-    { title: 'Verify', detail: 'one skeptic per session that has findings' },
+    { title: 'Verify', detail: 'one skeptic per session that has findings or context judgments' },
     { title: 'Record', detail: 'scripts/pick-sessions.py record, then commit and push the run' },
   ],
 }

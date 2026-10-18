@@ -10,7 +10,8 @@ Claude Code writes a session to `~/.claude/projects/<slug>/<uuid>.jsonl`, and it
 |---|---|
 | `assistant` | Claude's turn, plus `attributionPlugin` (plugin directory name, e.g. `tasks`) and `attributionSkill` (namespaced, e.g. `tasks:tasks-core`) while a skill runs |
 | `user` | The human turn, and the `tool_result` blocks inside its `content` array. A failed tool is `tool_result.is_error == true`; `toolDenialKind` says who refused a call that never ran (`user-rejected`, `permission-rule`) |
-| `attachment` | With `attachment.type` `queued_command` and `attachment.origin.kind` `human`: a prompt the user typed while the agent worked. No `user` record holds it; `render` prints it as `USER (queued)` |
+| `attachment` | With `attachment.type` `queued_command` and `attachment.origin.kind` `human`: a prompt the user typed while the agent worked. No `user` record holds it; `render` prints it as `USER (queued)`. The [context cost](#context-cost) reads four more types: `instructions` (the AGENTS.md and CLAUDE.md files loaded, with path and content), `skill_listing` (the listing text, one `- <name>: <text>` entry per skill), `agent_listing_delta` (`addedLines` of the agent listing), `invoked_skills` (each skill body loaded again after a compaction) |
+| `system` | With `subtype` `compact_boundary`: a compaction. The context before it is replaced by a summary |
 
 ## The review store
 
@@ -33,7 +34,7 @@ $SESSION_REVIEW_DIR/runs/<date>T<time>-<host>-v<marketplace version>/
 ├── context.json, context.md # what each file of this repository cost in context over the window
 ├── findings.json            # the findings that survived, each with its session and version
 ├── context-judgments.json   # the reviewers' judgments of the loaded files that survived
-├── sessions/<uuid>.json     # one reviewed session: its pick, and every finding with its verdict
+├── sessions/<uuid>.json     # one reviewed session: its pick, every finding and every context judgment, each with its verdict
 └── transcripts/<uuid>.jsonl # a copy of the session, with <uuid>/subagents/ beside it
 ```
 
