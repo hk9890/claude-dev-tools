@@ -8,12 +8,8 @@ argument-hint: "[--fix] [pr-number|branch|path]"
 Review of one change against **this project's own documents**. It asks a single
 question: does the change do what the project wrote down that it must?
 
-The review is read-only. With `--fix`, step 5 then applies the fixes it settled.
-
-`references/rules-conformance.md` at the plugin root is the whole procedure, including
-which documents form the standard. Step 2 builds the path to it.
-
-One adversarial agent does the whole review. There is no workflow and no level argument.
+The review is read-only. With `--fix`, step 5 then applies the fixes it settled. It takes
+no level argument.
 
 ## Run the review
 

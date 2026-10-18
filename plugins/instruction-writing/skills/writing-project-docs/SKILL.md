@@ -20,24 +20,14 @@ under discussion.
    rather than getting softened to fit.
 2. **What does that file look like?** [`examples/`](examples/) holds a worked example of every file
    with real structure (`CLAUDE.md`'s is its single `@AGENTS.md` line, fixed in the contract).
-   Match its structure and register. `AGENTS.md` especially: `### <use case>` sections, each naming
-   the doc that **MUST** be read and the action that triggers it — there are no optional routes.
-   It routes; it never carries the procedure itself.
+   Match its structure and register.
 3. **How is it written?** [`references/project-doc-guidelines.md`](references/project-doc-guidelines.md)
    — the six named rules (*Ownership*, *Local delta*, *Anchors*, *Command register*, *Economy*,
    *Obligation*), the failure modes, and the bar any change must clear before it lands.
 4. **What holds for any agent-facing document?**
    [`../../references/writing-hygiene.md`](../../references/writing-hygiene.md), at
-   `<base directory for this skill>/../../references/` — single source of truth, cache, relevance,
-   sediment, no-ops, negation. Shared with `writing-skills`, so it sits at the **plugin root** and
-   the `../../` is the layout rather than a mistake. Item 3 is what a project doc *set* adds on top
-   of it; both bind.
-
-## Sediment
-
-Doc sets fail by **sediment**, defined in item 4 and the failure every rule below the surface is
-guarding. Two things hold it off: a change is an *edit, not an append*, and `AGENTS.md` is the only
-place routing lives.
+   `<base directory for this skill>/../../references/` (the `../../` is the layout, not a
+   mistake) — single source of truth, cache, relevance, sediment, no-ops, negation.
 
 ## Done means
 
