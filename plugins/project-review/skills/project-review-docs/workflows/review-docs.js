@@ -521,15 +521,16 @@ if (typeof agent === 'function') {
   )
 
   let promptIndex = null
+  let historyFailure = null
   try {
     promptIndex = parseManifest(prompts)
   } catch (e) {
+    historyFailure = 'the prompt index from history.py could not be parsed: ' + String(e)
     log('History: could not parse the prompt index — skipping the stage. ' + String(e))
   }
 
   let historyEntries = []
   let historySummary = null
-  let historyFailure = null
   const sessionBatches = (promptIndex && promptIndex.batches) || []
 
   if (!promptIndex) {
@@ -553,6 +554,7 @@ if (typeof agent === 'function') {
     ))
     const labelled = labelWrites.filter(Boolean)
     const claimed = labelled.reduce((n, r) => n + (r.sessions_labelled || 0), 0)
+    const sent = sessionBatches.reduce((n, b) => n + (b.sessions || 0), 0)
     log(`History: ${labelled.length}/${sessionBatches.length} batch(es) classified, ${claimed} session(s) labelled`)
 
     // Filter, stratify, and project — all mechanical, so no agent judges any of it.
@@ -565,12 +567,17 @@ if (typeof agent === 'function') {
     try {
       historySummary = parseManifest(evidenceText)
     } catch (e) {
+      historyFailure = 'the evidence summary from history.py could not be parsed: ' + String(e)
       log('History: could not parse the evidence summary — no history findings this run. ' + String(e))
     }
-    // The label agents report their own counts; only history.py shows what reached the files.
-    if (historySummary && (historySummary.sessions_labelled || 0) < claimed) {
-      historyFailure = `the label agents reported ${claimed} session(s) labelled, but history.py read labels ` +
-        `for ${historySummary.sessions_labelled || 0} of ${historySummary.sessions_scanned} session(s): the label files were not written`
+    // The label agents report their own counts, and one whose write failed reports 0 or nothing
+    // at all. Only history.py's count, against the sessions sent out, shows what reached the files.
+    const read = historySummary && (historySummary.sessions_labelled || 0)
+    if (historySummary && read < sent) {
+      const notes = labelled.map(r => r.notes).filter(Boolean)
+      historyFailure = `history.py read labels for ${read} of the ${sent} session(s) sent to the label agents, ` +
+        `which reported ${claimed}: the label files are missing or incomplete` +
+        (notes.length ? ` (${notes.join('; ')})` : '')
       log(`History: classification failed — ${historyFailure}`)
     }
 

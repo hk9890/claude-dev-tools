@@ -339,7 +339,7 @@ async function main() {
 
   const runAudit = async (over = {}) => {
     // promptIndex and manifest are stub overrides for the scripts, not workflow arguments.
-    const { promptIndex: promptOverride, manifest: manifestOverride, evidence: evidenceOverride, dropFile, ...argOver } = over;
+    const { promptIndex: promptOverride, manifest: manifestOverride, evidence: evidenceOverride, labelWrite, dropFile, ...argOver } = over;
     const manifestForRun = manifestOverride || manifest;
     const labels = [];
     const prompts = [];
@@ -350,9 +350,11 @@ async function main() {
       calls.push(opts);
       if (opts.label === 'manifest') return '```json\n' + JSON.stringify(manifestForRun) + '\n```';
       if (opts.label === 'history:extract') return JSON.stringify(promptOverride || promptIndex);
-      if (opts.label === 'history:evidence') return JSON.stringify(evidenceOverride || evidence);
+      if (opts.label === 'history:evidence') {
+        return typeof evidenceOverride === 'string' ? evidenceOverride : JSON.stringify(evidenceOverride || evidence);
+      }
       if (opts.label.startsWith('history:label-')) {
-        return { labels_file: '/tmp/sc/history/labels-01.json', sessions_labelled: 2, messages_labelled: 10 };
+        return labelWrite || { labels_file: '/tmp/sc/history/labels-01.json', sessions_labelled: 2, messages_labelled: 10 };
       }
       if (opts.label === 'history:judge') {
         return { entries: [{
@@ -440,7 +442,20 @@ async function main() {
   const unwritten = await runAudit({ evidence: { ...evidence, sessions_labelled: 0 } });
   truthy('history: labels the agents claimed but history.py did not read reach the synthesis as a failure',
     unwritten.prompts[unwritten.prompts.length - 1].includes(
-      'History stage failure: the label agents reported 2 session(s) labelled, but history.py read labels for 0 of 2 session(s)'));
+      'History stage failure: history.py read labels for 0 of the 2 session(s) sent to the label agents, which reported 2'));
+  // An agent that saw its write fail reports 0, as told. Measured against the agents' own
+  // counts, that failure would match history.py's 0 and pass as a full classification.
+  const reportedFailure = await runAudit({
+    evidence: { ...evidence, sessions_labelled: 0 },
+    labelWrite: { labels_file: '/tmp/sc/history/labels-01.json', sessions_labelled: 0, notes: 'permission denied' },
+  });
+  truthy('history: a write the label agent reported as failed reaches the synthesis as a failure, with its error',
+    reportedFailure.prompts[reportedFailure.prompts.length - 1].includes(
+      'History stage failure: history.py read labels for 0 of the 2 session(s) sent to the label agents, which reported 0: the label files are missing or incomplete (permission denied)'));
+  const unparsed = await runAudit({ evidence: 'Traceback (most recent call last):' });
+  truthy('history: an evidence summary that does not parse reaches the synthesis as a failure',
+    unparsed.prompts[unparsed.prompts.length - 1].includes(
+      'History stage failure: the evidence summary from history.py could not be parsed'));
   truthy('history: the label agent writes with the Write tool',
     deep.prompts.some((p, i) => deep.labels[i].startsWith('history:label-') && p.includes('with the Write tool')));
 
