@@ -19,7 +19,7 @@ In the main checkout:
 1. `git switch -c worktree-ship-stray/<worktree-name>`.
 2. Where the dirty check prints a line, `git add -A -- ':/' ':(top,exclude,glob)[.]claude/worktrees' ':(top,exclude,glob)[.]claude/worktrees/**'`, then `git -c core.hooksPath=/dev/null -c commit.gpgsign=false commit -m "worktree-ship: uncommitted stray work"`. This **transport** commit is found again by its subject, which no hook may change. The `[.]` keeps `git add` from refusing the excludes where `.claude/` is gitignored.
 3. `git switch <base-branch>`.
-4. Where `git rev-list @{upstream}..HEAD` prints commits: once the dirty check prints nothing and `git merge-base --is-ancestor HEAD worktree-ship-stray/<worktree-name>` succeeds, `git reset --hard @{upstream}`.
+4. Where the branch has an upstream and `git rev-list @{upstream}..HEAD` prints commits: once the dirty check prints nothing and `git merge-base --is-ancestor HEAD worktree-ship-stray/<worktree-name>` succeeds, `git reset --hard @{upstream}`.
 
 Where git refuses a command or the check of item 4 fails, stop and ask the user: the reset destroys what the branch does not hold.
 

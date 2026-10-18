@@ -8,8 +8,7 @@ argument-hint: "[--fix] [pr-number|branch|path]"
 Review of one change against **this project's own documents**. It asks a single
 question: does the change do what the project wrote down that it must?
 
-The review is read-only. With `--fix`, step 5 then applies the fixes it settled. It takes
-no level argument.
+The review is read-only. With `--fix`, step 5 then applies the fixes it settled.
 
 ## Run the review
 
