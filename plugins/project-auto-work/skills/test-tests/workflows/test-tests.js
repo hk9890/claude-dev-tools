@@ -810,6 +810,7 @@ if (typeof agent === 'function') {
   const workspaceProtocol = (idx, failFields = 'integrity_ok=false and audited=false') => {
     const wt = `${scratchDir}/wt-${idx}`
     const backupDir = `${scratchDir}/backup-${idx}`
+    const notLanded = 'if a redo still does not land, record no outcome for that edit and name it in notes'
     return mode === 'worktree'
       ? `WORKSPACE (worktree mode): create your own worktree and do ALL work inside it — the user's tree is never touched:\n` +
         `  git -C ${repoRoot} worktree add ${wt} HEAD\n` +
@@ -818,7 +819,7 @@ if (typeof agent === 'function') {
           ? `Then replay the baseline's workspace setup verbatim, adjusting only the worktree path:\n  ${baseline.worktree_setup}\n`
           : '') +
         `Work in ${wt}. Apply edits, run tests, and revert freely with \`git -C ${wt} checkout -- .\` between probes.\n` +
-        `LANDING CHECK: after each edit and before the run it is for, \`git -C ${wt} diff --quiet -- <relpath>\` must FAIL. If it succeeds, the edit never reached the tree the selector runs: redo it in ${wt}, and record no outcome for an edit that did not land.\n` +
+        `LANDING CHECK: after each edit and before the run it is for, \`git -C ${wt} diff --quiet -- <relpath>\` must exit 1 (0 means the edit never reached the tree the selector runs). If it does not exit 1, redo the edit in ${wt}; ${notLanded}. After each revert the same command must exit 0 before the next edit.\n` +
         `WORKSPACE TRIAGE: a fresh worktree holds only committed files. If your selector fails here although the baseline was green in the live tree, ` +
         `that is a defect of YOUR WORKSPACE, not of the suite — diagnose what uncommitted state is missing from the actual error, ` +
         `link or copy it from the live checkout (never install anything, never write to the live checkout), and continue.\n` +
@@ -829,7 +830,7 @@ if (typeof agent === 'function') {
         `  - BEFORE touching any file, mirror its repo-relative path under the backup dir (this is collision-free — never flatten paths):\n` +
         `      mkdir -p ${backupDir}/$(dirname <relpath>) && cp -p ${repoRoot}/<relpath> ${backupDir}/<relpath>\n` +
         `  - NEVER use git checkout/restore/stash to revert — that would destroy the user's uncommitted edits. Restore ONLY by copying the backup back.\n` +
-        `  - After each edit and before the run it is for: \`cmp -s ${repoRoot}/<relpath> ${backupDir}/<relpath>\` must FAIL. If it succeeds, the edit never landed: redo it, and record no outcome for an edit that did not land.\n` +
+        `  - LANDING CHECK: after each edit and before the run it is for, \`cmp -s ${repoRoot}/<relpath> ${backupDir}/<relpath>\` must exit 1 (0 means the edit never landed, 2 means no backup sits at that path). If it does not exit 1, fix the cause and redo the edit; ${notLanded}.\n` +
         `  - After every single probe: restore the file, then \`cmp ${repoRoot}/<relpath> ${backupDir}/<relpath>\` must succeed before you continue.\n` +
         `INTEGRITY GATE: when done, every file you touched must byte-match its backup (cmp each one) and one final clean run of your selector must be green. ` +
         `If any cmp fails, restore from the backup again, and if it still fails set ${failFields} with the reason.`
@@ -891,7 +892,7 @@ if (typeof agent === 'function') {
       `  - production code exercised by tests that spawn a subprocess, start a server, or drive a real service — instrumentation commonly misses another process entirely, and integration tests are where that happens;\n` +
       `  - an uncovered range sitting INSIDE a function whose other lines are covered;\n` +
       `  - a component whose coverage_pct looks implausibly low against test files that clearly exercise it.\n` +
-      `Use the same operators as the audit's other mutants and keep each diff small. For each: apply → run the full test command → record outcome → revert per the protocol.\n\n` +
+      `Use the same operators as the audit's other mutants and keep each diff small. For each: apply → LANDING CHECK → run the full test command → record outcome → revert per the protocol.\n\n` +
       `WHAT THE OUTCOMES MEAN: a KILLED mutant is the finding — a test executed a line the coverage command reported as uncovered, so the data that ranked this audit's sites under-reports. Record killed_by. ` +
       `A SURVIVED mutant restates what the summary already said and is worth nothing; still record it so the report can say how many sites were probed, and expect most of them.\n` +
       `Set ran=true only if the protocol completed and the integrity gate passed.`,
@@ -985,12 +986,12 @@ if (typeof agent === 'function') {
       `Operators, with the name to record for each: negate a condition (negate-condition); flip a comparison, < ↔ <= or == ↔ != (flip-comparison); ±1 on a boundary constant (boundary-constant); delete a guard clause/early return (delete-guard); swap same-typed arguments (swap-args); replace a constant with 0, 1, "" or a null-equivalent (replace-constant); && ↔ || (logic-operator); delete a statement whose result is unused (delete-statement); return a constant instead of the computed value (return-constant).\n` +
       `BOUNDARY RULE: the edge cases that break in production — an empty collection, a single item, the maximum, the line between valid and invalid — live in comparisons, size and limit constants, and empty/null guards. Where this component's production code contains any of those constructs, at least ONE mutant must be boundary-class: flip-comparison, boundary-constant, delete-guard, or replace-constant. A mix drawn only from the other operators leaves every boundary unprobed, and a suite that pins no edge case would score clean on it. Where the code genuinely holds no such construct, record that in notes.\n` +
       `RULE: before applying each mutant, STATE the behavior change you believe it introduces (e.g. "empty input now passes validation"). If you cannot state one, pick a different site — never apply an edit with no statable behavior change.\n` +
-      `For each mutant: apply (keep the diff ≤ ~15 lines) → run the selector → record operator (exactly one of the names above) and outcome KILLED (with killed_by = the failing test) or SURVIVED (with implication = what broken behavior would ship undetected) → revert per the workspace protocol.\n\n` +
+      `For each mutant: apply (keep the diff ≤ ~15 lines) → LANDING CHECK → run the selector → record operator (exactly one of the names above) and outcome KILLED (with killed_by = the failing test) or SURVIVED (with implication = what broken behavior would ship undetected) → revert per the workspace protocol.\n\n` +
       `3b. REACHABILITY — one probe per SURVIVING mutant, and none for the others. This is what lets this audit run without trusting a coverage report, so do not skip it.\n` +
       `A survivor has two innocent explanations: no test executes that line, or the mutation changes nothing observable. This step removes the first.\n` +
       `A KILLED mutant needs no probe and must not get one — a test failed on it, so the line demonstrably ran: record reached="yes" with the killing test as reach_evidence and spend no run on it.\n` +
       `For each SURVIVOR: at the SAME site, in place of the mutant, apply the most lethal one-line edit the language allows — throw an exception carrying the marker string TT-REACH ` +
-      `(Python \`raise Exception("TT-REACH")\`, JavaScript \`throw new Error("TT-REACH")\`, Go \`panic("TT-REACH")\`, Java \`throw new RuntimeException("TT-REACH")\`, Ruby \`raise "TT-REACH"\`). Run the selector once, then revert per the workspace protocol. Read the outcome:\n` +
+      `(Python \`raise Exception("TT-REACH")\`, JavaScript \`throw new Error("TT-REACH")\`, Go \`panic("TT-REACH")\`, Java \`throw new RuntimeException("TT-REACH")\`, Ruby \`raise "TT-REACH"\`). Run the LANDING CHECK, run the selector once, then revert per the workspace protocol. Read the outcome:\n` +
       `  - a test FAILED and the output names TT-REACH → reached="yes". The tests execute this line and assert nothing the mutation breaks: a real blind spot. reach_evidence = the failing test.\n` +
       `  - a test FAILED but the marker is nowhere in the output → still reached="yes", and this is COMMON: a browser harness with no pageerror handler, or any runner that swallows a subprocess's stderr, never echoes it. Read the red selector as the signal, and say in reach_evidence that the marker was not surfaced and which test went red.\n` +
       `  - the selector stayed GREEN → run a CONTROL probe before you conclude anything. Put the same throw on a neighbouring line the tests certainly DO reach — the sibling branch of the same conditional, the statement above it — and run the selector again. ` +

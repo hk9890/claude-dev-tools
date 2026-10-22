@@ -12,7 +12,7 @@ MIT license:
 - [humanlayer/skills](https://github.com/humanlayer/skills) — the Summary's list of visuals
   (pseudocode, a call tree, a file tree, a Mermaid diagram, a diff) comes from Dex Horthy's
   `show-me` skill, which the `pr` skill reproduces almost word for word; its split between a diff
-  of a changed shape and the whole of a new one comes from the same author's `visual-pr` skill at
+  of a changed shape and the whole of a mostly new one comes from the same author's `visual-pr` skill at
   commit [`4e39d8f`](https://github.com/humanlayer/skills/commit/4e39d8f)
 
 ## MIT License (mattpocock/skills)
