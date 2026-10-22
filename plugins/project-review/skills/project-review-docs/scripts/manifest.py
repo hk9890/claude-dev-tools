@@ -369,10 +369,10 @@ def build(repo_root, setup_md=None):
     for e in files:
         e["reachable_from_agents"] = (e["path"] == "CLAUDE.md") or (e["path"] in reachable)
 
-    # CLAUDE.md invariant. md_files() skips symlinks, so a CLAUDE.md that links to
-    # AGENTS.md is present but absent from files[]; reading it would read AGENTS.md.
+    # CLAUDE.md invariant. md_files() skips root-level symlinks, so a CLAUDE.md that links
+    # to AGENTS.md is present but absent from files[]; reading it would read AGENTS.md.
     claude_abs = os.path.join(repo_root, "CLAUDE.md")
-    claude = {"present": os.path.lexists(claude_abs), "canonical": False, "detail": ""}
+    claude = {"present": os.path.islink(claude_abs) or os.path.isfile(claude_abs), "canonical": False, "detail": ""}
     if os.path.islink(claude_abs):
         claude["detail"] = f"symlink to {os.readlink(claude_abs)}, not a file holding the @AGENTS.md import"
     elif claude["present"]:
@@ -402,11 +402,14 @@ def build(repo_root, setup_md=None):
         if os.path.isfile(os.path.join(repo_root, "docs", n)):
             location_violations.append({"file": n, "found_at": f"docs/{n}", "expected_at": n})
 
-    # Injected blocks in steering docs
-    injected = []
-    for n in ("CLAUDE.md", "AGENTS.md"):
+    # Injected blocks in steering docs. Scan each real file once: a steering doc that links
+    # to the other one would report the same blocks twice, so a link comes after the files.
+    injected, scanned = [], set()
+    for n in sorted(("CLAUDE.md", "AGENTS.md"), key=lambda n: os.path.islink(os.path.join(repo_root, n))):
         p = os.path.join(repo_root, n)
-        if os.path.isfile(p) and not os.path.islink(p):
+        real = os.path.realpath(p)
+        if os.path.isfile(p) and real not in scanned:
+            scanned.add(real)
             for b in injected_blocks(p):
                 b["file"] = n
                 injected.append(b)

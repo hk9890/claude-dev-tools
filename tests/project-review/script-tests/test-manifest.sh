@@ -215,9 +215,21 @@ test_claude_symlink() {
   local out; out=$("$SCRIPT" "$dir")
   assert_eq "claude symlink: AGENTS.md blocks not reported again under CLAUDE.md" "['AGENTS.md']" \
     "$(json_val "$out" "[b['file'] for b in d['injected_blocks']]")"
+  assert_eq "claude symlink: present" "True" "$(json_val "$out" "d['claude_md']['present']")"
   assert_eq "claude symlink: not missing" "[]" "$(json_val "$out" "d['missing_canonical']")"
   assert_eq "claude symlink: non-canonical" "False" "$(json_val "$out" "d['claude_md']['canonical']")"
   assert_contains "claude symlink: detail names the link" "symlink to AGENTS.md" "$(json_val "$out" "d['claude_md']['detail']")"
+  rm -rf "$dir"
+}
+# A symlinked AGENTS.md is still scanned for injected blocks (regression: the scan
+# skipped every symlink, not only a CLAUDE.md that links to AGENTS.md).
+test_agents_symlink_blocks() {
+  local dir; dir=$(make_fixture)
+  mkdir "$dir/real"; mv "$dir/AGENTS.md" "$dir/real/AGENTS.md"; ln -s real/AGENTS.md "$dir/AGENTS.md"
+  printf '<!-- BEGIN tool -->\nx\n<!-- END tool -->\n' >> "$dir/real/AGENTS.md"
+  local out; out=$("$SCRIPT" "$dir")
+  assert_eq "agents symlink: its blocks are still reported" "['AGENTS.md']" \
+    "$(json_val "$out" "[b['file'] for b in d['injected_blocks']]")"
   rm -rf "$dir"
 }
 
@@ -272,6 +284,7 @@ test_contract
 test_claude_ok
 test_claude_bad
 test_claude_symlink
+test_agents_symlink_blocks
 test_hollow
 test_routes
 test_brief
