@@ -5,7 +5,7 @@
 
 <one or two sentences: what changed and why>
 
-<optional: the smallest view that makes the point clear: pseudocode, a call tree, a file tree, a Mermaid diagram, or a diff>
+<optional: the smallest view that makes the point clear: pseudocode, a call tree, a file tree, a Mermaid diagram, a diff of a changed shape, or the whole of a mostly new one>
 
 ## Evidence
 
