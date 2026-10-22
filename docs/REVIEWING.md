@@ -12,7 +12,7 @@ Local review rules for this plugin marketplace. The generic lenses are `project-
 
 How a finished change must look. Each is a condition to check on the diff.
 
-- **`SKILL.md` quality.** A changed `SKILL.md` meets the rubric in [`plugins/instruction-writing/skills/writing-skills/SKILL.md`](../plugins/instruction-writing/skills/writing-skills/SKILL.md). Run `plugin-dev:skill-reviewer` on it; each point it raises that the rubric backs is a finding:
+- **Skill and agent text.** A changed `SKILL.md`, a file it bundles or shares, or a file under a plugin's `agents/` meets the `instruction-writing:writing-skills` rubric. Call the Skill tool with `instruction-writing:writing-skills` and the changed paths, even where it loaded earlier in this session, and apply every rule of it and of the `writing-hygiene.md` it points to; reading the file is not loading the skill. Then run `plugin-dev:skill-reviewer` on each changed `SKILL.md`; each point it raises that the rubric backs is a finding:
 
   ```
   Review the skill at plugins/my-plugin/skills/my-skill/SKILL.md

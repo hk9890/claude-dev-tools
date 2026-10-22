@@ -1,7 +1,7 @@
 ---
 name: worktree-review
 description: "Review a PR and push the fixes: the project's rules review, then the code review."
-when_to_use: "Use when the user asks to 'review the PR and push the fixes'. Also loaded by name at the review step of a project's change workflow or of `worktree-ship`. Not for a review without a push, with or without `--fix` (`code-review`), nor for the rules review alone (`project-review:project-review-change`)."
+when_to_use: "Triggers on 'review the PR and push the fixes'. Also loaded by name at the review step of a change workflow. Not for a review without a push, with or without `--fix` (`code-review`), nor for the rules review alone (`project-review:project-review-change`)."
 argument-hint: "[pr-number]"
 ---
 
@@ -52,6 +52,6 @@ Done when, in `gh pr view <pr-number> --json headRefOid,body`, the commit after 
 
 ## 5. Report
 
-Report the PR URL, each review with its outcome, the open questions and the fixes not applied of the rules review with its `/tasks:tasks-create` suggestion, its suggested rule additions with their documents, and each gate with its result. Where `worktree-ship` invoked this run, keep these items for its step 8 in place of this report.
+Report the PR URL, each review with its outcome, the open questions and the fixes not applied of the rules review with its `/tasks:tasks-create` suggestion, its suggested rule additions with their documents, and each gate with its result. Where `worktree-ship` invoked this run, keep these items for its report in place of this one.
 
 Done when the report, or the items kept for `worktree-ship`, hold each item, or say that it does not apply.

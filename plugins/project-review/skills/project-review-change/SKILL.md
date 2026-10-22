@@ -1,7 +1,7 @@
 ---
 name: project-review-change
-description: "Rules review of one change against the project's own written rules; read-only unless --fix, which applies the settled fixes."
-when_to_use: "Use when the user asks whether a change obeys the project's rules. Triggers on 'rules review'. Also loaded by name when another skill needs the rules review. Not for correctness bugs or simplification (`code-review`), a PR reviewed with its fixes pushed (`worktree-flow:worktree-review`), an audit of the docs (`project-review-docs`), or the whole tree (`project-review-codebase`)."
+description: "Rules review of one change against the project's own written rules; --fix applies the settled fixes."
+when_to_use: "Use when the user asks whether a change obeys the project's rules. Triggers on 'rules review'. Also loaded by name when another skill needs the rules review. Not for correctness bugs or simplification (`code-review`), a review with its fixes pushed (`worktree-flow:worktree-review`), or a docs or whole-tree audit (`project-review-docs`, `project-review-codebase`)."
 argument-hint: "[--fix] [pr-number|branch|path]"
 ---
 
@@ -9,11 +9,6 @@ Review of one change against **this project's own documents**. It asks a single
 question: does the change do what the project wrote down that it must?
 
 The review is read-only. With `--fix`, step 5 then applies the fixes it settled.
-
-`references/rules-conformance.md` at the plugin root is the whole procedure, including
-which documents form the standard. Step 2 builds the path to it.
-
-One adversarial agent does the whole review. There is no workflow and no level argument.
 
 ## Run the review
 

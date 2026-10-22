@@ -1,7 +1,7 @@
 ---
 name: revier
-description: "revier: the other projects on this machine, the agents running in them, and their source."
-when_to_use: "Use when a task needs another project on this machine, or another agent the user runs: finding where a project is checked out to read its source, seeing which agents run and in what state, prompting one of them, or finding which projects the user worked in over the last days. Triggers on 'revier', 'the agent in <project>', 'other Claude instances in this project', 'the projects I worked on'. Not for subagents this session spawns itself. ListAgents lists every Claude session on the machine, idle ones too, so it does not tell which agents work in a project."
+description: "revier: other projects on this machine, their agents, and their source."
+when_to_use: "Use when a task needs another project or another agent the user runs: where a project is checked out, which agents run and in what state, prompting one, or which projects the user worked in lately. Triggers on 'revier', 'the agent in <project>', 'other Claude instances in this project', 'the projects I worked on'. Not for subagents this session spawns. ListAgents shows every session, idle ones too, not which agents work in a project."
 allowed-tools: Bash(revier version*), Bash(revier --help*), Bash(revier status*), Bash(revier list*), Bash(revier events*), Bash(revier agent --help*), Bash(revier agent wait*), Bash(revier agent read*), Bash(revier agent new --no-focus*)
 ---
 
