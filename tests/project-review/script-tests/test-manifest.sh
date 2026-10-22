@@ -206,6 +206,17 @@ test_claude_bad() {
   assert_eq "claude: non-canonical when extra content" "False" "$(json_val "$out" "d['claude_md']['canonical']")"
   rm -rf "$dir"
 }
+# A CLAUDE.md symlinked to AGENTS.md is present and non-canonical, and the detail says
+# why (regression: reported missing, and as "extra content" read through the link).
+test_claude_symlink() {
+  local dir; dir=$(make_fixture)
+  rm "$dir/CLAUDE.md"; ln -s AGENTS.md "$dir/CLAUDE.md"
+  local out; out=$("$SCRIPT" "$dir")
+  assert_eq "claude symlink: not missing" "[]" "$(json_val "$out" "d['missing_canonical']")"
+  assert_eq "claude symlink: non-canonical" "False" "$(json_val "$out" "d['claude_md']['canonical']")"
+  assert_contains "claude symlink: detail names the link" "symlink to AGENTS.md" "$(json_val "$out" "d['claude_md']['detail']")"
+  rm -rf "$dir"
+}
 
 # 11. hollow doc
 test_hollow() {
@@ -257,6 +268,7 @@ test_reachability
 test_contract
 test_claude_ok
 test_claude_bad
+test_claude_symlink
 test_hollow
 test_routes
 test_brief
