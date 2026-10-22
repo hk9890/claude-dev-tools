@@ -460,6 +460,11 @@ async function main() {
     deep.prompts.some((p) => p.includes('/repo')));
   truthy('orchestration: the scratch dir reaches the worker prompt',
     deep.prompts.some((p) => p.includes('/tmp/sc')));
+  // An edit that never reached the tested tree survives every test, so an unproven landing
+  // reads as a blind spot the suite does not have.
+  truthy('orchestration: a worktree worker proves each edit landed before the run',
+    deep.prompts.some((p, i) => deep.labels[i].startsWith('worker:') &&
+      /LANDING CHECK: .*git -C \/tmp\/sc\/wt-\d+ diff --quiet -- <relpath>` must FAIL/.test(p)));
 
   // ── the findings cap ─────────────────────────────────────────────────────────
   // Live-tree mode serializes workers, which is the path the cap is built for: each
@@ -477,6 +482,9 @@ async function main() {
     __workerSurvivors: 7,
   });
   const serialWorkers = serialCap.labels.filter((l) => l.startsWith('worker:'));
+  truthy('orchestration: a live-tree worker proves each edit landed before the run',
+    serialCap.prompts.some((p, i) => serialCap.labels[i].startsWith('worker:') &&
+      /cmp -s \/repo\/<relpath> \/tmp\/sc\/backup-\d+\/<relpath>` must FAIL/.test(p)));
   eq('cap: a serialized audit stops taking on components once the findings are in', 3, serialWorkers.length);
   // raw.not_checked is the list assembled in code; report.not_checked is the agent's copy
   // of it, so the code-assembled one is what proves the cap cannot go unmentioned.

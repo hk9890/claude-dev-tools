@@ -818,6 +818,7 @@ if (typeof agent === 'function') {
           ? `Then replay the baseline's workspace setup verbatim, adjusting only the worktree path:\n  ${baseline.worktree_setup}\n`
           : '') +
         `Work in ${wt}. Apply edits, run tests, and revert freely with \`git -C ${wt} checkout -- .\` between probes.\n` +
+        `LANDING CHECK: after each edit and before the run it is for, \`git -C ${wt} diff --quiet -- <relpath>\` must FAIL. If it succeeds, the edit never reached the tree the selector runs: redo it in ${wt}, and record no outcome for an edit that did not land.\n` +
         `WORKSPACE TRIAGE: a fresh worktree holds only committed files. If your selector fails here although the baseline was green in the live tree, ` +
         `that is a defect of YOUR WORKSPACE, not of the suite — diagnose what uncommitted state is missing from the actual error, ` +
         `link or copy it from the live checkout (never install anything, never write to the live checkout), and continue.\n` +
@@ -828,6 +829,7 @@ if (typeof agent === 'function') {
         `  - BEFORE touching any file, mirror its repo-relative path under the backup dir (this is collision-free — never flatten paths):\n` +
         `      mkdir -p ${backupDir}/$(dirname <relpath>) && cp -p ${repoRoot}/<relpath> ${backupDir}/<relpath>\n` +
         `  - NEVER use git checkout/restore/stash to revert — that would destroy the user's uncommitted edits. Restore ONLY by copying the backup back.\n` +
+        `  - After each edit and before the run it is for: \`cmp -s ${repoRoot}/<relpath> ${backupDir}/<relpath>\` must FAIL. If it succeeds, the edit never landed: redo it, and record no outcome for an edit that did not land.\n` +
         `  - After every single probe: restore the file, then \`cmp ${repoRoot}/<relpath> ${backupDir}/<relpath>\` must succeed before you continue.\n` +
         `INTEGRITY GATE: when done, every file you touched must byte-match its backup (cmp each one) and one final clean run of your selector must be green. ` +
         `If any cmp fails, restore from the backup again, and if it still fails set ${failFields} with the reason.`
