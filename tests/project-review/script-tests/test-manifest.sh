@@ -211,7 +211,10 @@ test_claude_bad() {
 test_claude_symlink() {
   local dir; dir=$(make_fixture)
   rm "$dir/CLAUDE.md"; ln -s AGENTS.md "$dir/CLAUDE.md"
+  printf '<!-- BEGIN tool -->\nx\n<!-- END tool -->\n' >> "$dir/AGENTS.md"
   local out; out=$("$SCRIPT" "$dir")
+  assert_eq "claude symlink: AGENTS.md blocks not reported again under CLAUDE.md" "['AGENTS.md']" \
+    "$(json_val "$out" "[b['file'] for b in d['injected_blocks']]")"
   assert_eq "claude symlink: not missing" "[]" "$(json_val "$out" "d['missing_canonical']")"
   assert_eq "claude symlink: non-canonical" "False" "$(json_val "$out" "d['claude_md']['canonical']")"
   assert_contains "claude symlink: detail names the link" "symlink to AGENTS.md" "$(json_val "$out" "d['claude_md']['detail']")"

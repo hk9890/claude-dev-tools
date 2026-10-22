@@ -406,7 +406,7 @@ def build(repo_root, setup_md=None):
     injected = []
     for n in ("CLAUDE.md", "AGENTS.md"):
         p = os.path.join(repo_root, n)
-        if os.path.isfile(p):
+        if os.path.isfile(p) and not os.path.islink(p):
             for b in injected_blocks(p):
                 b["file"] = n
                 injected.append(b)
