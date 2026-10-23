@@ -50,6 +50,9 @@ const DENIED = [
   'git worktree add --detach $W HEAD\nW=/tmp/probe',
   "cat > x <<'EOF' && /bin/sh x\ngit worktree add ../x\nEOF",
   "ssh host bash <<'EOF'\ngit worktree add ../x\nEOF",
+  "bash <<'EOF'\nW=/tmp/probe\nEOF\ngit worktree add --detach $W HEAD",
+  "W=/tmp/probe\nbash <<'EOF'\ngit worktree add --detach $W HEAD\nEOF",
+  'echo start \\\nW=/tmp/probe\ngit worktree add --detach $W HEAD',
   'echo W=/tmp/probe && git worktree add --detach $W HEAD',
   'W=/tmp/probe true && git worktree add --detach $W HEAD',
   '(W=/tmp/probe); git worktree add --detach $W HEAD',
@@ -74,6 +77,7 @@ const ALLOWED = [
   'cat > notes.md <<-"END"\n\tgit worktree add ../x\n\tEND',
   "cat > $S/run.sh <<'EOF'\ngit worktree add -q --detach .claude/worktrees/wt1\nEOF",
   'W=/tmp/probe\ngit worktree add --detach $W HEAD',
+  "bash <<'EOF'\nW=/tmp/probe\ngit worktree add --detach $W HEAD\nEOF",
   'S=/home/me/scratchpad/repro; mkdir -p $S\nsetup(){ d=$1; git worktree add --detach $S/$d/wt HEAD; }\nsetup a',
 ]
 
