@@ -96,11 +96,10 @@ docs inline. The workflow returns a structured report; relay it.
    - The read-review reads the live working tree, so it audits your uncommitted doc edits,
      not `HEAD`.
 
-5. Relay the report. The workflow returns `{ report: { verdict, headline, findings[], … }, raw, … }`
-   — surface `.report`, and do not re-derive it. `raw.not_reviewed` names any file no
-   batch agent reported back on; when it is non-empty, say which files went unreviewed,
-   whatever the report says — a partial audit relayed as a complete one is the worst
-   outcome this skill has. Each finding is tagged `settled`
+5. Relay the report. The workflow returns `{ report: { verdict, headline, findings[], … }, raw, … }`,
+   under `result` in its task output file — surface `.report`, and do not re-derive it.
+   `raw.not_reviewed` names any file no batch agent reported back on; when it is
+   non-empty, say which files went unreviewed, whatever the report says. Each finding is tagged `settled`
    or `open` — read `<base directory for this skill>/../../references/decision-split.md`
    for what those mean and how to relay them (the plugin-root layout applies, so
    `../..` is correct here). For a "did you really check X?" follow-up, **re-run
