@@ -70,8 +70,8 @@ know what the app reaches. Point it at an environment whose data you can afford 
    lands in `not_checked`.
 
 5. Relay the report. The workflow returns
-   `{ report: { verdict, evidence_basis, headline, findings[], questions[], checked[], not_checked[], proposals[], stop_reason, report_markdown }, raw, … }` —
-   surface `.report` in full, and do not re-derive or soften it. Report the `not_checked`
+   `{ report: { verdict, evidence_basis, headline, findings[], questions[], checked[], not_checked[], proposals[], stop_reason, report_markdown }, raw, … }`,
+   under `result` in its task output file — surface `.report` in full, and do not re-derive or soften it. Report the `not_checked`
    list as prominently as the findings: a short findings list on a run that reached three
    flows is not a clean bill of health. When the returned object carries a non-null
    `build_drift`, lead with it — the iterations exercised different builds of the
@@ -91,7 +91,7 @@ know what the app reaches. Point it at an environment whose data you can afford 
 If the workflow returns an object with `error` and no `report` (bad arguments, or the recon
 agent died), relay the error verbatim, state that the run did not happen, and do not
 improvise findings. When the error carries `got`, the run never started and `got.keys` lists
-the arguments that actually arrived — surface it, since that is what shows a misspelled key.
+the arguments that actually arrived — surface it.
 
 ## The project supplies the technology knowledge
 

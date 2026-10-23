@@ -108,10 +108,10 @@ when the skill loads. It is absolute and install-correct — build every path fr
    `git -C "<path>" worktree prune`.
 
 5. Relay the report. The workflow returns
-   `{ report: { verdict, headline, scores, findings[], proposals[], … }, raw, … }` —
-   surface `.report` in full, and do not re-derive or soften it. Also save it as
-   markdown to `$SCRATCH/test-tests-report.md` (outside the repo) and state that
-   path — the user may grill it or act on it in a later session. For a "did you
+   `{ report: { verdict, headline, scores, findings[], proposals[], … }, raw, … }`,
+   under `result` in its task output file — surface `.report` in full, and do not
+   re-derive or soften it. Also save it as markdown to `$SCRATCH/test-tests-report.md`
+   (outside the repo) and state that path. For a "did you
    really check X?" follow-up, **re-run the skill**; never answer from the report
    alone.
 
