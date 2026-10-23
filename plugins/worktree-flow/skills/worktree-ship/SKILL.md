@@ -16,7 +16,7 @@ Record from the project's workflow docs (AGENTS.md or CLAUDE.md routing, a chang
 
 ## 2. Enter a worktree
 
-Where `git rev-parse --git-dir` and `git rev-parse --git-common-dir` print different paths, the session is in a worktree: stay. Look its PR up with `gh pr view <upstream-branch>`, the upstream without the remote name: `gh` finds a PR by the local branch name, and the push can use another one. With no upstream there is no PR yet. Where the PR is `MERGED` or `CLOSED`, stop: a new change needs a new worktree.
+Where `git rev-parse --git-dir` and `git rev-parse --git-common-dir` print different paths, the session is in a worktree: stay. Look its PR up with `gh pr view <upstream-branch>`, the upstream without the remote name. With no upstream there is no PR yet. Where the PR is `MERGED` or `CLOSED`, stop: a new change needs a new worktree.
 
 From the main checkout, choose a kebab-case `<worktree-name>`. Where the **dirty check** `git status --porcelain -- ':/' ':(top,exclude).claude/worktrees'` prints a line, or `git rev-list @{upstream}..HEAD` does where the branch has an upstream, or a `worktree-ship-stray/*` branch exists, read [the stray-work move](references/stray-work.md) and do its **Ask first** and **Move out**: work that belongs to the change leaves the main checkout before `EnterWorktree`. Call `EnterWorktree` with the name before you start any subagent: a subagent that runs while the session enters a worktree loses its Bash.
 
@@ -30,9 +30,9 @@ Where the change implements tracker issues, mark each one in progress before the
 
 ## 4. Prove it
 
-Run every gate until it is green. Then run the product by hand the way the project documents, else call the Skill tool with `run`, even where it loaded earlier in this session, and use the change the way its user reaches it. Keep each command and its result for the PR body. A gate or drive that cannot run here is reported as skipped with the reason, never as passed; a gate that fails on the base branch too goes to the user.
+Run every gate until it is green. Then run the product by hand the way the project documents, else call the Skill tool with `run`, even where it loaded earlier in this session, and use the change the way its user reaches it. Keep each command and its result for the PR body. A gate or drive that cannot run here is reported as skipped with the reason, never as passed. A gate that fails on the base branch too: stop and ask the user before step 5.
 
-Done when each gate and drive is green or reported as skipped.
+Done when each gate and drive is green, skipped, or red on the base branch too with the user's answer to go on.
 
 ## 5. Open the PR
 
