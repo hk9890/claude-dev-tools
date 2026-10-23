@@ -30,7 +30,7 @@ Where the change implements tracker issues, mark each one in progress before the
 
 ## 4. Prove it
 
-Run every gate until it is green. Then run the product by hand the way the project documents, else call the Skill tool with `run`, even where it loaded earlier in this session, and use the change the way its user reaches it. Keep each command and its result for the PR body. A gate or drive that cannot run here is reported as skipped with the reason, never as passed. A gate that fails on the base branch too: stop and ask the user before step 5.
+Run every gate until it is green. Then run the product by hand the way the project documents, else call the Skill tool with `run`, even where it loaded earlier in this session, and use the change the way its user reaches it. Keep each command and its result for the PR body. A gate or drive that cannot run here is reported as skipped with the reason, never as passed. A gate that fails on the base branch too: stop and ask the user before you fix it.
 
 Done when each gate and drive is green, skipped, or red on the base branch too with the user's answer to go on.
 
