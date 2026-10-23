@@ -27,7 +27,7 @@ revier also places and raises windows, and the user is typing in one of them whi
 | `revier agent send-keys` | types named keys into an agent, whatever its status |
 | `revier agent new --no-focus` | adds an agent tab to an open workspace and prints the address of the agent |
 
-This skill needs revier 0.14.0 or later: compare with the "Installed" line above.
+This skill needs revier 0.14.0 or later: where the "Installed" line above shows an older one, tell the user to update revier, and do nothing else with this skill.
 
 The rest of the CLI is outside this skill. Most of it opens, raises or closes a window: `shell new` raises the tab it adds, and so does `agent new` without `--no-focus`. When the task needs one of those commands, take its syntax from `revier --help` and give the user the exact command to run.
 
