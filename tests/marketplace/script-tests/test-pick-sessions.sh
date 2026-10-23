@@ -487,7 +487,8 @@ with tempfile.TemporaryDirectory() as tmp:
     write(projects / "proj" / "s1" / "subagents" / "workflows" / "wf_1" / "agent-w.jsonl", [
         call("w1", "Bash", "w1", command="make"),
         result("w1", "exit status 2", is_error=True),
-        assistant("w2", 1),
+        call("w2", "Bash", "w2", command="make clean"),
+        result("w2", "The user doesn't want to proceed with this tool use.", is_error=True, denial="user-rejected"),
     ])
     # Another project with a docs/ of its own and no plugin use.
     write(projects / "other" / "s2.jsonl", [
@@ -532,8 +533,12 @@ with tempfile.TemporaryDirectory() as tmp:
           {"runs": 1, "read": {"plugins/demo/references/r.md": 1}}, context.get("reach", {}).get("plugins/demo/skills/skill/SKILL.md"))
     check("a second Read of the same part of a file is a re-read", {"docs/CODING.md": {"contexts": 2, "repeated": 1}}, context.get("rereads"))
     check("trouble: a failed call and a rejected call of a skill turn, by its version, and the turns of a Workflow agent apart",
-          {"turns": 8, "failed": 1, "rejected": 1, "workflow_turns": 2, "workflow_failed": 1, "workflow_rejected": 0},
+          {"turns": 8, "failed": 1, "rejected": 1, "workflow_turns": 2, "workflow_failed": 1, "workflow_rejected": 1},
           context.get("trouble", {}).get("demo:skill", {}).get("1.0.0"))
+    check("context.md gives each count of the trouble its own column, the Workflow counts last",
+          ["| Skill | Version | Turns | Failed | Rejected | Workflow turns | Workflow failed | Workflow rejected |",
+           "| `demo:skill` | 1.0.0 | 8 | 1 | 1 | 2 | 1 | 1 |"],
+          [line for line in Path(picks["run_dir"], "context.md").read_text().splitlines() if line.startswith(("| Skill | Version |", "| `demo:skill` |"))])
     s1 = next((s for s in picks.get("sessions", []) if s["session_id"] == "s1"), {})
     check("a picked session carries the files of this repository it loaded, listing left out",
           ["AGENTS.md", "docs/CODING.md", "docs/TESTING.md", "plugins/demo/references/r.md", "plugins/demo/skills/skill/SKILL.md"], s1.get("context_files"))
