@@ -112,10 +112,10 @@ One row per skill, over every session of the window that used a plugin of this m
 | Section | Counts |
 |---|---|
 | Files | char-reads and characters loaded per file, by channel: `listing` (skill and agent listing entries), `skill-body`, `skill-reinjected` (the copy after a compaction), `instructions` (the checkout's AGENTS.md and CLAUDE.md), `read` (Read tool results), `attached` (`file` and `edited_text_file` attachments) |
-| Readers | the contexts that read a file, by `session` or subagent `agentType`, and how many edited a file of this repository after the read with Edit, Write or NotebookEdit |
+| Readers | the contexts that read a file, by `session` or subagent `agentType`, and how many edited a file of this repository after the read |
 | Reference reach | for each skill load, the files of its plugin read with the Read tool after it in the same context: a lower bound, as agents also print references with `cat` |
 | Re-reads | Reads of the same part of a file a context had read already |
-| Trouble per skill version | the failed and the user-rejected tool calls of a skill's turns |
+| Trouble per skill version | failed and user-rejected tool calls of a skill's turns, a Workflow agent's apart |
 
 - A path is a file of this repository where it is an install under `plugins/cache/<marketplace name>/`, or lies below a top-level entry that git tracks, in a checkout or in the marketplace clone under `plugins/marketplaces/<marketplace name>/`. A checkout is the directory of a loaded AGENTS.md whose first line is this repository's, or the checkout that holds it where that directory is a worktree under `.claude/worktrees/`: a change to that line leaves the checkouts of older sessions unrecognized.
 - What Bash commands print, agent system prompts, workflow agent prompts and a failed Read count in no channel; a failed edit is no edit.

@@ -76,6 +76,7 @@ EDIT_TOOLS = ("Edit", "Write", "NotebookEdit")
 # The ways a text of this repository reaches a context, each read from a record of its own kind.
 CHANNELS = ("listing", "skill-body", "skill-reinjected", "instructions", "read", "attached")
 CONTEXT_TOP = 30
+TROUBLE_COUNTS = ("turns", "failed", "rejected", "workflow_turns", "workflow_failed", "workflow_rejected")
 
 
 def records(path):
@@ -136,13 +137,16 @@ def summarize(session_file, plugins):
     session_loads = []
     usage = defaultdict(lambda: {
         "versions": set(), "turns": 0, "model_invoked": 0, "slash_invoked": 0,
-        "by_version": defaultdict(lambda: {"turns": 0, "failed": 0, "rejected": 0}),
+        "by_version": defaultdict(lambda: dict.fromkeys(TROUBLE_COUNTS, 0)),
     })
 
     def owned(skill):
         return isinstance(skill, str) and ":" in skill and skill.split(":")[0] in plugins
 
     for path in [session_file, *subagents]:
+        # Each agent of a Workflow run carries the skill of the turn that started the run, whoever
+        # wrote the workflow: its turns count apart.
+        count = "workflow_" if "workflows" in path.relative_to(session_file.parent).parts else ""
         loaded = {}
         # The skill turn that made each tool call, to give its result to the same skill and version.
         call_owner = {}
@@ -162,7 +166,7 @@ def summarize(session_file, plugins):
                     )
                     usage[skill]["versions"].add(label)
                     usage[skill]["turns"] += 1
-                    usage[skill]["by_version"][label]["turns"] += 1
+                    usage[skill]["by_version"][label][count + "turns"] += 1
                 for block in blocks(record):
                     invoked = (block.get("input") or {}).get("skill") if block.get("name") == "Skill" else None
                     if owned(invoked):
@@ -198,7 +202,7 @@ def summarize(session_file, plugins):
                         if denial == "user-rejected":
                             pushback_seconds.add(second)
                             if owner:
-                                usage[owner[0]]["by_version"][owner[1]]["rejected"] += 1
+                                usage[owner[0]]["by_version"][owner[1]][count + "rejected"] += 1
                         elif not (
                             denial
                             or ISOLATION_REFUSAL in text.lower()
@@ -206,7 +210,7 @@ def summarize(session_file, plugins):
                         ):
                             errors += 1
                             if owner:
-                                usage[owner[0]]["by_version"][owner[1]]["failed"] += 1
+                                usage[owner[0]]["by_version"][owner[1]][count + "failed"] += 1
 
     skill_versions = {skill: sorted(use["versions"]) for skill, use in sorted(usage.items()) if use["turns"]}
     session = {
@@ -510,7 +514,7 @@ def context_report(session_files, repo, usages, since_days):
                     run["read"][file] += 1
         loaded_by_session[session_file.stem] = sorted(loaded)
 
-    trouble = defaultdict(lambda: defaultdict(lambda: {"turns": 0, "failed": 0, "rejected": 0}))
+    trouble = defaultdict(lambda: defaultdict(lambda: dict.fromkeys(TROUBLE_COUNTS, 0)))
     for usage in usages:
         for skill, use in usage.items():
             for label, counts in use["by_version"].items():
@@ -575,11 +579,13 @@ def context_table(report):
         lines.append(f"| `{file}` | {counts['contexts']} | {counts['repeated']} |")
 
     lines += ["", "## Trouble per skill version", "",
-              "The tool calls of a skill's turns that failed, and those the user rejected, as the pick counts them.", "",
-              "| Skill | Version | Turns | Failed | Rejected |", "|---|---|---|---|---|"]
+              "The tool calls of a skill's turns that failed, and those the user rejected, as the pick counts them. "
+              "The agents of a Workflow run carry the skill of the turn that started it, whoever wrote the workflow, so their turns count apart.", "",
+              "| Skill | Version | Turns | Failed | Rejected | Workflow turns | Workflow failed | Workflow rejected |",
+              "|---|---|---|---|---|---|---|---|"]
     for skill, labels in report["trouble"].items():
         for label, counts in labels.items():
-            lines.append(f"| `{skill}` | {label} | {counts['turns']} | {counts['failed']} | {counts['rejected']} |")
+            lines.append(f"| `{skill}` | {label} | " + " | ".join(str(counts[name]) for name in TROUBLE_COUNTS) + " |")
     return "\n".join(lines) + "\n"
 
 

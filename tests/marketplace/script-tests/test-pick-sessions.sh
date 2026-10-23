@@ -483,6 +483,12 @@ with tempfile.TemporaryDirectory() as tmp:
         result("r10", "File does not exist.", is_error=True),
     ])
     validator.with_suffix(".meta.json").write_text(json.dumps({"agentType": "plugin-dev:plugin-validator"}))
+    # An agent of a Workflow run that a demo:skill turn started carries that skill.
+    write(projects / "proj" / "s1" / "subagents" / "workflows" / "wf_1" / "agent-w.jsonl", [
+        call("w1", "Bash", "w1", command="make"),
+        result("w1", "exit status 2", is_error=True),
+        assistant("w2", 1),
+    ])
     # Another project with a docs/ of its own and no plugin use.
     write(projects / "other" / "s2.jsonl", [
         attachment("instructions", files=[{"path": "/w/other/AGENTS.md", "content": "# Other project\n"}]),
@@ -498,7 +504,7 @@ with tempfile.TemporaryDirectory() as tmp:
     out, picks, context = pick_context()
     check("pick with the context scan exits 0", 0, out.returncode)
     files = {entry["file"]: entry for entry in context.get("files", [])}
-    check("every session of the window is scanned, plugin use or none, subagents included", (3, 11), (context.get("contexts"), context.get("api_calls")))
+    check("every session of the window is scanned, plugin use or none, subagents included", (4, 13), (context.get("contexts"), context.get("api_calls")))
     check("a listing entry of this marketplace counts, a foreign one does not",
           {"plugins/demo/skills/skill/SKILL.md": len("- demo:skill: Does a thing.\n"), "plugins/demo/skills/idle/SKILL.md": len("- demo:idle: Idle."),
            "plugins/demo/agents/reviewer.md": len("- demo:reviewer: Reviews.")},
@@ -525,8 +531,9 @@ with tempfile.TemporaryDirectory() as tmp:
     check("reach: the files of the plugin read after the skill load",
           {"runs": 1, "read": {"plugins/demo/references/r.md": 1}}, context.get("reach", {}).get("plugins/demo/skills/skill/SKILL.md"))
     check("a second Read of the same part of a file is a re-read", {"docs/CODING.md": {"contexts": 2, "repeated": 1}}, context.get("rereads"))
-    check("trouble: a failed call and a rejected call of a skill turn, by its version",
-          {"turns": 8, "failed": 1, "rejected": 1}, context.get("trouble", {}).get("demo:skill", {}).get("1.0.0"))
+    check("trouble: a failed call and a rejected call of a skill turn, by its version, and the turns of a Workflow agent apart",
+          {"turns": 8, "failed": 1, "rejected": 1, "workflow_turns": 2, "workflow_failed": 1, "workflow_rejected": 0},
+          context.get("trouble", {}).get("demo:skill", {}).get("1.0.0"))
     s1 = next((s for s in picks.get("sessions", []) if s["session_id"] == "s1"), {})
     check("a picked session carries the files of this repository it loaded, listing left out",
           ["AGENTS.md", "docs/CODING.md", "docs/TESTING.md", "plugins/demo/references/r.md", "plugins/demo/skills/skill/SKILL.md"], s1.get("context_files"))
@@ -544,7 +551,7 @@ with tempfile.TemporaryDirectory() as tmp:
     trend = run("context", "--review-dir", str(store), "--top", "2")
     run_names = sorted(p.name for p in (store / "runs").iterdir())
     check("context prints each file's characters per API call in each run, the costliest first",
-          (0, f"| `docs/CODING.md` | {900 // 11} | {900 // 11} |"),
+          (0, f"| `docs/CODING.md` | {900 // 13} | {900 // 13} |"),
           (trend.returncode, next((line for line in trend.stdout.splitlines() if "docs/CODING.md" in line), None)))
     check("context names each run in its header", True, all(name in trend.stdout for name in run_names))
     empty = Path(tmp, "empty-store")
