@@ -44,12 +44,11 @@ modes are actually exercised.
      sonnet rather than opus — same coverage, roughly 40% of the cost. `medium` and
      `high` are identical: opus dimensions, high-effort synthesis. `ultra` adds an
      adversarial refutation gate every finding must pass before it is reported.
-     Synthesis stays on opus at every rung.
 
 4. Relay the report. The workflow returns
-   `{ report: { verdict, dimension_verdicts, headline, findings[], recommended_actions[], architecture_candidates[], report_markdown, … }, raw, … }`
-   — surface `.report` including the prioritised `recommended_actions`, and do
-   not re-derive or re-label it. Each action is tagged `settled` or `open` — read
+   `{ report: { verdict, dimension_verdicts, headline, findings[], recommended_actions[], architecture_candidates[], report_markdown, … }, raw, … }`,
+   under `result` in its task output file — surface `.report` including the prioritised
+   `recommended_actions`, and do not re-derive or re-label it. Each action is tagged `settled` or `open` — read
    `<base directory for this skill>/../../references/decision-split.md` for what
    those mean and how to relay them (the plugin-root layout applies, so `../..`
    is correct here). When `architecture_candidates` is non-empty, list
