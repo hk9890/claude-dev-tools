@@ -8,7 +8,8 @@ The following files in this plugin are derived from
   [v1.1.0](https://github.com/mattpocock/skills/releases/tag/v1.1.0), then largely resynced
   against that skill's successor `writing-for-agents` at
   [v1.2.0](https://github.com/mattpocock/skills/releases/tag/v1.2.0) — both that skill's
-  `SKILL.md` and its `SKILL-MECHANICS.md`, unchanged upstream through v1.2.3. Nearly all of the
+  `SKILL.md` and its `SKILL-MECHANICS.md`, unchanged upstream in substance through v1.3.1 (v1.3.0
+  removed em-dashes only). Nearly all of the
   body is upstream text, locally adapted and maintained since; assume any passage traces upstream
   rather than reading this as a list of the ones that do. The **hand-off** paragraph takes its
   explicit "Call the Skill tool with" wording and its user-invoked carve-out from upstream's
