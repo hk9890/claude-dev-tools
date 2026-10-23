@@ -1,11 +1,11 @@
 export const meta = {
   name: 'review-sessions',
-  description: 'Pick the sessions of this machine, or of an ssh host, that used this marketplace\'s plugins, review each for plugin problems, and keep the run in the review store',
+  description: 'Pick the sessions of this machine, or of an ssh host, that used this marketplace\'s plugins, review each for plugin problems and judge the context its files cost, and keep the run in the review store',
   whenToUse: 'To find what to improve in the plugins from real sessions. args: {perBucket, sinceDays, host}; host is an ssh host whose sessions to review, this machine where absent; one agent for the pick, at most two per picked session, one for the record.',
   phases: [
     { title: 'Pick', detail: 'scripts/pick-sessions.py pick' },
     { title: 'Review', detail: 'one reviewer per picked session' },
-    { title: 'Verify', detail: 'one skeptic per session that has findings' },
+    { title: 'Verify', detail: 'one skeptic per session that has findings or context judgments' },
     { title: 'Record', detail: 'scripts/pick-sessions.py record, then commit and push the run' },
   ],
 }
@@ -56,8 +56,9 @@ const PICKS = {
           pushback: { type: 'number' },
           errors: { type: 'number' },
           output_tokens: { type: 'number' },
+          context_files: { type: 'array', items: { type: 'string' }, description: 'files of this repository the session loaded, the skill listing left out' },
         },
-        required: ['session_id', 'transcript', 'bucket', 'skill_versions', 'subagents', 'pushback', 'errors', 'output_tokens'],
+        required: ['session_id', 'transcript', 'bucket', 'skill_versions', 'subagents', 'pushback', 'errors', 'output_tokens', 'context_files'],
       },
     },
   },
@@ -81,8 +82,24 @@ const FINDINGS = {
         required: ['artifact', 'version', 'problem', 'quote', 'fix'],
       },
     },
+    context: {
+      type: 'array',
+      description: 'one judgment for each file the prompt lists as loaded',
+      items: {
+        type: 'object',
+        properties: {
+          artifact: { type: 'string', description: 'repo path of the loaded file, one of those the prompt lists' },
+          needed: { type: 'string', enum: ['yes', 'partly', 'no'], description: 'whether the session needed the file for what it did' },
+          used: { type: 'string', description: 'the sections the agent acted on, with the action; empty where none' },
+          unused: { type: 'string', description: 'the sections the session carried and did not need' },
+          missing: { type: 'string', description: 'what the agent had to find out, or got wrong, that the file could have said; empty where nothing' },
+          quote: { type: 'string', description: 'short verbatim excerpt of the transcript that shows the judgment' },
+        },
+        required: ['artifact', 'needed', 'used', 'unused', 'missing', 'quote'],
+      },
+    },
   },
-  required: ['findings'],
+  required: ['findings', 'context'],
 }
 
 const VERDICTS = {
@@ -100,8 +117,20 @@ const VERDICTS = {
         required: ['number', 'refuted', 'reason'],
       },
     },
+    context_verdicts: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          number: { type: 'number', description: 'the number of the context judgment in the prompt' },
+          refuted: { type: 'boolean' },
+          reason: { type: 'string' },
+        },
+        required: ['number', 'refuted', 'reason'],
+      },
+    },
   },
-  required: ['verdicts'],
+  required: ['verdicts', 'context_verdicts'],
 }
 
 const READ_TRANSCRIPT = pick => `
@@ -118,6 +147,7 @@ const picks = await agent(
 )
 if (!picks?.run_dir) throw new Error(`the pick failed: ${picks?.error ?? 'its agent returned nothing'}`)
 log(`${picks.sessions.length} of ${picks.candidates} candidate sessions picked, ${picks.already_reviewed} reviewed by an earlier run: ${picks.run_dir}`)
+log(`context cost of the window: ${picks.run_dir}/context.md`)
 
 for (const large of picks.large_transcripts) {
   log(`session ${large.session_id} holds a ${large.largest_file_mb} MB file${large.refused ? ': not picked, GitHub refuses a file above 100 MB' : ''}`)
@@ -133,6 +163,12 @@ const changes = pick => pick.changed_files?.length
   ? `\nRelease ${release.version} changed these files of the plugins the session ran at that version: ${pick.changed_files.join(', ')}. Read \`git diff v${release.previous} v${release.version} -- <files>\` first, and look for a problem that this change caused.`
   : ''
 
+// The scripts count what a file cost and which reads followed it; whether the session needed it is a judgment.
+const judgeContext = pick => pick.context_files.length
+  ? `
+Then judge each file of this repository that the session or one of its subagents loaded: ${pick.context_files.join(', ')}. Open each one. A file the main transcript does not show was loaded in a subagent transcript: render that transcript to judge it. For each, say whether the session needed it for what it did, which sections the agent acted on and how, which sections it carried and did not need, and what the agent had to find out, or got wrong, that the file could have said. A rule the agent obeyed leaves no trace of its own: count it as used where the session came to the action it governs. Give one context judgment per file.`
+  : '\nThe session loaded no file of this repository: return an empty context list.'
+
 const uses = pick => Object.entries(pick.skill_versions).map(([skill, versions]) => `${skill} at ${versions.join(' and ')}`).join('; ')
 
 const reviewed = await pipeline(
@@ -145,32 +181,42 @@ The pick counted ${pick.pushback} user pushbacks, ${pick.errors} failed tool res
 ${READ_TRANSCRIPT(pick)}
 
 A finding is a place where the agent or the user lost time or got a wrong result, and a change to a plugin file would have prevented it: an instruction that is wrong, unclear or missing, a skill the agent loaded and then did not follow, a skill that fired for the wrong request, a plugin guard that refused valid work. Open the plugin file and confirm that it says, or omits, what you claim.
-Leave out faults of the environment, of the project the session ran in, and of Claude Code itself. A session with no plugin problem returns an empty list.`,
+Leave out faults of the environment, of the project the session ran in, and of Claude Code itself. A session with no plugin problem returns an empty list.
+${judgeContext(pick)}`,
     { label: `review:${pick.bucket}`, phase: 'Review', schema: FINDINGS },
   ),
   async (review, pick) => {
-    if (review.findings.length === 0) return []
+    if (review.findings.length === 0 && review.context.length === 0) return { findings: [], context: [] }
     const check = await agent(
-      `Another agent reviewed a Claude Code session and reports the numbered plugin problems below. Try to refute each one.
+      `Another agent reviewed a Claude Code session and reports the numbered plugin problems and context judgments below. Try to refute each one.
 Transcript: ${pick.transcript}
 ${READ_TRANSCRIPT(pick)}
 
 Refute a finding where the quote is not in the transcript, the plugin file does not say what the finding claims, the cause is outside the plugin, or the proposed fix would not have prevented the problem. Give one verdict for each number, with the reason; when in doubt, refute.
 
-${review.findings.map((finding, i) => `Finding ${i + 1}:\n${JSON.stringify(finding, null, 1)}`).join('\n\n')}`,
+${review.findings.map((finding, i) => `Finding ${i + 1}:\n${JSON.stringify(finding, null, 1)}`).join('\n\n') || 'No findings: return an empty verdicts list.'}
+
+The reviewer also judged how useful each loaded file was. Refute a context judgment where the quote is not in the transcript, the file does not hold the sections it names, or the actions of the session contradict it: a file judged not needed whose text the agent followed, or one judged needed that the agent never acted on. Give one context verdict for each number, with the reason; when in doubt, refute.
+
+${review.context.map((judgment, i) => `Context judgment ${i + 1}:\n${JSON.stringify(judgment, null, 1)}`).join('\n\n') || 'No context judgments: return an empty context_verdicts list.'}`,
       { label: `verify:${pick.bucket}`, phase: 'Verify', schema: VERDICTS },
     )
     // With no verifier the review did not finish: the session stays for a later run.
     if (!check) return null
-    // A finding with no verdict was not checked, so it does not survive.
-    return review.findings.map((finding, i) => {
-      const verdict = check.verdicts.find(v => v.number === i + 1)
-      return { ...finding, refuted: verdict?.refuted ?? true, reason: verdict?.reason ?? 'the verifier gave no verdict' }
+    // An item with no verdict was not checked, so it does not survive.
+    const judged = (items, verdicts) => items.map((item, i) => {
+      const verdict = verdicts.find(v => v.number === i + 1)
+      return { ...item, refuted: verdict?.refuted ?? true, reason: verdict?.reason ?? 'the verifier gave no verdict' }
     })
+    return { findings: judged(review.findings, check.verdicts), context: judged(review.context, check.context_verdicts) }
   },
 )
 
-const result = picks.sessions.map((pick, i) => ({ session_id: pick.session_id, findings: reviewed[i] ?? null }))
+const result = picks.sessions.map((pick, i) => ({
+  session_id: pick.session_id,
+  findings: reviewed[i]?.findings ?? null,
+  context: reviewed[i]?.context ?? [],
+}))
 
 phase('Record')
 const recorded = await agent(

@@ -7,15 +7,20 @@ pick    starts a run folder in the review store: picks the sessions that used a 
         changed, random), and copies their transcripts into the run. With --host it
         picks the sessions of another machine: it mirrors that machine's transcripts
         over ssh with rsync first.
+        It also writes what this repository put into the context of every session in the
+        window, with the reads and the trouble that followed (context.json, context.md).
 render  prints one transcript as text an agent can read in parts.
 record  writes the findings of a review into its run folder.
+context prints the context cost of each file over the runs of the review store.
 
 The review store is the directory in SESSION_REVIEW_DIR, a checkout of a private repository.
 """
 
 import argparse
+import bisect
 import json
 import os
+import posixpath
 import random
 import re
 import shlex
@@ -26,7 +31,7 @@ import sys
 import time
 from collections import defaultdict
 from datetime import datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -64,6 +69,13 @@ HOST_RE = re.compile(r"[A-Za-z0-9_][A-Za-z0-9._@-]*")
 MIRROR_DIR = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "claude-dev-tools" / "session-mirrors"
 # rsync exits 24 where a file vanished on the host while it ran: the host deleted it, and the mirror holds the rest.
 RSYNC_VANISHED = 24
+
+# An entry of the skill or agent listing Claude Code puts into each context: "- <name>: <text>".
+LISTING_ENTRY_RE = re.compile(r"^- ([^\s:]+(?::[^\s:]+)?): ", re.M)
+EDIT_TOOLS = ("Edit", "Write", "NotebookEdit")
+# The ways a text of this repository reaches a context, each read from a record of its own kind.
+CHANNELS = ("listing", "skill-body", "skill-reinjected", "instructions", "read", "attached")
+CONTEXT_TOP = 30
 
 
 def records(path):
@@ -122,13 +134,18 @@ def summarize(session_file, plugins):
     started = ended = None
     # A subagent turn has no banner of its own: it runs the version its session loaded last.
     session_loads = []
-    usage = defaultdict(lambda: {"versions": set(), "turns": 0, "model_invoked": 0, "slash_invoked": 0})
+    usage = defaultdict(lambda: {
+        "versions": set(), "turns": 0, "model_invoked": 0, "slash_invoked": 0,
+        "by_version": defaultdict(lambda: {"turns": 0, "failed": 0, "rejected": 0}),
+    })
 
     def owned(skill):
         return isinstance(skill, str) and ":" in skill and skill.split(":")[0] in plugins
 
     for path in [session_file, *subagents]:
         loaded = {}
+        # The skill turn that made each tool call, to give its result to the same skill and version.
+        call_owner = {}
         for record in records(path):
             timestamp = record.get("timestamp") or ""
             started = started or record.get("timestamp")
@@ -145,10 +162,13 @@ def summarize(session_file, plugins):
                     )
                     usage[skill]["versions"].add(label)
                     usage[skill]["turns"] += 1
+                    usage[skill]["by_version"][label]["turns"] += 1
                 for block in blocks(record):
                     invoked = (block.get("input") or {}).get("skill") if block.get("name") == "Skill" else None
                     if owned(invoked):
                         usage[invoked]["model_invoked"] += 1
+                    if block.get("type") == "tool_use" and skill and plugin in plugins:
+                        call_owner[block.get("id")] = (skill, label)
                 # One API message spans several records, and its usage grows up to the last.
                 message = record.get("message") or {}
                 message_id = message.get("id")
@@ -174,14 +194,19 @@ def summarize(session_file, plugins):
                             if path == session_file:
                                 session_loads.append((timestamp, skill, plugin, label))
                     elif block.get("type") == "tool_result" and block.get("is_error"):
+                        owner = call_owner.get(block.get("tool_use_id"))
                         if denial == "user-rejected":
                             pushback_seconds.add(second)
+                            if owner:
+                                usage[owner[0]]["by_version"][owner[1]]["rejected"] += 1
                         elif not (
                             denial
                             or ISOLATION_REFUSAL in text.lower()
                             or text.removeprefix(ERROR_TAG).startswith(CANCELLED_SIBLING)
                         ):
                             errors += 1
+                            if owner:
+                                usage[owner[0]]["by_version"][owner[1]]["failed"] += 1
 
     skill_versions = {skill: sorted(use["versions"]) for skill, use in sorted(usage.items()) if use["turns"]}
     session = {
@@ -259,6 +284,305 @@ def usage_table(usages, plugins_dir, since_days):
     return "\n".join(lines) + "\n"
 
 
+class Repository:
+    """How a path in a transcript names a file of this repository, on any machine."""
+
+    def __init__(self, plugins_dir):
+        root = plugins_dir.parent
+        self.plugins = {p.name for p in plugins_dir.iterdir() if p.is_dir()}
+        self.marketplace = json.loads((root / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))["name"]
+        # A checkout loads AGENTS.md as project instructions: one whose first line is this
+        # repository's names the checkout's root, wherever that machine keeps it.
+        agents = root / "AGENTS.md"
+        self.agents_title = agents.read_text(encoding="utf-8").partition("\n")[0] if agents.is_file() else None
+        # A checkout also holds files git ignores, scratch folders among them: they are no part of it.
+        # -z keeps a non-ASCII path unquoted, whatever core.quotePath says.
+        tracked = subprocess.run(["git", "-C", str(root), "ls-files", "-z"], capture_output=True, text=True, check=True).stdout
+        self.top_level = {path.partition("/")[0] for path in tracked.split("\0") if path}
+
+    def root_of(self, instruction):
+        path, content = instruction.get("path") or "", instruction.get("content") or ""
+        if self.agents_title and path.endswith("/AGENTS.md") and content.partition("\n")[0] == self.agents_title:
+            # A session in a worktree reads the checkout that holds it, and its other worktrees, too.
+            return path.removesuffix("/AGENTS.md").partition("/.claude/worktrees/")[0]
+        return None
+
+    def tracked(self, parts):
+        return str(PurePosixPath(*parts)) if parts and parts[0] in self.top_level else None
+
+    def file(self, path, roots):
+        """The repository path of an absolute path, or None for a file of no checkout or install of it."""
+        # A skill reads a file of its plugin root as <base directory>/../../<file>: one file, one name.
+        path = posixpath.normpath(path)
+        parts = PurePosixPath(path).parts
+        for i in range(len(parts) - 2):
+            if parts[i : i + 3] == ("plugins", "cache", self.marketplace):
+                # An install: <plugin>/<version>/<file of the plugin>
+                plugin, rest = parts[i + 3 : i + 4], parts[i + 5 :]
+                return str(PurePosixPath("plugins", plugin[0], *rest)) if plugin and plugin[0] in self.plugins and rest else None
+            if parts[i : i + 3] == ("plugins", "marketplaces", self.marketplace):
+                return self.tracked(parts[i + 3 :])
+        for root in sorted(roots, key=len, reverse=True):
+            if path.startswith(root + "/"):
+                rest = PurePosixPath(path[len(root) + 1 :]).parts
+                # A worktree of the checkout, in the layout Claude Code keeps them in.
+                if rest[:2] == (".claude", "worktrees"):
+                    rest = rest[3:]
+                return self.tracked(rest)
+        return None
+
+    def skill_file(self, text):
+        load = skill_load(text, self.plugins)
+        return self.listed_file(load[0]) if load else None
+
+    def listed_file(self, name):
+        plugin, _, rest = name.partition(":")
+        if plugin not in self.plugins or not rest:
+            return None
+        return f"plugins/{plugin}/skills/{rest}/SKILL.md"
+
+
+def listing_entries(text):
+    starts = list(LISTING_ENTRY_RE.finditer(text))
+    for entry, after in zip(starts, [*starts[1:], None]):
+        yield entry[1], (after.start() if after else len(text)) - entry.start()
+
+
+def agent_type(transcript):
+    meta = transcript.with_suffix(".meta.json")
+    if not meta.is_file():
+        return None
+    try:
+        return json.loads(meta.read_text(encoding="utf-8")).get("agentType")
+    except json.JSONDecodeError:
+        return None
+
+
+def context_of(transcript, repo, roots):
+    """What one transcript put into its context from this repository, and the reads and edits after it.
+
+    Each text is weighed by the API calls that carried it: those after it, up to the next
+    compaction, which drops the conversation and loads a summary instead.
+    """
+    roots = set(roots)
+    texts = []  # (record index, channel, file, chars)
+    reads = []  # (record index, file, offset, limit)
+    loads = []  # (record index, skill file)
+    # A Read or edit result comes after its call, in a record of its own: a failed one read or changed nothing.
+    file_calls = {}  # tool_use id: (record index, tool, file, offset, limit)
+    edits = []  # record index of each edit of a file of this repository
+    calls, compactions, seen = [], [], set()
+    index = -1
+    for index, record in enumerate(records(transcript)):
+        kind = record.get("type")
+        if kind == "assistant":
+            message = record.get("message") or {}
+            if message.get("id") not in seen:
+                seen.add(message.get("id"))
+                calls.append(index)
+            for block in blocks(record):
+                tool = block.get("name")
+                if block.get("type") != "tool_use" or not (tool == "Read" or tool in EDIT_TOOLS):
+                    continue
+                arguments = block.get("input") or {}
+                file = repo.file(arguments.get("file_path") or arguments.get("notebook_path") or "", roots)
+                if file:
+                    file_calls[block.get("id")] = (index, tool, file, arguments.get("offset"), arguments.get("limit"))
+        elif kind == "system" and record.get("subtype") == "compact_boundary":
+            compactions.append(index)
+        elif kind == "attachment":
+            attachment = record.get("attachment") or {}
+            if attachment.get("type") == "instructions":
+                instructions = attachment.get("files") or []
+                roots |= {root for root in map(repo.root_of, instructions) if root}
+                for instruction in instructions:
+                    file = repo.file(instruction.get("path") or "", roots)
+                    if file:
+                        texts.append((index, "instructions", file, len(instruction.get("content") or "")))
+            elif attachment.get("type") == "skill_listing":
+                for name, chars in listing_entries(attachment.get("content") or ""):
+                    file = repo.listed_file(name)
+                    if file:
+                        texts.append((index, "listing", file, chars))
+            elif attachment.get("type") == "agent_listing_delta":
+                for line in attachment.get("addedLines") or []:
+                    for name, chars in listing_entries(line):
+                        plugin, _, agent = name.partition(":")
+                        if plugin in repo.plugins and agent:
+                            texts.append((index, "listing", f"plugins/{plugin}/agents/{agent}.md", chars))
+            elif attachment.get("type") == "invoked_skills":
+                for skill in attachment.get("skills") or []:
+                    file = repo.skill_file(skill.get("content") or "")
+                    if file:
+                        texts.append((index, "skill-reinjected", file, len(skill.get("content") or "")))
+            # Claude Code attaches a file's text itself: the files it restores after a compaction, an
+            # @-mention, and a snippet of a read file that changed on disk.
+            elif attachment.get("type") == "file":
+                content = attachment.get("content")
+                body = (content.get("file") or {}).get("content") if isinstance(content, dict) else None
+                file = repo.file(attachment.get("filename") or "", roots)
+                if file and isinstance(body, str):
+                    texts.append((index, "attached", file, len(body)))
+            elif attachment.get("type") == "edited_text_file":
+                file = repo.file(attachment.get("filename") or "", roots)
+                if file:
+                    texts.append((index, "attached", file, len(attachment.get("snippet") or "")))
+        elif kind == "user":
+            for block in blocks(record):
+                if block.get("type") == "text":
+                    text = block_text(block)
+                    file = repo.skill_file(text)
+                    if file:
+                        texts.append((index, "skill-body", file, len(text)))
+                        loads.append((index, file))
+                elif block.get("type") == "tool_result" and block.get("tool_use_id") in file_calls:
+                    at, tool, file, offset, limit = file_calls.pop(block["tool_use_id"])
+                    if block.get("is_error"):
+                        continue
+                    if tool == "Read":
+                        reads.append((at, file, offset, limit))
+                        texts.append((index, "read", file, len(block_text(block))))
+                    else:
+                        edits.append(at)
+    def carried(at):
+        """The API calls after record `at` that sent it: up to the next compaction."""
+        end = next((c for c in compactions if c > at), index + 1)
+        return bisect.bisect_left(calls, end) - bisect.bisect_right(calls, at)
+
+    return {
+        "texts": [(channel, file, chars, carried(at)) for at, channel, file, chars in texts],
+        "reads": reads,
+        "loads": loads,
+        "edits": edits,
+        "calls": len(calls),
+        "roots": roots,
+    }
+
+
+def context_report(session_files, repo, usages, since_days):
+    """The context.json of a run, and for each session the files of this repository it loaded."""
+    files = defaultdict(lambda: {"chars": 0, "char_reads": 0, "sessions": set(),
+                                 "channels": defaultdict(lambda: {"loads": 0, "chars": 0, "char_reads": 0})})
+    readers = defaultdict(lambda: defaultdict(lambda: {"contexts": 0, "edited_after": 0}))
+    reach = defaultdict(lambda: {"runs": 0, "read": defaultdict(int)})
+    rereads = defaultdict(lambda: {"contexts": 0, "repeated": 0})
+    loaded_by_session = {}
+    contexts = api_calls = 0
+
+    for session_file in session_files:
+        session = context_of(session_file, repo, ())
+        transcripts = [(None, session)] + [
+            (agent_type(path) or "subagent", context_of(path, repo, session["roots"])) for path in subagent_files(session_file)
+        ]
+        loaded = set()
+        for role, context in transcripts:
+            contexts += 1
+            api_calls += context["calls"]
+            for channel, file, chars, carried in context["texts"]:
+                entry, used = files[file], files[file]["channels"][channel]
+                entry["chars"] += chars
+                entry["char_reads"] += chars * carried
+                entry["sessions"].add(session_file.stem)
+                used["loads"] += 1
+                used["chars"] += chars
+                used["char_reads"] += chars * carried
+                if channel != "listing":
+                    loaded.add(file)
+            first_read = {}
+            for at, file, *_ in context["reads"]:
+                first_read.setdefault(file, at)
+            for file, at in first_read.items():
+                reader = readers[file]["session" if role is None else role]
+                reader["contexts"] += 1
+                reader["edited_after"] += any(edit > at for edit in context["edits"])
+            repeats = defaultdict(int)
+            for _, *read in context["reads"]:
+                repeats[tuple(read)] += 1
+            for file in first_read:
+                rereads[file]["contexts"] += 1
+            for (file, *_), times in repeats.items():
+                rereads[file]["repeated"] += times - 1
+            for at, skill in context["loads"]:
+                plugin_dir = skill.split("/skills/")[0] + "/"
+                run = reach[skill]
+                run["runs"] += 1
+                for file in {file for read_at, file, *_ in context["reads"] if read_at > at and file.startswith(plugin_dir) and file != skill}:
+                    run["read"][file] += 1
+        loaded_by_session[session_file.stem] = sorted(loaded)
+
+    trouble = defaultdict(lambda: defaultdict(lambda: {"turns": 0, "failed": 0, "rejected": 0}))
+    for usage in usages:
+        for skill, use in usage.items():
+            for label, counts in use["by_version"].items():
+                for count, value in counts.items():
+                    trouble[skill][label][count] += value
+
+    report = {
+        "since_days": since_days,
+        "unit": "characters",
+        "contexts": contexts,
+        "api_calls": api_calls,
+        "files": [
+            {"file": file, "chars": entry["chars"], "char_reads": entry["char_reads"], "sessions": len(entry["sessions"]),
+             "channels": {channel: dict(used) for channel, used in entry["channels"].items()}}
+            for file, entry in sorted(files.items(), key=lambda item: -item[1]["char_reads"])
+        ],
+        "readers": {file: {role: dict(counts) for role, counts in sorted(roles.items())} for file, roles in sorted(readers.items())},
+        "reach": {skill: {"runs": run["runs"], "read": dict(sorted(run["read"].items()))} for skill, run in sorted(reach.items())},
+        "rereads": {file: dict(counts) for file, counts in sorted(rereads.items()) if counts["repeated"]},
+        "trouble": {skill: {label: dict(counts) for label, counts in sorted(labels.items())} for skill, labels in sorted(trouble.items())},
+    }
+    return report, loaded_by_session
+
+
+def context_table(report):
+    def share(part, whole):
+        return f"{part} of {whole} ({100 * part // whole}%)" if whole else "0"
+
+    lines = [
+        "# Context cost",
+        "",
+        f"What the files of this repository put into the context of the {report['contexts']} contexts of the last "
+        f"{report['since_days']:g} days, subagents included, over {report['api_calls']} API calls. All sizes are in characters. "
+        "A char-read is one character sent in one API call: a text counts once for each call after it, up to the next compaction.",
+        "",
+        "Not counted: what Bash commands print, agent system prompts, and the prompts a workflow gives its agents.",
+        "",
+        f"## The {CONTEXT_TOP} files with the most char-reads",
+        "",
+        "| File | Char-reads | Chars loaded | Sessions | " + " | ".join(CHANNELS) + " |",
+        "|---|---|---|---|" + "---|" * len(CHANNELS),
+    ]
+    for entry in report["files"][:CONTEXT_TOP]:
+        by_channel = [str(entry["channels"].get(channel, {}).get("char_reads", 0)) for channel in CHANNELS]
+        lines.append(f"| `{entry['file']}` | {entry['char_reads']} | {entry['chars']} | {entry['sessions']} | " + " | ".join(by_channel) + " |")
+
+    lines += ["", "## Readers", "", "Each context that read the file with the Read tool, by who read it, and how many of them edited a file of this repository after that read.", "",
+              "| File | Reader | Edited after |", "|---|---|---|"]
+    for file, roles in report["readers"].items():
+        for role, counts in roles.items():
+            lines.append(f"| `{file}` | {role} | {share(counts['edited_after'], counts['contexts'])} |")
+
+    lines += ["", "## Reference reach", "", "Each skill load, and the files of the same plugin read with the Read tool after it in the same context. A file printed with a Bash command does not count, so a share is a lower bound.", "",
+              "| Skill | Loads | File read after the load |", "|---|---|---|"]
+    for skill, run in report["reach"].items():
+        reached = ", ".join(f"`{file}` {share(times, run['runs'])}" for file, times in run["read"].items()) or "none"
+        lines.append(f"| `{skill}` | {run['runs']} | {reached} |")
+
+    lines += ["", "## Re-reads", "", "A Read of the same part of a file that the context had read already.", "",
+              "| File | Contexts that read it | Repeated reads |", "|---|---|---|"]
+    for file, counts in report["rereads"].items():
+        lines.append(f"| `{file}` | {counts['contexts']} | {counts['repeated']} |")
+
+    lines += ["", "## Trouble per skill version", "",
+              "The tool calls of a skill's turns that failed, and those the user rejected, as the pick counts them.", "",
+              "| Skill | Version | Turns | Failed | Rejected |", "|---|---|---|---|---|"]
+    for skill, labels in report["trouble"].items():
+        for label, counts in labels.items():
+            lines.append(f"| `{skill}` | {label} | {counts['turns']} | {counts['failed']} | {counts['rejected']} |")
+    return "\n".join(lines) + "\n"
+
+
 def write_json(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
@@ -320,7 +644,9 @@ def pick(args):
         for f in sorted(projects_dir.glob("*/*.jsonl"))
         if f.stat().st_mtime >= cutoff
     )
-    summaries = latest_copies([(session, usage) for session, usage in (summarize(f, plugins) for f in recent) if session["skills"]])
+    # Every session of the window, plugin use or none: the listing reaches each of them.
+    latest = latest_copies([summarize(f, plugins) for f in recent])
+    summaries = [(session, usage) for session, usage in latest if session["skills"]]
     # A session that went on after its review is picked again, and reviewed whole.
     unreviewed = [
         session
@@ -372,6 +698,12 @@ def pick(args):
         session["bucket"] = "random"
         picked.append(session)
 
+    context, loaded_by_session = context_report(
+        [Path(session["session"]) for session, _ in latest], Repository(plugins_dir), [usage for _, usage in summaries], args.since_days
+    )
+    for session in picked:
+        session["context_files"] = loaded_by_session.get(session["session_id"], [])
+
     marketplace = json.loads((plugins_dir.parent / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
     version = marketplace["metadata"]["version"]
     now = datetime.now().astimezone()
@@ -404,6 +736,8 @@ def pick(args):
     })
     write_json(run_dir / "picks.json", picks)
     (run_dir / "usage.md").write_text(usage_table([usage for _, usage in summaries], plugins_dir, args.since_days), encoding="utf-8")
+    write_json(run_dir / "context.json", context)
+    (run_dir / "context.md").write_text(context_table(context), encoding="utf-8")
 
     json.dump(picks, sys.stdout, indent=2, ensure_ascii=False)
     print()
@@ -417,21 +751,43 @@ def record(args):
     if unknown:
         sys.exit(f"error: not a session of {run_dir / 'picks.json'}: {', '.join(unknown)}")
 
-    survived = []
+    survived, judged = [], []
     for review in reviews:
         # A review that did not finish leaves the session for a later run to pick again.
         if review.get("findings") is None:
             continue
         session = picks[review["session_id"]]
-        write_json(run_dir / "sessions" / f"{session['session_id']}.json", {**session, "findings": review["findings"]})
+        context = review.get("context") or []
+        write_json(run_dir / "sessions" / f"{session['session_id']}.json", {**session, "findings": review["findings"], "context": context})
         survived += [
             {"session_id": session["session_id"], "bucket": session["bucket"], **finding}
             for finding in review["findings"]
             if not finding.get("refuted")
         ]
+        judged += [{"session_id": session["session_id"], **judgment} for judgment in context if not judgment.get("refuted")]
     write_json(run_dir / "findings.json", survived)
+    write_json(run_dir / "context-judgments.json", judged)
     reviewed = len(list(run_dir.glob("sessions/*.json")))
-    print(f"{reviewed} of {len(picks)} sessions recorded, {len(survived)} findings survived: {run_dir}")
+    print(f"{reviewed} of {len(picks)} sessions recorded, {len(survived)} findings and {len(judged)} context judgments survived: {run_dir}")
+
+
+def context_trend(args):
+    runs = sorted(path.parent for path in args.review_dir.glob("runs/*/context.json"))
+    if not runs:
+        sys.exit(f"error: no run in {args.review_dir / 'runs'} holds a context.json: a pick writes one")
+    # Characters per API call: a run compares with another of a longer window or a busier week.
+    per_call = []
+    for run in runs:
+        report = json.loads((run / "context.json").read_text(encoding="utf-8"))
+        calls = report["api_calls"] or 1
+        per_call.append({entry["file"]: entry["char_reads"] // calls for entry in report["files"]})
+    files = sorted(per_call[-1], key=lambda file: -per_call[-1][file])[: args.top]
+    print("# Context cost over the runs\n")
+    print("Characters that each file put into an average API call, per run. A blank cell is a run in which the file put nothing into context.\n")
+    print("| File | " + " | ".join(run.name for run in runs) + " |")
+    print("|---|" + "---|" * len(runs))
+    for file in files:
+        print(f"| `{file}` | " + " | ".join(str(run.get(file, "")) for run in per_call) + " |")
 
 
 def render(args):
@@ -486,11 +842,16 @@ def main():
 
     record_parser = commands.add_parser("record", help="write the findings of a review into its run folder")
     record_parser.add_argument("run_dir", help="the run_dir that pick printed")
-    record_parser.add_argument("result", help="a JSON file: [{session_id, findings: [{..., refuted}] or null}]")
+    record_parser.add_argument("result", help="a JSON file: [{session_id, findings: [{..., refuted}] or null, context: [{..., refuted}]}]")
     record_parser.set_defaults(run=record)
 
+    context_parser = commands.add_parser("context", help="print the context cost of each file over the runs of the review store")
+    context_parser.add_argument("--review-dir", type=Path, default=os.environ.get("SESSION_REVIEW_DIR") or None, help="the review store (default: $SESSION_REVIEW_DIR)")
+    context_parser.add_argument("--top", type=int, default=CONTEXT_TOP, help=f"files to show, the costliest of the last run first (default: {CONTEXT_TOP})")
+    context_parser.set_defaults(run=context_trend)
+
     args = parser.parse_args()
-    if args.command == "pick" and not (args.review_dir and args.review_dir.is_dir()):
+    if args.command in ("pick", "context") and not (args.review_dir and args.review_dir.is_dir()):
         parser.error("no review store: set SESSION_REVIEW_DIR to a checkout of the private session-data repository (docs/MONITORING.md)")
     args.run(args)
 
