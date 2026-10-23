@@ -1,7 +1,7 @@
 ---
 name: tasks-core
-description: "taskmgr: its commands, and the store's conventions."
-when_to_use: "Use before any work on a taskmgr issue: filing, picking, writing a body, progress, closing. Triggers on 'taskmgr', 'the tracker', 'the backlog', an issue id ('dtop-jqqqko')."
+description: "taskmgr: its commands and the store's conventions."
+when_to_use: "Use before any work on a taskmgr issue: filing, picking, writing a body, progress, closing. Triggers on 'taskmgr', 'the tracker', 'the backlog', a taskmgr id ('abc-y9gcem')."
 allowed-tools: Bash(taskmgr *)
 ---
 
