@@ -13,9 +13,10 @@ const WORKTREE_ADD = new RegExp(
 )
 const THROWAWAY_TARGET = /\/scratchpad\/|(?:^|[\s"'=])\/tmp\/|mktemp|\$\{?TMPDIR/
 
-// A heredoc body is text for the command that reads it, except where a shell is on that line.
+// A heredoc body is text for the command that reads it, except where a shell is on that line. A
+// shell is a word of its own or the end of a path (`/bin/sh`), not a file name such as `run.sh`.
 const HEREDOC = /(?<!<)<<(?!<)(-?)\s*(['"]?)([A-Za-z_]\w*)\2/
-const SHELL = /\b(?:bash|sh|zsh)\b/
+const SHELL = /(?<![\w.-])(?:bash|sh|zsh)(?![\w.-])/
 
 // The lines the shell runs. A `<<` with no closing line is not a heredoc, and no line is left out.
 function commandLines(command: string) {
@@ -44,7 +45,8 @@ const ASSIGNMENT = /(?:^|;|&&|\|\|)\s*([A-Za-z_]\w*)=("[^"]*"|'[^']*'|[^\s;&|()]
 const VARIABLE = /\$(?:\{([A-Za-z_]\w*)\}|([A-Za-z_]\w*))/g
 
 // `W=/tmp/x && git worktree add $W` names its target through a variable: the add takes the value
-// of the last assignment before it on its line. A variable with no such assignment stays as written.
+// of the last assignment before it, on its line or an earlier one. A variable with no such
+// assignment stays as written.
 function expandVariables(add: string, before: string) {
   const values = new Map<string, string>()
 
@@ -58,9 +60,13 @@ function expandVariables(add: string, before: string) {
 // A throwaway probe is judged by the arguments of the add itself, not by the rest of the command,
 // so each line is matched alone and every add on it must name a throwaway target.
 function addsPersistentWorktree(command: string) {
-  const adds = commandLines(command).flatMap(line =>
+  // A line break separates commands, as `;` does.
+  const lines = commandLines(command)
+  const adds = lines.flatMap((line, at) =>
     // The match starts on the separator before `git`, which the last assignment must end on.
-    [...line.matchAll(WORKTREE_ADD)].map(match => expandVariables(match[0], line.slice(0, match.index + 1))),
+    [...line.matchAll(WORKTREE_ADD)].map(match =>
+      expandVariables(match[0], [...lines.slice(0, at), line.slice(0, match.index + 1)].join(';')),
+    ),
   )
 
   return adds.some(add => !THROWAWAY_TARGET.test(add))

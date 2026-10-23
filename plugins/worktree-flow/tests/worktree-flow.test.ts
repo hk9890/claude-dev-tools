@@ -45,8 +45,11 @@ const DENIED = [
   'cat <<< EOF\ngit worktree add ../x\nEOF',
   'W=../x && git worktree add $W',
   'W=/tmp/probe; W=../x; git worktree add --detach $W HEAD',
-  'W=/tmp/probe\ngit worktree add --detach $W HEAD',
+  '(W=/tmp/probe)\ngit worktree add --detach $W HEAD',
   'git worktree add --detach $W HEAD; W=/tmp/probe',
+  'git worktree add --detach $W HEAD\nW=/tmp/probe',
+  "cat > x <<'EOF' && /bin/sh x\ngit worktree add ../x\nEOF",
+  "ssh host bash <<'EOF'\ngit worktree add ../x\nEOF",
   'echo W=/tmp/probe && git worktree add --detach $W HEAD',
   'W=/tmp/probe true && git worktree add --detach $W HEAD',
   '(W=/tmp/probe); git worktree add --detach $W HEAD',
@@ -69,6 +72,9 @@ const ALLOWED = [
   'gh pr create --body "blocks git worktree add now"',
   PR_BODY_WITH_THE_COMMAND,
   'cat > notes.md <<-"END"\n\tgit worktree add ../x\n\tEND',
+  "cat > $S/run.sh <<'EOF'\ngit worktree add -q --detach .claude/worktrees/wt1\nEOF",
+  'W=/tmp/probe\ngit worktree add --detach $W HEAD',
+  'S=/home/me/scratchpad/repro; mkdir -p $S\nsetup(){ d=$1; git worktree add --detach $S/$d/wt HEAD; }\nsetup a',
 ]
 
 for (const command of DENIED) {
