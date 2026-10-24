@@ -490,6 +490,16 @@ with tempfile.TemporaryDirectory() as tmp:
         call("w2", "Bash", "w2", command="make clean"),
         result("w2", "The user doesn't want to proceed with this tool use.", is_error=True, denial="user-rejected"),
     ])
+    # A plain subagent carries the skill of its parent turn too, and one that loads the skill itself does not.
+    write(projects / "proj" / "s1" / "subagents" / "agent-x.jsonl", [
+        call("x1", "Bash", "x1", command="ls"),
+        result("x1", "exit status 2", is_error=True),
+    ])
+    write(projects / "proj" / "s1" / "subagents" / "agent-y.jsonl", [
+        banner(f"{install}/skills/skill"),
+        call("y1", "Bash", "y1", command="ls"),
+        result("y1", "exit status 2", is_error=True),
+    ])
     # Another project with a docs/ of its own and no plugin use.
     write(projects / "other" / "s2.jsonl", [
         attachment("instructions", files=[{"path": "/w/other/AGENTS.md", "content": "# Other project\n"}]),
@@ -505,14 +515,14 @@ with tempfile.TemporaryDirectory() as tmp:
     out, picks, context = pick_context()
     check("pick with the context scan exits 0", 0, out.returncode)
     files = {entry["file"]: entry for entry in context.get("files", [])}
-    check("every session of the window is scanned, plugin use or none, subagents included", (4, 13), (context.get("contexts"), context.get("api_calls")))
+    check("every session of the window is scanned, plugin use or none, subagents included", (6, 15), (context.get("contexts"), context.get("api_calls")))
     check("a listing entry of this marketplace counts, a foreign one does not",
           {"plugins/demo/skills/skill/SKILL.md": len("- demo:skill: Does a thing.\n"), "plugins/demo/skills/idle/SKILL.md": len("- demo:idle: Idle."),
            "plugins/demo/agents/reviewer.md": len("- demo:reviewer: Reviews.")},
           {file: entry["channels"]["listing"]["chars"] for file, entry in files.items() if "listing" in entry["channels"]})
     check("a text counts once for each API call after it, up to the next compaction", 6 * 28, files["plugins/demo/skills/skill/SKILL.md"]["channels"]["listing"]["char_reads"])
     check("the skill body and its copy after a compaction are channels of their own",
-          (1, 1, 2), (files["plugins/demo/skills/skill/SKILL.md"]["channels"]["skill-body"]["loads"],
+          (2, 1, 2), (files["plugins/demo/skills/skill/SKILL.md"]["channels"]["skill-body"]["loads"],
                       files["plugins/demo/skills/skill/SKILL.md"]["channels"]["skill-reinjected"]["loads"],
                       files["plugins/demo/skills/skill/SKILL.md"]["channels"]["skill-reinjected"]["char_reads"] // len(f"Base directory for this skill: {install}/skills/skill\n\nBody.")))
     check("the AGENTS.md of the checkout counts as instructions, the user's own CLAUDE.md does not",
@@ -530,14 +540,14 @@ with tempfile.TemporaryDirectory() as tmp:
     check("a failed Read puts no file into context and makes no reader", (False, False),
           ("docs/OVERVIEW.md" in files, "docs/OVERVIEW.md" in context.get("readers", {})))
     check("reach: the files of the plugin read after the skill load",
-          {"runs": 1, "read": {"plugins/demo/references/r.md": 1}}, context.get("reach", {}).get("plugins/demo/skills/skill/SKILL.md"))
+          {"runs": 2, "read": {"plugins/demo/references/r.md": 1}}, context.get("reach", {}).get("plugins/demo/skills/skill/SKILL.md"))
     check("a second Read of the same part of a file is a re-read", {"docs/CODING.md": {"contexts": 2, "repeated": 1}}, context.get("rereads"))
-    check("trouble: a failed call and a rejected call of a skill turn, by its version, and the turns of a Workflow agent apart",
-          {"turns": 8, "failed": 1, "rejected": 1, "workflow_turns": 2, "workflow_failed": 1, "workflow_rejected": 1},
+    check("trouble: a failed call and a rejected call of a skill turn, by its version, and the turns a subagent inherits apart",
+          {"turns": 9, "failed": 2, "rejected": 1, "inherited_turns": 3, "inherited_failed": 2, "inherited_rejected": 1},
           context.get("trouble", {}).get("demo:skill", {}).get("1.0.0"))
-    check("context.md gives each count of the trouble its own column, the Workflow counts last",
-          ["| Skill | Version | Turns | Failed | Rejected | Workflow turns | Workflow failed | Workflow rejected |",
-           "| `demo:skill` | 1.0.0 | 8 | 1 | 1 | 2 | 1 | 1 |"],
+    check("context.md gives each count of the trouble its own column, the inherited counts last",
+          ["| Skill | Version | Turns | Failed | Rejected | Inherited turns | Inherited failed | Inherited rejected |",
+           "| `demo:skill` | 1.0.0 | 9 | 2 | 1 | 3 | 2 | 1 |"],
           [line for line in Path(picks["run_dir"], "context.md").read_text().splitlines() if line.startswith(("| Skill | Version |", "| `demo:skill` |"))])
     s1 = next((s for s in picks.get("sessions", []) if s["session_id"] == "s1"), {})
     check("a picked session carries the files of this repository it loaded, listing left out",
@@ -556,7 +566,7 @@ with tempfile.TemporaryDirectory() as tmp:
     trend = run("context", "--review-dir", str(store), "--top", "2")
     run_names = sorted(p.name for p in (store / "runs").iterdir())
     check("context prints each file's characters per API call in each run, the costliest first",
-          (0, f"| `docs/CODING.md` | {900 // 13} | {900 // 13} |"),
+          (0, f"| `docs/CODING.md` | {900 // 15} | {900 // 15} |"),
           (trend.returncode, next((line for line in trend.stdout.splitlines() if "docs/CODING.md" in line), None)))
     check("context names each run in its header", True, all(name in trend.stdout for name in run_names))
     empty = Path(tmp, "empty-store")

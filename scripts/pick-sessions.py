@@ -76,7 +76,7 @@ EDIT_TOOLS = ("Edit", "Write", "NotebookEdit")
 # The ways a text of this repository reaches a context, each read from a record of its own kind.
 CHANNELS = ("listing", "skill-body", "skill-reinjected", "instructions", "read", "attached")
 CONTEXT_TOP = 30
-TROUBLE_COUNTS = ("turns", "failed", "rejected", "workflow_turns", "workflow_failed", "workflow_rejected")
+TROUBLE_COUNTS = ("turns", "failed", "rejected", "inherited_turns", "inherited_failed", "inherited_rejected")
 
 
 def records(path):
@@ -144,9 +144,6 @@ def summarize(session_file, plugins):
         return isinstance(skill, str) and ":" in skill and skill.split(":")[0] in plugins
 
     for path in [session_file, *subagents]:
-        # Each agent of a Workflow run carries the skill of the turn that started the run, whoever
-        # wrote the workflow: its turns count apart.
-        prefix = "workflow_" if "workflows" in path.relative_to(session_file.parent).parts else ""
         loaded = {}
         # The skill turn that made each tool call, to give its result to the same skill and version.
         call_owner = {}
@@ -156,6 +153,9 @@ def summarize(session_file, plugins):
             ended = max(ended or "", timestamp)
             if record.get("type") == "assistant":
                 skill, plugin = record.get("attributionSkill"), record.get("attributionPlugin")
+                # A subagent carries the skill of the turn that started it: a turn of a skill it did not
+                # load itself counts apart.
+                prefix = "inherited_" if path != session_file and skill not in loaded else ""
                 if skill and plugin in plugins:
                     label = (
                         loaded.get(skill)
@@ -172,7 +172,7 @@ def summarize(session_file, plugins):
                     if owned(invoked):
                         usage[invoked]["model_invoked"] += 1
                     if block.get("type") == "tool_use" and skill and plugin in plugins:
-                        call_owner[block.get("id")] = (skill, label)
+                        call_owner[block.get("id")] = (skill, label, prefix)
                 # One API message spans several records, and its usage grows up to the last.
                 message = record.get("message") or {}
                 message_id = message.get("id")
@@ -202,7 +202,7 @@ def summarize(session_file, plugins):
                         if denial == "user-rejected":
                             pushback_seconds.add(second)
                             if owner:
-                                usage[owner[0]]["by_version"][owner[1]][prefix + "rejected"] += 1
+                                usage[owner[0]]["by_version"][owner[1]][owner[2] + "rejected"] += 1
                         elif not (
                             denial
                             or ISOLATION_REFUSAL in text.lower()
@@ -210,7 +210,7 @@ def summarize(session_file, plugins):
                         ):
                             errors += 1
                             if owner:
-                                usage[owner[0]]["by_version"][owner[1]][prefix + "failed"] += 1
+                                usage[owner[0]]["by_version"][owner[1]][owner[2] + "failed"] += 1
 
     skill_versions = {skill: sorted(use["versions"]) for skill, use in sorted(usage.items()) if use["turns"]}
     session = {
@@ -580,7 +580,7 @@ def context_table(report):
 
     lines += ["", "## Trouble per skill version", "",
               "The tool calls of a skill's turns that failed, and those the user rejected, as the pick counts them. "
-              "The agents of a Workflow run carry the skill of the turn that started it, whoever wrote the workflow, so their turns count apart.", "",
+              "A subagent carries the skill of the turn that started it, so the turns of a skill it did not load itself count apart.", "",
               "| Skill | Version | " + " | ".join(name.replace("_", " ").capitalize() for name in TROUBLE_COUNTS) + " |",
               "|---|---|" + "---|" * len(TROUBLE_COUNTS)]
     for skill, labels in report["trouble"].items():
