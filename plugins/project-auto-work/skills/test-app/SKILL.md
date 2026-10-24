@@ -85,13 +85,13 @@ know what the app reaches. Point it at an environment whose data you can afford 
    Each proposal is tagged `settled` or `open`. Follow
    `<base directory for this skill>/../../references/decision-split.md` — it defines both
    words and branches on `html-viz`. Done when every open item has been put to the user and
-   the settled batch has been named. The plugin-root layout applies, so `../..` is correct
-   here.
+   the settled batch has been named.
 
-If `result` holds an object with `error` and no `report` (bad arguments, or the recon
-agent died), relay the error verbatim, state that the run did not happen, and do not
-improvise findings. When the error carries `got`, the run never started and `got.keys` lists
-the arguments that actually arrived — surface it.
+If `result` holds an object with `error` and no `report`, relay the error verbatim and do
+not improvise findings. Without `raw`, state that the run did not happen. With `raw`, the
+run went past recon: relay what `raw` holds as not synthesized. When the error carries
+`got`, the run never started and `got.keys` lists the arguments that actually
+arrived — surface it.
 
 ## The project supplies the technology knowledge
 

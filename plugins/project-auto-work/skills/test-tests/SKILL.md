@@ -125,8 +125,7 @@ when the skill loads. It is absolute and install-correct — build every path fr
    Each proposal is tagged `settled` or `open`. Follow
    `<base directory for this skill>/../../references/decision-split.md` — it defines
    both words and branches on `html-viz`. Done when every open item has been put to the
-   user and the settled batch has been named. The plugin-root layout applies, so `../..`
-   is correct here.
+   user and the settled batch has been named.
 
 If `python3` is missing or the workflow cannot launch, do not improvise an inline
 audit — report which prerequisite is missing and stop. If `result` holds an
@@ -134,7 +133,7 @@ object with `error` and no `report` (bad arguments, or the baseline agent died),
 relay the error verbatim, state that the audit did not run, and do not improvise
 findings — still run the step-4 integrity check. When the error carries `got`, the
 run never started and `got.keys` lists the arguments that actually arrived — surface
-it, since that is what shows a misspelled key.
+it.
 
 ## Verdicts
 
