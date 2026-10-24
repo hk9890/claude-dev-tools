@@ -47,15 +47,15 @@ know what the app reaches. Point it at an environment whose data you can afford 
    identify one: this will launch the application and use it for real, and data may be
    created, changed or deleted. Then create the scratch dir and echo it — shell state does
    not survive between commands, so a value you only assign is gone by the time step 4
-   needs it.
+   needs it. `<scratch>` in steps 4-5 is that printed absolute path.
 
    ```bash
-   SCRATCH=$(mktemp -d /tmp/test-app-XXXXXX) && echo "$SCRATCH" || echo "mktemp failed — stop; do not launch without a scratch dir"
+   SCRATCH=$(mktemp -d /tmp/test-app-XXXXXX) && echo "$SCRATCH" || { echo "mktemp failed — stop; do not launch without a scratch dir"; return 1 2>/dev/null || exit 1; }
    ```
 
 4. Invoke the **Workflow** tool:
    - `scriptPath`: `<SKILL_DIR>/workflows/test-app.js`
-   - `args`: `{ "repoRoot": "<absolute path to the project>", "referencesDir": "<SKILL_DIR>/references", "focus": "<the step-1 focus, or empty>", "level": "<the step-1 level>", "scratchDir": "<the absolute path printed above>" }`
+   - `args`: `{ "repoRoot": "<absolute path to the project>", "referencesDir": "<SKILL_DIR>/references", "focus": "<the step-1 focus, or empty>", "level": "<the step-1 level>", "scratchDir": "<scratch>" }`
 
    `referencesDir` must contain `break-it.md` — the workflow hands that path to every
    driver at `medium` and above, so moving or renaming the file silently removes the
@@ -71,27 +71,26 @@ know what the app reaches. Point it at an environment whose data you can afford 
 
 5. Relay the report. The workflow returns
    `{ report: { verdict, evidence_basis, headline, findings[], questions[], checked[], not_checked[], proposals[], stop_reason, report_markdown }, raw, … }`,
-   under `result` in its task output file — surface `.report` in full, and do not re-derive or soften it. Report the `not_checked`
-   list as prominently as the findings: a short findings list on a run that reached three
-   flows is not a clean bill of health. When the returned object carries a non-null
+   under `result` in its task output file — surface `.report` in full, and do not
+   re-derive or soften it. Report the `not_checked` list as prominently as the findings: a
+   short findings list on a run that reached three flows is not a clean bill of health. When the returned object carries a non-null
    `build_drift`, lead with it — the iterations exercised different builds of the
    application, so their findings describe different software.
 
    Write `report.report_markdown` **verbatim** — never summarised, reformatted, or
-   truncated — to `$SCRATCH/test-app-report.md` (outside the project) and state that path.
+   truncated — to `<scratch>/test-app-report.md` (outside the project) and state that path.
    For a "did you really check X?" follow-up, **re-run the skill**; never answer from the
    report alone.
 
    Each proposal is tagged `settled` or `open`. Follow
-   `<base directory for this skill>/../../references/decision-split.md` — it defines both
-   words and branches on `html-viz`. Done when every open item has been put to the user and
-   the settled batch has been named.
+   `<base directory for this skill>/../../references/decision-split.md` (plugin-root layout:
+   `../..` is correct) — it defines both words and branches on `html-viz`. Done when
+   every open item has been put to the user and the settled batch has been named.
 
 If `result` holds an object with `error` and no `report`, relay the error verbatim and do
 not improvise findings. Without `raw`, state that the run did not happen. With `raw`, the
 run went past recon: relay what `raw` holds as not synthesized. When the error carries
-`got`, the run never started and `got.keys` lists the arguments that actually
-arrived — surface it.
+`got`, the run never started: surface `got.keys`, the arguments that arrived.
 
 ## The project supplies the technology knowledge
 

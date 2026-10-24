@@ -113,7 +113,6 @@ in the template.
 Render the content inside `<div id="content">` per the markup contract in
 `"$(cat "$HTML_DIR/.plugin-root")/references/feedback-markup.md"`. Key rules:
 
-- Replace the `<h1>` / `<title>` and `.subtitle` placeholders.
 - Render the content as semantic HTML — headings, paragraphs, lists, tables,
   `<blockquote>`, `<pre><code>`.
 - Every commentable block is a **direct child of `#content`** with a unique
@@ -170,7 +169,7 @@ link with the message:
 **If the user says the link does not open**, do not wait out the grace — see
 "When the printed hostname does not resolve" in `references/serve.md`: offer
 `http://localhost:PORT/` on the same port when they are on an SSH tunnel, and
-otherwise kill the server and take the feedback in chat.
+otherwise stop the server and take the feedback in chat.
 
 **Capture the port and save it** to `$HTML_DIR/.port` immediately after seeing the
 startup lines — every Apply re-serve must use `--port "$(cat "$HTML_DIR/.port")"`.
@@ -189,7 +188,7 @@ If `FEEDBACK_FILE` is missing or the server exited non-zero, the round timed
 out — recover as in serve.md Cycle C (tell the user; offer to re-serve or take the
 feedback in chat).
 
-After reading and parsing the file, delete it (`rm -f "$FEEDBACK_FILE"`) — see
+After reading and parsing the file, delete it (`rm -f "$HTML_DIR/review.feedback.json"`) — see
 serve.md Cycle C for why a stale copy must not linger.
 
 The file contains:
