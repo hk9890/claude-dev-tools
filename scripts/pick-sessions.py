@@ -153,9 +153,6 @@ def summarize(session_file, plugins):
             ended = max(ended or "", timestamp)
             if record.get("type") == "assistant":
                 skill, plugin = record.get("attributionSkill"), record.get("attributionPlugin")
-                # A subagent carries the skill of the turn that started it: a turn of a skill it did not
-                # load itself counts apart.
-                prefix = "inherited_" if path != session_file and skill not in loaded else ""
                 if skill and plugin in plugins:
                     label = (
                         loaded.get(skill)
@@ -164,15 +161,19 @@ def summarize(session_file, plugins):
                         or next((l for at, _, name, l in reversed(session_loads) if at <= timestamp and name == plugin), None)
                         or "unknown"
                     )
+                    # A subagent carries the skill of the turn that started it: a turn of a skill it did not
+                    # load itself counts apart.
+                    prefix = "inherited_" if path != session_file and skill not in loaded else ""
+                    trouble = usage[skill]["by_version"][label]
                     usage[skill]["versions"].add(label)
                     usage[skill]["turns"] += 1
-                    usage[skill]["by_version"][label][prefix + "turns"] += 1
+                    trouble[prefix + "turns"] += 1
                 for block in blocks(record):
                     invoked = (block.get("input") or {}).get("skill") if block.get("name") == "Skill" else None
                     if owned(invoked):
                         usage[invoked]["model_invoked"] += 1
                     if block.get("type") == "tool_use" and skill and plugin in plugins:
-                        call_owner[block.get("id")] = (skill, label, prefix)
+                        call_owner[block.get("id")] = (trouble, prefix)
                 # One API message spans several records, and its usage grows up to the last.
                 message = record.get("message") or {}
                 message_id = message.get("id")
@@ -198,19 +199,19 @@ def summarize(session_file, plugins):
                             if path == session_file:
                                 session_loads.append((timestamp, skill, plugin, label))
                     elif block.get("type") == "tool_result" and block.get("is_error"):
-                        owner = call_owner.get(block.get("tool_use_id"))
+                        trouble, prefix = call_owner.get(block.get("tool_use_id"), (None, None))
                         if denial == "user-rejected":
                             pushback_seconds.add(second)
-                            if owner:
-                                usage[owner[0]]["by_version"][owner[1]][owner[2] + "rejected"] += 1
+                            if trouble is not None:
+                                trouble[prefix + "rejected"] += 1
                         elif not (
                             denial
                             or ISOLATION_REFUSAL in text.lower()
                             or text.removeprefix(ERROR_TAG).startswith(CANCELLED_SIBLING)
                         ):
                             errors += 1
-                            if owner:
-                                usage[owner[0]]["by_version"][owner[1]][owner[2] + "failed"] += 1
+                            if trouble is not None:
+                                trouble[prefix + "failed"] += 1
 
     skill_versions = {skill: sorted(use["versions"]) for skill, use in sorted(usage.items()) if use["turns"]}
     session = {

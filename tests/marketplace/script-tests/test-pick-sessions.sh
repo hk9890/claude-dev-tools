@@ -490,12 +490,14 @@ with tempfile.TemporaryDirectory() as tmp:
         call("w2", "Bash", "w2", command="make clean"),
         result("w2", "The user doesn't want to proceed with this tool use.", is_error=True, denial="user-rejected"),
     ])
-    # A plain subagent carries the skill of its parent turn too, and one that loads the skill itself does not.
+    # A plain subagent carries the skill of its parent turn too, and one that loads the skill itself does not, from that load on.
     write(projects / "proj" / "s1" / "subagents" / "agent-x.jsonl", [
         call("x1", "Bash", "x1", command="ls"),
         result("x1", "exit status 2", is_error=True),
     ])
     write(projects / "proj" / "s1" / "subagents" / "agent-y.jsonl", [
+        call("y0", "Bash", "y0", command="pwd"),
+        result("y0", "exit status 2", is_error=True),
         banner(f"{install}/skills/skill"),
         call("y1", "Bash", "y1", command="ls"),
         result("y1", "exit status 2", is_error=True),
@@ -515,7 +517,7 @@ with tempfile.TemporaryDirectory() as tmp:
     out, picks, context = pick_context()
     check("pick with the context scan exits 0", 0, out.returncode)
     files = {entry["file"]: entry for entry in context.get("files", [])}
-    check("every session of the window is scanned, plugin use or none, subagents included", (6, 15), (context.get("contexts"), context.get("api_calls")))
+    check("every session of the window is scanned, plugin use or none, subagents included", (6, 16), (context.get("contexts"), context.get("api_calls")))
     check("a listing entry of this marketplace counts, a foreign one does not",
           {"plugins/demo/skills/skill/SKILL.md": len("- demo:skill: Does a thing.\n"), "plugins/demo/skills/idle/SKILL.md": len("- demo:idle: Idle."),
            "plugins/demo/agents/reviewer.md": len("- demo:reviewer: Reviews.")},
@@ -543,11 +545,11 @@ with tempfile.TemporaryDirectory() as tmp:
           {"runs": 2, "read": {"plugins/demo/references/r.md": 1}}, context.get("reach", {}).get("plugins/demo/skills/skill/SKILL.md"))
     check("a second Read of the same part of a file is a re-read", {"docs/CODING.md": {"contexts": 2, "repeated": 1}}, context.get("rereads"))
     check("trouble: a failed call and a rejected call of a skill turn, by its version, and the turns a subagent inherits apart",
-          {"turns": 9, "failed": 2, "rejected": 1, "inherited_turns": 3, "inherited_failed": 2, "inherited_rejected": 1},
+          {"turns": 9, "failed": 2, "rejected": 1, "inherited_turns": 4, "inherited_failed": 3, "inherited_rejected": 1},
           context.get("trouble", {}).get("demo:skill", {}).get("1.0.0"))
     check("context.md gives each count of the trouble its own column, the inherited counts last",
           ["| Skill | Version | Turns | Failed | Rejected | Inherited turns | Inherited failed | Inherited rejected |",
-           "| `demo:skill` | 1.0.0 | 9 | 2 | 1 | 3 | 2 | 1 |"],
+           "| `demo:skill` | 1.0.0 | 9 | 2 | 1 | 4 | 3 | 1 |"],
           [line for line in Path(picks["run_dir"], "context.md").read_text().splitlines() if line.startswith(("| Skill | Version |", "| `demo:skill` |"))])
     s1 = next((s for s in picks.get("sessions", []) if s["session_id"] == "s1"), {})
     check("a picked session carries the files of this repository it loaded, listing left out",
@@ -566,7 +568,7 @@ with tempfile.TemporaryDirectory() as tmp:
     trend = run("context", "--review-dir", str(store), "--top", "2")
     run_names = sorted(p.name for p in (store / "runs").iterdir())
     check("context prints each file's characters per API call in each run, the costliest first",
-          (0, f"| `docs/CODING.md` | {900 // 15} | {900 // 15} |"),
+          (0, f"| `docs/CODING.md` | {900 // 16} | {900 // 16} |"),
           (trend.returncode, next((line for line in trend.stdout.splitlines() if "docs/CODING.md" in line), None)))
     check("context names each run in its header", True, all(name in trend.stdout for name in run_names))
     empty = Path(tmp, "empty-store")
