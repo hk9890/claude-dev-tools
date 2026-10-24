@@ -38,7 +38,7 @@ Every skill is loaded with a `Base directory for this skill: <absolute path>` li
 
 - Check which of the two layouts holds the file ([OVERVIEW.md](OVERVIEW.md)). A workflow owned by one skill sits under that skill — every workflow here currently does.
 - One shared beyond a single skill sits at the plugin root, reached with `<base directory for this skill>/../../<dir>/<file>`; say in the skill that the plugin-root layout applies, or the `../..` reads as a mistake. Shared content takes this layout rather than a skill of its own — a skill costs a row in every session's skill index. `html-visualization` is the worked example — its three mode skills all read `references/` and run `bin/server.js` from the plugin root, so each climbs `../..` from its own base directory; `instruction-writing` and `project-review` share `references/` the same way.
-- Never `find` the plugin: it can select a stale cached version, and shell state does not persist between `Bash` calls, so a path assigned to a variable is gone by the next command. Print any path you compute.
+- Never `find` the plugin: it can select a stale cached version. Print the path you build ([State across `Bash` calls](#state-across-bash-calls)).
 - `$CLAUDE_PLUGIN_ROOT` is substituted in hook commands and `settings.json` only — it is not in a `Bash` call's environment.
 - Stop and tell the user when a needed file is missing; never improvise a path.
 
@@ -51,6 +51,13 @@ Every skill is loaded with a `Base directory for this skill: <absolute path>` li
 - Declare the sibling in `dependencies`, and say in the skill what to do when it is absent — a missing dependency is a broken install, not an optional extra.
 
 `project-review:project-review-docs` is the worked example: it calls the Skill tool with `instruction-writing:writing-project-docs`, passes the base directory as `standardDir`, and rejects a missing or relative value before spawning an agent.
+
+## State across `Bash` calls
+
+Each `Bash` call starts a fresh shell: a variable a skill assigns in one call is empty in the next.
+
+- Print every value a later step needs — a path, a temp dir — and name it in later steps with one placeholder, defined at the step that prints it. `test-tests`' `<scratch>` is the worked example.
+- Stop a process started with `run_in_background` by calling `TaskStop` with the task id the start returned. No later shell holds its PID. `html-visualization`'s `serve.md` is the worked example.
 
 ## Mods
 

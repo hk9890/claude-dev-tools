@@ -283,18 +283,9 @@ file, and serve it.
 
 ## Step 5 — Cleanup
 
-See `references/serve.md` — cleanup section (visualize mode). Closing the tab
-beacons the server down on its own, so nothing normally needs killing; the temp
-directory is left behind. Cleanup is optional:
-
-```bash
-rm -rf "$HTML_DIR"   # optional; the server exits on its own once the page is gone
-```
-
-If the user sent a message, a `visualization.feedback.json` file will be present in
-`$HTML_DIR` when the server exits; the harness passes its path to Claude on
-re-invocation. When performing re-invocation cleanup, you may delete `$HTML_DIR`
-after reading the feedback file.
+Leave the server and `$HTML_DIR` alone while the page is open. When the user says
+they are done, or a feedback file arrives, see `references/serve.md` — cleanup
+section (visualize mode).
 
 ---
 

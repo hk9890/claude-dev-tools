@@ -50,21 +50,22 @@ when the skill loads. It is absolute and install-correct — build every path fr
 2. Check the prerequisite, snapshot the target tree so integrity is verifiable afterwards,
    and create a per-run scratch dir. Echo the scratch path: shell state does not survive
    between commands, so a value you only assign is gone by the time step 3 needs it.
+   `<scratch>` in steps 3-5 is that printed absolute path.
 
    ```bash
-   command -v python3 >/dev/null || { echo "python3 missing — stop and tell the user"; return 2>/dev/null || exit 1; }
-   SCRATCH=$(mktemp -d /tmp/test-tests-XXXXXX) && echo "$SCRATCH" || echo "mktemp failed — stop; do not launch without a scratch dir"
+   command -v python3 >/dev/null || { echo "python3 missing — stop and tell the user"; return 1 2>/dev/null || exit 1; }
+   SCRATCH=$(mktemp -d /tmp/test-tests-XXXXXX) && echo "$SCRATCH" || { echo "mktemp failed — stop; do not launch without a scratch dir"; return 1 2>/dev/null || exit 1; }
    git -C "<path>" status --porcelain > "$SCRATCH/pre-status.txt"
    git -C "<path>" diff > "$SCRATCH/pre-diff.patch"
-   ( cd "<path>" && git ls-files --others --exclude-standard -z | xargs -0 -r md5sum ) > "$SCRATCH/pre-untracked.md5"
+   ( cd "<path>" && git ls-files --others --exclude-standard -z | xargs -0 -r cksum ) > "$SCRATCH/pre-untracked.cksum"
    ```
 
-   The untracked hashes matter: `git diff` is blind to untracked-file content, and a
+   The untracked checksums matter: `git diff` is blind to untracked-file content, and a
    mutation left in an untracked production file would otherwise pass the check.
 
 3. Invoke the **Workflow** tool:
    - `scriptPath`: `<SKILL_DIR>/workflows/test-tests.js`
-   - `args`: `{ "repoRoot": "<path>", "scriptsDir": "<SKILL_DIR>/scripts", "level": "<level>", "scratchDir": "<the absolute path printed above>" }`
+   - `args`: `{ "repoRoot": "<path>", "scriptsDir": "<SKILL_DIR>/scripts", "level": "<level>", "scratchDir": "<scratch>" }`
 
    The workflow measures six axes — sensitivity (mutants must be killed),
    specificity (no-op edits must not break tests), reliability (reruns, shuffle,
@@ -90,27 +91,28 @@ when the skill loads. It is absolute and install-correct — build every path fr
 4. **Verify tree integrity** — after the workflow returns *or* fails:
 
    ```bash
-   git -C "<path>" status --porcelain > "$SCRATCH/post-status.txt"
-   git -C "<path>" diff > "$SCRATCH/post-diff.patch"
-   ( cd "<path>" && git ls-files --others --exclude-standard -z | xargs -0 -r md5sum ) > "$SCRATCH/post-untracked.md5"
-   diff "$SCRATCH/pre-status.txt" "$SCRATCH/post-status.txt" \
-     && cmp -s "$SCRATCH/pre-diff.patch" "$SCRATCH/post-diff.patch" \
-     && diff "$SCRATCH/pre-untracked.md5" "$SCRATCH/post-untracked.md5"
-   git -C "<path>" worktree list   # audit worktrees live under $SCRATCH
+   git -C "<path>" status --porcelain > "<scratch>/post-status.txt"
+   git -C "<path>" diff > "<scratch>/post-diff.patch"
+   ( cd "<path>" && git ls-files --others --exclude-standard -z | xargs -0 -r cksum ) > "<scratch>/post-untracked.cksum"
+   diff "<scratch>/pre-status.txt" "<scratch>/post-status.txt" \
+     && cmp -s "<scratch>/pre-diff.patch" "<scratch>/post-diff.patch" \
+     && diff "<scratch>/pre-untracked.cksum" "<scratch>/post-untracked.cksum" \
+     && echo "integrity: no drift" || echo "integrity: DRIFT"
+   git -C "<path>" worktree list   # audit worktrees live under <scratch>
    ```
 
-   On any tracked/untracked drift: inspect it, restore leftover mutations from the
-   worker backups under `$SCRATCH/backup-*/` (live-tree mode — each backup file's
+   On `integrity: DRIFT`: inspect it, restore leftover mutations from the
+   worker backups under `<scratch>/backup-*/` (live-tree mode — each backup file's
    path relative to its `backup-N/` dir is its repo-relative path; copy it back,
    never `git checkout`), and tell the user exactly what was found and restored.
-   If `git worktree list` still shows entries under `$SCRATCH`, remove each with
+   If `git worktree list` still shows entries under `<scratch>`, remove each with
    `git -C "<path>" worktree remove --force <wt>` and finish with
    `git -C "<path>" worktree prune`.
 
 5. Relay the report. The workflow returns
    `{ report: { verdict, headline, scores, findings[], proposals[], … }, raw, … }` —
    surface `.report` in full, and do not re-derive or soften it. Also save it as
-   markdown to `$SCRATCH/test-tests-report.md` (outside the repo) and state that
+   markdown to `<scratch>/test-tests-report.md` (outside the repo) and state that
    path — the user may grill it or act on it in a later session. For a "did you
    really check X?" follow-up, **re-run the skill**; never answer from the report
    alone.
