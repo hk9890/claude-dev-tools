@@ -484,12 +484,14 @@ with tempfile.TemporaryDirectory() as tmp:
     ])
     validator.with_suffix(".meta.json").write_text(json.dumps({"agentType": "plugin-dev:plugin-validator"}))
     # An agent of a Workflow run that a demo:skill turn started carries that skill.
-    write(projects / "proj" / "s1" / "subagents" / "workflows" / "wf_1" / "agent-w.jsonl", [
+    workflow_agent = projects / "proj" / "s1" / "subagents" / "workflows" / "wf_1" / "agent-w.jsonl"
+    write(workflow_agent, [
         call("w1", "Bash", "w1", command="make"),
         result("w1", "exit status 2", is_error=True),
         call("w2", "Bash", "w2", command="make clean"),
         result("w2", "The user doesn't want to proceed with this tool use.", is_error=True, denial="user-rejected"),
     ])
+    workflow_agent.with_suffix(".meta.json").write_text(json.dumps({"agentType": "workflow-subagent"}))
     # A plain subagent carries the skill of its parent turn too, and one that loads the skill itself does not, from that load on.
     write(projects / "proj" / "s1" / "subagents" / "agent-x.jsonl", [
         call("x1", "Bash", "x1", command="ls"),

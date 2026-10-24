@@ -583,7 +583,7 @@ def context_table(report):
 
     lines += ["", "## Trouble per skill version", "",
               "The tool calls of a skill's turns that failed, and those the user rejected, as the pick counts them. "
-              "A subagent carries the skill of the turn that started it, so its turns count apart, unless it loaded the skill, is a fork, or is an agent of the skill's plugin.", "",
+              "A subagent carries the skill of the turn that started it, so its turns count apart, unless it is a fork or an agent of the skill's plugin, or loaded the skill before the turn.", "",
               "| Skill | Version | " + " | ".join(name.replace("_", " ").capitalize() for name in TROUBLE_COUNTS) + " |",
               "|---|---|" + "---|" * len(TROUBLE_COUNTS)]
     for skill, labels in report["trouble"].items():
