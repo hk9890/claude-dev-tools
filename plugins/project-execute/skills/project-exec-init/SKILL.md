@@ -50,4 +50,4 @@ Keep the evidence you found for each earned topic. It is the material step 3 wri
 
 - Every file created, one line each on what it carries.
 - Every topic left out, naming the evidence that was absent.
-- Every existing file whose content breaches its contract in the standard — the file and what is off about it. These were left untouched: say so, and name `project-review:project-review-docs` for the full audit — a separate plugin, so mention it may need installing — and `instruction-writing:writing-project-docs` for the fix.
+- Every existing file whose content breaches its contract in the standard — the file and what is off about it. These were left untouched: say so, and tell the user to run `/project-review:project-review-docs` for the full audit — a separate plugin, so mention it may need installing — and name `instruction-writing:writing-project-docs` for the fix.
