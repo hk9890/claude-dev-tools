@@ -9,7 +9,8 @@ Before proceeding verify all gates pass:
 - `command -v gh` — GitHub CLI must be installed
 - `gh auth status` — GitHub CLI must be authenticated
 - No uncommitted tracked changes — [quality-gates.md — Gate 1](quality-gates.md#gate-1-clean-working-tree) owns the command, and says why an untracked file does not fail it
-- You are on the default branch — releases are cut from it — and, after `git fetch origin`, in sync with its remote. Derive it — with a fallback for when `origin/HEAD` is not set locally (fresh `git init`, shallow/CI checkouts, new worktrees) — and diff against it:
+- You are on the default branch — releases are cut from it; [quality-gates.md — Gate 1](quality-gates.md#gate-1-clean-working-tree) owns that check
+- After `git fetch origin`, the local branch must be in sync with the remote default branch. Derive it — with a fallback for when `origin/HEAD` is not set locally (fresh `git init`, shallow/CI checkouts, new worktrees) — and diff against it:
 
   ```bash
   git fetch origin                                # without this the compare below
@@ -21,7 +22,6 @@ Before proceeding verify all gates pass:
                                                   # branch would be compared against silently
   DEFAULT_BRANCH=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|origin/||')
   DEFAULT_BRANCH=${DEFAULT_BRANCH:-$(git remote show origin | sed -n 's/.*HEAD branch: //p')}
-  git branch --show-current                       # expect $DEFAULT_BRANCH
   git diff HEAD "origin/$DEFAULT_BRANCH" --stat   # expect no differences
   ```
 
