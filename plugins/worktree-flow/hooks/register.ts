@@ -13,25 +13,33 @@ const WORKTREE_ADD = new RegExp(
 )
 const THROWAWAY_TARGET = /\/scratchpad\/|(?:^|[\s"'=])\/tmp\/|mktemp|\$\{?TMPDIR/
 
-// A heredoc body is text for the command that reads it, except where a shell is on that line.
+// A heredoc body is text for the command that reads it, except where a shell is on that line. A
+// shell is a word of its own or the end of a path (`/bin/sh`), not a file name such as `run.sh`.
 const HEREDOC = /(?<!<)<<(?!<)(-?)\s*(['"]?)([A-Za-z_]\w*)\2/
-const SHELL = /\b(?:bash|sh|zsh)\b/
+const SHELL = /(?<![\w.-])(?:bash|sh|zsh)(?![\w.-])/
 
 // The lines the shell runs. A `<<` with no closing line is not a heredoc, and no line is left out.
+// A heredoc body that a shell reads runs in that shell, so its lines are marked `inner`.
 function commandLines(command: string) {
   const lines = command.split(/\r?\n/)
-  const run: string[] = []
+  const run: { line: string; inner: boolean }[] = []
+  let innerUntil = -1
 
   for (let at = 0; at < lines.length; at++) {
     const line = lines[at] ?? ''
     const [, dash, , word] = line.match(HEREDOC) ?? []
-    run.push(line)
+    run.push({ line, inner: at <= innerUntil })
 
-    if (word !== undefined && !SHELL.test(line)) {
+    if (word !== undefined) {
       const closing = lines.findIndex(
         (body, index) => index > at && (dash === '-' ? body.replace(/^\t+/, '') : body) === word,
       )
-      at = closing === -1 ? at : closing
+
+      if (!SHELL.test(line)) {
+        at = closing === -1 ? at : closing
+      } else {
+        innerUntil = Math.max(innerUntil, closing)
+      }
     }
   }
 
@@ -44,7 +52,8 @@ const ASSIGNMENT = /(?:^|;|&&|\|\|)\s*([A-Za-z_]\w*)=("[^"]*"|'[^']*'|[^\s;&|()]
 const VARIABLE = /\$(?:\{([A-Za-z_]\w*)\}|([A-Za-z_]\w*))/g
 
 // `W=/tmp/x && git worktree add $W` names its target through a variable: the add takes the value
-// of the last assignment before it on its line. A variable with no such assignment stays as written.
+// of the last assignment before it, on its line or an earlier one of the same shell. A variable
+// with no such assignment stays as written.
 function expandVariables(add: string, before: string) {
   const values = new Map<string, string>()
 
@@ -58,10 +67,21 @@ function expandVariables(add: string, before: string) {
 // A throwaway probe is judged by the arguments of the add itself, not by the rest of the command,
 // so each line is matched alone and every add on it must name a throwaway target.
 function addsPersistentWorktree(command: string) {
-  const adds = commandLines(command).flatMap(line =>
-    // The match starts on the separator before `git`, which the last assignment must end on.
-    [...line.matchAll(WORKTREE_ADD)].map(match => expandVariables(match[0], line.slice(0, match.index + 1))),
-  )
+  const lines = commandLines(command)
+  const adds = lines.flatMap(({ line, inner }, at) => {
+    const earlier = lines
+      .slice(0, at)
+      .filter(other => other.inner === inner)
+      .map(other => other.line)
+
+    // The match starts on the separator before `git`, which the last assignment must end on. A
+    // line break separates commands, as `;` does, except after a `\`.
+    return [...line.matchAll(WORKTREE_ADD)].map(match => {
+      const before = [...earlier, line.slice(0, match.index + 1)].join('\n')
+
+      return expandVariables(match[0], before.replace(/\\\n/g, ' ').replace(/\n/g, ';'))
+    })
+  })
 
   return adds.some(add => !THROWAWAY_TARGET.test(add))
 }

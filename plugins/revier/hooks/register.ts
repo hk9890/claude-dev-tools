@@ -1,7 +1,7 @@
 import type { Register } from 'claude-code'
 
 const DENY_REASON =
-  'This revier command opens, raises or closes a window and takes the focus from the window the user is typing in. Do not run it and do not look for another way to run it: give the user the exact command, and they run it themselves when they are ready.'
+  'This revier command opens, raises or closes a window and takes the focus from the user: give the user the exact command to run, unless the project documents a run that moves no window. With --dry-run or --help it runs here.'
 
 // Text the shell does not run, so a commit message, a heredoc or a grep pattern that mentions the
 // command passes: a heredoc body, then a comment or a quoted string. An escaped character is

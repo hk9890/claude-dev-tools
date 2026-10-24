@@ -6,7 +6,7 @@ skill), used under the MIT license:
 
 - `skills/project-review-codebase/references/design-vocabulary.md` — adapted from
   [v1.1.0](https://github.com/mattpocock/skills/releases/tag/v1.1.0), unchanged
-  upstream through v1.2.3; its terms trace to Ousterhout and Feathers
+  upstream in substance through v1.3.1 (v1.3.0 removed em-dashes only); its terms trace to Ousterhout and Feathers
 
 `skills/project-review-codebase/workflows/review-codebase.js` borrows from the same source twice:
 

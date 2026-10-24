@@ -27,7 +27,7 @@ revier also places and raises windows, and the user is typing in one of them whi
 | `revier agent send-keys` | types named keys into an agent, whatever its status |
 | `revier agent new --no-focus` | adds an agent tab to an open workspace and prints the address of the agent |
 
-The last three rows need revier 0.14.0 or later: compare with the "Installed" line above.
+This skill needs revier 0.14.0 or later: where the "Installed" line above shows an older one, tell the user to update revier, and do nothing else with this skill.
 
 The rest of the CLI is outside this skill. Most of it opens, raises or closes a window: `shell new` raises the tab it adds, and so does `agent new` without `--no-focus`. When the task needs one of those commands, take its syntax from `revier --help` and give the user the exact command to run.
 
@@ -84,8 +84,6 @@ A conversation of a Claude agent on this machine is the one transcript that `~/.
 ## Prompting another agent
 
 A prompt redirects work the user started in another window. Send one when the user asked you to reach that agent.
-
-Where the "Installed" line shows a revier before 0.14.0, read "On a revier before 0.14.0" before step 1.
 
 1. Run `revier agent --help`. It is the authority for the `<agent>` address, the statuses, the `<key>` names, and what `prompt` refuses.
 2. Find the agent with `revier list --json <project>`.
@@ -145,12 +143,3 @@ Answer the dialog yourself only where the user asked for that in this session. T
    ```
 
 3. Read the screen again. The dialog is answered when the screen shows it no more: go back to the step that sent you here, and wait for the turn. Where the screen still shows a dialog, send no further key: report the text of the dialog to the user and stop here.
-
-### On a revier before 0.14.0
-
-Follow the steps above with these changes:
-
-- Step 2, no agent and `.running` is true: `revier agent new -p <name>` takes the focus, so give the command to the user.
-- Step 4: revier gives no answer back, so word the prompt as an instruction that needs no answer.
-- Steps 3 and 5, an agent at `attention`: report it to the user in every case, because no command answers its dialog.
-- Step 6: tell the user that the result is in the window of that agent.
