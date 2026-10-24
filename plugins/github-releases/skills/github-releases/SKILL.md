@@ -17,17 +17,9 @@ This skill covers three release tasks — identify which one the user wants:
 2. **Set up or update `docs/RELEASING.md`** — the project's release guide. Follow [setup-modify-release-workflow.md](references/setup-modify-release-workflow.md) instead of the release workflow.
 3. **Set up release CI** — automate the mechanical *publish* half of a release in a CI pipeline. This is design guidance only; it does not write provider-specific pipeline files. Follow [ci-pipeline-guide.md](references/ci-pipeline-guide.md).
 
-The Prerequisites and Workflow below apply to use case 1.
-
 ## Prerequisites (Phase 1)
 
-Before starting, verify:
-- `command -v gh` succeeds (GitHub CLI installed)
-- `gh auth status` succeeds (GitHub CLI authenticated)
-- No uncommitted tracked changes — [quality-gates.md — Gate 1](references/quality-gates.md#gate-1-clean-working-tree) owns the command
-- You are on the default branch — releases are cut from the default branch — and in sync with its remote
-
-Run the checks as [release-workflow.md — Phase 1](references/release-workflow.md) specifies; it owns the `DEFAULT_BRANCH` derivation. If `gh` is missing or unauthenticated, or any check fails, stop and guide the user through fixing it — see [troubleshooting.md](references/troubleshooting.md). Do not start the workflow with a failed prerequisite.
+Before starting, run every check in [release-workflow.md — Phase 1](references/release-workflow.md). If any check fails, stop and guide the user through fixing it — see [troubleshooting.md](references/troubleshooting.md).
 
 ## Workflow
 
@@ -50,17 +42,5 @@ Use TodoWrite to track progress through these phases:
 
 **3. Execute each phase in order**
 
-Work through the checklist, marking items complete as you go, and read each phase's doc before starting that phase. Do not proceed to the next phase if the current one fails. When something goes wrong, [troubleshooting.md](references/troubleshooting.md) covers the common `gh` CLI, git, and CI failures.
+Work through the checklist, marking items complete as you go, and read each phase's doc before starting that phase. Stop at a failed phase; continue past it only on explicit user confirmation. When something goes wrong, [troubleshooting.md](references/troubleshooting.md) covers the common `gh` CLI, git, and CI failures.
 
-## References
-
-Every doc a release phase needs is linked from the checklist above. The full set:
-
-- [release-workflow.md](references/release-workflow.md) — Detailed process for each phase
-- [quality-gates.md](references/quality-gates.md) — Pre-release validation gates
-- [documentation-checklist.md](references/documentation-checklist.md) — Version consistency checks
-- [version-management.md](references/version-management.md) — Semver rules and version bump analysis
-- [release-notes-guide.md](references/release-notes-guide.md) — Structured release notes format
-- [troubleshooting.md](references/troubleshooting.md) — Common gh CLI, git, and CI issues
-- [ci-pipeline-guide.md](references/ci-pipeline-guide.md) — Automating the publish half in CI (decide-vs-publish, trigger models, hardening) — generic guidance, not stack-specific config
-- [setup-modify-release-workflow.md](references/setup-modify-release-workflow.md) — Set up or update docs/RELEASING.md for this project
