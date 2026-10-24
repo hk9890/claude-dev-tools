@@ -87,30 +87,31 @@ when the skill loads. It is absolute and install-correct — build every path fr
    `FINDINGS_CAP`. Components it never mutated land in `not_checked`, and the headline
    says the run was capped — `kill_rate` is then a rate over the components that ran.
 
-4. **Verify tree integrity** — after the workflow returns *or* fails:
+4. **Verify tree integrity** — after the workflow returns *or* fails. `<scratch>` is the
+   absolute path step 2 printed:
 
    ```bash
-   git -C "<path>" status --porcelain > "$SCRATCH/post-status.txt"
-   git -C "<path>" diff > "$SCRATCH/post-diff.patch"
-   ( cd "<path>" && git ls-files --others --exclude-standard -z | xargs -0 -r md5sum ) > "$SCRATCH/post-untracked.md5"
-   diff "$SCRATCH/pre-status.txt" "$SCRATCH/post-status.txt" \
-     && cmp -s "$SCRATCH/pre-diff.patch" "$SCRATCH/post-diff.patch" \
-     && diff "$SCRATCH/pre-untracked.md5" "$SCRATCH/post-untracked.md5"
-   git -C "<path>" worktree list   # audit worktrees live under $SCRATCH
+   git -C "<path>" status --porcelain > "<scratch>/post-status.txt"
+   git -C "<path>" diff > "<scratch>/post-diff.patch"
+   ( cd "<path>" && git ls-files --others --exclude-standard -z | xargs -0 -r md5sum ) > "<scratch>/post-untracked.md5"
+   diff "<scratch>/pre-status.txt" "<scratch>/post-status.txt" \
+     && cmp -s "<scratch>/pre-diff.patch" "<scratch>/post-diff.patch" \
+     && diff "<scratch>/pre-untracked.md5" "<scratch>/post-untracked.md5"
+   git -C "<path>" worktree list   # audit worktrees live under <scratch>
    ```
 
    On any tracked/untracked drift: inspect it, restore leftover mutations from the
-   worker backups under `$SCRATCH/backup-*/` (live-tree mode — each backup file's
+   worker backups under `<scratch>/backup-*/` (live-tree mode — each backup file's
    path relative to its `backup-N/` dir is its repo-relative path; copy it back,
    never `git checkout`), and tell the user exactly what was found and restored.
-   If `git worktree list` still shows entries under `$SCRATCH`, remove each with
+   If `git worktree list` still shows entries under `<scratch>`, remove each with
    `git -C "<path>" worktree remove --force <wt>` and finish with
    `git -C "<path>" worktree prune`.
 
 5. Relay the report. The workflow returns
    `{ report: { verdict, headline, scores, findings[], proposals[], … }, raw, … }` —
    surface `.report` in full, and do not re-derive or soften it. Also save it as
-   markdown to `$SCRATCH/test-tests-report.md` (outside the repo) and state that
+   markdown to `<scratch>/test-tests-report.md` (outside the repo) and state that
    path — the user may grill it or act on it in a later session. For a "did you
    really check X?" follow-up, **re-run the skill**; never answer from the report
    alone.
