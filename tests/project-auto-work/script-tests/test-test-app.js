@@ -26,6 +26,7 @@
 //   - the loop: ceiling, dry early-exit, leads becoming assigned flows, a driver that
 //     cannot launch, and the janitor that follows it
 //   - the bad-args bailout returns the diagnostic error object without spawning agents
+//   - a dead synthesis agent returns an error whose raw keeps the mutating actions
 //   - a broken runtime (no agent hook) fails loudly instead of no-op
 
 const fs = require('fs');
@@ -429,6 +430,7 @@ async function main() {
       }
       if (o.label && o.label.startsWith('confirm-')) return { reproduced: true, evidence: 'seen again' };
       if (o.label && o.label.startsWith('janitor-')) return { summary: 'stopped a stray process' };
+      if (o.label === 'synthesis' && opts.synthesisDies) return null;
       if (o.label === 'document') {
         return opts.document ? opts.document(prompt) : { report_markdown: '# report\n\n' + 'x'.repeat(4000) };
       }
@@ -521,6 +523,15 @@ async function main() {
     capped.prompts.some((p, i) => capped.labels[i] === 'synthesis'
       && /never reached \(the run already had \d+ findings/.test(p)),
     'the not-checked list did not name the cap');
+
+  // A dead synthesis agent leaves no report, and SKILL.md relays raw in its place: raw must
+  // still say what the drivers did to the user's data.
+  const unsynthesized = await runTest({ level: 'low' }, { analyst: finding, synthesisDies: true });
+  truthy('orchestration: a dead synthesis agent returns an error and no report',
+    unsynthesized.ret && unsynthesized.ret.error && !unsynthesized.ret.report);
+  eq('orchestration: a dead synthesis agent keeps each mutating action in raw',
+    unsynthesized.labels.filter((l) => l.startsWith('driver-')).length,
+    unsynthesized.ret && unsynthesized.ret.raw && unsynthesized.ret.raw.mutations.length);
 
   // A run under the cap must still use its whole ceiling — the guard cannot fire early.
   const underCap = await runTest({ level: 'medium' }, { analyst: manyFindings(2) });

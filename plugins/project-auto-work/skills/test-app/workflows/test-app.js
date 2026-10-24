@@ -1032,7 +1032,7 @@ if (typeof agent === 'function') {
     return {
       error: 'synthesis agent failed — findings were collected but no report was assembled',
       repoRoot, level, focus, scratchDir,
-      raw: { findings: confirmed, questions: ledger.questions, iterations: ledger.iterations, not_checked: notChecked },
+      raw: { findings: confirmed, questions: ledger.questions, iterations: ledger.iterations, mutations: ledger.mutations, not_checked: notChecked },
     }
   }
 

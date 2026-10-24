@@ -121,21 +121,21 @@ when the skill loads. It is absolute and install-correct — build every path fr
    command proven to under-report, or a unit test that fails once its environment is
    denied, the probe behind that finding is in
    [`references/how-the-audit-measures.md`](references/how-the-audit-measures.md). Read
-   it before you explain such a finding or answer how the audit reached it; the relay
-   itself needs nothing from it.
+   it before you explain such a finding or answer how the audit reached it.
 
    Each proposal is tagged `settled` or `open`. Follow
-   `<base directory for this skill>/../../references/decision-split.md` (plugin-root layout:
-   `../..` is correct) — it defines both words and branches on `html-viz`. Done when every open item has been put to the
-   user and the settled batch has been named.
+   `<base directory for this skill>/../../references/decision-split.md` (plugin-root
+   layout: `../..` is correct) — it defines both words and branches on `html-viz`. Done
+   when every open item has been put to the user and the settled batch has been named.
 
 If `python3` is missing or the workflow cannot launch, do not improvise an inline
 audit — report which prerequisite is missing and stop. If `result` holds an
 object with `error` and no `report` (bad arguments, or the baseline agent died),
 relay the error verbatim, state that the audit did not run, and do not improvise
 findings — still run the step-4 integrity check. When the error carries `got`, the
-run never started and `got.keys` lists the arguments that actually arrived — surface
-it.
+run never started: surface `got.keys`, the arguments that arrived. A null `report`
+with no `error` means the abort-report or synthesis agent died: say so, and relay
+`abort_reason` where set, else `raw`, as not synthesized.
 
 ## Verdicts
 

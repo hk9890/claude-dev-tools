@@ -493,10 +493,12 @@ with tempfile.TemporaryDirectory() as tmp:
     ])
     workflow_agent.with_suffix(".meta.json").write_text(json.dumps({"agentType": "workflow-subagent"}))
     # A plain subagent carries the skill of its parent turn too, and one that loads the skill itself does not, from that load on.
+    # An agent of a plugin whose name only starts with the skill's plugin name is a plain subagent.
     write(projects / "proj" / "s1" / "subagents" / "agent-x.jsonl", [
         call("x1", "Bash", "x1", command="ls"),
         result("x1", "exit status 2", is_error=True),
     ])
+    (projects / "proj" / "s1" / "subagents" / "agent-x.meta.json").write_text(json.dumps({"agentType": "demo-extra:helper"}))
     write(projects / "proj" / "s1" / "subagents" / "agent-y.jsonl", [
         call("y0", "Bash", "y0", command="pwd"),
         result("y0", "exit status 2", is_error=True),
@@ -511,7 +513,6 @@ with tempfile.TemporaryDirectory() as tmp:
             result(f"{name}1", "exit status 2", is_error=True),
         ])
         (projects / "proj" / "s1" / "subagents" / f"{name}.meta.json").write_text(json.dumps({"agentType": kind}))
-    (projects / "proj" / "s1" / "subagents" / "agent-x.meta.json").write_text(json.dumps({"agentType": "Explore"}))
     # Another project with a docs/ of its own and no plugin use.
     write(projects / "other" / "s2.jsonl", [
         attachment("instructions", files=[{"path": "/w/other/AGENTS.md", "content": "# Other project\n"}]),
