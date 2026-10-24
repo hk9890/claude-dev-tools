@@ -53,8 +53,8 @@ when the skill loads. It is absolute and install-correct — build every path fr
    `<scratch>` in steps 3-5 is that printed absolute path.
 
    ```bash
-   command -v python3 >/dev/null || { echo "python3 missing — stop and tell the user"; return 2>/dev/null || exit 1; }
-   SCRATCH=$(mktemp -d /tmp/test-tests-XXXXXX) && echo "$SCRATCH" || { echo "mktemp failed — stop; do not launch without a scratch dir"; return 2>/dev/null || exit 1; }
+   command -v python3 >/dev/null || { echo "python3 missing — stop and tell the user"; return 1 2>/dev/null || exit 1; }
+   SCRATCH=$(mktemp -d /tmp/test-tests-XXXXXX) && echo "$SCRATCH" || { echo "mktemp failed — stop; do not launch without a scratch dir"; return 1 2>/dev/null || exit 1; }
    git -C "<path>" status --porcelain > "$SCRATCH/pre-status.txt"
    git -C "<path>" diff > "$SCRATCH/pre-diff.patch"
    ( cd "<path>" && git ls-files --others --exclude-standard -z | xargs -0 -r cksum ) > "$SCRATCH/pre-untracked.cksum"
@@ -96,11 +96,12 @@ when the skill loads. It is absolute and install-correct — build every path fr
    ( cd "<path>" && git ls-files --others --exclude-standard -z | xargs -0 -r cksum ) > "<scratch>/post-untracked.cksum"
    diff "<scratch>/pre-status.txt" "<scratch>/post-status.txt" \
      && cmp -s "<scratch>/pre-diff.patch" "<scratch>/post-diff.patch" \
-     && diff "<scratch>/pre-untracked.cksum" "<scratch>/post-untracked.cksum"
+     && diff "<scratch>/pre-untracked.cksum" "<scratch>/post-untracked.cksum" \
+     && echo "integrity: no drift" || echo "integrity: DRIFT"
    git -C "<path>" worktree list   # audit worktrees live under <scratch>
    ```
 
-   On any tracked/untracked drift: inspect it, restore leftover mutations from the
+   On `integrity: DRIFT`: inspect it, restore leftover mutations from the
    worker backups under `<scratch>/backup-*/` (live-tree mode — each backup file's
    path relative to its `backup-N/` dir is its repo-relative path; copy it back,
    never `git checkout`), and tell the user exactly what was found and restored.

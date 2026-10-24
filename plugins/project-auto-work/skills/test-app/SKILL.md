@@ -47,15 +47,15 @@ know what the app reaches. Point it at an environment whose data you can afford 
    identify one: this will launch the application and use it for real, and data may be
    created, changed or deleted. Then create the scratch dir and echo it — shell state does
    not survive between commands, so a value you only assign is gone by the time step 4
-   needs it.
+   needs it. `<scratch>` in steps 4-5 is that printed absolute path.
 
    ```bash
-   SCRATCH=$(mktemp -d /tmp/test-app-XXXXXX) && echo "$SCRATCH" || echo "mktemp failed — stop; do not launch without a scratch dir"
+   SCRATCH=$(mktemp -d /tmp/test-app-XXXXXX) && echo "$SCRATCH" || { echo "mktemp failed — stop; do not launch without a scratch dir"; return 1 2>/dev/null || exit 1; }
    ```
 
 4. Invoke the **Workflow** tool:
    - `scriptPath`: `<SKILL_DIR>/workflows/test-app.js`
-   - `args`: `{ "repoRoot": "<absolute path to the project>", "referencesDir": "<SKILL_DIR>/references", "focus": "<the step-1 focus, or empty>", "level": "<the step-1 level>", "scratchDir": "<the absolute path printed above>" }`
+   - `args`: `{ "repoRoot": "<absolute path to the project>", "referencesDir": "<SKILL_DIR>/references", "focus": "<the step-1 focus, or empty>", "level": "<the step-1 level>", "scratchDir": "<scratch>" }`
 
    `referencesDir` must contain `break-it.md` — the workflow hands that path to every
    driver at `medium` and above, so moving or renaming the file silently removes the
@@ -78,7 +78,7 @@ know what the app reaches. Point it at an environment whose data you can afford 
    application, so their findings describe different software.
 
    Write `report.report_markdown` **verbatim** — never summarised, reformatted, or
-   truncated — to `$SCRATCH/test-app-report.md` (outside the project) and state that path.
+   truncated — to `<scratch>/test-app-report.md` (outside the project) and state that path.
    For a "did you really check X?" follow-up, **re-run the skill**; never answer from the
    report alone.
 

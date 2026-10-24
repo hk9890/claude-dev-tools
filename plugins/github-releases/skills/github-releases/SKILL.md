@@ -19,7 +19,7 @@ This skill covers three release tasks — identify which one the user wants:
 
 ## Prerequisites (Phase 1)
 
-Before cutting a release, run every check in [release-workflow.md — Phase 1](references/release-workflow.md). If any check fails, stop and guide the user through fixing it — see [troubleshooting.md](references/troubleshooting.md).
+Before cutting a release, run every check in [release-workflow.md — Phase 1](references/release-workflow.md), and start the workflow only once each one passes. Where one fails, guide the user through fixing it — see [troubleshooting.md](references/troubleshooting.md).
 
 ## Workflow
 
@@ -42,5 +42,5 @@ Use TodoWrite to track progress through these phases:
 
 **3. Execute each phase in order**
 
-Work through the checklist, marking items complete as you go, and read each phase's doc before starting that phase. Stop at a failed phase; continue past it only on explicit user confirmation. A failed quality gate holds the release until it is green, whatever the user confirms. When something goes wrong, [troubleshooting.md](references/troubleshooting.md) covers the common `gh` CLI, git, and CI failures.
+Work through the checklist, marking items complete as you go, and read each phase's doc before starting that phase. Stop at a failed phase; continue past it only on explicit user confirmation. Whatever the user confirms, a failed quality gate holds the release until it is green, and a version bump not yet on the remote default branch holds the tag ([release-workflow.md — Phase 6](references/release-workflow.md)). When something goes wrong, [troubleshooting.md](references/troubleshooting.md) covers the common `gh` CLI, git, and CI failures.
 

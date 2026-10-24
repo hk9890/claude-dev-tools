@@ -229,7 +229,7 @@ to the user as a markdown link with the message:
 unopened form exits 2 after 900 s, which is the worst place to discover a dead
 URL. See "When the printed hostname does not resolve" in `references/serve.md`:
 offer `http://localhost:PORT/` on the same port when they are on an SSH tunnel,
-and otherwise kill the server and ask the questions in chat.
+and otherwise stop the server and ask the questions in chat.
 
 ---
 
