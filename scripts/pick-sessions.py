@@ -144,6 +144,7 @@ def summarize(session_file, plugins):
         return isinstance(skill, str) and ":" in skill and skill.split(":")[0] in plugins
 
     for path in [session_file, *subagents]:
+        kind = None if path == session_file else agent_type(path) or ""
         loaded = {}
         # The skill turn that made each tool call, to give its result to the same skill and version.
         call_owner = {}
@@ -161,9 +162,10 @@ def summarize(session_file, plugins):
                         or next((l for at, _, name, l in reversed(session_loads) if at <= timestamp and name == plugin), None)
                         or "unknown"
                     )
-                    # A subagent carries the skill of the turn that started it: a turn of a skill it did not
-                    # load itself counts apart.
-                    prefix = "inherited_" if path != session_file and skill not in loaded else ""
+                    # A subagent carries the skill of the turn that started it. Its turn counts apart unless it
+                    # loaded the skill, is a fork with the skill in its context, or is an agent of the skill's plugin.
+                    direct = kind is None or kind == "fork" or kind.startswith(plugin + ":") or skill in loaded
+                    prefix = "" if direct else "inherited_"
                     trouble = usage[skill]["by_version"][label]
                     usage[skill]["versions"].add(label)
                     usage[skill]["turns"] += 1
@@ -581,7 +583,7 @@ def context_table(report):
 
     lines += ["", "## Trouble per skill version", "",
               "The tool calls of a skill's turns that failed, and those the user rejected, as the pick counts them. "
-              "A subagent carries the skill of the turn that started it, so the turns of a skill it did not load itself count apart.", "",
+              "A subagent carries the skill of the turn that started it, so its turns count apart, unless it loaded the skill, is a fork, or is an agent of the skill's plugin.", "",
               "| Skill | Version | " + " | ".join(name.replace("_", " ").capitalize() for name in TROUBLE_COUNTS) + " |",
               "|---|---|" + "---|" * len(TROUBLE_COUNTS)]
     for skill, labels in report["trouble"].items():

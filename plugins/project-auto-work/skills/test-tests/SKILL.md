@@ -129,7 +129,7 @@ when the skill loads. It is absolute and install-correct — build every path fr
    is correct here.
 
 If `python3` is missing or the workflow cannot launch, do not improvise an inline
-audit — report which prerequisite is missing and stop. If the workflow returns an
+audit — report which prerequisite is missing and stop. If `result` holds an
 object with `error` and no `report` (bad arguments, or the baseline agent died),
 relay the error verbatim, state that the audit did not run, and do not improvise
 findings — still run the step-4 integrity check. When the error carries `got`, the

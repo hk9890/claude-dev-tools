@@ -502,6 +502,14 @@ with tempfile.TemporaryDirectory() as tmp:
         call("y1", "Bash", "y1", command="ls"),
         result("y1", "exit status 2", is_error=True),
     ])
+    # A fork has the skill in its context, and an agent of the skill's plugin works for it: neither inherits.
+    for name, kind in (("agent-f", "fork"), ("agent-r", "demo:reviewer")):
+        write(projects / "proj" / "s1" / "subagents" / f"{name}.jsonl", [
+            call(f"{name}1", "Bash", f"{name}1", command="ls"),
+            result(f"{name}1", "exit status 2", is_error=True),
+        ])
+        (projects / "proj" / "s1" / "subagents" / f"{name}.meta.json").write_text(json.dumps({"agentType": kind}))
+    (projects / "proj" / "s1" / "subagents" / "agent-x.meta.json").write_text(json.dumps({"agentType": "Explore"}))
     # Another project with a docs/ of its own and no plugin use.
     write(projects / "other" / "s2.jsonl", [
         attachment("instructions", files=[{"path": "/w/other/AGENTS.md", "content": "# Other project\n"}]),
@@ -517,7 +525,7 @@ with tempfile.TemporaryDirectory() as tmp:
     out, picks, context = pick_context()
     check("pick with the context scan exits 0", 0, out.returncode)
     files = {entry["file"]: entry for entry in context.get("files", [])}
-    check("every session of the window is scanned, plugin use or none, subagents included", (6, 16), (context.get("contexts"), context.get("api_calls")))
+    check("every session of the window is scanned, plugin use or none, subagents included", (8, 18), (context.get("contexts"), context.get("api_calls")))
     check("a listing entry of this marketplace counts, a foreign one does not",
           {"plugins/demo/skills/skill/SKILL.md": len("- demo:skill: Does a thing.\n"), "plugins/demo/skills/idle/SKILL.md": len("- demo:idle: Idle."),
            "plugins/demo/agents/reviewer.md": len("- demo:reviewer: Reviews.")},
@@ -544,12 +552,12 @@ with tempfile.TemporaryDirectory() as tmp:
     check("reach: the files of the plugin read after the skill load",
           {"runs": 2, "read": {"plugins/demo/references/r.md": 1}}, context.get("reach", {}).get("plugins/demo/skills/skill/SKILL.md"))
     check("a second Read of the same part of a file is a re-read", {"docs/CODING.md": {"contexts": 2, "repeated": 1}}, context.get("rereads"))
-    check("trouble: a failed call and a rejected call of a skill turn, by its version, and the turns a subagent inherits apart",
-          {"turns": 9, "failed": 2, "rejected": 1, "inherited_turns": 4, "inherited_failed": 3, "inherited_rejected": 1},
+    check("trouble: a failed call and a rejected call of a skill turn, by its version, and the turns a subagent inherits apart, a fork and an agent of its plugin excepted",
+          {"turns": 11, "failed": 4, "rejected": 1, "inherited_turns": 4, "inherited_failed": 3, "inherited_rejected": 1},
           context.get("trouble", {}).get("demo:skill", {}).get("1.0.0"))
     check("context.md gives each count of the trouble its own column, the inherited counts last",
           ["| Skill | Version | Turns | Failed | Rejected | Inherited turns | Inherited failed | Inherited rejected |",
-           "| `demo:skill` | 1.0.0 | 9 | 2 | 1 | 4 | 3 | 1 |"],
+           "| `demo:skill` | 1.0.0 | 11 | 4 | 1 | 4 | 3 | 1 |"],
           [line for line in Path(picks["run_dir"], "context.md").read_text().splitlines() if line.startswith(("| Skill | Version |", "| `demo:skill` |"))])
     s1 = next((s for s in picks.get("sessions", []) if s["session_id"] == "s1"), {})
     check("a picked session carries the files of this repository it loaded, listing left out",
@@ -568,7 +576,7 @@ with tempfile.TemporaryDirectory() as tmp:
     trend = run("context", "--review-dir", str(store), "--top", "2")
     run_names = sorted(p.name for p in (store / "runs").iterdir())
     check("context prints each file's characters per API call in each run, the costliest first",
-          (0, f"| `docs/CODING.md` | {900 // 16} | {900 // 16} |"),
+          (0, f"| `docs/CODING.md` | {900 // 18} | {900 // 18} |"),
           (trend.returncode, next((line for line in trend.stdout.splitlines() if "docs/CODING.md" in line), None)))
     check("context names each run in its header", True, all(name in trend.stdout for name in run_names))
     empty = Path(tmp, "empty-store")
