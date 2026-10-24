@@ -76,6 +76,7 @@ PLUGIN_ROOT=$(cd "<base directory for this skill>/../.." 2>/dev/null && pwd)
 if [ -f "$PLUGIN_ROOT/bin/server.js" ]; then
   echo "$PLUGIN_ROOT" > "$HTML_DIR/.plugin-root"
   echo "plugin root: $PLUGIN_ROOT"
+  echo "html dir: $HTML_DIR"
 else
   echo "ERROR: cannot locate the html-visualization plugin root"
   exit 1
@@ -86,6 +87,10 @@ If the `ERROR` line prints (the command exits non-zero), stop — do not start a
 server. Fall back to the active mode's chat fallback (as in the Node pre-flight)
 and tell the user the plugin's files could not be located. Never guess a path in
 its place.
+
+Each `Bash` call starts a fresh shell, so `$HTML_DIR` is empty in every later
+call. Start each later block that uses it with `HTML_DIR=<the printed html dir>`,
+and give the Write tool paths under that printed directory.
 
 Replace `<mode>` with `html-ask`, `html-feedback`, or `html-visualize` depending
 on the active mode. The directory must be unique per invocation — never reuse one
@@ -124,7 +129,9 @@ inside `$HTML_DIR`.
 
 ## Server cycles
 
-There are three distinct server cycles, one per mode.
+There are three distinct server cycles, one per mode. Each starts the server
+with `run_in_background: true`, which returns a task id. Keep that id: to stop a
+server before it exits on its own, call `TaskStop` with it.
 
 ### Cycle A — Blocking submit round-trip (ask mode)
 
@@ -430,8 +437,8 @@ rm -rf "$HTML_DIR"   # optional; the server exits on its own once the page is go
 
 Kill it explicitly only when the user says they are done while the tab is still
 open: an open tab keeps its heartbeat going, so the server has no way to tell
-that nobody is looking at it. Call `TaskStop` with the task id that the
-Cycle B background start returned, then remove the directory:
+that nobody is looking at it. Stop each visualize server still running — a
+re-render starts a new one — with `TaskStop`, then remove its directory:
 
 ```bash
 rm -rf "$HTML_DIR"

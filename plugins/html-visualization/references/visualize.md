@@ -283,7 +283,9 @@ file, and serve it.
 
 ## Step 5 — Cleanup
 
-See `references/serve.md` — cleanup section (visualize mode).
+Leave the server and `$HTML_DIR` alone while the page is open. When the user says
+they are done, or a feedback file arrives, see `references/serve.md` — cleanup
+section (visualize mode).
 
 ---
 

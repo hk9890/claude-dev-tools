@@ -8,8 +8,7 @@ Before proceeding verify all gates pass:
 
 - `command -v gh` — GitHub CLI must be installed
 - `gh auth status` — GitHub CLI must be authenticated
-- No uncommitted tracked changes — [quality-gates.md — Gate 1](quality-gates.md#gate-1-clean-working-tree) owns the command, and says why an untracked file does not fail it
-- You are on the default branch — releases are cut from it; [quality-gates.md — Gate 1](quality-gates.md#gate-1-clean-working-tree) owns that check
+- No uncommitted tracked changes, and you are on the default branch — releases are cut from it. [quality-gates.md — Gate 1](quality-gates.md#gate-1-clean-working-tree) owns both checks, and says why an untracked file does not fail the first
 - After `git fetch origin`, the local branch must be in sync with the remote default branch. Derive it — with a fallback for when `origin/HEAD` is not set locally (fresh `git init`, shallow/CI checkouts, new worktrees) — and diff against it:
 
   ```bash

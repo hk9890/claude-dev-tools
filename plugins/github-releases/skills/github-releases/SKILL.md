@@ -19,7 +19,7 @@ This skill covers three release tasks — identify which one the user wants:
 
 ## Prerequisites (Phase 1)
 
-Before starting, run every check in [release-workflow.md — Phase 1](references/release-workflow.md). If any check fails, stop and guide the user through fixing it — see [troubleshooting.md](references/troubleshooting.md).
+Before cutting a release, run every check in [release-workflow.md — Phase 1](references/release-workflow.md). If any check fails, stop and guide the user through fixing it — see [troubleshooting.md](references/troubleshooting.md).
 
 ## Workflow
 

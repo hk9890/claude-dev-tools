@@ -50,21 +50,22 @@ when the skill loads. It is absolute and install-correct — build every path fr
 2. Check the prerequisite, snapshot the target tree so integrity is verifiable afterwards,
    and create a per-run scratch dir. Echo the scratch path: shell state does not survive
    between commands, so a value you only assign is gone by the time step 3 needs it.
+   `<scratch>` in steps 3-5 is that printed absolute path.
 
    ```bash
    command -v python3 >/dev/null || { echo "python3 missing — stop and tell the user"; return 2>/dev/null || exit 1; }
-   SCRATCH=$(mktemp -d /tmp/test-tests-XXXXXX) && echo "$SCRATCH" || echo "mktemp failed — stop; do not launch without a scratch dir"
+   SCRATCH=$(mktemp -d /tmp/test-tests-XXXXXX) && echo "$SCRATCH" || { echo "mktemp failed — stop; do not launch without a scratch dir"; return 2>/dev/null || exit 1; }
    git -C "<path>" status --porcelain > "$SCRATCH/pre-status.txt"
    git -C "<path>" diff > "$SCRATCH/pre-diff.patch"
-   ( cd "<path>" && git ls-files --others --exclude-standard -z | xargs -0 -r md5sum ) > "$SCRATCH/pre-untracked.md5"
+   ( cd "<path>" && git ls-files --others --exclude-standard -z | xargs -0 -r cksum ) > "$SCRATCH/pre-untracked.cksum"
    ```
 
-   The untracked hashes matter: `git diff` is blind to untracked-file content, and a
+   The untracked checksums matter: `git diff` is blind to untracked-file content, and a
    mutation left in an untracked production file would otherwise pass the check.
 
 3. Invoke the **Workflow** tool:
    - `scriptPath`: `<SKILL_DIR>/workflows/test-tests.js`
-   - `args`: `{ "repoRoot": "<path>", "scriptsDir": "<SKILL_DIR>/scripts", "level": "<level>", "scratchDir": "<the absolute path printed above>" }`
+   - `args`: `{ "repoRoot": "<path>", "scriptsDir": "<SKILL_DIR>/scripts", "level": "<level>", "scratchDir": "<scratch>" }`
 
    The workflow measures six axes — sensitivity (mutants must be killed),
    specificity (no-op edits must not break tests), reliability (reruns, shuffle,
@@ -87,16 +88,15 @@ when the skill loads. It is absolute and install-correct — build every path fr
    `FINDINGS_CAP`. Components it never mutated land in `not_checked`, and the headline
    says the run was capped — `kill_rate` is then a rate over the components that ran.
 
-4. **Verify tree integrity** — after the workflow returns *or* fails. `<scratch>` is the
-   absolute path step 2 printed:
+4. **Verify tree integrity** — after the workflow returns *or* fails:
 
    ```bash
    git -C "<path>" status --porcelain > "<scratch>/post-status.txt"
    git -C "<path>" diff > "<scratch>/post-diff.patch"
-   ( cd "<path>" && git ls-files --others --exclude-standard -z | xargs -0 -r md5sum ) > "<scratch>/post-untracked.md5"
+   ( cd "<path>" && git ls-files --others --exclude-standard -z | xargs -0 -r cksum ) > "<scratch>/post-untracked.cksum"
    diff "<scratch>/pre-status.txt" "<scratch>/post-status.txt" \
      && cmp -s "<scratch>/pre-diff.patch" "<scratch>/post-diff.patch" \
-     && diff "<scratch>/pre-untracked.md5" "<scratch>/post-untracked.md5"
+     && diff "<scratch>/pre-untracked.cksum" "<scratch>/post-untracked.cksum"
    git -C "<path>" worktree list   # audit worktrees live under <scratch>
    ```
 
