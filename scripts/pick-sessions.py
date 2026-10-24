@@ -76,6 +76,7 @@ EDIT_TOOLS = ("Edit", "Write", "NotebookEdit")
 # The ways a text of this repository reaches a context, each read from a record of its own kind.
 CHANNELS = ("listing", "skill-body", "skill-reinjected", "instructions", "read", "attached")
 CONTEXT_TOP = 30
+TROUBLE_COUNTS = ("turns", "failed", "rejected", "inherited_turns", "inherited_failed", "inherited_rejected")
 
 
 def records(path):
@@ -136,13 +137,14 @@ def summarize(session_file, plugins):
     session_loads = []
     usage = defaultdict(lambda: {
         "versions": set(), "turns": 0, "model_invoked": 0, "slash_invoked": 0,
-        "by_version": defaultdict(lambda: {"turns": 0, "failed": 0, "rejected": 0}),
+        "by_version": defaultdict(lambda: dict.fromkeys(TROUBLE_COUNTS, 0)),
     })
 
     def owned(skill):
         return isinstance(skill, str) and ":" in skill and skill.split(":")[0] in plugins
 
     for path in [session_file, *subagents]:
+        kind = None if path == session_file else agent_type(path) or ""
         loaded = {}
         # The skill turn that made each tool call, to give its result to the same skill and version.
         call_owner = {}
@@ -160,15 +162,20 @@ def summarize(session_file, plugins):
                         or next((l for at, _, name, l in reversed(session_loads) if at <= timestamp and name == plugin), None)
                         or "unknown"
                     )
+                    # A subagent carries the skill of the turn that started it. Its turn counts apart unless it
+                    # loaded the skill, is a fork with the skill in its context, or is an agent of the skill's plugin.
+                    direct = kind is None or kind == "fork" or kind.startswith(plugin + ":") or skill in loaded
+                    prefix = "" if direct else "inherited_"
+                    trouble = usage[skill]["by_version"][label]
                     usage[skill]["versions"].add(label)
                     usage[skill]["turns"] += 1
-                    usage[skill]["by_version"][label]["turns"] += 1
+                    trouble[prefix + "turns"] += 1
                 for block in blocks(record):
                     invoked = (block.get("input") or {}).get("skill") if block.get("name") == "Skill" else None
                     if owned(invoked):
                         usage[invoked]["model_invoked"] += 1
                     if block.get("type") == "tool_use" and skill and plugin in plugins:
-                        call_owner[block.get("id")] = (skill, label)
+                        call_owner[block.get("id")] = (trouble, prefix)
                 # One API message spans several records, and its usage grows up to the last.
                 message = record.get("message") or {}
                 message_id = message.get("id")
@@ -194,19 +201,19 @@ def summarize(session_file, plugins):
                             if path == session_file:
                                 session_loads.append((timestamp, skill, plugin, label))
                     elif block.get("type") == "tool_result" and block.get("is_error"):
-                        owner = call_owner.get(block.get("tool_use_id"))
+                        trouble, prefix = call_owner.get(block.get("tool_use_id"), (None, None))
                         if denial == "user-rejected":
                             pushback_seconds.add(second)
-                            if owner:
-                                usage[owner[0]]["by_version"][owner[1]]["rejected"] += 1
+                            if trouble is not None:
+                                trouble[prefix + "rejected"] += 1
                         elif not (
                             denial
                             or ISOLATION_REFUSAL in text.lower()
                             or text.removeprefix(ERROR_TAG).startswith(CANCELLED_SIBLING)
                         ):
                             errors += 1
-                            if owner:
-                                usage[owner[0]]["by_version"][owner[1]]["failed"] += 1
+                            if trouble is not None:
+                                trouble[prefix + "failed"] += 1
 
     skill_versions = {skill: sorted(use["versions"]) for skill, use in sorted(usage.items()) if use["turns"]}
     session = {
@@ -510,7 +517,7 @@ def context_report(session_files, repo, usages, since_days):
                     run["read"][file] += 1
         loaded_by_session[session_file.stem] = sorted(loaded)
 
-    trouble = defaultdict(lambda: defaultdict(lambda: {"turns": 0, "failed": 0, "rejected": 0}))
+    trouble = defaultdict(lambda: defaultdict(lambda: dict.fromkeys(TROUBLE_COUNTS, 0)))
     for usage in usages:
         for skill, use in usage.items():
             for label, counts in use["by_version"].items():
@@ -575,11 +582,13 @@ def context_table(report):
         lines.append(f"| `{file}` | {counts['contexts']} | {counts['repeated']} |")
 
     lines += ["", "## Trouble per skill version", "",
-              "The tool calls of a skill's turns that failed, and those the user rejected, as the pick counts them.", "",
-              "| Skill | Version | Turns | Failed | Rejected |", "|---|---|---|---|---|"]
+              "The tool calls of a skill's turns that failed, and those the user rejected, as the pick counts them. "
+              "A subagent carries the skill of the turn that started it, so its turns count apart, unless it is a fork or an agent of the skill's plugin, or loaded the skill before the turn.", "",
+              "| Skill | Version | " + " | ".join(name.replace("_", " ").capitalize() for name in TROUBLE_COUNTS) + " |",
+              "|---|---|" + "---|" * len(TROUBLE_COUNTS)]
     for skill, labels in report["trouble"].items():
         for label, counts in labels.items():
-            lines.append(f"| `{skill}` | {label} | {counts['turns']} | {counts['failed']} | {counts['rejected']} |")
+            lines.append(f"| `{skill}` | {label} | " + " | ".join(str(counts[name]) for name in TROUBLE_COUNTS) + " |")
     return "\n".join(lines) + "\n"
 
 
