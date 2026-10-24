@@ -113,7 +113,6 @@ in the template.
 Render the content inside `<div id="content">` per the markup contract in
 `"$(cat "$HTML_DIR/.plugin-root")/references/feedback-markup.md"`. Key rules:
 
-- Replace the `<h1>` / `<title>` and `.subtitle` placeholders.
 - Render the content as semantic HTML — headings, paragraphs, lists, tables,
   `<blockquote>`, `<pre><code>`.
 - Every commentable block is a **direct child of `#content`** with a unique

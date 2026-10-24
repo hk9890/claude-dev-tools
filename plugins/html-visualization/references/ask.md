@@ -52,7 +52,7 @@ Before writing a single line of HTML, decide what goes into the document.
 **Every question is a briefing.** The reader was not in the conversation and will
 not go looking: they open the page, read one question, and decide. So each one
 carries what a briefing carries — the evidence attached and a recommendation at
-the end — written in ASD-STE100 Simplified Technical English. A question the
+the end. A question the
 reader has to go research before answering is a question you have not finished
 writing.
 
