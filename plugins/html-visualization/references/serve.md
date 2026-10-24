@@ -430,10 +430,10 @@ rm -rf "$HTML_DIR"   # optional; the server exits on its own once the page is go
 
 Kill it explicitly only when the user says they are done while the tab is still
 open: an open tab keeps its heartbeat going, so the server has no way to tell
-that nobody is looking at it.
+that nobody is looking at it. Call `TaskStop` with the task id that the
+Cycle B background start returned, then remove the directory:
 
 ```bash
-kill "$SERVER_PID" 2>/dev/null   # the background process from Step 3
 rm -rf "$HTML_DIR"
 ```
 
