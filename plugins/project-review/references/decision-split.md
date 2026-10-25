@@ -34,5 +34,5 @@ Keep the filter in its argument, so it survives into a fresh turn:
 /html-visualization:html-visualize-ask the <N> open decisions from <what was reviewed> — the settled fixes are already agreed
 ```
 
-Then say that the form holds only the open items, and that a reply in chat stops any
-settled one.
+Without `html-viz`, then say that the form holds only the open items, and that a reply
+in chat stops any settled one.
