@@ -1,0 +1,29 @@
+# The browser form
+
+The relay and the saved report happen first and in full, so the form adds a surface and
+takes nothing away — a missing plugin, an absent Node, or a closed tab leaves the user
+exactly where the review would have left them.
+
+Before the form opens or the questions go to chat, say plainly that the settled batch is
+not among the questions, and where they stop any of it: the form's free-text box, or a
+reply in chat. A settled item is one the user never saw a question about, so an item filed
+wrongly is one they never hear of at all — naming the batch is what keeps that recoverable.
+
+Call the Skill tool with `html-visualization:html-visualize-ask`, even where it loaded
+earlier in this session, passing the open items and naming what was reviewed:
+
+```
+the <N> open decisions from <what was reviewed> — the settled fixes are already agreed
+```
+
+Invoking it in this turn is what keeps the report in context when the answers
+come back, so the picks read as the reply the user would otherwise have typed.
+
+Invoke it only where `html-visualize-ask` appears in your own available skills. It ships
+in the separate `html-visualization` plugin, which is not a dependency of this one, and
+is missing from that list for either of two reasons: the plugin is not installed, or it
+is installed at a version whose ask mode is user-only and so unreachable by the `Skill`
+tool. Say which of those you can tell, print the command that decision-split.md gives
+for a run without `html-viz`, then put the same questions in chat. Never reconstruct the
+form by other means — a user-only skill is reserved for the user typing its name, which
+is exactly what the printed command allows.
