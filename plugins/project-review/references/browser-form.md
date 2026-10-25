@@ -9,21 +9,16 @@ not among the questions, and where they stop any of it: the form's free-text box
 reply in chat. A settled item is one the user never saw a question about, so an item filed
 wrongly is one they never hear of at all — naming the batch is what keeps that recoverable.
 
-Call the Skill tool with `html-visualization:html-visualize-ask`, even where it loaded
-earlier in this session, passing the open items and naming what was reviewed:
+Where `html-visualize-ask` appears in your own available skills, call the Skill tool with
+`html-visualization:html-visualize-ask`, even where it loaded earlier in this session,
+passing the open items in the argument of the command in decision-split.md. Invoking it
+in this turn is what keeps the report in context when the answers come back, so the picks
+read as the reply the user would otherwise have typed.
 
-```
-the <N> open decisions from <what was reviewed> — the settled fixes are already agreed
-```
-
-Invoking it in this turn is what keeps the report in context when the answers
-come back, so the picks read as the reply the user would otherwise have typed.
-
-Invoke it only where `html-visualize-ask` appears in your own available skills. It ships
-in the separate `html-visualization` plugin, which is not a dependency of this one, and
-is missing from that list for either of two reasons: the plugin is not installed, or it
-is installed at a version whose ask mode is user-only and so unreachable by the `Skill`
-tool. Say which of those you can tell, print the command that decision-split.md gives
-for a run without `html-viz`, then put the same questions in chat. Never reconstruct the
-form by other means — a user-only skill is reserved for the user typing its name, which
-is exactly what the printed command allows.
+`html-visualize-ask` ships in the separate `html-visualization` plugin, which is not a
+dependency of this one, and is missing from your available skills for either of two
+reasons: the plugin is not installed, or it is installed at a version whose ask mode is
+user-only and so unreachable by the `Skill` tool. Say which of those you can tell. Unless
+you can tell the plugin is not installed, print the command of decision-split.md, which
+the user may type. Then put the same questions in chat. Never reconstruct the form by
+other means — a user-only skill is reserved for the user typing its name.

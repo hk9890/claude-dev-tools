@@ -27,9 +27,12 @@ With no open item, skip this section.
 
 With `html-viz`, read [browser-form.md](browser-form.md) beside this file and follow it.
 Without it, after the relay and any saved report, state the count of open items and give
-this command for the user to type. Keep the filter in its argument, so it survives into a
-fresh turn:
+this command for the user to type; it needs the separate `html-visualization` plugin.
+Keep the filter in its argument, so it survives into a fresh turn:
 
 ```
 /html-visualization:html-visualize-ask the <N> open decisions from <what was reviewed> — the settled fixes are already agreed
 ```
+
+Then say that the form holds only the open items, and that a reply in chat stops any
+settled one.

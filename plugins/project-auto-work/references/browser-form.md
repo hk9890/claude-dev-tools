@@ -9,8 +9,9 @@ not among the questions. A settled proposal is one the user never saw a question
 one filed wrongly is one they never hear of at all — naming the batch is what keeps that
 recoverable.
 
-Call the Skill tool with `html-visualization:html-visualize-ask`, even where it loaded
-earlier in this session, passing the open items and naming what was run:
+Where `html-visualize-ask` appears in your own available skills, call the Skill tool with
+`html-visualization:html-visualize-ask`, even where it loaded earlier in this session,
+passing the open items and naming what was run:
 
 ```
 the <N> open decisions from <the test-app run|the test-suite audit> — the settled proposals are already agreed
@@ -19,10 +20,9 @@ the <N> open decisions from <the test-app run|the test-suite audit> — the sett
 Invoking it in this turn is what keeps the report in context when the answers
 come back, so the picks read as the reply the user would otherwise have typed.
 
-Invoke it only where `html-visualize-ask` appears in your own available skills. It ships
-in the separate `html-visualization` plugin, which is not a dependency of this one, and
-is missing from that list for either of two reasons: the plugin is not installed, or it
-is installed at a version whose ask mode is user-only and so unreachable by the `Skill`
-tool. Say which of those you can tell, then put the same questions in chat. Never
-reconstruct the form by other means — a user-only skill is reserved for the user typing
-its name.
+`html-visualize-ask` ships in the separate `html-visualization` plugin, which is not a
+dependency of this one, and is missing from your available skills for either of two
+reasons: the plugin is not installed, or it is installed at a version whose ask mode is
+user-only and so unreachable by the `Skill` tool. Say which of those you can tell, then
+put the same questions in chat. Never reconstruct the form by other means — a user-only
+skill is reserved for the user typing its name.
