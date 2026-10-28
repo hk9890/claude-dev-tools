@@ -23,40 +23,16 @@ open ones as questions carrying their `options` and `recommendation`.
 
 ## The browser form
 
-The form covers the open items only, and `html-viz` decides how it is reached.
-The relay above and the saved report happen first and in full either way, so the
-form adds a surface and takes nothing away — a missing plugin, an absent Node, or
-a closed tab leaves the user exactly where the review would have left them.
+With no open item, skip this section.
 
-**With `html-viz`**, call the Skill tool with `html-visualization:html-visualize-ask`,
-even where it loaded earlier in this session, passing the open items and naming what
-was reviewed:
-
-```
-the <N> open decisions from <what was reviewed> — the settled fixes are already agreed
-```
-
-Invoking it in this turn is what keeps the report in context when the answers
-come back, so the picks read as the reply the user would otherwise have typed.
-
-**Without it**, offer the form instead of opening one. State the count, and give
-the command with the filter in the argument so it survives into a fresh turn:
+With `html-viz`, read [browser-form.md](browser-form.md) beside this file and follow it.
+Without it, after the relay and any saved report, state the count of open items and give
+this command for the user to type; it needs the separate `html-visualization` plugin.
+Keep the filter in its argument, so it survives into a fresh turn:
 
 ```
 /html-visualization:html-visualize-ask the <N> open decisions from <what was reviewed> — the settled fixes are already agreed
 ```
 
-Either path needs the separate `html-visualization` plugin, which is not a
-dependency of this one. The check for the invoke path is whether
-`html-visualize-ask` appears in your own available skills — invoke it only then.
-It is missing from that list for either of two reasons: the plugin is not
-installed, or it is installed at a version whose ask mode is user-only and so
-unreachable by the `Skill` tool. Say which of those you can tell, then put the
-same questions in chat. Never reconstruct the form by other means — a user-only
-skill is reserved for the user typing its name. The printed command still works
-in that case, since typing it is exactly what a user-only skill allows.
-
-Then say plainly that the settled batch is not on the form, and that the form's
-free-text box is where they stop any of it. A settled item is one the user never
-saw a question about, so an item filed wrongly is one they never hear of at all —
-naming the batch is what keeps that recoverable.
+Without `html-viz`, then say that the form holds only the open items, and that a reply
+in chat stops any settled one.

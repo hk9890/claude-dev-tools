@@ -139,10 +139,9 @@ The review is read-only. With `--fix`, step 5 then applies the fixes it settled.
 4. **Relay the review.** Surface the agent's verdict and findings as it wrote them; do not
    re-derive or re-label them. Then follow `<SKILL_DIR>/../../references/decision-split.md`
    over the actions, in the groups step 3 ended on — "this change" is what was reviewed. This review takes no
-   `html-viz` flag, so the reference's **Without it** branch applies. With `--fix`, say
-   that step 5 applies the settled batch now, in place of the reference's line on where
-   the user stops it, and hold back the reviewer's suggestion to file the findings with
-   `/tasks:tasks-create` for step 5.
+   `html-viz` flag. With `--fix`, say that step 5 applies the settled batch now, in place
+   of the reference's closing line on how the user stops a settled one, and hold back the
+   reviewer's suggestion to file the findings with `/tasks:tasks-create` for step 5.
 
    Keep `## Suggested rule additions` visibly apart from the findings when you relay it.
    Merging the two is the one failure that turns this review into an ordinary code review.
