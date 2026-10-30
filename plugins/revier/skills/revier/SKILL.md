@@ -1,7 +1,7 @@
 ---
 name: revier
 description: "revier: other projects on this machine, their agents, and their source."
-when_to_use: "Use when a task needs another project or an agent the user runs: its checkout, its agents and their state, prompting one, or the projects worked in lately. Triggers on 'revier', 'the agent in <project>', 'other Claude instances in this project', 'the projects I worked on'. Not for subagents this session spawns, nor ListAgents, which shows sessions, not which agents work in a project."
+when_to_use: "Use when a task needs another project or another agent the user runs: its checkout, its agents and their state, prompting one, or the projects worked in lately. Triggers on 'revier', 'the agent in <project>', 'other Claude instances in this project', 'the projects I worked on'. Not for subagents this session spawns. ListAgents shows every session, not which agents work in a project."
 allowed-tools: Bash(revier version*), Bash(revier --help*), Bash(revier status*), Bash(revier list*), Bash(revier events*), Bash(revier agent --help*), Bash(revier agent wait*), Bash(revier agent read*), Bash(revier agent new --no-focus*)
 ---
 
@@ -40,7 +40,7 @@ The JSON is an array with one element per named project. Each element gives:
 - `.project.path`: the checkout. `.path_exists` says whether it is cloned.
 - `.project.git_url`: its remote.
 - `.project.remote`: set for a link alone. The path, `.path_exists` and each `.state.dir` are then its host's, not this machine's.
-- `.running`: whether a window of its workspace is open. For information only: step 2 of `references/prompting.md` decides on `.home`.
+- `.running`: whether a window of its workspace is open. For information only: step 2 of "Prompting another agent" decides on `.home`.
 - `.home`: the home window, where `agent new` adds its tab. A project whose home window is not open has no `.home`.
 - `.agents[]`: every agent in it, where the table shows one. A project with no agent has no `.agents`. Each agent gives:
   - `.panel` and `.state.status`.

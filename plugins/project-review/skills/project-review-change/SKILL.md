@@ -24,17 +24,21 @@ applies the fixes it settled.
    A pull request needs `gh`: where `command -v gh` prints nothing, say so and ask for a
    branch.
 
-   The base is `git rev-parse --abbrev-ref origin/HEAD`; where it prints nothing, ask which
-   branch is the base. The diff is `git diff HEAD` for a dirty tree, plus each untracked
-   file `git ls-files --others --exclude-standard` prints; `git diff <base>...<branch>` for
-   a branch (`HEAD` for the current one), three dots for the merge base; `gh pr diff <n>`
-   for a pull request, which carries its own base.
+   A branch, the current one included, needs a base: `git rev-parse --abbrev-ref
+   origin/HEAD`. Where that command fails, ask which branch is the base; it still prints
+   `origin/HEAD` then, so read its exit status, not its output. A pull request carries its
+   own base. The diff is `git diff HEAD` for a dirty tree, plus each untracked file
+   `git ls-files --others --exclude-standard` prints; `git diff <base>...<branch>` for a
+   branch (`HEAD` for the current one), three dots for the merge base; `gh pr diff <n>`
+   for a pull request.
 
    **Prove the subject exists before you spawn anything**: the reviewer takes the diff
-   itself, and an empty subject comes back as a confident review of nothing. The ref must
-   resolve (`git rev-parse --verify --quiet <ref>`), and `git diff --name-only <range>`,
-   or `gh pr diff <n> --name-only`, must list files. Where the list is empty, say the
-   subject contains no changes, and stop.
+   itself, and an empty subject comes back as a confident review of nothing. Each ref of
+   the range must resolve (`git rev-parse --verify --quiet <ref>`): where one does not,
+   name it, ask which branch was meant, and stop. The file list is what
+   `git diff --name-only <range>` or `gh pr diff <n> --name-only` prints, plus the
+   untracked files of a dirty tree. Where the list is empty, say the subject contains no
+   changes, and stop.
 
    `--fix` edits the working tree, so it holds only for a subject checked out here: the
    default subject, with or without a path, or a pull request or branch whose head commit
@@ -96,10 +100,11 @@ applies the fixes it settled.
    procedure path in full, apply it to the subject, produce the same sections, and state
    that the review ran inline rather than on the reviewer agent.
 
-   Done when the review carries a verdict label, every finding a grade, and every action a
-   tag. An untagged action counts as `open`, and so does a `settled` one that names a
-   finding not graded `proven`: its question is whether to apply it as stated. Where the
-   reviewer reports no standard to measure against, relay that and end the run.
+   Done when the review carries one of the four verdict labels, every finding a grade, and
+   every action a tag. An untagged action counts as `open`, and so does a `settled` one
+   that names a finding not graded `proven`: its question is whether to apply it as
+   stated. Where the reviewer reports no standard to measure against, relay that and end
+   the run.
 
 4. **Relay the review.** Surface the agent's verdict and findings as it wrote them; do not
    re-derive or re-label them. Then follow `<SKILL_DIR>/../../references/decision-split.md`
