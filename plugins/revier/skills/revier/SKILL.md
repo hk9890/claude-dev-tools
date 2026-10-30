@@ -40,7 +40,7 @@ The JSON is an array with one element per named project. Each element gives:
 - `.project.path`: the checkout. `.path_exists` says whether it is cloned.
 - `.project.git_url`: its remote.
 - `.project.remote`: set for a link alone. The path, `.path_exists` and each `.state.dir` are then its host's, not this machine's.
-- `.running`: whether a window of its workspace is open. For information only: step 2 of `references/prompting.md` decides on `.home`.
+- `.running`: whether a window of its workspace is open. For information only: step 2 of `<base directory for this skill>/references/prompting.md` decides on `.home`.
 - `.home`: the home window, where `agent new` adds its tab. A project whose home window is not open has no `.home`.
 - `.agents[]`: every agent in it, where the table shows one. A project with no agent has no `.agents`. Each agent gives:
   - `.panel` and `.state.status`.
@@ -65,4 +65,4 @@ For a question about the last days, such as which projects the user worked in, r
 
 ## Prompting another agent
 
-Before your first `revier agent` command of any kind (`wait`, `read`, `prompt`, `send-keys` or `new`), read `<base directory for this skill>/references/prompting.md` and follow it. A prompt redirects work the user started in another window: send one only when the user asked you to reach that agent.
+Before your first `revier agent` command of any kind (`wait`, `read`, `prompt`, `send-keys` or `new`), read `<base directory for this skill>/references/prompting.md`. Follow all of it to prompt an agent; otherwise follow only the steps of the commands you run. A prompt redirects work the user started in another window: send one only when the user asked you to reach that agent.

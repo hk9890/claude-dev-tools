@@ -27,7 +27,8 @@ With no open item, skip this section.
 
 After the relay and any saved report, state the count of open items and give this
 command for the user to type, to answer them on a browser form; it needs the separate
-`html-visualization` plugin. Never call that skill yourself: it is the user's to type.
+`html-visualization` plugin. Never call that skill yourself, nor build its form by other
+means: it is the user's to type.
 Keep the filter in its argument, so it survives into a fresh turn:
 
 ```
