@@ -1,6 +1,6 @@
 # Past use
 
-`revier list` shows what is open now. For a question about the last days, such as which projects the user worked in, run the script of this skill. Its arguments are those of `revier events`:
+Run the script of this skill. Its arguments are those of `revier events`:
 
 ```bash
 command -v python3 >/dev/null || { echo "STOP: python3 is not on PATH. Tell the user, and read revier events --help instead."; exit 1; }
