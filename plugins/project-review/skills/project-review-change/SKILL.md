@@ -5,10 +5,9 @@ when_to_use: "Use when the user asks whether a change obeys the project's rules.
 argument-hint: "[--fix] [pr-number|branch|path]"
 ---
 
-Review of one change against **this project's own documents**. It asks a single
-question: does the change do what the project wrote down that it must?
-
-The review is read-only. With `--fix`, step 5 then applies the fixes it settled.
+Review of one change against **this project's own documents**: does the change do what
+the project wrote down that it must? The review is read-only. With `--fix`, step 5 then
+applies the fixes it settled.
 
 ## Run the review
 
@@ -22,75 +21,44 @@ The review is read-only. With `--fix`, step 5 then applies the fixes it settled.
    | a branch name | that branch against its base |
    | a path | the default subject, confined to that path |
 
-   A pull request needs the GitHub command line tool. Check before you promise it:
+   A pull request needs `gh`: where `command -v gh` prints nothing, say so and ask for a
+   branch.
 
-   ```bash
-   command -v gh >/dev/null && echo "gh present" || echo "gh missing"
-   ```
+   The base is `git rev-parse --abbrev-ref origin/HEAD`; where it prints nothing, ask which
+   branch is the base. The diff is `git diff HEAD` for a dirty tree, plus each untracked
+   file `git ls-files --others --exclude-standard` prints; `git diff <base>...<branch>` for
+   a branch (`HEAD` for the current one), three dots for the merge base; `gh pr diff <n>`
+   for a pull request, which carries its own base.
 
-   When it is missing, say so and ask for a branch instead — do not review something else
-   and call it the pull request.
-
-   Resolve the base and see the shape of the change in one call, because shell state does
-   not survive between `Bash` calls:
-
-   ```bash
-   git status --porcelain | head -30
-   git rev-parse --abbrev-ref origin/HEAD 2>/dev/null || echo "no origin/HEAD — ask which branch is the base"
-   ```
-
-   Then take the diff — `git diff HEAD` for a dirty tree, `git diff <base>...<branch>` for a
-   branch (`HEAD` for the current one), `gh pr diff <n>` for a pull request. `git diff HEAD`
-   holds the staged and the unstaged changes; an untracked file is in no diff, so add each
-   one `git ls-files --others --exclude-standard` prints to the file list. Use the three-dot
-   form for a branch so the comparison is against the merge base, not against whatever the
-   base branch has since gained.
-
-   **Prove the subject exists before you spawn anything.** Step 3 tells the reviewer agent
-   to take the diff itself, so a ref that does not resolve or a range with no files in it
-   reaches the agent as an empty subject and comes back as a confident review of nothing.
-   That has to fail here instead:
-
-   ```bash
-   git rev-parse --verify --quiet "<the ref you resolved>" >/dev/null || echo "ref does not resolve — stop and ask which branch is the base"
-   git diff --name-only "<the range you resolved>" | head -50
-   ```
-
-   A pull request carries its own base, so a missing `origin/HEAD` does not matter for it:
-   `gh pr diff <n> --name-only` is its proof and its file list.
-
-   An empty file list is not a clean review. Say the subject contains no changes, and stop.
+   **Prove the subject exists before you spawn anything**: the reviewer takes the diff
+   itself, and an empty subject comes back as a confident review of nothing. The ref must
+   resolve (`git rev-parse --verify --quiet <ref>`), and `git diff --name-only <range>`,
+   or `gh pr diff <n> --name-only`, must list files. Where the list is empty, say the
+   subject contains no changes, and stop.
 
    `--fix` edits the working tree, so it holds only for a subject checked out here: the
    default subject, with or without a path, or a pull request or branch whose head commit
-   is `git rev-parse HEAD` (`gh pr view <n> --json headRefOid` prints a pull request's)
-   while `git status --porcelain` prints nothing: other edits in the tree make its files
-   differ from the diff under review. For any other subject the run goes on as one without
-   `--fix`: say so now, with the reason.
+   (`gh pr view <n> --json headRefOid` for a pull request) is `git rev-parse HEAD` while
+   `git status --porcelain` prints nothing. For any other subject, run without `--fix` and
+   say so now, with the reason.
 
    A repository with neither `AGENTS.md` nor `CLAUDE.md`, or with no document they route
-   to, has no standard to measure against. Say so and stop here rather than paying for an
-   agent run to discover it.
+   to, has no standard to measure against: say so and stop.
 
    Done when you can name the subject in one sentence, list the files it touches, and say
    whether `--fix` still holds.
 
-2. **Build the two absolute paths.** `SKILL_DIR` is the **base directory for this skill**,
-   given at the top of this file when the skill loads. It is absolute and install-correct.
-   Both files this review needs sit at the plugin root, so the `../..` climb is correct
-   here:
+2. **Build the two absolute paths** from `SKILL_DIR`, the **base directory for this
+   skill** given when the skill loads. Both files sit at the plugin root, so the `../..`
+   climb is correct here:
 
    - the procedure: `<SKILL_DIR>/../../references/rules-conformance.md`
    - the settled-or-open vocabulary: `<SKILL_DIR>/../../references/decision-split.md`
 
-   ```bash
-   ls "<SKILL_DIR>/../../references/rules-conformance.md" "<SKILL_DIR>/../../references/decision-split.md"
-   ```
+   Run `ls` on both. Never `find` the plugin and never improvise either path: where a
+   file is missing, stop and say the install is broken.
 
-   Never `find` the plugin and never improvise either path. If a file is missing, stop and
-   say the install is broken.
-
-   Done when both paths are printed above.
+   Done when `ls` printed both paths.
 
 3. **Invoke the reviewer.** Use the **Agent** tool with `subagent_type`
    `project-review:project-reviewer` — that agent carries the adversarial posture, the
@@ -128,13 +96,10 @@ The review is read-only. With `--fix`, step 5 then applies the fixes it settled.
    procedure path in full, apply it to the subject, produce the same sections, and state
    that the review ran inline rather than on the reviewer agent.
 
-   Done when the review carries one of the four verdict labels, every finding is graded
-   `proven` or `plausible`, and every entry in `## Recommended actions` is tagged
-   `settled` or `open`. An entry the reviewer left untagged counts as `open`. So does an
-   entry tagged `settled` that names a finding not graded `proven`: its question is
-   whether to apply the action as the reviewer stated it. Where the reviewer reports
-   instead that the project has no standard to measure against, relay that and end the
-   run.
+   Done when the review carries a verdict label, every finding a grade, and every action a
+   tag. An untagged action counts as `open`, and so does a `settled` one that names a
+   finding not graded `proven`: its question is whether to apply it as stated. Where the
+   reviewer reports no standard to measure against, relay that and end the run.
 
 4. **Relay the review.** Surface the agent's verdict and findings as it wrote them; do not
    re-derive or re-label them. Then follow `<SKILL_DIR>/../../references/decision-split.md`
