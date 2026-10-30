@@ -19,7 +19,9 @@ reviewing agent where none does. Carry each item into the group it came back in.
 ## Relaying
 
 Relay the two groups separately: the settled ones as a batch you can just do, the
-open ones as questions carrying their `options` and `recommendation`.
+open ones one question per item. Each question reads without the review beside it,
+and carries the item's `options` as given, with "leave it as is" where it is one, and
+its `recommendation` as the first option.
 
 ## The browser form
 
