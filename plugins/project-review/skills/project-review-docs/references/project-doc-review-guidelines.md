@@ -58,10 +58,12 @@ script deciding what counts as a claim, which is guessing.
      mechanically and synthesis raises it.
 
    Every file is asked *belongs here?* of each unit of content against its ownership
-   contract, and accurate-but-misplaced content is a finding under *Ownership*. Accuracy is
-   judged from the text: docs that contradict each other or themselves, and the unresolved
-   links the manifest lists. Each agent returns the files it reviewed, and a file no agent
-   lists is named in the log and the report.
+   contract, and accurate-but-misplaced content is a finding under *Ownership*. In a file
+   written for agents, each unit is also held against the hygiene *Cache* rule. Judged from
+   the text alone, this catches a doc that describes the code, not one that repeats a recipe
+   the tests show. Accuracy is judged from the text: docs that contradict each other or
+   themselves, and the unresolved links the manifest lists. Each agent returns the files it
+   reviewed, and a file no agent lists is named in the log and the report.
 
    Where the repo has a `docs/DOCUMENTING.md`, every batch agent also reads it and is told to
    drop gap findings its recorded decisions already settle. The suppression is scoped to gaps
@@ -86,7 +88,7 @@ Change them at the authoritative site. This table is the index, not the source.
 | Bar | Authoritative site |
 |---|---|
 | The six authoring rules, the doc-set failure modes | `instruction-writing:writing-project-docs`, loaded by each read-review agent |
-| Single source of truth, cache, relevance, sediment, no-ops, negation | `references/writing-hygiene.md` at the `instruction-writing` plugin root, loaded by each read-review agent |
+| Single source of truth, cache, relevance, sediment, no-ops, negation | `references/writing-hygiene.md` at the `instruction-writing` plugin root, loaded by each read-review agent; which files get the per-unit *Cache* question, and where its fix sends the unit, in `batchPrompt` in `review-docs.js` |
 | Per-file ownership contract | `project-setup.md`, parsed by `manifest.py`, injected per agent |
 | Severity (`blocker` / `major` / `minor`) and the escalation rule | `batchPrompt` in `review-docs.js` |
 | What a batch agent reads, and how docs are packed | `batchPrompt`, `orderTargets`, `packBatches`, and `BATCH_BYTES` in `review-docs.js` |
