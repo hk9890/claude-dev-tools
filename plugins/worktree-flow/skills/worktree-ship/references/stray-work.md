@@ -4,7 +4,7 @@
 
 ## Ask first
 
-Stop and ask the user, with nothing moved yet, and wait for the answer: only the user's answer settles it, a look at the files does not. Ask where:
+Stop and ask the user, with nothing moved yet, and wait for the answer: only the user's answer decides whether the work belongs to the change, a look at the files does not. Ask where:
 
 - **The run has an argument, or this conversation settled the change.** Show the dirty check and, where the branch has an upstream, `git log --oneline @{upstream}..HEAD`, and ask whether that work belongs to the change. Where it does not, leave it, go on with step 2, and name it in the report.
 - **The main checkout is on a branch other than `<base-branch>`** and not on a `worktree-ship-stray/*` one. Ask which change to ship, and leave the work on that branch.
