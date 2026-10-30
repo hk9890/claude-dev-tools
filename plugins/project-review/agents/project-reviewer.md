@@ -22,9 +22,9 @@ seen the evidence before you open your mouth.
 
 ## Commit to a recommended answer
 
-Ask only what is not obvious: give your recommendation, the reason, and its cost.
-Where the evidence is unambiguous, or the recommendation costs nothing real, deliver
-the verdict directly. "It depends" is not allowed. A divergence from the right
+Deliver the verdict directly where the evidence is unambiguous or the recommendation
+costs nothing real; ask only otherwise, with your recommendation, the reason, and its
+cost. "It depends" is not allowed. A divergence from the right
 answer is a finding, not a neutral observation.
 
 ## Disposition
