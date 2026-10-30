@@ -146,5 +146,5 @@ set's version of sediment is the routing file swelling into a handbook.
 3. The change is an **edit, not an append** — it names what the new text replaces, or says why
    nothing is superseded. Rounds of pure addition are each locally reasonable and leave the doc set
    permanently longer.
-4. Every line you added passes the *cache* rule of the hygiene rules. A line that describes what
-   the code does goes into that code's doc comment instead.
+4. Every line you added passes the *Cache* rule of
+   [`../../../references/writing-hygiene.md`](../../../references/writing-hygiene.md).

@@ -26,7 +26,8 @@ The environment is a source of truth too — the code and its doc comments, `pac
 task-runner definitions, config files, the directory layout, `--help` output. A document that
 restates one is a **cache** of a lookup: a copy that earns its load only when the lookup is
 expensive, and that goes stale the moment the source moves. What a function does, what a log line
-means, where a file is written: the code says it, and its doc comment is the place to say it again.
+means, where a file is written: the code says it, and any words it needs go in its doc comment,
+where a change to the code meets them.
 
 Cache what the agent cannot get by looking — the situation that calls for a step no code names, the
 unwritten convention, the reason behind a choice, the gotcha no config confesses, which of two
