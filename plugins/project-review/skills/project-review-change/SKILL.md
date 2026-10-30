@@ -38,8 +38,8 @@ applies the fixes it settled.
    the same for `<branch>`): where one does not, name it, ask which branch was meant, and
    stop. The file list is what `git diff --name-only HEAD` (a dirty tree),
    `git diff --name-only <base>...<branch>` or `gh pr diff <n> --name-only` prints, plus
-   the untracked files of a dirty tree. For a path, end every `git diff` and `git ls-files`
-   command of this step with `-- <path>`. Where a file-list command fails, relay its error
+   the untracked files of a dirty tree. For a path, end every `git status`, `git diff` and
+   `git ls-files` command of this step, the dirty-tree test included, with `-- <path>`. Where a file-list command fails, relay its error
    and stop; where the list is empty, say the subject contains no changes, and stop.
 
    `--fix` edits the working tree, so it holds only for a subject checked out here: the

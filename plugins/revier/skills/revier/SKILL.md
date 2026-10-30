@@ -65,4 +65,4 @@ For a question about the last days, such as which projects the user worked in, r
 
 ## Prompting another agent
 
-Before your first `revier agent` command of any kind (`wait`, `read`, `prompt`, `send-keys` or `new`), read `<base directory for this skill>/references/prompting.md`. Follow all of it to prompt an agent; otherwise follow only the steps of the commands you run. A prompt redirects work the user started in another window: send one only when the user asked you to reach that agent.
+Before your first `revier agent` command of any kind (`wait`, `read`, `prompt`, `send-keys` or `new`), read `<base directory for this skill>/references/prompting.md`. Follow all of it to prompt an agent; otherwise follow steps 1 and 2, which find the agent, and the steps of the commands you run. A prompt redirects work the user started in another window: send one only when the user asked you to reach that agent.
