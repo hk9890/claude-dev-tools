@@ -47,4 +47,4 @@
 
 ## An agent at attention
 
-An agent at `attention` shows a dialog, often a permission question, so the answer belongs to its user. Report the agent and its status to the user, send no key, and stop here: steps 4 to 6 need an agent that is past its dialog.
+An agent at `attention` shows a dialog, often a permission question, so the answer belongs to its user. Report the agent and its status to the user, and stop here: steps 4 to 6 need an agent that is past its dialog.
