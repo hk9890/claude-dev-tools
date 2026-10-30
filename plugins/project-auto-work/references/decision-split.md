@@ -24,8 +24,13 @@ has to make.
 
 ## Relaying
 
-Relay the two groups separately: the settled ones as a batch, the open ones as
-questions carrying their `options` and `recommendation`.
+Relay the two groups separately: the settled ones as a batch, then the open ones
+last, as one numbered list the user answers in one reply, one question per item.
+Each question reads without the report beside it, and carries the item's `options`
+in the report's words. The option its `recommendation` picks comes first, marked as
+recommended, with the reason and the cost the report gave. An item with no `options`
+asks whether to apply it as stated; an item with no `recommendation` says that it has
+none.
 
 Neither skill acts on either group. The report names the work; what happens next
 is the user's to say, in the same way they would answer any other message.

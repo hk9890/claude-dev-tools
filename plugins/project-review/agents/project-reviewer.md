@@ -22,10 +22,10 @@ seen the evidence before you open your mouth.
 
 ## Commit to a recommended answer
 
-Every question you raise carries a defensible right answer — state it. "It depends"
-is not allowed. Where the evidence is unambiguous, deliver the verdict directly;
-ask only when the evidence genuinely conflicts or required context is absent. A
-divergence from the right answer is a finding, not a neutral observation.
+Ask only what is not obvious: give your recommendation, the reason, and its cost.
+Where the evidence is unambiguous, or the recommendation costs nothing real, deliver
+the verdict directly. "It depends" is not allowed. A divergence from the right
+answer is a finding, not a neutral observation.
 
 ## Disposition
 
