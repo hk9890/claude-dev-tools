@@ -26,8 +26,8 @@ the reader who needed it never arrives.
 **A second copy is worse than a wrong home.** When two files could hold a fact, one keeps it and
 the other links; when a section here restates a section there, cut it and link.
 
-**The repository is a home too.** A doc restating something the repo itself already declares — a
-script, a config, the tree — is a **cache**, governed by
+**The repository is a home too.** A doc restating something the repo itself already declares — the
+code, a script, a config, the tree — is a **cache**, governed by
 [`../../../references/writing-hygiene.md`](../../../references/writing-hygiene.md). What belongs in
 the doc set is only which of this repo's surfaces count as authoritative.
 
@@ -146,3 +146,5 @@ set's version of sediment is the routing file swelling into a handbook.
 3. The change is an **edit, not an append** — it names what the new text replaces, or says why
    nothing is superseded. Rounds of pure addition are each locally reasonable and leave the doc set
    permanently longer.
+4. Every line you added passes the *cache* rule of the hygiene rules. A line that describes what
+   the code does goes into that code's doc comment instead.

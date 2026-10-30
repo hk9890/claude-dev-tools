@@ -58,10 +58,12 @@ script deciding what counts as a claim, which is guessing.
      mechanically and synthesis raises it.
 
    Every file is asked *belongs here?* of each unit of content against its ownership
-   contract, and accurate-but-misplaced content is a finding under *Ownership*. Accuracy is
-   judged from the text: docs that contradict each other or themselves, and the unresolved
-   links the manifest lists. Each agent returns the files it reviewed, and a file no agent
-   lists is named in the log and the report.
+   contract, and accurate-but-misplaced content is a finding under *Ownership*. In a file
+   written for agents, each unit is also held against the hygiene *Cache* rule. Judged from
+   the text alone, this catches a doc that describes the code, not one that repeats a recipe
+   the tests show. Accuracy is judged from the text: docs that contradict each other or
+   themselves, and the unresolved links the manifest lists. Each agent returns the files it
+   reviewed, and a file no agent lists is named in the log and the report.
 
    Where the repo has a `docs/DOCUMENTING.md`, every batch agent also reads it and is told to
    drop gap findings its recorded decisions already settle. The suppression is scoped to gaps
