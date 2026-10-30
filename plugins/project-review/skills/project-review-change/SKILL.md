@@ -16,7 +16,7 @@ applies the fixes it settled.
 
    | What is left | Subject |
    |---|---|
-   | no argument | the **default subject**: the uncommitted changes when the tree is dirty, otherwise the current branch against its base |
+   | no argument | the **default subject**: the uncommitted changes where `git status --porcelain` prints a line, otherwise the current branch against its base |
    | a number, with or without `#` | that pull request |
    | a branch name | that branch against its base |
    | a path | the default subject, confined to that path |
