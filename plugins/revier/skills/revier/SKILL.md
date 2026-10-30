@@ -2,7 +2,7 @@
 name: revier
 description: "revier: other projects on this machine, their agents, and their source."
 when_to_use: "Use when a task needs another project or another agent the user runs: its checkout, its agents and their state, prompting one, or the projects worked in lately. Triggers on 'revier', 'the agent in <project>', 'other Claude instances in this project', 'the projects I worked on'. Not for subagents this session spawns. ListAgents shows every session, not which agents work in a project."
-allowed-tools: Bash(revier version*), Bash(revier --help*), Bash(revier status*), Bash(revier list*), Bash(revier events*), Bash(revier agent --help*), Bash(revier agent wait*), Bash(revier agent read*), Bash(revier agent prompt*), Bash(revier agent new --no-focus*), Bash(python3 */skills/revier/scripts/past-use.py*), Bash(python3 */skills/revier/scripts/find-project.py*)
+allowed-tools: Bash(revier version*), Bash(revier --help*), Bash(revier status*), Bash(revier list*), Bash(revier events*), Bash(revier agent --help*), Bash(revier agent wait*), Bash(revier agent read*), Bash(revier agent prompt*), Bash(revier agent new --no-focus*), Bash(python3 --version*), Bash(python3 */skills/revier/scripts/past-use.py*), Bash(python3 */skills/revier/scripts/find-project.py*)
 ---
 
 # revier
@@ -42,17 +42,17 @@ One unknown name fails the whole `--json` call with `no project named`, so keep 
 python3 "<base directory for this skill>/scripts/find-project.py" <word>..
 ```
 
-It prints one JSON line per project that a `.word` is part of: its `.project`, the fields it `.matched` (`name`, `dir`, `repo`, `host_project`, `agent`), and for an agent match the `.agents` it matched, with their addresses. A word that names nothing prints `.project` null: try a shorter part, or ask the user.
+It prints one JSON line per project that a `.word` names: its `.project`, the fields it `.matched` (`name`, `dir`, `repo`, `host_project`, `agent`), and for an agent match the `.agents` it matched, with their addresses. A word names a field it is part of, and an agent whose activity it is part of or whose `.state.name` it equals whole. A word that names nothing prints `.project` null: try a shorter part, or ask the user.
 
-The JSON is an array with one element per named project. Each element gives:
+The JSON of `revier list --json` is an array with one element per named project. Each element gives:
 
 - `.project.path`: the checkout. `.path_exists` says whether it is cloned.
 - `.project.git_url`: its remote.
 - `.project.remote`: set for a link alone. The path, `.path_exists` and each `.state.dir` are then its host's, not this machine's.
 - `.running`: whether a window of its workspace is open. For information only: step 2 of `<base directory for this skill>/references/prompting.md` decides on `.home`.
-- `.home`: the home window, where `agent new` adds its tab. `.home` is null where the home window is not open.
+- `.home`: the home window, where `agent new` adds its tab. A project whose home window is not open has no `.home`.
 - `.agents[]`: every agent in it, where the table shows one. A project with no agent has no `.agents`. Each agent gives:
-  - `.target`, `.panel` and `.state.status`. The address of the agent is `<project>:<target>:<panel>`, built from `.project.name`, `.target` and `.panel`: `shop:home:7`. An agent with no `.target` has no address, so `revier agent` cannot reach it: a terminal attached by hand, or a tab moved to another window.
+  - `.target`, `.panel` and `.state.status`. The address of the agent is `<project>:<target>:<panel>`, built from `.project.name`, `.target` and `.panel`: `shop:home:7`. An agent with no `.target` has no address, so `revier agent` cannot reach it: an agent on a link's host, a terminal attached by hand, or a tab moved to another window.
   - `.state.activity`: the title of what it works on, set where it has one.
   - `.state.harness`: what runs the agent, `claude` for Claude Code.
   - `.state.name`: the name the harness gives the agent. For Claude Code, it is the name that ListAgents and SendMessage use. It is neither unique nor fixed.
@@ -60,9 +60,9 @@ The JSON is an array with one element per named project. Each element gives:
   - `.ref`: an object, set for an agent in a panel on this machine. One without it runs on a link's host.
   - `.state.dir`: the directory the agent works in now, set where revier knows one other than `.project.path`: a git worktree for example. An agent without it works in `.project.path`, or revier has no directory for it.
 
-Your own entry is in the project that `revier status` names: the one whose `.state.session` equals `$CLAUDE_CODE_SESSION_ID`. Where none does, it is the one whose `.panel` equals `$KITTY_WINDOW_ID`, `$TMUX_PANE` or `$HERDR_PANE_ID`, for the kitty, tmux or herdr that the `runtime` line of `revier status` names. Every other entry is another agent, in your own project too.
+Your own entry is in the project that `revier status` names: the one whose `.state.session` equals `$CLAUDE_CODE_SESSION_ID`. Where none or several do, it is the one whose `.panel` equals `$KITTY_WINDOW_ID`, `$TMUX_PANE` or `$HERDR_PANE_ID`, for the kitty, tmux or herdr that the `runtime` line of `revier status` names. Every other entry is another agent, in your own project too.
 
-A name from ListAgents is the agent whose `.state.name` equals it. Where no agent or several match, pick by `.state.activity`, or ask the user. A session in the background has no entry.
+A name from ListAgents is the agent whose `.state.name` equals it: the script above finds it in every project. Where no agent or several match, pick by `.state.activity`, or ask the user. A session in the background has no entry.
 
 ## Another project's source
 
