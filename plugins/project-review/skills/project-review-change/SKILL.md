@@ -131,7 +131,7 @@ applies the fixes it settled.
    Make every change the entries step 3 counted as `settled` name, as the reviewer stated
    it and nothing beyond it. The batch edits files in the working tree and nothing
    else: name a settled action of another kind — a commit message, a branch name,
-   a pull request field — as not applied, with that reason. The `open` entries stay the
+   a pull request field — as not applied, with that reason. The other entries stay the
    questions step 4 put to the user, and `## Suggested rule additions` stay proposals.
 
    Where an edit was made, run every command under `## Checks run` again on the edited
@@ -141,8 +141,8 @@ applies the fixes it settled.
    Leave the result uncommitted: the commit belongs to whoever asked for the review.
 
    Where the reviewer closed with a suggestion to file the findings with
-   `/tasks:tasks-create`, give it for what the batch left alone: the `open` entries and
-   the actions named as not applied. Where none is left, leave it out.
+   `/tasks:tasks-create`, give it for what the batch left alone: the entries step 3
+   counted as `open` and the actions named as not applied. Where none is left, leave it out.
 
    Done when every settled action is applied, or named with the reason it was not, and
    every command under `## Checks run` has run again, with its result reported.
