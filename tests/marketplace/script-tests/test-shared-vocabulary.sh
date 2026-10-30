@@ -20,6 +20,10 @@
 #    steps on a resumed run; it now calls worktree-review, which skips a head it
 #    reviewed. These checks stop worktree-ship from growing that copy back.
 #
+# 4. worktree-review and worktree-merge both read the PR's merge state, and
+#    each skill acts on it alone. The states that block, and the wait on
+#    UNKNOWN, must stay the same in both.
+#
 # Exit codes: 0 — all assertions passed; 1 — one or more failed.
 set -uo pipefail
 
@@ -134,6 +138,21 @@ if [[ -f "$SHIP" && -f "$REVIEW" ]]; then
     ok "reviewed head: worktree-ship leaves the test to worktree-review"
   fi
 fi
+
+# ── 4. The merge-state check, the same in worktree-review and worktree-merge ─
+MERGE="$REPO_ROOT/plugins/worktree-flow/skills/worktree-merge/SKILL.md"
+[[ -f "$MERGE" ]] || fail "missing $MERGE"
+
+phrase='`mergeStateStatus` is not `DIRTY`, and not `UNKNOWN` a minute later'
+for f in "$REVIEW" "$MERGE"; do
+  [[ -f "$f" ]] || continue
+  name="$(basename "$(dirname "$f")")"
+  if grep -Fq "$phrase" "$f"; then
+    ok "merge state: $name states the check"
+  else
+    fail "merge state: $name lost \"${phrase}\" — change it in worktree-review and worktree-merge together"
+  fi
+done
 
 printf '\nResults: %d passed, %d failed\n' "$PASS" "$FAIL"
 [[ "$FAIL" -eq 0 ]] || exit 1

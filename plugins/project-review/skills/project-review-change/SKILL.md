@@ -94,9 +94,11 @@ applies the fixes it settled.
    >
    > Tag every entry in `## Recommended actions` `settled` or `open`, leaving none
    > untagged — read `<the decision-split.md path>` for what the two mean. An entry is
-   > `settled` only where every finding it names is proven; an entry for a plausible
-   > finding is `open`. For each `open` entry also give the question, the real options
-   > including "leave it as is" where that is one, and your recommendation.
+   > `settled` only where every finding it names is proven, or where its action
+   > costs nothing real and changes nothing a user types or relies on: say so in the
+   > entry. Every other entry is `open`. For each `open` entry also give the question,
+   > the real options including "leave it as is" where that is one, and your
+   > recommendation.
 
    If the **Agent** tool is unavailable, run the procedure yourself — read the step-2
    procedure path in full, apply it to the subject, produce the same sections, and state
@@ -104,9 +106,9 @@ applies the fixes it settled.
 
    Done when the review carries one of the four verdict labels, every finding a grade, and
    every action a tag. An untagged action counts as `open`, and so does a `settled` one
-   that names a finding not graded `proven`: its question is whether to apply it as
-   stated. Where the reviewer reports no standard to measure against, relay that and end
-   the run.
+   that names a finding not graded `proven` without the no-cost claim the prompt asks
+   for: its question is whether to apply it as stated. Where the
+   reviewer reports no standard to measure against, relay that and end the run.
 
 4. **Relay the review.** Surface the agent's verdict and findings as it wrote them; do not
    re-derive or re-label them. Then follow `<SKILL_DIR>/../../references/decision-split.md`
@@ -126,14 +128,11 @@ applies the fixes it settled.
 
 5. **Apply the settled batch**, with `--fix` only. Without it the run ends at step 4.
 
-   Make every change the `settled` entries of `## Recommended actions` name, as the
-   reviewer stated it and nothing beyond it. The batch edits files in the working tree and
-   nothing else: name a settled action of another kind — a commit message, a branch name,
-   a pull request field — as not applied, with that reason. The `open` entries stay the
+   Make every change the entries step 3 counted as `settled` name, as the reviewer stated
+   it and nothing beyond it. The batch edits files in the working tree and nothing
+   else: name a settled action of another kind — a commit message, a branch name,
+   a pull request field — as not applied, with that reason. The other entries stay the
    questions step 4 put to the user, and `## Suggested rule additions` stay proposals.
-
-   An entry tagged `settled` that names a plausible finding is outside the batch: step 3
-   counted it as `open`. Name it as not applied, with that reason.
 
    Where an edit was made, run every command under `## Checks run` again on the edited
    tree and report each result. A command that passed in the review and fails now goes
@@ -142,8 +141,8 @@ applies the fixes it settled.
    Leave the result uncommitted: the commit belongs to whoever asked for the review.
 
    Where the reviewer closed with a suggestion to file the findings with
-   `/tasks:tasks-create`, give it for what the batch left alone: the `open` entries and
-   the actions named as not applied. Where none is left, leave it out.
+   `/tasks:tasks-create`, give it for what the batch left alone: the entries step 3
+   counted as `open` and the actions named as not applied. Where none is left, leave it out.
 
    Done when every settled action is applied, or named with the reason it was not, and
    every command under `## Checks run` has run again, with its result reported.
