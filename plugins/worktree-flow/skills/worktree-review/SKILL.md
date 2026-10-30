@@ -9,7 +9,7 @@ argument-hint: "[pr-number]"
 
 **The project's own review rules win over this skill.**
 
-**Another forge** — where the PR's remote is not on GitHub, read [another-forge.md](references/another-forge.md) beside this file before step 1, and follow it.
+**Another forge** — where the PR's remote is not on GitHub, read [another-forge.md](references/another-forge.md) before step 1, and follow it.
 
 With no argument, the PR is the one of the current branch's upstream, without the remote name (`git rev-parse --abbrev-ref @{upstream}`): `gh` finds a PR by the local branch name, and a push can use another one. With no upstream, or the default branch as upstream, ask for the PR number. The run ends at a reviewed PR: the user starts `/worktree-flow:worktree-merge`.
 
@@ -33,7 +33,7 @@ Done when each gate is clear; else stop and report it.
 
 ## 3. Review and fix
 
-- **Rules.** Where `project-review:project-review-change` is in your available skills, call the Skill tool with `project-review:project-review-change` and the argument `--fix <pr-number>`, even where it loaded earlier in this session, and follow it to its last step. Its reviewer agent starts from that skill only; where it runs in the background, wait for its notification and go on from the step that started it. At its step 4, keep its open questions, the fixes it did not apply, its `/tasks:tasks-create` suggestion, its suggested rule additions and any `html-visualize-ask` command for steps 4 and 5 instead of putting them to the user, which ends its step 4, and never apply or answer an open question yourself. Where the skill is not in your available skills, report the rules review as skipped, never as passed, with the reason: the `project-review` plugin is missing, or its skill at that version is user-only.
+- **Rules.** Where `project-review:project-review-change` is in your available skills, call the Skill tool with `project-review:project-review-change` and the argument `--fix <pr-number>`, even where it loaded earlier in this session, and follow it to its last step. Its reviewer agent starts from that skill only; where it runs in the background, wait for its notification and go on from the step that started it. At its steps 4 and 5, keep its open questions, the fixes it did not apply, its `/tasks:tasks-create` suggestion, its suggested rule additions and any `html-visualize-ask` command for steps 4 and 5 here instead of asking them, which ends its step 4; never apply or answer one yourself. Where the skill is not in your available skills, report the rules review as skipped, never as passed, with the reason: the `project-review` plugin is missing, or its skill at that version is user-only.
 - **Code.** After the push of the rules fix, as the code review reads the pushed head, call the Skill tool with `code-review` and the argument `<effort> --fix <pr-number>`, even where it loaded earlier in this session, and wait for its notification. Take `<effort>` from the paths after the rules fix: `medium` where the PR changes only text for people to read, such as release notes; else `xhigh`, also for text an agent or a program reads, such as a skill or version bump. Before the gates run again, revert each fix it applied that answers an open question of the rules review, and add the fix to the question's options. Keep each unapplied finding that waits on the user as an open question, with options and a recommendation with its reason and cost.
 
 After each review that changed the tree, before the next review: run each gate again, repeat each drive that this session ran or that the **Driven** lines of the body name, and fix what broke. Then commit in the project's style and `git push <remote> HEAD:<headRefName>`, where `<remote>` is the upstream's remote, else the one that holds the PR's repository. A rejected push means the head moved during the review: stop, report it, and keep the commit local.
@@ -54,6 +54,6 @@ Done when, in `gh pr view <pr-number> --json headRefOid,body`, the commit after 
 
 ## 5. Report
 
-Report the PR URL, each review with its outcome, each gate with its result, and the items step 3 kept, else the **Review** line's open questions. Put the open questions last, as one numbered list the user answers in one reply. Where `worktree-ship` invoked this run, keep these items, in that form, for its report instead.
+Report the PR URL, each review with its outcome, each gate with its result, and the items step 3 kept; for a review step 3 did not run, the **Review** line's open questions. Put the open questions last, as one numbered list the user answers in one reply. Where `worktree-ship` invoked this run, keep these items, in that form, for its report instead.
 
 Done when the report, or the items kept for `worktree-ship`, hold each item or say it does not apply.
