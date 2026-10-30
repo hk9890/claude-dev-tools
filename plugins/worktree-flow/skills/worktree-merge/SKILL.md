@@ -40,7 +40,7 @@ Done when the worktree is gone, and each of the user's files is copied or droppe
 
 ## 4. Update the default branch
 
-In the main checkout: record `git rev-parse HEAD`, then `git fetch --prune` and `git pull --ff-only`. Delete the PR's local branch (`-D` after a squash or rebase merge) and its remote branch, where they still exist. The dependencies were installed in the removed worktree only: where the PR's files or `git diff --name-only <recorded> HEAD` hold a dependency manifest, lockfile or tool-version pin, run the project's install step, and nothing else of its setup, in the main checkout.
+In the main checkout: record `git rev-parse HEAD`, then `git fetch --prune` and `git pull --ff-only`. `ExitWorktree` with `remove` deleted the PR's local branch with the worktree; after the `keep` path, delete it (`-D` after a squash or rebase merge). Delete its remote branch where it still exists. The dependencies were installed in the removed worktree only: where the PR's files or `git diff --name-only <recorded> HEAD` hold a dependency manifest, lockfile or tool-version pin, run the project's install step, and nothing else of its setup, in the main checkout.
 
 Done when the merged branches are deleted and the install ran or is not needed.
 

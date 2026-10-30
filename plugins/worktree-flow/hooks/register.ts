@@ -46,6 +46,65 @@ function commandLines(command: string) {
   return run
 }
 
+// A quoted argument is text for the command that reads it, except where a shell, `eval` or `ssh`
+// comes before it on its line, or inside a `$(...)` or backtick span of a double-quoted one.
+const RUNS_TEXT = /(?<![\w.-])(?:bash|sh|zsh|eval|ssh)(?![\w.-])/
+
+// Each line with its quoted text blanked, the same length so a match maps back to the original.
+// A quote can span lines. Text that runs starts a command, so its opening quote or backtick reads
+// as a `;`.
+function blankQuotedText(lines: string[]) {
+  let quote = ''
+  let runs = false
+  let substitution = ''
+  let depth = 0
+
+  return lines.map(line => {
+    let blanked = ''
+
+    for (let at = 0; at < line.length; at++) {
+      const char = line[at] ?? ''
+
+      if (quote === '') {
+        if (char === '\\') {
+          blanked += line.slice(at, at + 2)
+          at++
+          continue
+        }
+        if (char === "'" || char === '"') {
+          quote = char
+          runs = RUNS_TEXT.test(blanked)
+          blanked += runs ? ';' : char
+          continue
+        }
+        blanked += char
+      } else if (substitution !== '') {
+        blanked += char
+        if (substitution === '`' && char === '`') substitution = ''
+        if (substitution === ')' && char === '(') depth++
+        if (substitution === ')' && char === ')' && --depth === 0) substitution = ''
+      } else if (char === quote) {
+        quote = ''
+        blanked += char
+      } else if (quote === '"' && char === '\\') {
+        blanked += runs ? line.slice(at, at + 2) : ' '.repeat(line.slice(at, at + 2).length)
+        at++
+      } else if (quote === '"' && char === '`') {
+        substitution = '`'
+        blanked += ';'
+      } else if (quote === '"' && char === '$' && line[at + 1] === '(') {
+        substitution = ')'
+        depth = 0
+        blanked += char
+      } else {
+        blanked += runs ? char : ' '
+      }
+    }
+
+    return blanked
+  })
+}
+
 // Only a whole command sets a variable for the commands after it: `echo W=/tmp/x` and the prefix
 // in `W=/tmp/x true` do not, and a subshell's assignment ends with it.
 const ASSIGNMENT = /(?:^|;|&&|\|\|)\s*([A-Za-z_]\w*)=("[^"]*"|'[^']*'|[^\s;&|()]*)\s*(?=;|&&|\|\||$)/g
@@ -68,6 +127,7 @@ function expandVariables(add: string, before: string) {
 // so each line is matched alone and every add on it must name a throwaway target.
 function addsPersistentWorktree(command: string) {
   const lines = commandLines(command)
+  const blanked = blankQuotedText(lines.map(({ line }) => line))
   const adds = lines.flatMap(({ line, inner }, at) => {
     const earlier = lines
       .slice(0, at)
@@ -76,10 +136,12 @@ function addsPersistentWorktree(command: string) {
 
     // The match starts on the separator before `git`, which the last assignment must end on. A
     // line break separates commands, as `;` does, except after a `\`.
-    return [...line.matchAll(WORKTREE_ADD)].map(match => {
+    // The add is found in the blanked line, and its target read from the original one.
+    return [...(blanked[at] ?? '').matchAll(WORKTREE_ADD)].map(match => {
       const before = [...earlier, line.slice(0, match.index + 1)].join('\n')
+      const add = line.slice(match.index, match.index + match[0].length)
 
-      return expandVariables(match[0], before.replace(/\\\n/g, ' ').replace(/\n/g, ';'))
+      return expandVariables(add, before.replace(/\\\n/g, ' ').replace(/\n/g, ';'))
     })
   })
 

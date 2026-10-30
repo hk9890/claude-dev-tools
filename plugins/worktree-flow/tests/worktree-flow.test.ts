@@ -57,6 +57,12 @@ const DENIED = [
   'W=/tmp/probe true && git worktree add --detach $W HEAD',
   '(W=/tmp/probe); git worktree add --detach $W HEAD',
   'git commit -m "note W=/tmp/probe" && git worktree add --detach $W HEAD',
+  "bash -c 'git worktree add ../x'",
+  "ssh host 'cd repo && git worktree add ../x'",
+  "eval 'git worktree add ../x'",
+  'echo "made $(git worktree add ../x)"',
+  'echo "made `git worktree add ../x`"',
+  "echo 'it''s' && git worktree add ../x",
 ]
 
 const ALLOWED = [
@@ -79,6 +85,10 @@ const ALLOWED = [
   'W=/tmp/probe\ngit worktree add --detach $W HEAD',
   "bash <<'EOF'\nW=/tmp/probe\ngit worktree add --detach $W HEAD\nEOF",
   'S=/home/me/scratchpad/repro; mkdir -p $S\nsetup(){ d=$1; git worktree add --detach $S/$d/wt HEAD; }\nsetup a',
+  "claude -p 'run verbatim: W=/tmp/probe && git worktree add -q --detach $W HEAD'",
+  "claude -p 'first line\nthen && git worktree add ../x'",
+  'git commit -m "step one && git worktree add ../x"',
+  "bash -c 'git worktree add --detach /tmp/probe HEAD'",
 ]
 
 for (const command of DENIED) {
