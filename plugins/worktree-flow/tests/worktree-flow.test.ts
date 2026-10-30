@@ -63,6 +63,15 @@ const DENIED = [
   'echo "made $(git worktree add ../x)"',
   'echo "made `git worktree add ../x`"',
   "echo 'it''s' && git worktree add ../x",
+  "# make the user's worktree\ngit worktree add ../x",
+  "echo 'cd repo && git worktree add ../x' | sh",
+  "ssh host \\\n  'cd repo && git worktree add ../x'",
+  "su -c 'git worktree add ../x'",
+  "echo $'it\\'s' && git worktree add ../x",
+  'echo `git worktree add ../x`',
+  'echo "made $(git worktree add ../x) in /tmp/"',
+  "ssh host <<'EOF'\ngit worktree add ../x\nEOF",
+  'git commit -m "x; W=/tmp/probe" && git worktree add --detach $W HEAD',
 ]
 
 const ALLOWED = [
@@ -89,6 +98,10 @@ const ALLOWED = [
   "claude -p 'first line\nthen && git worktree add ../x'",
   'git commit -m "step one && git worktree add ../x"',
   "bash -c 'git worktree add --detach /tmp/probe HEAD'",
+  'git worktree add --detach "`mktemp -d`" HEAD',
+  "ssh host 'W=/tmp/probe && git worktree add --detach $W HEAD'",
+  'gh pr create --title "Fix the ssh check" --body-file - <<\'EOF\'\ngit worktree add ../x\nEOF',
+  'git status # then && git worktree add ../x',
 ]
 
 for (const command of DENIED) {
