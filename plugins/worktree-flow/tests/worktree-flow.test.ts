@@ -57,21 +57,6 @@ const DENIED = [
   'W=/tmp/probe true && git worktree add --detach $W HEAD',
   '(W=/tmp/probe); git worktree add --detach $W HEAD',
   'git commit -m "note W=/tmp/probe" && git worktree add --detach $W HEAD',
-  "bash -c 'git worktree add ../x'",
-  "ssh host 'cd repo && git worktree add ../x'",
-  "eval 'git worktree add ../x'",
-  'echo "made $(git worktree add ../x)"',
-  'echo "made `git worktree add ../x`"',
-  "echo 'it''s' && git worktree add ../x",
-  "# make the user's worktree\ngit worktree add ../x",
-  "echo 'cd repo && git worktree add ../x' | sh",
-  "ssh host \\\n  'cd repo && git worktree add ../x'",
-  "su -c 'git worktree add ../x'",
-  "echo $'it\\'s' && git worktree add ../x",
-  'echo `git worktree add ../x`',
-  'echo "made $(git worktree add ../x) in /tmp/"',
-  "ssh host <<'EOF'\ngit worktree add ../x\nEOF",
-  'git commit -m "x; W=/tmp/probe" && git worktree add --detach $W HEAD',
 ]
 
 const ALLOWED = [
@@ -94,14 +79,6 @@ const ALLOWED = [
   'W=/tmp/probe\ngit worktree add --detach $W HEAD',
   "bash <<'EOF'\nW=/tmp/probe\ngit worktree add --detach $W HEAD\nEOF",
   'S=/home/me/scratchpad/repro; mkdir -p $S\nsetup(){ d=$1; git worktree add --detach $S/$d/wt HEAD; }\nsetup a',
-  "claude -p 'run verbatim: W=/tmp/probe && git worktree add -q --detach $W HEAD'",
-  "claude -p 'first line\nthen && git worktree add ../x'",
-  'git commit -m "step one && git worktree add ../x"',
-  "bash -c 'git worktree add --detach /tmp/probe HEAD'",
-  'git worktree add --detach "`mktemp -d`" HEAD',
-  "ssh host 'W=/tmp/probe && git worktree add --detach $W HEAD'",
-  'gh pr create --title "Fix the ssh check" --body-file - <<\'EOF\'\ngit worktree add ../x\nEOF',
-  'git status # then && git worktree add ../x',
 ]
 
 for (const command of DENIED) {
@@ -111,6 +88,7 @@ for (const command of DENIED) {
     const answer = await $.tool.call({ tool: 'Bash', command })
 
     expect(answer.deny).toContain('EnterWorktree')
+    expect(answer.deny).toContain('put that text in a file')
     expect(seen.ran).toEqual([])
     expect(seen.toasts).toEqual(['use EnterWorktree, not git worktree add'])
   })

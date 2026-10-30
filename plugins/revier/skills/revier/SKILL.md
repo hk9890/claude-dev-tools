@@ -40,7 +40,7 @@ The JSON is an array with one element per named project. Each element gives:
 - `.project.path`: the checkout. `.path_exists` says whether it is cloned.
 - `.project.git_url`: its remote.
 - `.project.remote`: set for a link alone. The path, `.path_exists` and each `.state.dir` are then its host's, not this machine's.
-- `.running`: whether a window of its workspace is open.
+- `.running`: whether a window of its workspace is open. For information only: step 2 of "Prompting another agent" decides on `.home`.
 - `.home`: the home window, where `agent new` adds its tab. A project whose home window is not open has no `.home`.
 - `.agents[]`: every agent in it, where the table shows one. A project with no agent has no `.agents`. Each agent gives:
   - `.panel` and `.state.status`.
@@ -88,7 +88,7 @@ A prompt redirects work the user started in another window. Send one when the us
 
 1. Run `revier agent --help`. It is the authority for the `<agent>` address, the statuses, the `<key>` names, and what `prompt` refuses.
 2. Find the agent with `revier list --json <project>`.
-   - No agent, and no `.home`: `revier open <name>` opens the workspace and takes the focus, so give the command to the user.
+   - No agent, and no `.home`: `revier open <name>` opens or raises the workspace and takes the focus, so give the command to the user.
    - No agent, and `.home` is set: add one, and use the address the command prints as `<agent>`:
 
      ```bash

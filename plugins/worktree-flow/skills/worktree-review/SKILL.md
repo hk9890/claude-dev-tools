@@ -9,7 +9,7 @@ argument-hint: "[pr-number]"
 
 **The project's own review rules win over this skill.**
 
-**Another forge** — the steps use `gh`, for GitHub. Where the PR's remote is on another forge, run each `gh` step with the forge CLI that the project documents, and stop and report each field of step 1 that it cannot read. Pass both reviews the PR's head branch in place of `<pr-number>`: they read a number as a GitHub PR.
+**Another forge** — run each `gh` step with the forge CLI the project documents; with none documented, or at the first field of step 1 that CLI cannot read, stop and ask the user. Pass both reviews the PR's head branch in place of `<pr-number>`: they read a number as a GitHub PR.
 
 With no argument, the PR is the one of the current branch's upstream, without the remote name (`git rev-parse --abbrev-ref @{upstream}`): `gh` finds a PR by the local branch name, and a push can use another one. With no upstream, or the default branch as upstream, ask for the PR number. The run ends at a reviewed PR: the user starts `/worktree-flow:worktree-merge`.
 

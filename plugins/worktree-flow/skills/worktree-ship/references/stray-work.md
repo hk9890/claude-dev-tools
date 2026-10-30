@@ -6,11 +6,11 @@
 
 Stop and ask the user, with nothing moved yet, and wait for the answer: only the user's answer decides whether the work belongs to the change, a look at the files does not. Ask where:
 
-- **The run has an argument, or this conversation settled the change.** Show the dirty check and, where the branch has an upstream, `git log --oneline @{upstream}..HEAD`, and ask whether that work belongs to the change. Where it does not, leave it, go on with step 2, and name it in the report.
-- **The main checkout is on a branch other than `<base-branch>`** and not on a `worktree-ship-stray/*` one. Ask which change to ship, and leave the work on that branch.
+- **The run has an argument, or the user stated or approved a change in this conversation.** Show the dirty check and, where the branch has an upstream, `git log --oneline @{upstream}..HEAD`, and ask whether that work belongs to the change. Where it does not, leave it, go on with step 2, and name it in the report.
+- **With no argument and no change the user stated or approved in this conversation, the main checkout is on a branch other than `<base-branch>`** and not on a `worktree-ship-stray/*` one. Ask which change to ship, and leave the work on that branch.
 - **A `worktree-ship-stray/*` branch exists.** Show it with `git log --oneline <branch> --not --remotes`, and ask whether this run continues that move. Where it does not, stop: the branch can hold the only copy of the work. Where `<base-branch>` also holds uncommitted files, ask what happens to them first. A continued move takes the worktree's name from the branch, and **Move out** goes on at item 2 on that branch, at item 4 on `<base-branch>`.
 
-With no argument, no change settled in this conversation, on `<base-branch>`, and with no such branch, the stray work is the change: move it without a question.
+With no argument and no change the user stated or approved in this conversation, on `<base-branch>`, and with no such branch, the stray work is the change: move it without a question.
 
 ## Move out
 

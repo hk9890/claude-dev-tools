@@ -10,6 +10,8 @@ argument-hint: "[pr-number]"
 
 **The project's own rules for a merge win over this skill.**
 
+**Another forge** — run each `gh` step with the forge CLI the project documents; with none documented, or at the first field of step 1 that CLI cannot read, stop and ask the user.
+
 With no argument, the PR is the one of the current branch's upstream, without the remote name: `git for-each-ref --format='%(upstream:short)' refs/heads/<branch>`, which still answers after the remote branch is deleted. `gh` finds a PR by the local branch name, and a push can use another one. With no upstream, or the default branch as upstream, ask for the PR number.
 
 ## 1. Check

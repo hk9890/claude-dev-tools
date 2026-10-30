@@ -8,7 +8,7 @@ argument-hint: "[change-to-make]"
 
 **Ship this change as a reviewed PR:** $ARGUMENTS
 
-With no argument, ship the change this conversation settled, else the change the checkout holds. A run can resume: skip each step whose result already stands for the current tree. The project's own change rules win over this skill. The `gh` steps are for GitHub: on another forge, run each with the forge CLI that the project documents, and stop and report a field that it cannot read.
+With no argument, ship **the change the user stated or approved in this conversation**, else the change the checkout holds. A run can resume: skip each step whose result already stands for the current tree. The project's own change rules win over this skill. On a forge other than GitHub, run each `gh` step with the forge CLI the project documents; with none documented, or where that CLI cannot read the PR's state, stop and ask the user.
 
 ## 1. Read the project's change rules
 
