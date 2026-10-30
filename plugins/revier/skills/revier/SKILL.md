@@ -56,7 +56,7 @@ The JSON of `revier list --json` is an array with one element per named project.
   - `.state.activity`: the title of what it works on, set where it has one.
   - `.state.harness`: what runs the agent, `claude` for Claude Code.
   - `.state.name`: the name the harness gives the agent. For Claude Code, it is the name that ListAgents and SendMessage use. It is neither unique nor fixed.
-  - `.state.session`: the conversation of a Claude Code agent. It and `.state.name` are empty while revier has not matched the agent's process.
+  - `.state.session`: the conversation of a Claude Code agent. It and `.state.name` are absent while revier has not matched the agent's process.
   - `.ref`: an object, set for an agent in a panel on this machine. One without it runs on a link's host.
   - `.state.dir`: the directory the agent works in now, set where revier knows one other than `.project.path`: a git worktree for example. An agent without it works in `.project.path`, or revier has no directory for it.
 

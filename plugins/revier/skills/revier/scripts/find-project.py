@@ -33,7 +33,7 @@ def projects():
 
 
 def repo(git_url):
-    return re.sub(r"\.git$", "", (git_url or "").rstrip("/")).rsplit("/", 1)[-1].rsplit(":", 1)[-1]
+    return re.sub(r"\.git$", "", git_url.rstrip("/")).rsplit("/", 1)[-1].rsplit(":", 1)[-1]
 
 
 def address(name, agent):
@@ -44,21 +44,21 @@ def matches(word, view):
     project = view["project"]
     fields = {
         "name": project["name"],
-        "dir": os.path.basename((project.get("path") or "").rstrip("/")),
-        "repo": repo(project.get("git_url")),
-        "host_project": (project.get("remote") or {}).get("project", ""),
+        "dir": os.path.basename(project["path"].rstrip("/")),
+        "repo": repo(project.get("git_url", "")),
+        "host_project": project.get("remote", {}).get("project", ""),
     }
     matched = [field for field, value in fields.items() if word in value.lower()]
     agents = [
         {
             "address": address(project["name"], agent),
-            "activity": state.get("activity"),
-            "name": state.get("name"),
-            "status": state.get("status"),
+            "activity": agent["state"].get("activity"),
+            "name": agent["state"].get("name"),
+            "status": agent["state"]["status"],
         }
-        for agent in view.get("agents") or []
-        if word in (state := agent.get("state") or {}).get("activity", "").lower()
-        or word == state.get("name", "").lower()
+        for agent in view.get("agents", [])
+        if word in agent["state"].get("activity", "").lower()
+        or word == agent["state"].get("name", "").lower()
     ]
     if agents:
         matched.append("agent")
