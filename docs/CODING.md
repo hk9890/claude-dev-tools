@@ -101,7 +101,7 @@ disable-model-invocation: true
 ---
 ```
 
-**Schema B — model-discoverable.** Only where the `Skill` tool must reach the skill: siblings or agents load it by name (`tasks:tasks-core`, `instruction-writing:writing-project-docs`), or the model should fire it unprompted from context (`writing-skills`). A skill another skill only offers to the user stays Schema A: the caller prints its slash command for the user to type (`html-visualize-ask`). `when_to_use` carries positive triggers, exclusions, and the argument shape where it helps.
+**Schema B — model-discoverable.** Only where the `Skill` tool must reach the skill: siblings or agents load it by name (`tasks:tasks-core`, `instruction-writing:writing-project-docs`), or the model should fire it unprompted from context (`writing-skills`). A skill another skill only offers to the user stays Schema A ([Portability](#portability)). `when_to_use` carries positive triggers, exclusions, and the argument shape where it helps.
 
 ```yaml
 ---

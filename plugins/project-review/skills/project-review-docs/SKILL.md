@@ -11,7 +11,7 @@ docs inline. The workflow returns a structured report; relay it.
 
 ## Run the workflow
 
-1. Parse `$ARGUMENTS` as `[low|medium|high|ultra] [what-to-review]`. Both are optional.
+1. Parse `$ARGUMENTS` as `[low|medium|high|ultra] [path]`. Both are optional.
    A leading `low` | `medium` | `high` | `ultra` token is the **level** (default
    `medium`). Everything left is **what to review**.
    Most invocations pass only a level.
