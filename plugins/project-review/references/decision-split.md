@@ -20,8 +20,10 @@ reviewing agent where none does. Carry each item into the group it came back in.
 
 Relay the two groups separately: the settled ones as a batch you can just do, the
 open ones one question per item. Each question reads without the review beside it,
-and carries the item's `options` as given, with "leave it as is" where it is one, and
-its `recommendation` as the first option.
+and carries the item's `options` in the review's words, with "leave it as is" where it
+is one. The option its `recommendation` picks comes first, marked as recommended, with
+the reason the review gave. An item with no `options` asks whether to apply it as
+stated; an item with no `recommendation` says that it has none.
 
 ## The browser form
 
