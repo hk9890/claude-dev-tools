@@ -1,9 +1,9 @@
 # Prompting another agent
 
-1. Run `revier agent --help`. It is the authority for the `<agent>` address, the statuses, the `<key>` names, and what `prompt` refuses.
+1. Run `revier agent --help`. It is the authority for the `<agent>` address, the statuses, and what `prompt` refuses.
 2. Find the agent with `revier list --json <project>`.
    - No agent, and no `.home`: `revier open <name>` opens or raises the workspace and takes the focus, so give the command to the user.
-   - No agent, and `.home` is set: add one, and use the address the command prints as `<agent>`:
+   - `.home` is set, and there is no agent or the user asked for a new one: add one, and use the address the command prints as `<agent>`:
 
      ```bash
      revier agent new --no-focus -p <name>
@@ -37,7 +37,7 @@
    revier agent read <agent>
    ```
 
-   revier refuses with "the agent's last message cannot be read" for the agent of a link, for a harness other than Claude Code, and for an agent that has said nothing. Then read its panel:
+   revier refuses with "the agent's last message cannot be read" for the agent of a link, for a harness other than Claude Code, and for an agent that has said nothing. Then read its panel, and for the agent of a link or of another harness read it at once:
 
    ```bash
    revier agent read <agent> --screen --lines <n>
@@ -48,14 +48,3 @@
 ## An agent at attention
 
 An agent at `attention` shows a dialog, often a permission question, so the answer belongs to its user. Report the agent and its status to the user, send no key, and stop here: steps 4 to 6 need an agent that is past its dialog.
-
-Answer the dialog yourself only where the user asked for that in this session. Then these steps take the place of the report:
-
-1. Read the dialog with `revier agent read <agent> --screen --lines <n>`.
-2. Send the keys for the answer the user asked for. A key lands on whatever the panel shows, so send only keys that the screen from step 1 offers:
-
-   ```bash
-   revier agent send-keys <agent> <key>..
-   ```
-
-3. Read the screen again. The dialog is answered when the screen shows it no more: go back to the step that sent you here, and wait for the turn. Where the screen still shows a dialog, send no further key: report the text of the dialog to the user and stop here.

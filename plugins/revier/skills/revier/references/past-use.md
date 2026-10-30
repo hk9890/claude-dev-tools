@@ -3,7 +3,6 @@
 Run the script of this skill. Its arguments are those of `revier events`:
 
 ```bash
-command -v python3 >/dev/null || { echo "STOP: python3 is not on PATH. Tell the user, and read revier events --help instead."; exit 1; }
 python3 "<base directory for this skill>/scripts/past-use.py" --days <n>
 ```
 
@@ -19,4 +18,4 @@ A warning on stderr names a linked host that gave no events: report that its pro
 
 To act on the projects, for example to list the pull requests the user opened in them, take each checkout from `revier list --json <name>..` and run `git` or `gh` there under the rules of "Another project's source" in the skill. A line with `.host` and no `.host_project` is a project of that host with no link here, so it has no checkout here: report it by name and host.
 
-A conversation of a Claude agent on this machine is the one transcript that `~/.claude/projects/*/<session>.jsonl` matches. The format of a transcript is internal to Claude Code and can change. A conversation on a line with `.host` is on that host, out of reach from here.
+A conversation of a Claude agent on this machine is the transcript that `find ~/.claude/projects -name '<session>.jsonl'` prints; no output means it is not on this machine. The format of a transcript is internal to Claude Code and can change. A conversation on a line with `.host` is on that host, out of reach from here.
