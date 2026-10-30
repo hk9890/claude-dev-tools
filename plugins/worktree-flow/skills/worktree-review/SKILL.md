@@ -22,7 +22,7 @@ Stop and report at the first failure:
 - `git rev-parse HEAD` equals its `headRefOid`, and `git status --porcelain` prints nothing: both reviews edit this tree. Where the head differs, name the way in: a worktree on the PR's branch (`gh pr checkout <pr-number>`).
 - `mergeStateStatus` is not `DIRTY`, and not `UNKNOWN` a minute later; else the base must come in first, by the project's method.
 
-**Reviewed already** — where `headRefOid` starts with the commit after `through` in the **Review** line of the body, go to step 5, unless that line records the rules review as skipped and its skill is in your available skills: run step 2, the **Rules** review, and where it applied a fix, the **Code** review.
+**Reviewed already** — where `headRefOid` starts with the commit after `through` in the **Review** line of the body, go to step 5, unless that line records the rules review as skipped and `project-review:project-review-change` is in your available skills: run step 2, then the **Rules** review of step 3, and where it applied a fix, the **Code** review.
 
 Done when the checks hold and the run is known: the full review, the rules review alone, or the report alone.
 
