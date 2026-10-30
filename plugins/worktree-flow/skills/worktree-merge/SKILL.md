@@ -10,6 +10,8 @@ argument-hint: "[pr-number]"
 
 **The project's own rules for a merge win over this skill.**
 
+**Another forge** — run each `gh` step with the forge CLI the project documents; with none documented, at the first field of step 1 that CLI cannot read, or at a later `gh` step it cannot run, stop and ask the user.
+
 With no argument, the PR is the one of the current branch's upstream, without the remote name: `git for-each-ref --format='%(upstream:short)' refs/heads/<branch>`, which still answers after the remote branch is deleted. `gh` finds a PR by the local branch name, and a push can use another one. With no upstream, or the default branch as upstream, ask for the PR number.
 
 ## 1. Check
@@ -40,7 +42,7 @@ Done when the worktree is gone, and each of the user's files is copied or droppe
 
 ## 4. Update the default branch
 
-In the main checkout: record `git rev-parse HEAD`, then `git fetch --prune` and `git pull --ff-only`. Delete the PR's local branch (`-D` after a squash or rebase merge) and its remote branch, where they still exist. The dependencies were installed in the removed worktree only: where the PR's files or `git diff --name-only <recorded> HEAD` hold a dependency manifest, lockfile or tool-version pin, run the project's install step, and nothing else of its setup, in the main checkout.
+In the main checkout: record `git rev-parse HEAD`, then `git fetch --prune` and `git pull --ff-only`. `ExitWorktree` with `remove` can have deleted the PR's local branch with the worktree: delete it where `git branch --list <branch>` still prints it, with the name the worktree's branch had, which can differ from the PR's head branch (`-D` after a squash or rebase merge). Delete its remote branch where it still exists. The dependencies were installed in the removed worktree only: where the PR's files or `git diff --name-only <recorded> HEAD` hold a dependency manifest, lockfile or tool-version pin, run the project's install step, and nothing else of its setup, in the main checkout.
 
 Done when the merged branches are deleted and the install ran or is not needed.
 

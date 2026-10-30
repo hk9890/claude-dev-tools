@@ -88,6 +88,7 @@ for (const command of DENIED) {
     const answer = await $.tool.call({ tool: 'Bash', command })
 
     expect(answer.deny).toContain('EnterWorktree')
+    expect(answer.deny).toContain('put that text in a file')
     expect(seen.ran).toEqual([])
     expect(seen.toasts).toEqual(['use EnterWorktree, not git worktree add'])
   })

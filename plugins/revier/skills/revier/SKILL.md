@@ -25,7 +25,7 @@ revier also places and raises windows, and the user is typing in one of them whi
 | `revier agent prompt` | types one line into an agent and submits it |
 | `revier agent read` | prints the last message of an agent, or with `--screen` the text of its panel |
 | `revier agent send-keys` | types named keys into an agent, whatever its status |
-| `revier agent new --no-focus` | adds an agent tab to an open workspace and prints the address of the agent |
+| `revier agent new --no-focus` | adds an agent tab to the open home window and prints the address of the agent |
 
 This skill needs revier 0.14.0 or later: where the "Installed" line above shows an older one, tell the user to update revier, and do nothing else with this skill.
 
@@ -40,7 +40,8 @@ The JSON is an array with one element per named project. Each element gives:
 - `.project.path`: the checkout. `.path_exists` says whether it is cloned.
 - `.project.git_url`: its remote.
 - `.project.remote`: set for a link alone. The path, `.path_exists` and each `.state.dir` are then its host's, not this machine's.
-- `.running`: whether its workspace is open.
+- `.running`: whether a window of its workspace is open. For information only: step 2 of "Prompting another agent" decides on `.home`.
+- `.home`: the home window, where `agent new` adds its tab. A project whose home window is not open has no `.home`.
 - `.agents[]`: every agent in it, where the table shows one. A project with no agent has no `.agents`. Each agent gives:
   - `.panel` and `.state.status`.
   - `.state.activity`: the title of what it works on, set where it has one.
@@ -87,8 +88,8 @@ A prompt redirects work the user started in another window. Send one when the us
 
 1. Run `revier agent --help`. It is the authority for the `<agent>` address, the statuses, the `<key>` names, and what `prompt` refuses.
 2. Find the agent with `revier list --json <project>`.
-   - No agent, and `.running` is false: `revier open <name>` starts the workspace and takes the focus, so give the command to the user.
-   - No agent, and `.running` is true: add one, and use the address the command prints as `<agent>`:
+   - No agent, and no `.home`: `revier open <name>` opens or raises the workspace and takes the focus, so give the command to the user.
+   - No agent, and `.home` is set: add one, and use the address the command prints as `<agent>`:
 
      ```bash
      revier agent new --no-focus -p <name>
@@ -114,7 +115,7 @@ A prompt redirects work the user started in another window. Send one when the us
    ```
 
    Send it once. On a non-zero exit, report the message of revier as it is and stop here: the text may already be in the composer of the agent, and a second send types it again. A warning that the agent stayed idle means revier did not see the turn start, and the text may sit in the composer. Report it and stop here too: step 5 would read that `idle` as a finished turn.
-5. Wait for the turn with the command from step 3. `idle` means the turn is done. `attention` means the agent now waits for its user: follow "An agent at attention". On exit 2 the turn still runs, and the prompt is delivered, so repeat only the `wait`.
+5. Where the user hands the work to the agent and asks for no answer back, report the address of the agent and stop here: it goes on alone. Else wait for the turn with the command from step 3. `idle` means the turn is done. `attention` means the agent now waits for its user: follow "An agent at attention". On exit 2 the turn still runs, and the prompt is delivered, so repeat only the `wait`.
 6. Read the answer of the agent, and give it to the user:
 
    ```bash
