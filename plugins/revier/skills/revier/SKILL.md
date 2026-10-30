@@ -27,7 +27,7 @@ revier also places and raises windows, and the user is typing in one of them whi
 | `revier agent send-keys` | types named keys into an agent, whatever its status |
 | `revier agent new --no-focus` | adds an agent tab to the open home window and prints the address of the agent |
 
-This skill needs revier 0.14.0 or later: where the "Installed" line above shows an older one, tell the user to update revier, and do nothing else with this skill.
+This skill needs revier 0.22.0 or later: where the "Installed" line above shows an older one, tell the user to update revier, and do nothing else with this skill.
 
 The rest of the CLI is outside this skill. Most of it opens, raises or closes a window: `shell new` raises the tab it adds, and so does `agent new` without `--no-focus`. When the task needs one of those commands, take its syntax from `revier --help` and give the user the exact command to run.
 
@@ -43,12 +43,16 @@ The JSON is an array with one element per named project. Each element gives:
 - `.running`: whether a window of its workspace is open. For information only: step 2 of `<base directory for this skill>/references/prompting.md` decides on `.home`.
 - `.home`: the home window, where `agent new` adds its tab. A project whose home window is not open has no `.home`.
 - `.agents[]`: every agent in it, where the table shows one. A project with no agent has no `.agents`. Each agent gives:
-  - `.panel` and `.state.status`.
+  - `.target`, `.panel` and `.state.status`. The address of the agent is `<project>:<target>:<panel>`, built from `.project.name`, `.target` and `.panel`: `shop:home:7`. An agent with no `.target` has no address, so `revier agent` cannot reach it: a terminal attached by hand, or a tab moved to another window.
   - `.state.activity`: the title of what it works on, set where it has one.
+  - `.state.name`: the name the harness gives the agent. For Claude Code, it is the name that ListAgents and SendMessage use. It is neither unique nor fixed.
+  - `.state.session`: the conversation of a Claude Code agent. It and `.state.name` are empty while revier has not matched the agent's process.
   - `.ref`: set for an agent in a panel on this machine. One without it runs on a link's host.
   - `.state.dir`: the directory the agent works in now, set where revier knows one other than `.project.path`: a git worktree for example. An agent without it works in `.project.path`, or revier has no directory for it.
 
-Your own entry is in the project that `revier status` names. Its `.panel` equals `$KITTY_WINDOW_ID` where the `runtime` line of `revier status` says kitty, or `$TMUX_PANE` where it says tmux. Every other entry is another agent, in your own project too.
+Your own entry is in the project that `revier status` names: the one whose `.state.session` equals `$CLAUDE_CODE_SESSION_ID`. Where none does, it is the one whose `.panel` equals `$KITTY_WINDOW_ID`, `$TMUX_PANE` or `$HERDR_PANE_ID`, for the kitty, tmux or herdr that the `runtime` line of `revier status` names. Every other entry is another agent, in your own project too.
+
+A name from ListAgents is the agent whose `.state.name` equals it. Where no agent or several match, pick by `.state.activity`, or ask the user. A session in the background has no entry.
 
 ## Another project's source
 

@@ -14,7 +14,8 @@
      - It exits 2 on the timeout: the agent is there and is not idle, so run `revier list --json <name>` again and continue with step 3.
      - It fails with another error: the harness has not started, so run the `wait` again. After one minute of that error, report the message of revier to the user and stop here.
    - An agent with no `.ref`: report that it runs on the other machine, out of reach from here.
-   - Several agents: pick by `.state.activity` and address it as `<project>:<panel>`. Ask the user when the activity does not decide it.
+   - An agent with no `.target`: report that revier cannot reach it.
+   - Several agents: pick by `.state.activity`, and use its address as `<agent>`. Ask the user when the activity does not decide it.
 3. Read its `.state.status`. An `idle` agent takes a prompt. `prompt` refuses an agent at `attention` and one at `unknown`. For `attention`, follow "An agent at attention". The state of one at `unknown` cannot be read: report that to the user. For a `running` one, wait first and read the status the wait prints:
 
    ```bash
