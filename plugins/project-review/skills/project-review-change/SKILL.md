@@ -88,7 +88,7 @@ applies the fixes it settled.
    > it is empty. `## Checks run` lists every command you ran because a document says to
    > run it, one per line with its result: passed, failed, or could not run.
    > `## Suggested rule additions` holds the additions the procedure admits, in its order
-   > and form; they never change the verdict.
+   > and form.
    >
    > Grade every finding `proven` or `plausible` in its Observation.
    >
@@ -116,8 +116,8 @@ applies the fixes it settled.
 
    Keep `## Suggested rule additions` visibly apart from the findings when you relay it.
    Merging the two is the one failure that turns this review into an ordinary code review.
-   Give an addition this session relayed before one line only: its document and "relayed
-   before".
+   Give an addition this session relayed before one line only: its document, the rule in
+   one sentence, and "relayed before".
 
    For a "did you really check X?" follow-up, **re-run the skill**; never answer from the
    review text alone.

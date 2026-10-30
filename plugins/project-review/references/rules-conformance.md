@@ -62,12 +62,12 @@ every later session, so a problem becomes a **suggested rule addition** only whe
 passes all four tests:
 
 - **Recurring** — it binds a kind of change this project makes again: a kind of file,
-  call, message or duty. A rule that names one symbol, file or line of the subject binds
-  no later change.
+  call, message or duty. A rule that only the subject's own symbol, file or line can
+  break binds no later change.
 - **Local** — it names this project's own mechanism. A principle any code review
   applies, or a rule a document already states, is no addition.
 - **A rule** — a later change can break it. A bug or a missing test goes to the general
-  code review, a wrong fact to `project-review-docs`.
+  code review, a wrong fact in a document to `project-review-docs`.
 - **Ready** — it names the document, the section and the exact sentence to add, with its
   answer chosen. Where its answer is still open, leave it out; where it bears on a
   finding, ask it in that finding's `open` action.
