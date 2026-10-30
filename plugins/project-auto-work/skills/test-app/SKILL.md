@@ -3,7 +3,7 @@ name: test-app
 description: "Exploratory application testing: launches the application, actually uses it, and judges what happened against the project's own user-facing docs and monitoring data. Reports findings, questions and proposals; writes no code and fixes nothing."
 user-invocable: true
 disable-model-invocation: true
-argument-hint: "[low|medium|high|ultra] [html-viz] [focus-or-doc]"
+argument-hint: "[low|medium|high|ultra] [focus-or-doc]"
 ---
 
 Exploratory testing of the application itself — what `test-tests` does to a test suite, this
@@ -17,10 +17,8 @@ know what the app reaches. Point it at an environment whose data you can afford 
 
 ## Run the workflow
 
-1. Parse `$ARGUMENTS` as `[low|medium|high|ultra] [html-viz] [focus-or-doc]`. All optional,
-   and either leading token stands without the other. A `low` | `medium` | `high` | `ultra`
-   token is the **level** and an `html-viz` token puts the open decisions on a browser form
-   in step 5; take both from the front of the argument, in either order. Everything left is
+1. Parse `$ARGUMENTS` as `[low|medium|high|ultra] [focus-or-doc]`. Both are optional. A
+   leading `low` | `medium` | `high` | `ultra` token is the **level**. Everything left is
    the **focus**, in one of three shapes:
 
    - **absent** — launch the application and exercise it broadly.
@@ -84,7 +82,7 @@ know what the app reaches. Point it at an environment whose data you can afford 
 
    Each proposal is tagged `settled` or `open`. Follow
    `<base directory for this skill>/../../references/decision-split.md` (plugin-root layout:
-   `../..` is correct) — it defines both words and branches on `html-viz`. Done when
+   `../..` is correct) — it defines both words. Done when
    every open item has been put to the user and the settled batch has been named.
 
 If `result` holds an object with `error` and no `report`, relay the error verbatim and do

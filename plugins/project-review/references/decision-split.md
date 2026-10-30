@@ -25,14 +25,14 @@ open ones as questions carrying their `options` and `recommendation`.
 
 With no open item, skip this section.
 
-With `html-viz`, read [browser-form.md](browser-form.md) beside this file and follow it.
-Without it, after the relay and any saved report, state the count of open items and give
-this command for the user to type; it needs the separate `html-visualization` plugin.
+After the relay and any saved report, state the count of open items and give this
+command for the user to type, to answer them on a browser form; it needs the separate
+`html-visualization` plugin. Never call that skill yourself: it is the user's to type.
 Keep the filter in its argument, so it survives into a fresh turn:
 
 ```
 /html-visualization:html-visualize-ask the <N> open decisions from <what was reviewed> — the settled fixes are already agreed
 ```
 
-Without `html-viz`, then say that the form holds only the open items, and that a reply
-in chat stops any settled one.
+Then say that the form holds only the open items, and that a reply in chat stops any
+settled one.

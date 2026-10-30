@@ -3,7 +3,7 @@ name: project-review-docs
 description: "Read-only audit of a project's docs for gaps, misplaced content, contradictions, dead links, and whether agents can and do actually use them; judges the docs as documents and never opens the code; reports fixes, never edits."
 user-invocable: true
 disable-model-invocation: true
-argument-hint: "[low|medium|high|ultra] [html-viz] [path]"
+argument-hint: "[low|medium|high|ultra] [path]"
 ---
 
 Read-only documentation audit. Launch the review workflow — do **not** review the
@@ -11,11 +11,9 @@ docs inline. The workflow returns a structured report; relay it.
 
 ## Run the workflow
 
-1. Parse `$ARGUMENTS` as `[low|medium|high|ultra] [html-viz] [what-to-review]`. All are
-   optional, and either leading token stands without the other. A
-   `low` | `medium` | `high` | `ultra` token is the **level** (default `medium`) and an
-   `html-viz` token puts the open decisions on a browser form in step 5; take both from
-   the front of the argument, in either order. Everything left is **what to review**.
+1. Parse `$ARGUMENTS` as `[low|medium|high|ultra] [what-to-review]`. Both are optional.
+   A leading `low` | `medium` | `high` | `ultra` token is the **level** (default
+   `medium`). Everything left is **what to review**.
    Most invocations pass only a level.
 
    Unlike the other reviewers, what-to-review here must resolve to a **path** —
@@ -118,8 +116,8 @@ docs inline. The workflow returns a structured report; relay it.
      agent's findings, unmerged and each naming its own file, so relay it only as
      raw material, never as the report.
 
-   Once relayed, follow `../../references/decision-split.md`, which branches on the
-   `html-viz` flag from step 1, over the open findings. "the docs audit" is what was
+   Once relayed, follow `../../references/decision-split.md` over the open findings.
+   "the docs audit" is what was
    reviewed. Done when every open item has been put to the user and the settled batch
    has been named.
 

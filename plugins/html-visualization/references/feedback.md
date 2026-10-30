@@ -19,9 +19,8 @@ the same file.
 
 ## Scope of feedback mode
 
-The user asked for this surface — render the content for markup. That holds
-whether they typed the slash command or asked for a browser page in prose; either
-way the mode is settled. Feedback mode shows the user a piece of content — a
+The user typed the slash command for this surface — render the content for
+markup. Feedback mode shows the user a piece of content — a
 document, draft, plan, proposal, or set of brainstormed options — and lets them
 attach inline comments to specific parts of it, then iterate via an Apply loop.
 The content may be pre-existing user prose *or* a plan or set of ideas Claude
