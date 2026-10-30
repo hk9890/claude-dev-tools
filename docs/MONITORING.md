@@ -8,7 +8,7 @@ Claude Code writes a session to `~/.claude/projects/<slug>/<uuid>.jsonl`, and it
 
 | `type` | Carries |
 |---|---|
-| `assistant` | Claude's turn, plus `attributionPlugin` (plugin directory name, e.g. `tasks`) and `attributionSkill` (namespaced, e.g. `tasks:tasks-core`) while a skill runs |
+| `assistant` | Claude's turn, plus `attributionPlugin` (plugin directory name, e.g. `tasks`) and `attributionSkill` (namespaced, e.g. `tasks:tasks-core`) from the first turn after a skill loads to the turn that loads the next one, or to the end of that user turn; a forked skill changes neither. Work after the skill in the same turn counts for it too, as nothing marks where the skill's work ends |
 | `user` | The human turn, and the `tool_result` blocks inside its `content` array. A failed tool is `tool_result.is_error == true`; `toolDenialKind` says who refused a call that never ran (`user-rejected`, `permission-rule`) |
 | `attachment` | With `attachment.type` `queued_command` and `attachment.origin.kind` `human`: a prompt the user typed while the agent worked. No `user` record holds it; `render` prints it as `USER (queued)`. The [context cost](#context-cost) reads six more types: `instructions` (the AGENTS.md and CLAUDE.md files loaded, with path and content), `skill_listing` (the listing text, one `- <name>: <text>` entry per skill), `agent_listing_delta` (`addedLines` of the agent listing), `invoked_skills` (each skill body loaded again after a compaction), `file` (a file's text Claude Code attached itself, mostly the files it restores after a compaction), `edited_text_file` (a snippet of a read file that changed on disk) |
 | `system` | With `subtype` `compact_boundary`: a compaction. The context before it is replaced by a summary |
