@@ -36,7 +36,7 @@ The rest of the CLI is outside this skill. Most of it opens, raises or closes a 
 
 `revier list` is the overview. Name the projects on every `--json` call: without a name it prints every project in full, thousands of lines. A `name@host` row is a link to a project on another machine, and its name is the part before the `@`.
 
-One unknown name fails the whole `--json` call with `no project named`, so keep its stderr. Where the user names a project by a word that is not its name, such as its repository, its directory or the activity of an agent, find it with the script of this skill:
+One unknown name fails the whole `--json` call with `no project named`, so keep its stderr. Where the user names a project by a word that is not its name, such as its repository, its directory or the activity of an agent, find it with the script of this skill, unless the Scripts line above shows no python3:
 
 ```bash
 python3 "<base directory for this skill>/scripts/find-project.py" <word>..
@@ -62,7 +62,7 @@ The JSON of `revier list --json` is an array with one element per named project.
 
 Your own entry is in the project that `revier status` names: the one whose `.state.session` equals `$CLAUDE_CODE_SESSION_ID`. Where none or several do, it is the one whose `.panel` equals `$KITTY_WINDOW_ID`, `$TMUX_PANE` or `$HERDR_PANE_ID`, for the kitty, tmux or herdr that the `runtime` line of `revier status` names. Every other entry is another agent, in your own project too.
 
-A name from ListAgents is the agent whose `.state.name` equals it: the script above finds it in every project. Where no agent or several match, pick by `.state.activity`, or ask the user. A session in the background has no entry.
+A name from ListAgents is the agent whose `.state.name` equals it: the script above finds it in every project, unless the Scripts line above shows no python3. Where no agent or several match, pick by `.state.activity`, or ask the user. A session in the background has no entry.
 
 ## Another project's source
 
@@ -75,7 +75,7 @@ For every other project, `.path_exists` decides:
 
 ## Past use
 
-For a question about the last days, such as which projects the user worked in, read `<base directory for this skill>/references/past-use.md` and run its script rather than `revier events`.
+For a question about the last days, such as which projects the user worked in, read `<base directory for this skill>/references/past-use.md` and run its script rather than `revier events`, unless the Scripts line above shows no python3.
 
 ## Prompting another agent
 

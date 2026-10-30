@@ -1,6 +1,6 @@
 # Past use
 
-Run the script of this skill. Its arguments are those of `revier events`:
+Run the script of this skill, unless the Scripts line of the skill shows no python3: then run `revier events` after `revier events --help`. Its arguments are those of `revier events`:
 
 ```bash
 python3 "<base directory for this skill>/scripts/past-use.py" --days <n>
