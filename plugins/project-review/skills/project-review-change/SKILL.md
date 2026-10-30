@@ -106,8 +106,8 @@ applies the fixes it settled.
 
    Done when the review carries one of the four verdict labels, every finding a grade, and
    every action a tag. An untagged action counts as `open`, and so does a `settled` one
-   that names a finding not graded `proven` and does not say its action
-   costs nothing real: its question is whether to apply it as stated. Where the
+   that names a finding not graded `proven` without the no-cost claim the prompt asks
+   for: its question is whether to apply it as stated. Where the
    reviewer reports no standard to measure against, relay that and end the run.
 
 4. **Relay the review.** Surface the agent's verdict and findings as it wrote them; do not
