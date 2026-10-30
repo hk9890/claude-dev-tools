@@ -33,11 +33,12 @@ applies the fixes it settled.
    for a pull request.
 
    **Prove the subject exists before you spawn anything**: the reviewer takes the diff
-   itself, and an empty subject comes back as a confident review of nothing. Each ref of
-   the range must resolve (`git rev-parse --verify --quiet <ref>`): where one does not,
-   name it, ask which branch was meant, and stop. The file list is what
-   `git diff --name-only <range>` or `gh pr diff <n> --name-only` prints, plus the
-   untracked files of a dirty tree. Where that command fails, relay its error and stop;
+   itself, and an empty subject comes back as a confident review of nothing. For a branch,
+   `<base>` and `<branch>` must each resolve (`git rev-parse --verify --quiet <base>`, and
+   the same for `<branch>`): where one does not, name it, ask which branch was meant, and
+   stop. The file list is what `git diff --name-only HEAD` (a dirty tree),
+   `git diff --name-only <base>...<branch>` or `gh pr diff <n> --name-only` prints, plus
+   the untracked files of a dirty tree. Where that command fails, relay its error and stop;
    where the list is empty, say the subject contains no changes, and stop.
 
    `--fix` edits the working tree, so it holds only for a subject checked out here: the

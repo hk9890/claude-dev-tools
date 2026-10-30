@@ -61,8 +61,8 @@ For every other project, `.path_exists` decides:
 
 ## Past use
 
-For a question about the last days, such as which projects the user worked in, read `<base directory for this skill>/references/past-use.md` and follow it.
+For a question about the last days, such as which projects the user worked in, read `<base directory for this skill>/references/past-use.md` and run its script rather than `revier events`.
 
 ## Prompting another agent
 
-A prompt redirects work the user started in another window. Send one when the user asked you to reach that agent: read `<base directory for this skill>/references/prompting.md` before your first `revier agent` command, and follow it.
+Before your first `revier agent` command of any kind (`wait`, `read`, `prompt`, `send-keys` or `new`), read `<base directory for this skill>/references/prompting.md` and follow it. A prompt redirects work the user started in another window: send one only when the user asked you to reach that agent.

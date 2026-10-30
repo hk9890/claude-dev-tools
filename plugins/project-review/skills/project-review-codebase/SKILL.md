@@ -80,7 +80,8 @@ modes are actually exercised.
    Then surface it in one line, e.g.
    `Full report with diagrams: /tmp/codebase-review-20260724-101500.md`
    — and note what they can do with it:
-   - **Decide on it** — follow `../../references/decision-split.md` over the open
+   - **Decide on it** — follow
+     `<base directory for this skill>/../../references/decision-split.md` over the open
      actions plus any
      `architecture_candidates`. "the codebase review" is what was reviewed. Done when
      every open item has been put to the user and the settled batch has been named.

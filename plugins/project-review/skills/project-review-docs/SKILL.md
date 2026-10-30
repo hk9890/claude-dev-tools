@@ -116,7 +116,8 @@ docs inline. The workflow returns a structured report; relay it.
      agent's findings, unmerged and each naming its own file, so relay it only as
      raw material, never as the report.
 
-   Once relayed, follow `../../references/decision-split.md` over the open findings.
+   Once relayed, follow `<base directory for this skill>/../../references/decision-split.md`
+   over the open findings.
    "the docs audit" is what was
    reviewed. Done when every open item has been put to the user and the settled batch
    has been named.
