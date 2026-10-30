@@ -12,12 +12,10 @@ language this project already uses, and say what each thing *is* rather than the
 chat gave it — "the shared-database option", never "option A". Close by naming what you
 left out.
 
-Then, where `html-visualization:html-visualize-feedback` is in your available skills, print this
-line so I can take the long form in a browser, pointing it at
-[the brief](references/html-explanation.md) with the resolved absolute path:
+Then print this line, for me to type to take the long form in a browser, pointing it at
+[the brief](references/html-explanation.md) with the resolved absolute path, and say that
+it needs the `html-visualization` plugin. Leave the call to me:
 
 ```
 /html-visualization:html-visualize-feedback explain <subject> — follow the brief at <base directory for this skill>/references/html-explanation.md; it is instructions for the page, not content to typeset
 ```
-
-Without that skill, end after naming what you left out.

@@ -1,7 +1,7 @@
 ---
 name: revier
 description: "revier: other projects on this machine, their agents, and their source."
-when_to_use: "Use when a task needs another project or another agent the user runs: where a project is checked out, which agents run and in what state, prompting one, or which projects the user worked in lately. Triggers on 'revier', 'the agent in <project>', 'other Claude instances in this project', 'the projects I worked on'. Not for subagents this session spawns. ListAgents shows every session, idle ones too, not which agents work in a project."
+when_to_use: "Use when a task needs another project or another agent the user runs: its checkout, its agents and their state, prompting one, or the projects worked in lately. Triggers on 'revier', 'the agent in <project>', 'other Claude instances in this project', 'the projects I worked on'. Not for subagents this session spawns. ListAgents shows every session, not which agents work in a project."
 allowed-tools: Bash(revier version*), Bash(revier --help*), Bash(revier status*), Bash(revier list*), Bash(revier events*), Bash(revier agent --help*), Bash(revier agent wait*), Bash(revier agent read*), Bash(revier agent new --no-focus*)
 ---
 
@@ -40,7 +40,7 @@ The JSON is an array with one element per named project. Each element gives:
 - `.project.path`: the checkout. `.path_exists` says whether it is cloned.
 - `.project.git_url`: its remote.
 - `.project.remote`: set for a link alone. The path, `.path_exists` and each `.state.dir` are then its host's, not this machine's.
-- `.running`: whether a window of its workspace is open. For information only: step 2 of "Prompting another agent" decides on `.home`.
+- `.running`: whether a window of its workspace is open. For information only: step 2 of `<base directory for this skill>/references/prompting.md` decides on `.home`.
 - `.home`: the home window, where `agent new` adds its tab. A project whose home window is not open has no `.home`.
 - `.agents[]`: every agent in it, where the table shows one. A project with no agent has no `.agents`. Each agent gives:
   - `.panel` and `.state.status`.
@@ -61,86 +61,8 @@ For every other project, `.path_exists` decides:
 
 ## Past use
 
-`revier list` shows what is open now. For a question about the last days, such as which projects the user worked in, run the script of this skill. Its arguments are those of `revier events`:
-
-```bash
-command -v python3 >/dev/null || { echo "STOP: python3 is not on PATH. Tell the user, and read revier events --help instead."; exit 1; }
-python3 "<base directory for this skill>/scripts/past-use.py" --days <n>
-```
-
-It prints one JSON line per project, most used first: the project with more `.days`, then the one with more `go` presses. Each line gives:
-
-- `.project`, and `.host` for a project on a linked host. A link and the project it points to are one line, under the name of the link, with `.host_project` for its name on that host.
-- `.days`: the days, on the clock of this machine, on which revier did something there. A project with `.sessions[]` and no `.days` had an agent open that revier was not asked to show: report it apart, as open and not as worked in.
-- `.last`: the time of the newest event.
-- `.events`: a count per kind, except `agent session`, which `.sessions[]` carries. `revier events --help` says what each kind records.
-- `.sessions[]`: each conversation an agent held there, with its `.agent`, `.session` and `.dir`.
-
-A warning on stderr names a linked host that gave no events: report that its projects are missing from the answer.
-
-To act on the projects, for example to list the pull requests the user opened in them, take each checkout from `revier list --json <name>..` and run `git` or `gh` there under the rules of "Another project's source". A line with `.host` and no `.host_project` is a project of that host with no link here, so it has no checkout here: report it by name and host.
-
-A conversation of a Claude agent on this machine is the one transcript that `~/.claude/projects/*/<session>.jsonl` matches. The format of a transcript is internal to Claude Code and can change. A conversation on a line with `.host` is on that host, out of reach from here.
+For a question about the last days, such as which projects the user worked in, read `<base directory for this skill>/references/past-use.md` and run its script rather than `revier events`.
 
 ## Prompting another agent
 
-A prompt redirects work the user started in another window. Send one when the user asked you to reach that agent.
-
-1. Run `revier agent --help`. It is the authority for the `<agent>` address, the statuses, the `<key>` names, and what `prompt` refuses.
-2. Find the agent with `revier list --json <project>`.
-   - No agent, and no `.home`: `revier open <name>` opens or raises the workspace and takes the focus, so give the command to the user.
-   - No agent, and `.home` is set: add one, and use the address the command prints as `<agent>`:
-
-     ```bash
-     revier agent new --no-focus -p <name>
-     ```
-
-     The focus stays where it is. On kitty, a workspace window that does not hold the keyboard shows the new tab, so tell the user that the project has a new agent tab. The address names an agent once the harness in the tab has started: run `revier agent wait <agent> --until idle --timeout 30`. It ends in one of three ways:
-     - It prints `idle`: go to step 4.
-     - It exits 2 on the timeout: the agent is there and is not idle, so run `revier list --json <name>` again and continue with step 3.
-     - It fails with another error: the harness has not started, so run the `wait` again. After one minute of that error, report the message of revier to the user and stop here.
-   - An agent with no `.ref`: report that it runs on the other machine, out of reach from here.
-   - Several agents: pick by `.state.activity` and address it as `<project>:<panel>`. Ask the user when the activity does not decide it.
-3. Read its `.state.status`. An `idle` agent takes a prompt. `prompt` refuses an agent at `attention` and one at `unknown`. For `attention`, follow "An agent at attention". The state of one at `unknown` cannot be read: report that to the user. For a `running` one, wait first and read the status the wait prints:
-
-   ```bash
-   revier agent wait <agent> --until stopped --timeout <seconds>
-   ```
-
-   Keep `--timeout` below the timeout of the Bash call that runs it, or the call dies before `wait` can exit. On a timeout `wait` prints no status and exits 2: the agent still runs, so run the `wait` again or report that it runs.
-4. Send one self-contained line, because the agent has nothing of this conversation:
-
-   ```bash
-   revier agent prompt <agent> -- '<text>'
-   ```
-
-   Send it once. On a non-zero exit, report the message of revier as it is and stop here: the text may already be in the composer of the agent, and a second send types it again. A warning that the agent stayed idle means revier did not see the turn start, and the text may sit in the composer. Report it and stop here too: step 5 would read that `idle` as a finished turn.
-5. Where the user hands the work to the agent and asks for no answer back, report the address of the agent and stop here: it goes on alone. Else wait for the turn with the command from step 3. `idle` means the turn is done. `attention` means the agent now waits for its user: follow "An agent at attention". On exit 2 the turn still runs, and the prompt is delivered, so repeat only the `wait`.
-6. Read the answer of the agent, and give it to the user:
-
-   ```bash
-   revier agent read <agent>
-   ```
-
-   revier refuses with "the agent's last message cannot be read" for the agent of a link, for a harness other than Claude Code, and for an agent that has said nothing. Then read its panel:
-
-   ```bash
-   revier agent read <agent> --screen --lines <n>
-   ```
-
-   The screen is the text of the panel, with the composer and the status line of the harness in it. Raise `--lines` until the output holds the start of the answer.
-
-### An agent at attention
-
-An agent at `attention` shows a dialog, often a permission question, so the answer belongs to its user. Report the agent and its status to the user, send no key, and stop here: steps 4 to 6 need an agent that is past its dialog.
-
-Answer the dialog yourself only where the user asked for that in this session. Then these steps take the place of the report:
-
-1. Read the dialog with `revier agent read <agent> --screen --lines <n>`.
-2. Send the keys for the answer the user asked for. A key lands on whatever the panel shows, so send only keys that the screen from step 1 offers:
-
-   ```bash
-   revier agent send-keys <agent> <key>..
-   ```
-
-3. Read the screen again. The dialog is answered when the screen shows it no more: go back to the step that sent you here, and wait for the turn. Where the screen still shows a dialog, send no further key: report the text of the dialog to the user and stop here.
+Before your first `revier agent` command of any kind (`wait`, `read`, `prompt`, `send-keys` or `new`), read `<base directory for this skill>/references/prompting.md`. Follow all of it to prompt an agent. To add an agent without a prompt, stop after the `wait` of step 2. For any other command, use steps 1 and 2 only to find the agent, add none and send no prompt, then follow the steps of the commands you run. A prompt redirects work the user started in another window: send one only when the user asked you to reach that agent.

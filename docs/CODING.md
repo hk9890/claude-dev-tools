@@ -18,6 +18,7 @@ Depend on a specific technology only where the dependency is declared:
 
 - Another plugin → `dependencies` in `plugin.json` (below).
 - Another plugin, used only where it is installed → no entry: check that its skill is in the session's available skills, and state what the caller does without it. `worktree-flow:worktree-review` is the worked example: where `project-review-change` is absent, it reports the rules review as skipped.
+- A user-only skill of another plugin, offered to the user → no entry and no check, because a user-only skill is never in the available skills: print its slash command for the user to type, and name the plugin it needs. `project-review`'s `decision-split.md` is the worked example.
 - A CLI tool or runtime → a load-time check that stops with guidance when it is missing (below).
 - A whole platform → name the plugin for it, so the constraint is visible before install. `keep-awake-linux` is the worked example: logind is the point of the plugin, and where `systemd-inhibit` is absent its mod holds nothing and says so once in a toast.
 
@@ -100,7 +101,7 @@ disable-model-invocation: true
 ---
 ```
 
-**Schema B — model-discoverable.** Only where the `Skill` tool must reach the skill: siblings or agents load it by name (`tasks:tasks-core`, `instruction-writing:writing-project-docs`), the model should fire it unprompted from context (`writing-skills`), or a user-facing command skill must also answer a prose request for its surface instead of only the typed slash command (`html-visualize-ask`, `html-visualize-feedback`). `when_to_use` carries positive triggers, exclusions, and the argument shape where it helps.
+**Schema B — model-discoverable.** Only where the `Skill` tool must reach the skill: siblings or agents load it by name (`tasks:tasks-core`, `instruction-writing:writing-project-docs`), or the model should fire it unprompted from context (`writing-skills`). A skill another skill only offers to the user stays Schema A ([Portability](#portability)). `when_to_use` carries positive triggers, exclusions, and the argument shape where it helps.
 
 ```yaml
 ---

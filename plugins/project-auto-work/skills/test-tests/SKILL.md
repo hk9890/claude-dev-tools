@@ -3,7 +3,7 @@ name: test-tests
 description: "Empirical test-suite strength audit: mutation kill rate, flake, speed and unit isolation, measured rather than read. Reports and proposes; never keeps an edit."
 user-invocable: true
 disable-model-invocation: true
-argument-hint: "[low|medium|high|ultra] [html-viz] [path]"
+argument-hint: "[low|medium|high|ultra] [path]"
 ---
 
 Empirical test-suite strength audit. Launch the audit workflow — do **not** probe the
@@ -19,11 +19,9 @@ Nothing is ever committed, no test is written, nothing is installed.
 `SKILL_DIR` below is the **base directory for this skill**, given at the top of this file
 when the skill loads. It is absolute and install-correct — build every path from it.
 
-1. Parse `$ARGUMENTS` as `[low|medium|high|ultra] [html-viz] [path]`. All optional, and
-   either leading token stands without the other. A `low` | `medium` | `high` | `ultra`
-   token is the **level** and an `html-viz` token puts the open decisions on a browser
-   form in step 5; take both from the front of the argument, in either order. Everything
-   left is the target path (default: the repo root — resolve a free-form description to
+1. Parse `$ARGUMENTS` as `[low|medium|high|ultra] [path]`. Both are optional. A leading
+   `low` | `medium` | `high` | `ultra` token is the **level**. Everything left is the
+   target path (default: the repo root — resolve a free-form description to
    a directory or fall back to the root).
 
    If no level token is given, ask with `AskUserQuestion` (header "Level"):
@@ -125,7 +123,7 @@ when the skill loads. It is absolute and install-correct — build every path fr
 
    Each proposal is tagged `settled` or `open`. Follow
    `<base directory for this skill>/../../references/decision-split.md` (plugin-root
-   layout: `../..` is correct) — it defines both words and branches on `html-viz`. Done
+   layout: `../..` is correct) — it defines both words. Done
    when every open item has been put to the user and the settled batch has been named.
 
 If `python3` is missing or the workflow cannot launch, do not improvise an inline

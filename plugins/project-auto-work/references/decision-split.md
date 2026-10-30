@@ -37,5 +37,16 @@ is the user's to say, in the same way they would answer any other message.
 
 ## The browser form
 
-Only where `html-viz` was passed and an item is open, read [browser-form.md](browser-form.md)
-beside this file and follow it.
+With no open item, skip this section.
+
+After the relay and the saved report, state the count of open items and give this
+command for the user to type, to answer them on a browser form; it needs the separate
+`html-visualization` plugin. Never call that skill yourself, nor build its form by other
+means: it is the user's to type.
+Keep the filter in its argument, so it survives into a fresh turn:
+
+```
+/html-visualization:html-visualize-ask the <N> open decisions from <the test-app run|the test-suite audit> — the settled proposals are already agreed
+```
+
+Then say that the form holds only the open items, not the settled batch.
