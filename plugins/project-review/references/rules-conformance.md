@@ -67,7 +67,7 @@ passes all four tests:
 - **Local** — it names this project's own mechanism. A principle any code review
   applies, or a rule a document already states, is no addition.
 - **A rule** — a later change can break it. A bug or a missing test goes to the general
-  code review, a wrong fact to `project-review-docs`, as the sections below say.
+  code review, a wrong fact to `project-review-docs`.
 - **Ready** — it names the document, the section and the exact sentence to add, with its
   answer chosen. Where its answer is still open, leave it out; where it bears on a
   finding, ask it in that finding's `open` action.

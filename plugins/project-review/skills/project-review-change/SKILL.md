@@ -118,7 +118,8 @@ applies the fixes it settled.
 
    Keep `## Suggested rule additions` visibly apart from the findings when you relay it.
    Merging the two is the one failure that turns this review into an ordinary code review.
-   Relay only the additions this session has not relayed before.
+   Give an addition this session relayed before one line only: its document and "relayed
+   before".
 
    For a "did you really check X?" follow-up, **re-run the skill**; never answer from the
    review text alone.
