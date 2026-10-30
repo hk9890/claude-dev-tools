@@ -18,8 +18,13 @@ reviewing agent where none does. Carry each item into the group it came back in.
 
 ## Relaying
 
-Relay the two groups separately: the settled ones as a batch you can just do, the
-open ones as questions carrying their `options` and `recommendation`.
+Relay the two groups separately: the settled ones as a batch you can just do, then the
+open ones last, as one numbered list the user answers in one reply, one question per
+item. Each question reads without the review beside it, and carries the item's
+`options` in the review's words. The option its `recommendation` picks comes first,
+marked as recommended, with the reason and the cost the review gave. An item with no
+`options` asks whether to apply it as stated; an item with no `recommendation` says
+that it has none.
 
 ## The browser form
 

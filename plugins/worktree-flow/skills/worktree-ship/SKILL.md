@@ -44,4 +44,4 @@ Call the Skill tool with `worktree-flow:worktree-review` and the PR number, even
 
 ## 7. Report and stop
 
-Report the PR URL, the worktree path, each gate and drive with its result, the review result (the items `worktree-review` kept for this report, or why it stopped), each step skipped, and any stray work left on the main checkout. Next step: the user starts `/worktree-flow:worktree-merge`. Stay in the worktree.
+Report the PR URL, the worktree path, each gate and drive with its result, each step skipped, stray work left on the main checkout, the next step (the user starts `/worktree-flow:worktree-merge`), and last the review: the items `worktree-review` kept, in their form, or why it stopped. Stay in the worktree.
