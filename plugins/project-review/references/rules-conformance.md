@@ -57,9 +57,24 @@ general code review cannot see, and it is not found by waiting to trip over it.
 ## What is not a finding
 
 **A problem no document states.** You will see them, and they are real. They are not
-violations. Collect them in a separate list of suggested rule additions, each naming the
-document that should carry it, and say plainly that these are proposals for the
-documents rather than defects in the subject. They never change the verdict.
+violations, and they never change the verdict. Every line a document gains is read by
+every later session, so a problem becomes a **suggested rule addition** only where it
+passes all four tests:
+
+- **Recurring** — it binds a kind of change this project makes again: a kind of file,
+  call, message or duty. A rule that only the subject's own symbol, file or line can
+  break binds no later change.
+- **Local** — it names this project's own mechanism. A principle any code review
+  applies, or a rule a document already states, is no addition.
+- **A rule** — a later change can break it. A bug or a missing test goes to the general
+  code review, a wrong fact in a document to `project-review-docs`.
+- **Ready** — it names the document, the section and the exact sentence to add, with its
+  answer chosen. Where its answer is still open, leave it out; where it bears on a
+  finding, ask it in that finding's `open` action.
+
+List two at most, the one that binds the most later changes first, and say plainly that
+these are proposals for the documents rather than defects in the subject. An empty list
+is the usual result.
 
 **A defect that only a general rule covers.** A finding rests on a rule that names the
 thing the subject got wrong. A rule that names no specific thing — "code must be
