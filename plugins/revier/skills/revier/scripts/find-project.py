@@ -9,7 +9,8 @@ A word names a project where it is part of, in any case:
 - `dir`: the last part of its checkout path.
 - `repo`: the repository name in its git URL.
 - `host_project`: for a link, the project's name on its host.
-- `agent`: the activity or the harness's name of one of its agents.
+- `agent`: the activity of one of its agents, or the harness's name of
+  one, whole: a harness names an agent after its project.
 
 Each line gives the `word`, the `project`, the `matched` fields, and for an
 `agent` match the `agents` it matched, each with its `address` where it has
@@ -56,7 +57,8 @@ def matches(word, view):
             "status": state.get("status"),
         }
         for agent in view.get("agents") or []
-        if any(word in (state := agent.get("state") or {}).get(key, "").lower() for key in ("activity", "name"))
+        if word in (state := agent.get("state") or {}).get("activity", "").lower()
+        or word == state.get("name", "").lower()
     ]
     if agents:
         matched.append("agent")
@@ -73,7 +75,7 @@ def main():
     for word in words:
         found = False
         for view in views:
-            matched, agents = matches(word.lower(), view)
+            matched, agents = matches(word.lower(), view) if word else ([], [])
             if matched:
                 found = True
                 line = {"word": word, "project": view["project"]["name"], "matched": matched}

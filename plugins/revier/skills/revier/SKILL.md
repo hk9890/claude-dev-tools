@@ -2,7 +2,7 @@
 name: revier
 description: "revier: other projects on this machine, their agents, and their source."
 when_to_use: "Use when a task needs another project or another agent the user runs: its checkout, its agents and their state, prompting one, or the projects worked in lately. Triggers on 'revier', 'the agent in <project>', 'other Claude instances in this project', 'the projects I worked on'. Not for subagents this session spawns. ListAgents shows every session, not which agents work in a project."
-allowed-tools: Bash(revier version*), Bash(revier --help*), Bash(revier status*), Bash(revier list*), Bash(revier events*), Bash(revier agent --help*), Bash(revier agent wait*), Bash(revier agent read*), Bash(revier agent prompt*), Bash(revier agent new --no-focus*), Bash(python3 *past-use.py*), Bash(python3 *find-project.py*)
+allowed-tools: Bash(revier version*), Bash(revier --help*), Bash(revier status*), Bash(revier list*), Bash(revier events*), Bash(revier agent --help*), Bash(revier agent wait*), Bash(revier agent read*), Bash(revier agent prompt*), Bash(revier agent new --no-focus*), Bash(python3 */skills/revier/scripts/past-use.py*), Bash(python3 */skills/revier/scripts/find-project.py*)
 ---
 
 # revier
@@ -10,6 +10,8 @@ allowed-tools: Bash(revier version*), Bash(revier --help*), Bash(revier status*)
 revier is the user's registry of every project on this machine: each project's checkout, its windows, and the agents running in it.
 
 Installed: !`revier version 2>/dev/null || echo "STOP: revier is not on PATH. Tell the user to install it from https://github.com/hk9890/revier, and do nothing else with this skill."`
+
+Scripts: !`python3 --version 2>/dev/null || echo "python3 is not on PATH, so the two scripts of this skill do not run: tell the user where a step needs one."`
 
 ## The focus rule
 
@@ -34,13 +36,13 @@ The rest of the CLI is outside this skill. Most of it opens, raises or closes a 
 
 `revier list` is the overview. Name the projects on every `--json` call: without a name it prints every project in full, thousands of lines. A `name@host` row is a link to a project on another machine, and its name is the part before the `@`.
 
-One unknown name fails the whole `--json` call with `no project named`, so keep its stderr. Where the user names a project by a word that is not its name, such as a repository, a CLI or the activity of an agent, find it with the script of this skill:
+One unknown name fails the whole `--json` call with `no project named`, so keep its stderr. Where the user names a project by a word that is not its name, such as its repository, its directory or the activity of an agent, find it with the script of this skill:
 
 ```bash
 python3 "<base directory for this skill>/scripts/find-project.py" <word>..
 ```
 
-It prints one JSON line per project that a word is part of: its `.project`, the fields it `.matched` (`name`, `dir`, `repo`, `host_project`, `agent`), and for an agent match the `.agents` it matched, with their addresses. A word that names nothing prints `.project` null: try a shorter part, or ask the user.
+It prints one JSON line per project that a `.word` is part of: its `.project`, the fields it `.matched` (`name`, `dir`, `repo`, `host_project`, `agent`), and for an agent match the `.agents` it matched, with their addresses. A word that names nothing prints `.project` null: try a shorter part, or ask the user.
 
 The JSON is an array with one element per named project. Each element gives:
 

@@ -44,7 +44,7 @@ cat > "$FAKE/list" <<'EOF'
  {"project": {"name": "far", "path": "/src/app", "remote": {"host": "box", "project": "api-v2"}}}]
 EOF
 
-out=$(run task webshop storefront api-v2 checkout shop-a1 nothing 2>"$FAKE/stderr")
+out=$(run task webshop storefront api-v2 checkout shop-a1 shop "" nothing 2>"$FAKE/stderr")
 assert_eq "exit 0" 0 $?
 assert_eq "the whole list is read" "list --json" "$(cat "$FAKE/args")"
 
@@ -55,6 +55,8 @@ assert_eq "a link's project on its host" "far host_project" "$(jq -r 'select(.wo
 assert_eq "an activity names the agents it matches, and no other" '[{"address":"shop:home:7","activity":"Checkout redesign","name":"shop-a1","status":"idle"},{"address":null,"activity":"Checkout tests","name":null,"status":"running"}]' "$(jq -c 'select(.word == "checkout") | .agents' <<< "$out")"
 assert_eq "an agent with no target has no address" "null" "$(jq -r 'select(.word == "checkout") | .agents[1].address' <<< "$out")"
 assert_eq "the harness's name of an agent" "shop:home:7" "$(jq -r 'select(.word == "shop-a1") | .agents[0].address' <<< "$out")"
+assert_eq "a part of a harness's name matches no agent" '["name","dir"]' "$(jq -c 'select(.word == "shop") | .matched' <<< "$out")"
+assert_eq "an empty word names nothing" '{"word":"","project":null}' "$(jq -c 'select(.word == "")' <<< "$out")"
 assert_eq "a project matched by name only has no agents" "null" "$(jq -r 'select(.word == "task") | .agents' <<< "$out")"
 assert_eq "a word that names nothing" '{"word":"nothing","project":null}' "$(jq -c 'select(.word == "nothing")' <<< "$out")"
 
