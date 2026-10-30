@@ -26,7 +26,7 @@ The page is the same re-pitch in layers, so the reader stops as soon as it lands
 
 1. **The answer** — the point in one or two sentences, above everything else. A reader who
    stops here has what the chat message failed to deliver.
-2. **The re-pitch** — the 400 words the chat already carried, unchanged, under the answer.
+2. **The re-pitch** — the one the chat already carried, unchanged, under the answer.
 3. **What the cap cost** — the points the closing line named as dropped, one section each.
    This is the reason the page exists; give it the most room.
 4. **The names** — a two-column table of every label this conversation has used against

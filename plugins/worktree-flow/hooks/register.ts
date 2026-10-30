@@ -1,7 +1,7 @@
 import type { Register } from 'claude-code'
 
 const DENY_REASON =
-  'Use the EnterWorktree tool for a persistent worktree, not `git worktree add`: it creates the worktree under .claude/worktrees/ and enters it in one step, and ExitWorktree can remove it later. A throwaway probe (`git worktree add --detach <dir> <ref>`) into /tmp or the scratchpad is allowed. If EnterWorktree cannot express what you need, tell the user instead of creating the worktree by hand. Where the command only mentions `git worktree add` in text, such as a prompt or a commit message, put that text in a file and pass the file.'
+  'Use the EnterWorktree tool for a persistent worktree, not `git worktree add`: it creates the worktree under .claude/worktrees/ and enters it in one step, and ExitWorktree can remove it later. A throwaway probe (`git worktree add --detach <dir> <ref>`) into /tmp or the scratchpad is allowed. If EnterWorktree cannot express what you need, tell the user instead of creating the worktree by hand. Where the command only mentions `git worktree add` in text, such as a prompt or a commit message, put that text in a file and pass the file in its place (`git commit -F <file>`, `claude -p < <file>`); a script that runs the add still makes a persistent worktree.'
 
 // `git` must sit in command position, so a commit message or PR body that mentions the command
 // passes. Options between `git` and `worktree` (`git -C <dir> worktree add`) still match, but not
