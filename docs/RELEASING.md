@@ -6,9 +6,9 @@ Requires `gh` (authenticated), `jq`, and `python3` on PATH. Cut releases from a 
 
 ## Gates
 
-Re-run both [CHANGE-WORKFLOW.md pre-push checklist](CHANGE-WORKFLOW.md#pre-push-checklist) gates over the whole repo, not just the release commit:
+Re-run two of the [CHANGE-WORKFLOW.md pre-push checklist](CHANGE-WORKFLOW.md#pre-push-checklist) gates over the whole repo, not just the release commit. Docs-Route-Check and Shell-Lint do not apply: a bump changes only `"version"` lines in JSON files.
 
-- **Test-Run** — `bash tests/run-all.sh`. It runs `scripts/check-internal-consistency.py`, so it is what catches a botched bump: a version mismatch between any `plugin.json` and `marketplace.json`, or more than one distinct version in the repo, fails it.
+- **Test-Run** — `bash tests/run-all.sh`. It runs `scripts/check-internal-consistency.py` over the live repo.
 - **Plugin-Structure-Check** — `plugin-dev:plugin-validator` over **every** plugin, not just recently changed ones, with zero errors. The full sweep is the point: nothing tracks whether it ran on each merged PR, so the release is where a never-validated plugin is caught. Skip it only if `plugin-dev` cannot be installed.
 
 ## Choosing the number
@@ -30,19 +30,19 @@ jq -r '.metadata.version' .claude-plugin/marketplace.json   # the version being 
 find plugins -name plugin.json -path "*/.claude-plugin/*"   # every file to bump
 ```
 
-1. Run both gates above.
+1. Run the two gates above.
 2. Bump `"version"` in every `plugin.json` found above to the same new version.
 3. Bump every `"version"` in `.claude-plugin/marketplace.json` to match. Edit only the version lines: piping these files through `jq` rewrites unrelated compact arrays and buries the bump in churn.
-4. Verify — prints nothing when they match: `diff <(jq -r '.plugins[] | "\(.name) \(.version)"' .claude-plugin/marketplace.json | sort) <(find plugins -name plugin.json -path "*/.claude-plugin/*" -exec jq -r '"\(.name) \(.version)"' {} \; | sort)`
+4. Verify — prints nothing when they match: `diff <(jq -r '.plugins[] | "\(.name) \(.version)"' .claude-plugin/marketplace.json | sort) <(find plugins -name plugin.json -path "*/.claude-plugin/*" -exec jq -r '"\(.name) \(.version)"' {} \; | sort)`. Then run `mise run check-consistency`: the diff misses a plugin left at the old version in both files and an unbumped `metadata.version`, and the checker fails on more than one distinct version.
 5. Commit as `Bump all plugins to vX.Y.Z` on a `chore/release-X.Y.Z` branch and merge via PR — `master` is protected ([CHANGE-WORKFLOW.md](CHANGE-WORKFLOW.md)), so the bump cannot be pushed to it directly.
-6. Draft the release notes (below) in the gitignored scratch folder, not in the repo, where the draft would land in the bump commit.
-7. Create the release from the merged bump commit: `gh release create vX.Y.Z --title "vX.Y.Z" --notes-file <draft> --target master`
+6. Draft the release notes (below) in `hako-private/release-notes-vX.Y.Z.md`. The maintainer's global gitignore covers `hako-private/`; never add it to the repo `.gitignore`. A draft at a tracked path lands in the bump commit.
+7. Create the release from the merged bump commit: `gh release create vX.Y.Z --title "vX.Y.Z" --notes-file hako-private/release-notes-vX.Y.Z.md --target master`
 
 Publish in the same sitting the bump PR merges — a merged bump with no tag leaves `marketplace.json` advertising a version that appears in no release. `vX.Y.Z` must tag the commit whose `plugin.json` files read `X.Y.Z`.
 
 ## Release notes
 
-`github-releases:github-releases` carries the generic release flow. **Local delta:** its `release-notes-guide.md` structure does not apply — use the structure below, and no emoji.
+The user-only `/github-releases:github-releases` carries the generic release flow; the Skill tool cannot load it. **Local delta:** its `release-notes-guide.md` structure does not apply — use the structure below, and no emoji.
 
 Write around **what changed for users**, not the PRs that changed it: a reader scanning the release should learn what they can now do, and what will behave differently, without opening a single PR.
 
