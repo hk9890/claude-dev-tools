@@ -10,7 +10,7 @@
 #
 # project-exec-init's earned-topic table is deliberately NOT pinned here: whether a repo
 # has earned a topic doc is a judgement, and a row asserting one exists would only restate
-# the list. docs/REVIEWING.md names it as the human step.
+# the list. docs/CODING.md lists it as a manual step.
 set -uo pipefail
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"

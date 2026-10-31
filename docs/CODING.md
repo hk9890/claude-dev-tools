@@ -10,6 +10,20 @@ What a change to this plugin marketplace needs in order to work.
 4. Add a row to the plugin table in `README.md`, in `marketplace.json` order.
 5. Scaffold components with the `plugin-dev` skill set — an external plugin, installed separately ([TESTING.md](TESTING.md)).
 
+## Renaming a plugin
+
+The new name obeys step 1 of [Adding a new plugin](#adding-a-new-plugin). Add the old-to-new entry to the top-level `renames` map in `.claude-plugin/marketplace.json`. Claude Code follows it when an installed name is no longer found and migrates the user's `enabledPlugins`; without it every existing install loses the plugin, and no gate catches the omission. Rename every `<old-name>:<skill>` reference and every `dependencies` entry that names the plugin: `mise run check-consistency` checks only references to plugins that exist, and nothing checks `dependencies`. The release notes carry the rename ([RELEASING.md](RELEASING.md#release-notes)).
+
+## Adding a canonical doc
+
+Register a new canonical topic doc in three plugins; each keeps its own copy, as no plugin can import another:
+
+1. `instruction-writing`, under `plugins/instruction-writing/skills/writing-project-docs/`: the name in the `## Canonical topic set` block and an ownership block (Audience, Inside, Not inside) in `references/project-setup.md`, a worked example at `examples/docs/<NAME>.md`, and a route in `examples/AGENTS.md`.
+2. `project-review`, under `plugins/project-review/skills/project-review-docs/`: the name in `CANONICAL_DOCS` in `scripts/manifest.py`, in topic-set order, one use case in `USE_CASE_DOCS` in `scripts/history.py` and in `USE_CASES` in `workflows/review-docs.js`, and the name in the canonical-topic list of the NON-STANDARD prompt in `workflows/review-docs.js`.
+3. `project-execute`: a row in the earned-topic table of `plugins/project-execute/skills/project-exec-init/SKILL.md`. Without it `/project-exec-init` never writes the doc.
+
+`tests/marketplace/script-tests/test-canonical-docs.sh` pins the topic set, the ownership blocks, the examples and `USE_CASE_DOCS` to `CANONICAL_DOCS`; `tests/project-review/script-tests/test-history.sh` pins `USE_CASES` to `USE_CASE_DOCS`. No test checks the example route, the NON-STANDARD prompt list or the exec-init row.
+
 ## Portability
 
 A plugin's skills, agents, and workflows run in whatever repository the user installs them into. Write them against what every project has — the working tree, git, the harness's own tools. What this rules out is the undeclared assumption: a skill that greps `plugins/`, hard-codes `mise`, or expects a `docs/` layout it never checks for.
@@ -85,8 +99,6 @@ Directory name and frontmatter `name:` must match. **Sibling skills share one pr
 - ❌ `worktree-flow:ship` — bare verb, shared with no sibling
 
 The exception is a plugin whose names trigger on their own, each a distinct concept rather than a generic operation, where a shared prefix would only dilute them — every skill in `challenge` (`grill`, `kiss`, `are-you-sure`, `what-do-you-mean`).
-
-**When renaming a plugin**, add the old-to-new entry to the top-level `renames` map in `.claude-plugin/marketplace.json`. Claude Code follows it when an installed name is no longer found and migrates the user's `enabledPlugins`; without it every existing install loses the plugin, and no gate here catches the omission. A stored `theme` setting (`custom:<plugin>:<theme>`) is not migrated: say in the release notes that users select the theme again with `/theme`.
 
 ### Frontmatter
 
