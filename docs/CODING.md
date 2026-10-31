@@ -10,6 +10,16 @@ What a change to this plugin marketplace needs in order to work.
 4. Add a row to the plugin table in `README.md`, in `marketplace.json` order.
 5. Scaffold components with the `plugin-dev` skill set — an external plugin, installed separately ([TESTING.md](TESTING.md)).
 
+## Adding a canonical doc
+
+Register a new canonical topic doc in three plugins; each keeps its own copy, as no plugin can import another:
+
+1. `instruction-writing`, under `plugins/instruction-writing/skills/writing-project-docs/`: the name in the `## Canonical topic set` block and an ownership block (Audience, Inside, Not inside) in `references/project-setup.md`, a worked example at `examples/docs/<NAME>.md`, and a route in `examples/AGENTS.md`.
+2. `project-review`, under `plugins/project-review/skills/project-review-docs/`: the name in `CANONICAL_DOCS` in `scripts/manifest.py`, in topic-set order, and one use case in `USE_CASE_DOCS` in `scripts/history.py` and in `USE_CASES` in `workflows/review-docs.js`.
+3. `project-execute`: a row in the earned-topic table of `plugins/project-execute/skills/project-exec-init/SKILL.md`. Without it `/project-exec-init` never writes the doc.
+
+`tests/marketplace/script-tests/test-canonical-docs.sh` pins the topic set, the ownership blocks, the examples and `USE_CASE_DOCS` to `CANONICAL_DOCS`; `tests/project-review/script-tests/test-history.sh` pins `USE_CASES` to `USE_CASE_DOCS`. No test checks the example route or the exec-init row.
+
 ## Portability
 
 A plugin's skills, agents, and workflows run in whatever repository the user installs them into. Write them against what every project has — the working tree, git, the harness's own tools. What this rules out is the undeclared assumption: a skill that greps `plugins/`, hard-codes `mise`, or expects a `docs/` layout it never checks for.

@@ -45,7 +45,7 @@ import sys
 # ---------------------------------------------------------------------------
 # Canonical doc taxonomy — mirrors the authoring standard's project-setup.md
 # (instruction-writing:writing-project-docs). A new canonical doc has to be
-# registered in both; see docs/REVIEWING.md.
+# registered in three plugins; see docs/CODING.md.
 # ---------------------------------------------------------------------------
 
 CANONICAL_ROOT = ["README.md", "AGENTS.md", "CLAUDE.md"]  # required at repo root
