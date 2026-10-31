@@ -20,6 +20,7 @@ How a finished change must look. Each is a condition to check on the diff.
 
   It is an aid, not a gate: only `plugin-dev:plugin-validator` blocks a PR ([CHANGE-WORKFLOW.md](CHANGE-WORKFLOW.md)). The rubric binds the lines the change wrote: a defect on an older line of the same file is a non-blocking suggestion.
 - **`argument-hint` shape.** The hint names the shape in a short bracketed placeholder, because the slash-command picker truncates anything longer, and spells out an enum-valued argument: `[low|medium|high|ultra]`, not `[level]`.
+- **Skill prefix.** A new or renamed skill shares its siblings' prefix, or its plugin is the exception ([CODING.md](CODING.md#naming)).
 - **Minimum version of a mod.** The `README.md` row of a mod says "needs Claude Code 2.1.287+".
 
 ## Out of scope / non-blocking
