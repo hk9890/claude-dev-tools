@@ -6,10 +6,11 @@ Requires `gh` (authenticated), `jq`, and `python3` on PATH. Cut releases from a 
 
 ## Gates
 
-Re-run two of the [CHANGE-WORKFLOW.md pre-push checklist](CHANGE-WORKFLOW.md#pre-push-checklist) gates over the whole repo, not just the release commit. Docs-Route-Check and Shell-Lint do not apply: a bump changes only `"version"` lines in JSON files.
+Re-run three of the [CHANGE-WORKFLOW.md pre-push checklist](CHANGE-WORKFLOW.md#pre-push-checklist) gates over the whole repo, not just the release commit. Shell-Lint does not apply: a bump changes no shell script, and the CI `shellcheck` job runs it on every PR.
 
 - **Test-Run** — `bash tests/run-all.sh`.
 - **Plugin-Structure-Check** — `plugin-dev:plugin-validator` over **every** plugin, not just recently changed ones, with zero errors. The full sweep is the point: nothing tracks whether it ran on each merged PR, so the release is where a never-validated plugin is caught. Skip it only if `plugin-dev` cannot be installed.
+- **Docs-Route-Check** — `python3 plugins/project-review/skills/project-review-docs/scripts/validate-routes.py . --include-docs`. No CI job runs it, so the release is where a broken route that a PR merged is caught.
 
 ## Choosing the number
 
@@ -17,7 +18,7 @@ One version covers every plugin, so it describes the release rather than any one
 
 - **Minor** (`1.26.0` → `1.27.0`) — the default. Any new skill, command, agent, or hook; any behaviour change to an existing one.
 - **Patch** (`1.26.0` → `1.26.1`) — fixes and documentation only, in every plugin.
-- **Major** — a break in how an installed plugin is invoked: a skill or command removed or renamed, or an argument contract changed incompatibly. Never used yet; a retirement with a documented successor has so far gone out as minor.
+- **Major** — a break in how an installed plugin is invoked: a skill or command removed or renamed, or an argument contract changed incompatibly. A rename of a plugin with skills is one: every `<plugin>:<skill>` name changes. Never used yet; a retirement with a documented successor has so far gone out as minor.
 
 Lockstep is the cost of one tag: a patch-only fix in one plugin bumps them all. The alternative is per-plugin tags, which the dependency rule in [CODING.md](CODING.md) already rules out.
 
@@ -30,10 +31,10 @@ jq -r '.metadata.version' .claude-plugin/marketplace.json   # the version being 
 find plugins -name plugin.json -path "*/.claude-plugin/*"   # every file to bump
 ```
 
-1. Run the two gates above.
+1. Run the three gates above.
 2. Bump `"version"` in every `plugin.json` found above to the same new version.
 3. Bump every `"version"` in `.claude-plugin/marketplace.json` to match. Edit only the version lines: piping these files through `jq` rewrites unrelated compact arrays and buries the bump in churn.
-4. Verify — prints nothing when they match: `diff <(jq -r '.plugins[] | "\(.name) \(.version)"' .claude-plugin/marketplace.json | sort) <(find plugins -name plugin.json -path "*/.claude-plugin/*" -exec jq -r '"\(.name) \(.version)"' {} \; | sort)`. Then run `mise run check-consistency`: the diff misses a plugin left at the old version in both files and an unbumped `metadata.version`, and the checker fails on more than one distinct version.
+4. Verify: `python3 scripts/check-internal-consistency.py` must exit 0. It fails on a `plugin.json` that does not match its `marketplace.json` entry, and on more than one distinct version, `metadata.version` included.
 5. Commit as `Bump all plugins to vX.Y.Z` on a `chore/release-X.Y.Z` branch and merge via PR — `master` is protected ([CHANGE-WORKFLOW.md](CHANGE-WORKFLOW.md)), so the bump cannot be pushed to it directly.
 6. Draft the release notes (below) in `hako-private/release-notes-vX.Y.Z.md`. The maintainer's global gitignore covers `hako-private/`; never add it to the repo `.gitignore`.
 7. Create the release from the merged bump commit: `gh release create vX.Y.Z --title "vX.Y.Z" --notes-file hako-private/release-notes-vX.Y.Z.md --target master`
