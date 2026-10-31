@@ -59,6 +59,35 @@ SLASH_COMMAND_RE = re.compile(r"<command-name>/([^<\s]+)</command-name>")
 
 RANKED_BUCKETS = ("pushback", "errors", "output_tokens")
 
+# Printed with the picks: what a pick, a count and a version label mean.
+PICK_LEGEND = {
+    "candidate": "a session modified in the window, with a turn attributed to a plugin under plugins/, that no run reviewed to its end. "
+    "A session that only a plugin's hook acted in is none: a hook leaves no attributed turn",
+    "buckets": {
+        "pushback": "seconds in which the user interrupted the agent or rejected a tool call; one interrupt counts once",
+        "errors": "failed tool results; a call that never ran is left out: a denial, a worktree-isolation refusal, the cancelled siblings of an interrupted batch",
+        "output_tokens": "output tokens, each API message once; ranks long sessions first, whatever their quality",
+        "changed": "ran, at the last release's version, a plugin that release changed; sessions that ran a changed skill first, a random draw inside each group",
+        "random": "a random draw from the candidates no other bucket took; --seed repeats it",
+    },
+    "order": "the buckets fill in the order above, each with up to --per-bucket candidates (a ranked bucket takes the highest non-zero counts); "
+    "a session lands in one bucket only",
+    "signals": "every count includes the subagent transcripts. A refusal by a plugin's own guard is a permission-rule denial and counts in no signal",
+    "large_transcripts": "an unreviewed session that holds a file of 50 MB or more; refused, and no candidate, from 100 MB, as GitHub rejects the push",
+    "release": "the newest v<x.y.z> tag of this checkout, the tag before it, the plugins with a file that differs between them (plugin.json and tests/ do not count), "
+    "and the count of candidates that ran a changed plugin at the release version; null with fewer than two tags. "
+    "The changed bucket stays empty until a session loads a skill from the new install; a dev@ session never counts",
+    "changed_files": "on a picked session, whatever its bucket, that ran a changed plugin at the release version: the files of that plugin the release changed",
+    "skill_versions": {
+        "x.y.z": "a cached install of that version",
+        "dev@<name>": "the worktree .claude/worktrees/<name> of a checkout of this repository, not a commit: no record holds the commit",
+        "dev@main": "any other checkout of this repository, not a commit",
+        "unknown": "no skill banner before the turn",
+    },
+    "label_source": "a turn takes the label of the last skill banner before it in its own transcript, for its skill and else for its plugin; "
+    "a subagent turn with no banner of its own takes the label its session had loaded last before the turn's timestamp: an inference",
+}
+
 # GitHub refuses a file above 100 MB, so a session that holds one is not picked.
 REFUSED_TRANSCRIPT_MB = 100
 LARGE_TRANSCRIPT_MB = 50
@@ -74,7 +103,15 @@ RSYNC_VANISHED = 24
 LISTING_ENTRY_RE = re.compile(r"^- ([^\s:]+(?::[^\s:]+)?): ", re.M)
 EDIT_TOOLS = ("Edit", "Write", "NotebookEdit")
 # The ways a text of this repository reaches a context, each read from a record of its own kind.
-CHANNELS = ("listing", "skill-body", "skill-reinjected", "instructions", "read", "attached")
+CHANNEL_MEANINGS = {
+    "listing": "skill and agent listing entries",
+    "skill-body": "the skill bodies loaded",
+    "skill-reinjected": "the copy of a skill body after a compaction",
+    "instructions": "the checkout's AGENTS.md and CLAUDE.md",
+    "read": "Read tool results",
+    "attached": "files Claude Code attached itself",
+}
+CHANNELS = tuple(CHANNEL_MEANINGS)
 CONTEXT_TOP = 30
 TROUBLE_COUNTS = ("turns", "failed", "rejected", "inherited_turns", "inherited_failed", "inherited_rejected")
 
@@ -133,7 +170,7 @@ def summarize(session_file, plugins):
     tokens_by_message = {}
     errors = 0
     started = ended = None
-    # A subagent turn has no banner of its own: it runs the version its session loaded last.
+    # The skill loads of the main transcript, for the label of a subagent turn with no banner.
     session_loads = []
     usage = defaultdict(lambda: {
         "versions": set(), "turns": 0, "model_invoked": 0, "slash_invoked": 0,
@@ -276,7 +313,11 @@ def usage_table(usages, plugins_dir, since_days):
     lines = [
         "# Skill usage",
         "",
-        f"The {len(usages)} sessions of the last {since_days:g} days that used a plugin of this marketplace, subagent transcripts included.",
+        f"The {len(usages)} sessions of the last {since_days:g} days that used a plugin of this marketplace, subagent transcripts included: "
+        "the candidates, the sessions already reviewed and the refused ones.",
+        "",
+        "Model-invoked counts the Skill tool calls for the skill, Slash-invoked the /<plugin>:<skill> commands the user typed. "
+        "A skill with `disable-model-invocation: true` has 0 model invocations by design.",
         "",
         "| Skill | Sessions | Turns | Model-invoked | Slash-invoked | Versions |",
         "|---|---|---|---|---|---|",
@@ -286,7 +327,7 @@ def usage_table(usages, plugins_dir, since_days):
             f"| `{skill}` | {use['sessions']} | {use['turns']} | {use['model_invoked']} | {use['slash_invoked']} | {', '.join(sorted(use['versions']))} |"
         )
     shipped = {f"{p.parent.parent.parent.name}:{p.parent.name}" for p in plugins_dir.glob("*/skills/*/SKILL.md")}
-    lines += ["", "## Skills with no use in the window", ""]
+    lines += ["", "## Skills with no use in the window", "", "The skills under plugins/ that no session of the window used.", ""]
     lines += [f"- `{skill}`" for skill in sorted(shipped - set(total))] or ["None."]
     return "\n".join(lines) + "\n"
 
@@ -299,7 +340,8 @@ class Repository:
         self.plugins = {p.name for p in plugins_dir.iterdir() if p.is_dir()}
         self.marketplace = json.loads((root / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))["name"]
         # A checkout loads AGENTS.md as project instructions: one whose first line is this
-        # repository's names the checkout's root, wherever that machine keeps it.
+        # repository's names the checkout's root, wherever that machine keeps it. A change to
+        # that line leaves the checkouts of older sessions unrecognized.
         agents = root / "AGENTS.md"
         self.agents_title = agents.read_text(encoding="utf-8").partition("\n")[0] if agents.is_file() else None
         # A checkout also holds files git ignores, scratch folders among them: they are no part of it.
@@ -550,12 +592,17 @@ def context_table(report):
         "# Context cost",
         "",
         f"What the files of this repository put into the context of the {report['contexts']} contexts of the last "
-        f"{report['since_days']:g} days, subagents included, over {report['api_calls']} API calls. All sizes are in characters. "
+        f"{report['since_days']:g} days, subagents included, over {report['api_calls']} API calls: every session of the window, "
+        "with or without plugin use, as the skill listing reaches each of them. All sizes are in characters. "
         "A char-read is one character sent in one API call: a text counts once for each call after it, up to the next compaction.",
         "",
         "Not counted: what Bash commands print, agent system prompts, and the prompts a workflow gives its agents.",
         "",
+        "The counts show what a file cost and what followed a read, not why: whether a session needed the file is the reviewers' judgment, in context-judgments.json.",
+        "",
         f"## The {CONTEXT_TOP} files with the most char-reads",
+        "",
+        "Channels: " + ", ".join(f"{channel} ({meaning})" for channel, meaning in CHANNEL_MEANINGS.items()) + ".",
         "",
         "| File | Char-reads | Chars loaded | Sessions | " + " | ".join(CHANNELS) + " |",
         "|---|---|---|---|" + "---|" * len(CHANNELS),
@@ -616,6 +663,7 @@ def mirror(host):
     target.mkdir(parents=True, exist_ok=True)
     # Claude Code links a forked subagent's transcript by its absolute path on the host:
     # --copy-unsafe-links copies the file, where -a alone copies a link into this machine.
+    # --delete drops what the host deleted.
     argv = ["rsync", "-a", "--copy-unsafe-links", "--delete", "-e", "ssh -o BatchMode=yes", f"{host}:.claude/projects/", f"{target}/"]
     try:
         done = subprocess.run(argv, capture_output=True, text=True)
@@ -642,7 +690,9 @@ def pick(args):
     plugins_dir = Path(args.plugins_dir)
     host = socket.gethostname() if args.host is None else args.host
     projects_dir = Path(args.projects_dir) if args.host is None else mirror(args.host)
+    # A turn attributed to a plugin's former name matches none of these.
     plugins = {p.name for p in plugins_dir.iterdir() if p.is_dir()}
+    # A session counts as reviewed once a run holds its sessions/<uuid>.json.
     reviewed_until = {}
     for path in args.review_dir.glob("runs/*/sessions/*.json"):
         ended = json.loads(path.read_text(encoding="utf-8"))["ended"]
@@ -653,7 +703,7 @@ def pick(args):
         for f in sorted(projects_dir.glob("*/*.jsonl"))
         if f.stat().st_mtime >= cutoff
     )
-    # Every session of the window, plugin use or none: the listing reaches each of them.
+    # Every session of the window: context.md covers each.
     latest = latest_copies([summarize(f, plugins) for f in recent])
     summaries = [(session, usage) for session, usage in latest if session["skills"]]
     # A session that went on after its review is picked again, and reviewed whole.
@@ -716,6 +766,9 @@ def pick(args):
     marketplace = json.loads((plugins_dir.parent / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
     version = marketplace["metadata"]["version"]
     now = datetime.now().astimezone()
+    # The run folder holds run.json, picks.json, usage.md, context.json, context.md and
+    # transcripts/<uuid>.jsonl with <uuid>/subagents/ beside it; record adds sessions/<uuid>.json,
+    # findings.json and context-judgments.json.
     run_dir = args.review_dir / "runs" / f"{now:%Y-%m-%dT%H%M%S}-{host}-v{version}"
     run_dir.mkdir(parents=True)
     for session in picked:
@@ -729,6 +782,7 @@ def pick(args):
         "large_transcripts": large,
         "release": release,
         "sessions": picked,
+        "legend": PICK_LEGEND,
     }
     write_json(run_dir / "run.json", {
         "started": now.isoformat(timespec="seconds"),

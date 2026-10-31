@@ -23,6 +23,7 @@ SCRIPT="$REPO_ROOT/scripts/pick-sessions.py"
 python3 - "$SCRIPT" <<'PYEOF'
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -201,6 +202,21 @@ with tempfile.TemporaryDirectory() as tmp:
           "| `demo:skill` | 5 | 7 | 1 | 1 | 1.2.0, 1.3.0, dev@main, dev@wt, unknown |" in usage)
     check("a command with the bare name of a plugin is no skill of it", False, "| `demo` |" in usage)
     check("usage lists a shipped skill that no session used", True, "- `demo:idle`" in usage and "- `demo:other`" not in usage)
+    check("usage.md says what its invocation columns count", (True, True),
+          ("Model-invoked counts the Skill tool calls" in usage, "`disable-model-invocation: true` has 0 model invocations by design" in usage))
+
+    legend = result.get("legend", {})
+    check("pick prints a legend of each bucket, in the order the buckets fill",
+          ["pushback", "errors", "output_tokens", "changed", "random"], list(legend.get("buckets", {})))
+    check("the legend names each version label", ["x.y.z", "dev@<name>", "dev@main", "unknown"], list(legend.get("skill_versions", {})))
+    check("the legend says what the signals count", True, "subagent transcripts" in legend.get("signals", ""))
+    check("the legend says a subagent's inherited label is an inference", True, "an inference" in legend.get("label_source", ""))
+    workflow = (Path(SCRIPT).parent.parent / ".claude" / "workflows" / "review-sessions.js").read_text(encoding="utf-8")
+    js_list = lambda name: re.search(rf"const {name} = \[(.*?)\]", workflow).group(1)
+    check("the workflow ranks the buckets the legend ranks first",
+          list(legend.get("buckets", {}))[:3], re.findall(r"'([^']+)'", js_list("RANKED_BUCKETS")))
+    check("the workflow requires the version labels the legend names",
+          list(legend.get("skill_versions", {})), re.findall(r"'([^']+)'", js_list("LABELS")))
 
     review = Path(tmp, "result.json")
     finding = {"artifact": "plugins/demo/skills/skill/SKILL.md", "version": "1.3.0", "problem": "p", "quote": "q", "fix": "f"}
@@ -565,7 +581,10 @@ with tempfile.TemporaryDirectory() as tmp:
     s1 = next((s for s in picks.get("sessions", []) if s["session_id"] == "s1"), {})
     check("a picked session carries the files of this repository it loaded, listing left out",
           ["AGENTS.md", "docs/CODING.md", "docs/TESTING.md", "plugins/demo/references/r.md", "plugins/demo/skills/skill/SKILL.md"], s1.get("context_files"))
-    check("context.md names what it does not count", True, "Not counted: what Bash commands print" in Path(picks["run_dir"], "context.md").read_text())
+    context_md = Path(picks["run_dir"], "context.md").read_text()
+    check("context.md names what it does not count", True, "Not counted: what Bash commands print" in context_md)
+    check("context.md names each channel and leaves usefulness to the reviewers", (True, True),
+          ("Channels: listing (skill and agent listing entries)" in context_md, "the reviewers' judgment, in context-judgments.json" in context_md))
 
     review = Path(tmp, "result.json")
     judgment = {"artifact": "docs/CODING.md", "needed": "no", "unused": "all", "missing": "", "quote": "q"}

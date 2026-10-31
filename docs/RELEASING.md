@@ -1,6 +1,6 @@
 # Releasing
 
-All plugins ship together under a single repo-level version tag. There is no build step.
+All plugins ship together under a single repo-level version tag (per-plugin tags would break the dependency rule in [CODING.md](CODING.md#declaring-plugin-dependencies)). There is no build step.
 
 Requires `gh` (authenticated), `jq`, and `python3` on PATH. Cut releases from a clean tree on an up-to-date `master`.
 
@@ -19,8 +19,6 @@ One version covers every plugin, so it describes the release rather than any one
 - **Minor** (`1.26.0` → `1.27.0`) — the default. Any new skill, command, agent, or hook; any behaviour change to an existing one.
 - **Patch** (`1.26.0` → `1.26.1`) — fixes and documentation only, in every plugin.
 - **Major** — a break in how an installed plugin is invoked: a skill or command removed or renamed, or an argument contract changed incompatibly. A rename of a plugin with skills is one: every `<plugin>:<skill>` name changes. Never used yet; a retirement with a documented successor has so far gone out as minor.
-
-Lockstep is the cost of one tag: a patch-only fix in one plugin bumps them all. The alternative is per-plugin tags, which the dependency rule in [CODING.md](CODING.md) already rules out.
 
 ## Release steps
 

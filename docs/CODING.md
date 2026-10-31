@@ -123,7 +123,7 @@ when_to_use: "Use when … Triggers on '…', '…'. Does not apply to …"
 ---
 ```
 
-- Do not take Schema B just because a skill *could* auto-invoke: measured pickup from context is low (the Model-invoked column of a review run's `usage.md`, [MONITORING.md](MONITORING.md)), and every skill that takes it pays the cost.
+- Do not take Schema B just because a skill *could* auto-invoke: measured pickup from context is low (the Model-invoked column of a [session review](MONITORING.md#run-a-review) run's `usage.md`), and every skill that takes it pays the cost.
 - Never mix them — `disable-model-invocation: true` alongside `when_to_use:` is contradictory.
 - Where a Schema B skill's domain overlaps a sibling's, disambiguate in **both** directions in the same change: exclude the sibling here, add the reverse pointer there. A one-sided carve-out still lets shared queries land on the wrong skill.
 
