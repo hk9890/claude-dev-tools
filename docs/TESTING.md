@@ -1,6 +1,6 @@
 # Testing a Plugin
 
-How to run this marketplace's automated suites and validators. To launch and drive plugins by hand, see [RUNNING.md](RUNNING.md).
+How to run this marketplace's automated suites and validators.
 
 ## mise tasks
 
@@ -68,7 +68,7 @@ python3 "$SCR/validate-routes.py" . --include-docs   # hard-fails on broken rout
 python3 "$SCR/manifest.py" . --format=text           # CLAUDE.md invariant, missing/hollow docs, dead links
 ```
 
-A non-zero `validate-routes.py` must be fixed before pushing. The manifest is informational — check its summary line for a false `claude_md_ok`, missing canonical docs, or unresolved links. For a full content audit, run `/project-review-docs`.
+The manifest is informational — check its summary line for a false `claude_md_ok`, missing canonical docs, or unresolved links. For a full content audit, run `/project-review-docs`.
 
 ## CI — `.github/`
 

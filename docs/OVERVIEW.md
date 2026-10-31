@@ -1,6 +1,6 @@
 # Marketplace Overview
 
-A collection of Claude Code plugins. Each plugin lives under `plugins/<plugin-name>/` and is independently installable; the [plugin table in README.md](../README.md#plugins) lists them all.
+The [plugin table in README.md](../README.md#plugins) lists every plugin.
 
 ## Repo layout
 
