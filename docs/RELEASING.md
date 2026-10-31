@@ -49,7 +49,7 @@ Write around **what changed for users**, not the PRs that changed it: a reader s
 1. **Lede** — one or two sentences naming the headline change, enough for a reader who stops there.
 2. **A section per user-facing feature**, titled by what it *does* (`Every Catppuccin flavour, generated from one source`), not by what delivered it (`catppuccin-themes changes`). Say what it enables, and why it works that way where the design is non-obvious. Collapse several PRs into one section when they built one feature.
 3. **Fixes** — user-visible symptom first, then the cause, plus the trade-off where a fix carries one.
-4. **Changed behavior worth knowing** — argument-order changes, removed scripts, new defaults, anything that breaks a habit. Keep the section even when short; an upgrading reader looks here first.
+4. **Changed behavior worth knowing** — argument-order changes, removed scripts, new defaults, anything that breaks a habit. Keep the section even when short; an upgrading reader looks here first. A renamed plugin goes here with its new install name; where it ships a theme, tell users to select the theme again with `/theme`, because the stored `custom:<plugin>:<theme>` id is not migrated.
 5. **Full Changelog** — the compare link, which is where the per-PR list belongs.
 
 Publish with `--notes-file` from a drafted file, never `--notes`. Use `--generate-notes` only for a scratch list of merged PRs, then read those PRs to write the real notes.

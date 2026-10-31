@@ -10,6 +10,10 @@ What a change to this plugin marketplace needs in order to work.
 4. Add a row to the plugin table in `README.md`, in `marketplace.json` order.
 5. Scaffold components with the `plugin-dev` skill set — an external plugin, installed separately ([TESTING.md](TESTING.md)).
 
+## Renaming a plugin
+
+The new name obeys step 1 of [Adding a new plugin](#adding-a-new-plugin). Add the old-to-new entry to the top-level `renames` map in `.claude-plugin/marketplace.json`. Claude Code follows it when an installed name is no longer found and migrates the user's `enabledPlugins`; without it every existing install loses the plugin, and no gate catches the omission. The release notes carry the rename ([RELEASING.md](RELEASING.md#release-notes)).
+
 ## Adding a canonical doc
 
 Register a new canonical topic doc in three plugins; each keeps its own copy, as no plugin can import another:
@@ -95,8 +99,6 @@ Directory name and frontmatter `name:` must match. **Sibling skills share one pr
 - ❌ `worktree-flow:ship` — bare verb, shared with no sibling
 
 The exception is a plugin whose names trigger on their own, each a distinct concept rather than a generic operation, where a shared prefix would only dilute them — every skill in `challenge` (`grill`, `kiss`, `are-you-sure`, `what-do-you-mean`).
-
-**When renaming a plugin**, add the old-to-new entry to the top-level `renames` map in `.claude-plugin/marketplace.json`. Claude Code follows it when an installed name is no longer found and migrates the user's `enabledPlugins`; without it every existing install loses the plugin, and no gate here catches the omission. A stored `theme` setting (`custom:<plugin>:<theme>`) is not migrated: say in the release notes that users select the theme again with `/theme`.
 
 ### Frontmatter
 
