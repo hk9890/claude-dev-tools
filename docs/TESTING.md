@@ -60,7 +60,7 @@ claude plugin test plugins/<plugin>       # the plugin's tests
 
 ## Docs validation
 
-Neither validator runs in CI — run both locally on any change under `docs/`, from the repo root:
+Neither validator runs in CI — run both locally on any change to `AGENTS.md`, `CLAUDE.md`, `README.md`, or a file under `docs/`, from the repo root:
 
 ```bash
 SCR=plugins/project-review/skills/project-review-docs/scripts
