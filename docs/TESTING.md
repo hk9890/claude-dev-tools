@@ -12,7 +12,7 @@ How to run this marketplace's automated suites and validators.
 | `mise run test-html` | html-visualization browser/server tests only |
 | `mise run check-consistency` | Cross-reference and version-mirror validation (`scripts/check-internal-consistency.py`) |
 | `mise run lint` | ShellCheck `--severity=warning` over every tracked shell script (`scripts/list-shell-scripts.sh`) |
-| `mise run pick-sessions -- <subcommand>` | Session review picker, with `SESSION_REVIEW_DIR` from `mise.local.toml` — usage in [MONITORING.md](MONITORING.md) |
+| `mise run pick-sessions -- <subcommand>` | Session review picker, with `SESSION_REVIEW_DIR` from `mise.local.toml` — the review procedure in [MONITORING.md](MONITORING.md#run-a-review) |
 
 `bash`, `perl`, `python3`, `node`, `jq`, `rsync`, and `shellcheck` must already be on PATH: `.mise.toml` declares no `[tools]`, so mise runs the tasks but installs none of them. Absent `node`, the node-backed suites fail rather than skip. The mod suite alone needs `claude` too ([Suites that skip](#suites-that-skip)).
 

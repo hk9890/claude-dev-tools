@@ -16,6 +16,9 @@ const host = args?.host
 // The host goes into a shell command: the pick takes the same names only.
 if (host !== undefined && !/^[A-Za-z0-9_][A-Za-z0-9._@-]*$/.test(host)) throw new Error(`not an ssh host name: ${JSON.stringify(host)}`)
 
+const RANKED_BUCKETS = ['pushback', 'errors', 'output_tokens']
+const BUCKETS = [...RANKED_BUCKETS, 'changed', 'random']
+
 const PICKS = {
   type: 'object',
   properties: {
@@ -33,7 +36,6 @@ const PICKS = {
     },
     release: {
       type: ['object', 'null'],
-      description: 'null where the checkout has fewer than two release tags',
       properties: {
         version: { type: 'string' },
         previous: { type: 'string' },
@@ -61,8 +63,23 @@ const PICKS = {
         required: ['session_id', 'transcript', 'bucket', 'skill_versions', 'subagents', 'pushback', 'errors', 'output_tokens', 'context_files'],
       },
     },
+    legend: {
+      type: 'object',
+      description: 'the legend the pick printed, every key of it unchanged',
+      properties: {
+        buckets: {
+          type: 'object',
+          properties: Object.fromEntries(BUCKETS.map(bucket => [bucket, { type: 'string' }])),
+          required: BUCKETS,
+        },
+        signals: { type: 'string' },
+        skill_versions: { type: 'object', additionalProperties: { type: 'string' } },
+        label_source: { type: 'string' },
+      },
+      required: ['buckets', 'signals', 'skill_versions', 'label_source'],
+    },
   },
-  required: ['run_dir', 'candidates', 'already_reviewed', 'large_transcripts', 'release', 'sessions'],
+  required: ['run_dir', 'candidates', 'already_reviewed', 'large_transcripts', 'release', 'sessions', 'legend'],
 }
 
 const FINDINGS = {
@@ -137,8 +154,9 @@ const READ_TRANSCRIPT = pick => `
 Render the transcript to the file ${pick.session_id}.txt in your scratchpad directory and read that file in parts:
   python3 scripts/pick-sessions.py render ${pick.transcript}
 Keep to that file name: other agents render other sessions into the same directory at the same time.
+An ASSISTANT [<skill>] tag runs from the skill load to the next load or the end of the user turn, so work after the skill carries its tag too; a forked skill changes no tag. USER (queued) is a prompt the user typed while the agent worked.
 Its subagent transcripts are the agent-*.jsonl files below the directory of the same name without ".jsonl"; render one, to a file named after it, where the main transcript leaves a question open.
-Read docs/MONITORING.md first. Change no file in the repository.`
+Change no file in the repository.`
 
 phase('Pick')
 const picks = await agent(
@@ -169,6 +187,14 @@ const judgeContext = pick => pick.context_files.length
 Then judge each file of this repository that the session or one of its subagents loaded: ${pick.context_files.join(', ')}. Open each one. A file the main transcript does not show was loaded in a subagent transcript: render that transcript to judge it. For each, say whether the session needed it for what it did, which sections the agent acted on and how, which sections it carried and did not need, and what the agent had to find out, or got wrong, that the file could have said. A rule the agent obeyed leaves no trace of its own: count it as used where the session came to the action it governs. Give one context judgment per file.`
   : '\nThe session loaded no file of this repository: return an empty context list.'
 
+// The pick's legend owns what a bucket, a count and a version label mean.
+const labels = `${Object.entries(picks.legend.skill_versions).map(([label, meaning]) => `${label} is ${meaning}`).join('; ')}; ${picks.legend.label_source}`
+
+const pickedFor = bucket => RANKED_BUCKETS.includes(bucket)
+  ? `${bucket}, one of the candidates with the highest count of it below`
+  : `${bucket}, ${picks.legend.buckets[bucket]}`
+const counts = pick => RANKED_BUCKETS.map(bucket => `${bucket} ${pick[bucket]} (${picks.legend.buckets[bucket]})`).join(', ')
+
 const uses = pick => Object.entries(pick.skill_versions).map(([skill, versions]) => `${skill} at ${versions.join(' and ')}`).join('; ')
 
 const reviewed = await pipeline(
@@ -176,8 +202,8 @@ const reviewed = await pipeline(
   pick => agent(
     `Review one Claude Code session for problems that a plugin under plugins/ in this repository caused.
 Transcript: ${pick.transcript}
-Picked for: ${pick.bucket}. Plugin skills used, each with the plugin version that served it: ${uses(pick)}. A label that starts with "dev@" is a checkout of this repository, not a release.${changes(pick)}
-The pick counted ${pick.pushback} user pushbacks, ${pick.errors} failed tool results and ${pick.output_tokens} output tokens in the main transcript and its ${pick.subagents} subagent transcripts together: what the main transcript does not show is in a subagent transcript.
+Picked for: ${pickedFor(pick.bucket)}. Plugin skills used, each with the version labels that served it: ${uses(pick)}. Version labels: ${labels}.${changes(pick)}
+The pick counted ${counts(pick)}; ${picks.legend.signals}. The session has ${pick.subagents} subagent transcripts: what the main transcript does not show is in one of them.
 ${READ_TRANSCRIPT(pick)}
 
 A finding is a place where the agent or the user lost time or got a wrong result, and a change to a plugin file would have prevented it: an instruction that is wrong, unclear or missing, a skill the agent loaded and then did not follow, a skill that fired for the wrong request, a plugin guard that refused valid work. Open the plugin file and confirm that it says, or omits, what you claim.
@@ -190,6 +216,7 @@ ${judgeContext(pick)}`,
     const check = await agent(
       `Another agent reviewed a Claude Code session and reports the numbered plugin problems and context judgments below. Try to refute each one.
 Transcript: ${pick.transcript}
+Version labels: ${labels}.
 ${READ_TRANSCRIPT(pick)}
 
 Refute a finding where the quote is not in the transcript, the plugin file does not say what the finding claims, the cause is outside the plugin, or the proposed fix would not have prevented the problem. Give one verdict for each number, with the reason; when in doubt, refute.
