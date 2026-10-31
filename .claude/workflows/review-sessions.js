@@ -18,6 +18,7 @@ if (host !== undefined && !/^[A-Za-z0-9_][A-Za-z0-9._@-]*$/.test(host)) throw ne
 
 const RANKED_BUCKETS = ['pushback', 'errors', 'output_tokens']
 const BUCKETS = [...RANKED_BUCKETS, 'changed', 'random']
+const LABELS = ['x.y.z', 'dev@<name>', 'dev@main', 'unknown']
 
 const PICKS = {
   type: 'object',
@@ -36,6 +37,7 @@ const PICKS = {
     },
     release: {
       type: ['object', 'null'],
+      description: 'null where the checkout has fewer than two release tags',
       properties: {
         version: { type: 'string' },
         previous: { type: 'string' },
@@ -51,7 +53,7 @@ const PICKS = {
         properties: {
           session_id: { type: 'string' },
           transcript: { type: 'string' },
-          bucket: { type: 'string' },
+          bucket: { type: 'string', enum: BUCKETS },
           changed_files: { type: 'array', items: { type: 'string' }, description: 'absent where the session ran no plugin the release changed, at the release version' },
           skill_versions: { type: 'object', additionalProperties: { type: 'array', items: { type: 'string' } } },
           subagents: { type: 'number' },
@@ -73,13 +75,17 @@ const PICKS = {
           required: BUCKETS,
         },
         signals: { type: 'string' },
-        skill_versions: { type: 'object', additionalProperties: { type: 'string' } },
+        skill_versions: {
+          type: 'object',
+          properties: Object.fromEntries(LABELS.map(label => [label, { type: 'string' }])),
+          required: LABELS,
+        },
         label_source: { type: 'string' },
       },
       required: ['buckets', 'signals', 'skill_versions', 'label_source'],
     },
   },
-  required: ['run_dir', 'candidates', 'already_reviewed', 'large_transcripts', 'release', 'sessions', 'legend'],
+  required: ['run_dir', 'candidates', 'already_reviewed', 'large_transcripts', 'release', 'sessions'],
 }
 
 const FINDINGS = {
@@ -164,6 +170,7 @@ const picks = await agent(
   { label: 'pick', phase: 'Pick', schema: PICKS, effort: 'low' },
 )
 if (!picks?.run_dir) throw new Error(`the pick failed: ${picks?.error ?? 'its agent returned nothing'}`)
+if (picks.sessions.length && !picks.legend) throw new Error('the pick agent returned no legend')
 log(`${picks.sessions.length} of ${picks.candidates} candidate sessions picked, ${picks.already_reviewed} reviewed by an earlier run: ${picks.run_dir}`)
 log(`context cost of the window: ${picks.run_dir}/context.md`)
 
@@ -203,7 +210,7 @@ const reviewed = await pipeline(
     `Review one Claude Code session for problems that a plugin under plugins/ in this repository caused.
 Transcript: ${pick.transcript}
 Picked for: ${pickedFor(pick.bucket)}. Plugin skills used, each with the version labels that served it: ${uses(pick)}. Version labels: ${labels}.${changes(pick)}
-The pick counted ${counts(pick)}; ${picks.legend.signals}. The session has ${pick.subagents} subagent transcripts: what the main transcript does not show is in one of them.
+The pick counted ${counts(pick)}; ${picks.legend.signals}.${pick.subagents ? ` The session has ${pick.subagents} subagent transcripts: what the main transcript does not show is in one of them.` : ''}
 ${READ_TRANSCRIPT(pick)}
 
 A finding is a place where the agent or the user lost time or got a wrong result, and a change to a plugin file would have prevented it: an instruction that is wrong, unclear or missing, a skill the agent loaded and then did not follow, a skill that fired for the wrong request, a plugin guard that refused valid work. Open the plugin file and confirm that it says, or omits, what you claim.

@@ -10,7 +10,7 @@ Claude Code writes a session to `~/.claude/projects/<slug>/<uuid>.jsonl`, and it
 |---|---|
 | `assistant` | Claude's turn, plus `attributionPlugin` (plugin directory name, e.g. `tasks`) and `attributionSkill` (namespaced, e.g. `tasks:tasks-core`) from the first turn after a skill loads to the turn that loads the next one, or to the end of that user turn; a forked skill changes neither. Work after the skill in the same turn counts for it too, as nothing marks where the skill's work ends |
 | `user` | The human turn, and the `tool_result` blocks inside its `content` array. A failed tool is `tool_result.is_error == true`; `toolDenialKind` says who refused a call that never ran (`user-rejected`, `permission-rule`) |
-| `attachment` | With `attachment.type` `queued_command` and `attachment.origin.kind` `human`: a prompt the user typed while the agent worked. No `user` record holds it; `render` prints it as `USER (queued)`. The context cost reads six more types: `instructions` (the AGENTS.md and CLAUDE.md files loaded, with path and content), `skill_listing` (the listing text, one `- <name>: <text>` entry per skill), `agent_listing_delta` (`addedLines` of the agent listing), `invoked_skills` (each skill body loaded again after a compaction), `file` (a file's text Claude Code attached itself, mostly the files it restores after a compaction), `edited_text_file` (a snippet of a read file that changed on disk) |
+| `attachment` | With `attachment.type` `queued_command` and `attachment.origin.kind` `human`: a prompt the user typed while the agent worked. No `user` record holds it; `render` prints it as `USER (queued)`. The context cost (`context.md`) reads six more types: `instructions` (the AGENTS.md and CLAUDE.md files loaded, with path and content), `skill_listing` (the listing text, one `- <name>: <text>` entry per skill), `agent_listing_delta` (`addedLines` of the agent listing), `invoked_skills` (each skill body loaded again after a compaction), `file` (a file's text Claude Code attached itself, mostly the files it restores after a compaction), `edited_text_file` (a snippet of a read file that changed on disk) |
 | `system` | With `subtype` `compact_boundary`: a compaction. The context before it is replaced by a summary |
 
 ## The review store
@@ -37,9 +37,9 @@ SESSION_REVIEW_DIR = "/home/<you>/dev/github/session-data"
 
 Quote a transcript line from the run's copy under `transcripts/`: it stays after Claude Code deletes the original.
 
-What a pick, a version label and the report sections mean is printed with the output itself: the `legend` of the pick, and the headers of `usage.md` and `context.md`.
+What a pick, a version label and the report sections mean is printed with the output itself: the `legend` of the pick, kept in the run's `picks.json`, and the headers of `usage.md` and `context.md`.
 
-File each finding of `findings.json` in the tracker by hand, with its version. When its fix ships, a finding that a later run reports again for a newer version is a regression.
+File each finding of the run's `findings.json` in the tracker by hand, with its version. When its fix ships, a finding that a later run reports again for a newer version is a regression.
 
 `mise run pick-sessions -- context` prints the context cost of each file over the runs of the store.
 

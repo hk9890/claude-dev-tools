@@ -23,6 +23,7 @@ SCRIPT="$REPO_ROOT/scripts/pick-sessions.py"
 python3 - "$SCRIPT" <<'PYEOF'
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -210,6 +211,12 @@ with tempfile.TemporaryDirectory() as tmp:
     check("the legend names each version label", ["x.y.z", "dev@<name>", "dev@main", "unknown"], list(legend.get("skill_versions", {})))
     check("the legend says what the signals count", True, "subagent transcripts" in legend.get("signals", ""))
     check("the legend says a subagent's inherited label is an inference", True, "an inference" in legend.get("label_source", ""))
+    workflow = (Path(SCRIPT).parent.parent / ".claude" / "workflows" / "review-sessions.js").read_text(encoding="utf-8")
+    js_list = lambda name: re.search(rf"const {name} = \[(.*?)\]", workflow).group(1)
+    check("the workflow ranks the buckets the legend ranks first",
+          list(legend.get("buckets", {}))[:3], re.findall(r"'([^']+)'", js_list("RANKED_BUCKETS")))
+    check("the workflow requires the version labels the legend names",
+          list(legend.get("skill_versions", {})), re.findall(r"'([^']+)'", js_list("LABELS")))
 
     review = Path(tmp, "result.json")
     finding = {"artifact": "plugins/demo/skills/skill/SKILL.md", "version": "1.3.0", "problem": "p", "quote": "q", "fix": "f"}

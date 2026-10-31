@@ -74,7 +74,7 @@ PICK_LEGEND = {
     "a session lands in one bucket only",
     "signals": "every count includes the subagent transcripts. A refusal by a plugin's own guard is a permission-rule denial and counts in no signal",
     "large_transcripts": "an unreviewed session that holds a file of 50 MB or more; refused, and no candidate, from 100 MB, as GitHub rejects the push",
-    "release": "the newest v<x.y.z> tag of this checkout, the tag before it, the plugins changed between them, "
+    "release": "the newest v<x.y.z> tag of this checkout, the tag before it, the plugins with a file that differs between them (plugin.json and tests/ do not count), "
     "and the count of candidates that ran a changed plugin at the release version; null with fewer than two tags. "
     "The changed bucket stays empty until a session loads a skill from the new install; a dev@ session never counts",
     "changed_files": "on a picked session, whatever its bucket, that ran a changed plugin at the release version: the files of that plugin the release changed",
@@ -85,7 +85,7 @@ PICK_LEGEND = {
         "unknown": "no skill banner before the turn",
     },
     "label_source": "a turn takes the label of the last skill banner before it in its own transcript, for its skill and else for its plugin; "
-    "a subagent turn with no banner of its own takes the label its session loaded last: an inference",
+    "a subagent turn with no banner of its own takes the label its session had loaded last before the turn's timestamp: an inference",
 }
 
 # GitHub refuses a file above 100 MB, so a session that holds one is not picked.
@@ -103,7 +103,15 @@ RSYNC_VANISHED = 24
 LISTING_ENTRY_RE = re.compile(r"^- ([^\s:]+(?::[^\s:]+)?): ", re.M)
 EDIT_TOOLS = ("Edit", "Write", "NotebookEdit")
 # The ways a text of this repository reaches a context, each read from a record of its own kind.
-CHANNELS = ("listing", "skill-body", "skill-reinjected", "instructions", "read", "attached")
+CHANNEL_MEANINGS = {
+    "listing": "skill and agent listing entries",
+    "skill-body": "the skill bodies loaded",
+    "skill-reinjected": "the copy of a skill body after a compaction",
+    "instructions": "the checkout's AGENTS.md and CLAUDE.md",
+    "read": "Read tool results",
+    "attached": "files Claude Code attached itself",
+}
+CHANNELS = tuple(CHANNEL_MEANINGS)
 CONTEXT_TOP = 30
 TROUBLE_COUNTS = ("turns", "failed", "rejected", "inherited_turns", "inherited_failed", "inherited_rejected")
 
@@ -594,8 +602,7 @@ def context_table(report):
         "",
         f"## The {CONTEXT_TOP} files with the most char-reads",
         "",
-        "Channels: listing (skill and agent listing entries), skill-body, skill-reinjected (the copy after a compaction), "
-        "instructions (the checkout's AGENTS.md and CLAUDE.md), read (Read tool results), attached (files Claude Code attached itself).",
+        "Channels: " + ", ".join(f"{channel} ({meaning})" for channel, meaning in CHANNEL_MEANINGS.items()) + ".",
         "",
         "| File | Char-reads | Chars loaded | Sessions | " + " | ".join(CHANNELS) + " |",
         "|---|---|---|---|" + "---|" * len(CHANNELS),
