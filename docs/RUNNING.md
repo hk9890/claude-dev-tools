@@ -7,7 +7,7 @@ How to launch this marketplace's plugins and drive them by hand to reproduce a b
 `scripts/claude-dev` starts Claude Code with every plugin in `plugins/` loaded via `--plugin-dir`, forwarding further arguments to `claude` unchanged.
 
 ```bash
-./scripts/claude-dev -p "<prompt describing the use case>"   # headless: one turn, result on stdout
+./scripts/claude-dev -p "<prompt>"                            # headless: one turn, result on stdout
 ./scripts/claude-dev                                          # interactive TUI (human)
 ```
 

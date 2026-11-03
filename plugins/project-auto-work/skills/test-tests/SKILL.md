@@ -141,8 +141,9 @@ with no `error` means the abort-report or synthesis agent died: say so, and rela
 The verdict (`strong` | `adequate` | `weak` | `untrustworthy` | `not-auditable` — the
 last is an abort report with remediation proposals) and its scoring thresholds are
 computed by the workflow. Below `high`, a surviving mutant the reachability probe proved
-*reachable* or left *inconclusive*, and a brittle no-op break, is labeled `candidate: true` — a possible equivalent mutant, presented with its
-diff, never as proof. A survivor proven *unreached* is never a candidate at any level:
+*reachable* or left *inconclusive* is labeled `candidate: true` — a possible equivalent mutant,
+presented with its diff, never as proof. A brittle no-op break is labeled the same way: the
+open doubt is whether the edit was a no-op at all. A survivor proven *unreached* is never a candidate at any level:
 nothing there was argued, it was measured.
 Delay-injection findings are always candidates: a test failing under an added delay may be
 brittle or may encode a legitimate latency contract — the user decides.

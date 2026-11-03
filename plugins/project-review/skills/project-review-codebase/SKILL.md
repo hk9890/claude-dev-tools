@@ -12,8 +12,8 @@ workflow returns a structured report plus a Markdown artifact; relay the report 
 write the artifact to a temp file.
 
 The rules dimension is the codebase-wide half of `project-review-change`: both run the
-same procedure from the plugin-root `../../references/rules-conformance.md`, one over a change and one over
-the whole tree.
+same procedure, `rules-conformance.md` (step 3 builds its path), one over a change and one
+over the whole tree.
 
 Test code is a subject here, not a backdrop: the dimensions cover test conventions and
 setup idioms, test-support layout and misplaced tests, and whether each module's failure

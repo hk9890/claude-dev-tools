@@ -84,9 +84,9 @@ docs inline. The workflow returns a structured report; relay it.
    - The history phase reads this repository's past Claude Code sessions and asks whether
      the doc each route points at was actually opened, and opened *before* the work. It
      writes only to the scratch dir. Findings need at least 3 comparable session segments, and a
-     session is dropped when the `AGENTS.md` route it ran under has since been reworded —
-     that session is evidence about the old route, not the current one. Those dropped
-     sessions are still summarised per old wording and reported as superseded-route
+     segment is dropped when the `AGENTS.md` route it ran under has since been reworded —
+     that segment is evidence about the old route, not the current one. Those dropped
+     segments are still summarised per old wording and reported as superseded-route
      evidence: it never affects a finding or the verdict, but "agents ignored this doc
      under its previous wording" is what shows a rewrite was warranted. A repo with no
      sessions skips the phase: no evidence is a gap in the audit, never a finding about

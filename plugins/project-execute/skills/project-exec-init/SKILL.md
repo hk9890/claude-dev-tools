@@ -19,7 +19,7 @@ Call the Skill tool with `instruction-writing:writing-project-docs`, even where 
 
 Read what the project already carries and record two lists.
 
-**Present** — which of `README.md`, `CONTRIBUTING.md`, `AGENTS.md`, `CLAUDE.md` exist, and every file under `docs/`. Read each one against its *Inside* / *Not inside* contract in the standard and note what breaches it. Step 3 routes to these; step 4 reports the breaches.
+**Present** — which of `README.md`, `AGENTS.md`, `CLAUDE.md` exist, and every file under `docs/`. Read each one against its *Inside* / *Not inside* contract in the standard and note what breaches it. Step 3 routes to these; step 4 reports the breaches.
 
 **Earned** — which canonical topics the repo has real local guidance for. A topic is *earned* only where the repo holds the evidence below; a topic doc for anything else would be hollow, which the standard rules out.
 

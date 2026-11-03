@@ -68,7 +68,7 @@ value that goes stale the moment a question moves:
 | `.widget-index` — `01 · SINGLE CHOICE` | First child of every `.widget[data-qid]` | Hand numbering breaks when a question is inserted above it, and nothing checks it. |
 | `.hv-key` — the keycap on each option | First child of every option row | The cap is bound to a real key; an unbound cap is a lie. |
 | `.hv-rail-item` — one entry per question | `.hv-rail-list` | Same staleness problem as the numbering. |
-| `.widget-note` — the free-text answer field | Last child of every `.annotatable` widget | A hand-written one sits beside the injected field as a second textarea nobody reads. |
+| `.widget-note` — the free-text answer field | Last child of every `.annotatable` widget | A hand-written one comes first, so app.js reads it for the answered state and ignores the injected field the user types in. |
 
 Leave `.hv-rail-list`, `.hv-rail-count`, `.hv-topbar-meta`, `.hv-status-hint`
 and the `data-hv-mod` keycap EMPTY in the markup.
