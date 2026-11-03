@@ -89,7 +89,7 @@ A mod is a plugin whose `hooks/hooks.json` names a hooks module under `modules`;
 
 ## SKILL.md conventions
 
-For every `SKILL.md` under `plugins/<plugin-name>/skills/<skill-name>/`. The authoring rubric — invocation choice, description writing, information hierarchy, pruning — is [`plugins/instruction-writing/skills/writing-skills/SKILL.md`](../plugins/instruction-writing/skills/writing-skills/SKILL.md); read it first.
+For every `SKILL.md` under `plugins/<plugin-name>/skills/<skill-name>/`. The authoring rubric — invocation choice, description writing, information hierarchy, pruning — is [`instruction-writing:writing-skills`](../plugins/instruction-writing/skills/writing-skills/SKILL.md): call the Skill tool with `instruction-writing:writing-skills` before writing or editing a `SKILL.md`, even where it loaded earlier in this session.
 
 ### Naming
 

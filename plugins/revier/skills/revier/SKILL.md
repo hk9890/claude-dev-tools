@@ -11,7 +11,7 @@ revier is the user's registry of every project on this machine: each project's c
 
 Installed: !`revier version 2>/dev/null || echo "STOP: revier is not on PATH. Tell the user to install it from https://github.com/hk9890/revier, and do nothing else with this skill."`
 
-Scripts: !`python3 --version 2>/dev/null || echo "python3 is not on PATH, so the two scripts of this skill do not run. To find a project, read the revier list table: it names no repository, directory, host project or agent name, and the activity of one agent per project, so ask the user where no row fits. For past use, follow the Past use section below."`
+Scripts: !`python3 --version 2>/dev/null || echo "python3 is not on PATH, so the two scripts of this skill do not run. To find a project, read the revier list table: it shows each project's state and the activity of one agent, but no repository, directory, host project or agent name, so ask the user where no row fits. For past use, follow the Past use section below."`
 
 ## The focus rule
 

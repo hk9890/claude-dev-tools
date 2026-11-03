@@ -175,7 +175,7 @@ grep -i "## Verif" docs/RELEASING.md
 # Check: Do they still work? Are there new tests not documented?
 
 # Check version files from RELEASING.md
-<version-files-from-file>
+ls -la <version-files-from-file>
 # Check: Do files still exist? Are there new version files?
 
 # Check release commands from RELEASING.md

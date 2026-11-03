@@ -70,7 +70,7 @@ docs inline. The workflow returns a structured report; relay it.
 
 4. Invoke the **Workflow** tool:
    - `scriptPath`: `<SKILL_DIR>/workflows/review-docs.js`
-   - `args`: `{ "repoRoot": "<the step-1 path>", "scriptsDir": "<SKILL_DIR>/scripts", "standardDir": "<STANDARD_DIR>", "level": "<the step-1 level>", "scratchDir": "<the absolute path printed above>" }`
+   - `args`: `{ "repoRoot": "<the step-1 path, made absolute>", "scriptsDir": "<SKILL_DIR>/scripts", "standardDir": "<STANDARD_DIR>", "level": "<the step-1 level>", "scratchDir": "<the absolute path printed above>" }`
    - `level` rungs. Every rung runs the same stages: the docs are packed into a few
      batches, and each batch agent reads its docs and the standard once, then judges them
      (`docs/CODING.md` judged as by an agent that arrives wanting to code). A rung buys the
@@ -83,7 +83,7 @@ docs inline. The workflow returns a structured report; relay it.
      without contradicting another doc is not caught. The report states this.
    - The history phase reads this repository's past Claude Code sessions and asks whether
      the doc each route points at was actually opened, and opened *before* the work. It
-     writes only to the scratch dir. Findings need at least 3 comparable sessions, and a
+     writes only to the scratch dir. Findings need at least 3 comparable session segments, and a
      session is dropped when the `AGENTS.md` route it ran under has since been reworded —
      that session is evidence about the old route, not the current one. Those dropped
      sessions are still summarised per old wording and reported as superseded-route
@@ -98,7 +98,7 @@ docs inline. The workflow returns a structured report; relay it.
    under `result` in its task output file — surface `.report`, and do not re-derive it.
    `raw.not_reviewed` names any file no batch agent reported back on; when it is
    non-empty, say which files went unreviewed, whatever the report says. Each finding is tagged `settled`
-   or `open` — read `<base directory for this skill>/../../references/decision-split.md`
+   or `open` — read `<SKILL_DIR>/../../references/decision-split.md`
    for what those mean and how to relay them (the plugin-root layout applies, so
    `../..` is correct here). For a "did you really check X?" follow-up, **re-run
    the skill**; never answer from the report alone, and never from
@@ -116,7 +116,7 @@ docs inline. The workflow returns a structured report; relay it.
      agent's findings, unmerged and each naming its own file, so relay it only as
      raw material, never as the report.
 
-   Once relayed, follow `<base directory for this skill>/../../references/decision-split.md`
+   Once relayed, follow `<SKILL_DIR>/../../references/decision-split.md`
    over the open findings.
    "the docs audit" is what was
    reviewed. Done when every open item has been put to the user and the settled batch

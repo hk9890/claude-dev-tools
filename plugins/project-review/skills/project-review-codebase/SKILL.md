@@ -12,7 +12,7 @@ workflow returns a structured report plus a Markdown artifact; relay the report 
 write the artifact to a temp file.
 
 The rules dimension is the codebase-wide half of `project-review-change`: both run the
-same procedure from `references/rules-conformance.md`, one over a change and one over
+same procedure from the plugin-root `../../references/rules-conformance.md`, one over a change and one over
 the whole tree.
 
 Test code is a subject here, not a backdrop: the dimensions cover test conventions and
@@ -32,7 +32,7 @@ modes are actually exercised.
 
 3. Invoke the **Workflow** tool:
    - `scriptPath`: `<SKILL_DIR>/workflows/review-codebase.js`
-   - `args`: `{ "repoRoot": "<repo root, or the step-1 path>", "scope": "<the step-1 what-to-review, or empty>", "vocabFile": "<SKILL_DIR>/references/design-vocabulary.md", "rulesFile": "<SKILL_DIR>/../../references/rules-conformance.md", "level": "<the step-1 level>" }`
+   - `args`: `{ "repoRoot": "<absolute repo root, or the step-1 path made absolute>", "scope": "<the step-1 what-to-review, or empty>", "vocabFile": "<SKILL_DIR>/references/design-vocabulary.md", "rulesFile": "<SKILL_DIR>/../../references/rules-conformance.md", "level": "<the step-1 level>" }`
    - `rulesFile` sits at the **plugin root**, so the `../..` climb is correct — the
      procedure is shared with `project-review-change`. Omitting the argument drops the
      rules dimension and the run covers three dimensions instead of four.
@@ -47,7 +47,7 @@ modes are actually exercised.
    `{ report: { verdict, dimension_verdicts, headline, findings[], recommended_actions[], architecture_candidates[], report_markdown, … }, raw, … }`,
    under `result` in its task output file — surface `.report` including the prioritised
    `recommended_actions`, and do not re-derive or re-label it. Each action is tagged `settled` or `open` — read
-   `<base directory for this skill>/../../references/decision-split.md` for what
+   `<SKILL_DIR>/../../references/decision-split.md` for what
    those mean and how to relay them (the plugin-root layout applies, so `../..`
    is correct here). When `architecture_candidates` is non-empty, list
    the candidates **numbered from 1 in array order** with their title, strength and
@@ -81,7 +81,7 @@ modes are actually exercised.
    `Full report with diagrams: /tmp/codebase-review-20260724-101500.md`
    — and note what they can do with it:
    - **Decide on it** — follow
-     `<base directory for this skill>/../../references/decision-split.md` over the open
+     `<SKILL_DIR>/../../references/decision-split.md` over the open
      actions plus any
      `architecture_candidates`. "the codebase review" is what was reviewed. Done when
      every open item has been put to the user and the settled batch has been named.

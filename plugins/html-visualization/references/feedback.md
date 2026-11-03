@@ -118,9 +118,9 @@ Render the content inside `<div id="content">` per the markup contract in
   `data-block-id` (printable ASCII, no whitespace).
 - A whole list is one block — `data-block-id` on the `<ul>`/`<ol>`, not each `<li>`.
 - Do NOT add `<script>const CSRF_TOKEN = "...";</script>` — the server injects it.
-- The `/assets/feedback/style.css` link and the `/assets/shared/submit.js` +
-  `/assets/feedback/app.js` scripts are correct as-is; do not change the paths
-  or their order.
+- The `/assets/feedback/style.css` link and the `/assets/shared/submit.js`,
+  `/assets/shared/heartbeat.js` and `/assets/feedback/app.js` scripts are
+  correct as-is; keep their paths and order.
 
 Consult `"$(cat "$HTML_DIR/.plugin-root")/references/feedback-markup.md"`
 for the full vocabulary (block rules, required IDs).

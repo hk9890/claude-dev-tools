@@ -16,7 +16,8 @@ $ARGUMENTS
 
 Work from that directly; do not ask the user to restate it.
 
-Load and follow [`../../references/ask.md`](../../references/ask.md) — build the
+Load and follow [`../../references/ask.md`](../../references/ask.md), at
+`<base directory for this skill>/../../references/ask.md` — build the
 question/decision form from the intent above, serve it with the blocking submit
 round-trip, and read back the user's verdict and answers. It carries the
 ask-specific authoring and read-back, and points on to the shared serve procedure

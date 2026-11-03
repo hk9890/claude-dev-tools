@@ -81,7 +81,7 @@ know what the app reaches. Point it at an environment whose data you can afford 
    report alone.
 
    Each proposal is tagged `settled` or `open`. Follow
-   `<base directory for this skill>/../../references/decision-split.md` (plugin-root layout:
+   `<SKILL_DIR>/../../references/decision-split.md` (plugin-root layout:
    `../..` is correct) — it defines both words. Done when
    every open item has been put to the user and the settled batch has been named.
 
@@ -126,6 +126,7 @@ of `monitoring-backed` or `surface-only`; on a surface-only run the headline say
 
 ## Not covered
 
-Reading-based review of the code → `project-review-codebase`. Proving the test suite
-detects bugs → `test-tests`. Writing tests or fixing what this finds → out of scope by
+Reading-based review of the code → `/project-review:project-review-codebase` (needs the
+separate `project-review` plugin). Proving the test suite detects bugs →
+`/project-auto-work:test-tests`. Writing tests or fixing what this finds → out of scope by
 design; the report's proposals name the work, you decide what to do with it.
