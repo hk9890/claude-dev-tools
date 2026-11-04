@@ -62,6 +62,7 @@ test('the first turn starts one inhibitor', async ($, on) => {
 
   expect(seen.started).toHaveLength(1)
   expect(seen.started[0]?.slice(0, 3)).toEqual(['systemd-inhibit', '--what=idle:sleep', '--who=claude-keep-awake'])
+  expect(seen.started[0]).toContain('--no-ask-password')
 })
 
 test('a second turn starts no second inhibitor', async ($, on) => {

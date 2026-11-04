@@ -57,6 +57,7 @@ async function keepAwake($: EngineInterface) {
         WHO,
         `--why=${why}`,
         '--mode=block',
+        '--no-ask-password', // else systemd-inhibit starts pkttyagent, which reads the terminal Claude Code draws on
         'sleep',
         String(LEASE_SECONDS),
       ],
