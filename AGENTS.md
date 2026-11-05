@@ -26,11 +26,11 @@ Every route below is **mandatory, not advisory**. Load the document BEFORE the f
 
 ### Run a plugin to reproduce a bug or verify a change
 
-**MUST read [docs/RUNNING.md](docs/RUNNING.md) before launching a plugin locally** or driving a skill, command, or hook by hand.
+**MUST read [docs/RUNNING.md](docs/RUNNING.md) before launching a plugin locally** or driving a skill, command, or hook by hand. It owns `scripts/claude-dev`, the per-mod launch, and the check that confirms each mod's effect.
 
 ### Commit, branch, PR workflow
 
-**MUST read [docs/CHANGE-WORKFLOW.md](docs/CHANGE-WORKFLOW.md) before ANY git operation** — commit, branch, push, or opening a PR.
+**MUST read [docs/CHANGE-WORKFLOW.md](docs/CHANGE-WORKFLOW.md) before ANY git operation** — commit, branch, push, or opening a PR. It owns branch naming, the pre-push gates, and the PR flow.
 
 ### Reviewing changes
 
@@ -38,7 +38,7 @@ Every route below is **mandatory, not advisory**. Load the document BEFORE the f
 
 ### Releasing plugins
 
-**MUST read [docs/RELEASING.md](docs/RELEASING.md) before cutting a release** or bumping plugin versions.
+**MUST read [docs/RELEASING.md](docs/RELEASING.md) before cutting a release** or bumping plugin versions. It owns the release gates, the version choice, the release steps, and the release-notes structure.
 
 ### Analyze plugin usage
 

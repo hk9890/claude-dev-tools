@@ -22,15 +22,15 @@ Every route below is **mandatory, not advisory**. Load the document BEFORE the f
 
 ### Testing and verification
 
-**MUST read [docs/TESTING.md](docs/TESTING.md) before writing a test** or judging whether a change is verified. It owns the test layers, the fixtures, and the gates that must pass before you push.
+**MUST read [docs/TESTING.md](docs/TESTING.md) before writing a test** or judging whether a change is verified. It owns the test layers, the integration-test setup, and the gates that must pass before you push.
 
 ### Run the service to reproduce a bug or verify a change
 
-**MUST read [docs/RUNNING.md](docs/RUNNING.md) before starting the service locally** or driving it by hand. Pull supporting evidence from [docs/MONITORING.md](docs/MONITORING.md) when reproducing.
+**MUST read [docs/RUNNING.md](docs/RUNNING.md) before starting the service locally** or driving it by hand. It owns the launch commands, the health wait, and the steps that reproduce a bug or verify a fix.
 
 ### Commit, branch, PR workflow
 
-**MUST read [docs/CHANGE-WORKFLOW.md](docs/CHANGE-WORKFLOW.md) before ANY git operation** — commit, branch, push, or opening a PR.
+**MUST read [docs/CHANGE-WORKFLOW.md](docs/CHANGE-WORKFLOW.md) before ANY git operation** — commit, branch, push, or opening a PR. It owns the commit convention, the branch prefixes, the PR steps, and worktree setup.
 
 ### Reviewing changes
 
@@ -38,8 +38,8 @@ Every route below is **mandatory, not advisory**. Load the document BEFORE the f
 
 ### Release
 
-**MUST read [docs/RELEASING.md](docs/RELEASING.md) before cutting a release** or changing what this service ships.
+**MUST read [docs/RELEASING.md](docs/RELEASING.md) before cutting a release** or changing what this service ships. It owns the pre-release checklist, the tag that triggers `release.yml`, and the ops-repo deploy step.
 
-### Analyze logs, spans, monitoring
+### Analyze metrics and logs
 
-**MUST read [docs/MONITORING.md](docs/MONITORING.md) before interpreting logs, spans, or events** — where they land, what a healthy trace looks like, and the health checks. Reproducing a bug is driven from RUNNING.md, which pulls this doc's evidence.
+**MUST read [docs/MONITORING.md](docs/MONITORING.md) before interpreting metrics or logs** — where each lands, the DQL for metrics, and the key log fields.

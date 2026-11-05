@@ -31,7 +31,7 @@ Inside Claude Code, add the marketplace and install plugins from it:
 
 ## Usage
 
-Most plugins ship skills. Describe the task and Claude loads the matching skill on its own; invoke one by name to force it:
+Most plugins ship skills. Run one by typing its name — most start only that way; a few also load on their own when you describe the task:
 
 ```
 /grill

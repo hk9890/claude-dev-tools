@@ -17,7 +17,8 @@ $ARGUMENTS
 
 Work from that directly; do not ask the user to restate it.
 
-Load and follow [`../../references/feedback.md`](../../references/feedback.md) —
+Load and follow [`../../references/feedback.md`](../../references/feedback.md), at
+`<base directory for this skill>/../../references/feedback.md` —
 render the content for inline commenting, run the Apply loop (re-serve on the same
 port after each Apply), and finish on Submit. It carries the feedback-specific
 rendering and loop, and points on to the shared serve procedure and authoring

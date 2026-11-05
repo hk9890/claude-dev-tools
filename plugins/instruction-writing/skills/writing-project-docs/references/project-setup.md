@@ -32,14 +32,14 @@ docs/
   RUNNING.md
 ```
 
-- If a reusable skill fully covers a topic with no local delta, do not create a hollow doc for it.
+- If a reusable skill fully covers a topic with no local delta, route to that skill from `AGENTS.md` and write no topic doc for it.
 - A doc whose **content** is a canonical topic but sits under a **non-canonical name** (anywhere under `docs/` or at the repo root) is a defect: rename it to the canonical name when that slot is empty, or link it from the canonical doc when the slot is filled. Content-driven — the review never invents a doc for an absent topic.
 
 ## File ownership boundaries
 
 Each block states the file's **Inside** (what belongs) and **Not inside** (what routes elsewhere),
 plus an **Audience** line naming who it serves and at which moment — or a **Purpose** line where
-that clarifies more. The two steering files whose content is fixed to a single line carry neither.
+that clarifies more. `CLAUDE.md`, fixed to a single line, and the personal `.claude.local.md` carry neither.
 Content outside a file's boundary is a defect even when every statement in it is true — see
 *Ownership* in [project-doc-guidelines.md](project-doc-guidelines.md).
 
@@ -73,11 +73,11 @@ Content outside a file's boundary is a defect even when every statement in it is
 ### `AGENTS.md`
 
 - **Audience**: AI agents — the first file they read, and the one that sends them everywhere else.
-- **Stays small.** It routes and nothing else: a 2–3 sentence summary plus one entry per use case. Anything a route's destination could hold belongs in that destination. A routing file that grows procedures stops being scannable at the moment it is needed most — the first seconds of a task.
+- **Stays small.** It routes and nothing else: the summary plus one entry per use case. Anything a route's destination could hold belongs in that destination. A routing file that grows procedures stops being scannable at the moment it is needed most — the first seconds of a task.
 - **Inside**: a 2–3 sentence project summary and task → doc/skill routes, every one of them an obligation.
 - **Not inside**: full procedures, README-style prose, content duplicated from the docs it routes to.
 - **No optional routes** (*Obligation*): a use case with a doc behind it reads `MUST read <doc> before <the action that triggers it>` — a release loads `RELEASING.md` first, touching a source file loads `CODING.md` first, searching the repo loads `OVERVIEW.md` first. A preamble states once that loading afterwards does not count. "Load X to understand Y" is advisory phrasing and is a finding.
-- **Conformance** (checked against the example): one `###` section per use case, each naming the doc/skill to load, the action that triggers it, and a one-line reason; skip hollow entries; keep the summary to 2–3 sentences; where no local doc exists, route to an installed skill as `MUST call the Skill tool with <plugin:skill> before <the action that triggers it>`, or, for a skill only the user can start (`disable-model-invocation: true`), as `MUST ask the user to run /<plugin:skill> before <the action that triggers it>`.
+- **Conformance** (checked against the example): one `###` section per use case, each naming the doc/skill to load, the action that triggers it, and a one-line reason; skip hollow entries; where no local doc exists, route to an installed skill as `MUST call the Skill tool with <plugin:skill> before <the action that triggers it>`, or, for a skill only the user can start (`disable-model-invocation: true`), as `MUST ask the user to run /<plugin:skill> before <the action that triggers it>`.
 - Example: [../examples/AGENTS.md](../examples/AGENTS.md)
 
 ### `docs/OVERVIEW.md`

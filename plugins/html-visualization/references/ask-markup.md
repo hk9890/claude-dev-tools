@@ -68,7 +68,7 @@ value that goes stale the moment a question moves:
 | `.widget-index` — `01 · SINGLE CHOICE` | First child of every `.widget[data-qid]` | Hand numbering breaks when a question is inserted above it, and nothing checks it. |
 | `.hv-key` — the keycap on each option | First child of every option row | The cap is bound to a real key; an unbound cap is a lie. |
 | `.hv-rail-item` — one entry per question | `.hv-rail-list` | Same staleness problem as the numbering. |
-| `.widget-note` — the free-text answer field | Last child of every `.annotatable` widget | Already generated before this change. |
+| `.widget-note` — the free-text answer field | Last child of every `.annotatable` widget | A hand-written one comes first, so app.js reads it for the answered state and ignores the injected field the user types in. |
 
 Leave `.hv-rail-list`, `.hv-rail-count`, `.hv-topbar-meta`, `.hv-status-hint`
 and the `data-hv-mod` keycap EMPTY in the markup.
@@ -197,8 +197,6 @@ The `.widget-approaches` equivalent is `.approaches-none`, below.
 
 ### Approaches widget classes
 
-| Class | Element | Purpose |
-|---|---|---|
 The widget has **two modes**, and picking the wrong one produces answers that are not decisions.
 
 | Mode | `data-choice` | The question it asks | Answer |
@@ -348,5 +346,5 @@ Before finalising an ask-mode document:
 - [ ] The verdict section contains all three radio options with the exact values above.
 - [ ] `id="freeform-input"` is on the freeform textarea.
 - [ ] `id="submit-btn"`, `id="copy-btn"`, `id="submit-error"`, `id="main-form"`, `id="state-submitted"`, `id="state-already-submitted"` are all present once.
-- [ ] `<link>` to `/assets/ask/style.css` is in `<head>`; `<script>` for `/assets/shared/submit.js`, `/assets/shared/overlay.js` and then `/assets/ask/app.js` — in that order — are before `</body>`.
+- [ ] `<link>` to `/assets/ask/style.css` is in `<head>`; `<script>` for `/assets/shared/submit.js`, `/assets/shared/overlay.js`, `/assets/shared/heartbeat.js` and then `/assets/ask/app.js` — in that order — are before `</body>`.
 - [ ] No `<script>const CSRF_TOKEN = …</script>` block — the server injects this.
