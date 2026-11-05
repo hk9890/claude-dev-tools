@@ -15,6 +15,10 @@ MIT license:
   of a changed shape and the whole of a mostly new one comes from the same author's `visual-pr` skill at
   commit [`4e39d8f`](https://github.com/humanlayer/skills/commit/4e39d8f)
 
+`skills/worktree-ship/SKILL.md` takes one rule from mattpocock/skills: step 3's fetch of a named
+tracker issue, with its title stated and an ambiguous reference asked about, comes from the
+`implement` skill at commit [`6d6a5b9`](https://github.com/mattpocock/skills/commit/6d6a5b9).
+
 ## MIT License (mattpocock/skills)
 
 Copyright (c) 2026 Matt Pocock
