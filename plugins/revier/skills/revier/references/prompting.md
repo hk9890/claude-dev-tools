@@ -1,7 +1,7 @@
 # Prompting another agent
 
 1. Run `revier agent --help`. It is the authority for the `<agent>` address, the statuses, and what `prompt` refuses.
-2. Find the agent with `revier list --json <project>`.
+2. Find the agent with `revier list --json <name>`, where `<name>` is the project's name.
    - No `.home`, and there is no agent or the user asked for a new one: `revier open <name>` opens or raises the workspace and takes the focus, so give the command to the user.
    - `.home` is set, and there is no agent or the user asked for a new one: add one, and use the address the command prints as `<agent>`:
 

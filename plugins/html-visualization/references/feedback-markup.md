@@ -194,6 +194,6 @@ Before finalising a feedback-mode document:
       `id="state-submitted"`, `id="state-already-submitted"` are each present
       exactly once.
 - [ ] `<link>` to `/assets/feedback/style.css` is in `<head>`; `<script>` for
-      `/assets/shared/submit.js` and then `/assets/feedback/app.js` — in that
-      order — are before `</body>`.
+      `/assets/shared/submit.js`, `/assets/shared/heartbeat.js` and then
+      `/assets/feedback/app.js` — in that order — are before `</body>`.
 - [ ] No `<script>const CSRF_TOKEN = …</script>` block — the server injects it.

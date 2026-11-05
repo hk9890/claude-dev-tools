@@ -29,7 +29,7 @@ Check for `docs/RELEASING.md`. If it exists, read it before proceeding — it co
 
 **2. Create a release checklist**
 
-Use TodoWrite to track progress through these phases:
+Track progress through these phases in the session's task list:
 
 - [ ] Quality gates: run tests, build, lint — all must pass with zero failures — [quality-gates.md](references/quality-gates.md)
 - [ ] Documentation check: verify version consistency across all project files — [documentation-checklist.md](references/documentation-checklist.md)

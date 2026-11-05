@@ -65,7 +65,11 @@ git push origin --delete v1.2.3  # Delete remote
 ### Not on default branch
 
 ```bash
-# Derive DEFAULT_BRANCH first — see release-workflow.md, Phase 1
+# Derive in-block: each Bash call is a fresh shell. Same sequence as release-workflow.md, Phase 1.
+git remote set-head origin -a >/dev/null 2>&1
+DEFAULT_BRANCH=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|origin/||')
+DEFAULT_BRANCH=${DEFAULT_BRANCH:-$(git remote show origin | sed -n 's/.*HEAD branch: //p')}
+[ -n "$DEFAULT_BRANCH" ] || { echo "FAIL: no default branch — origin/HEAD is unset and origin is unreachable; fix the remote first"; exit 1; }
 git checkout "$DEFAULT_BRANCH"
 git pull origin "$DEFAULT_BRANCH"
 ```
@@ -73,7 +77,11 @@ git pull origin "$DEFAULT_BRANCH"
 ### Behind remote
 
 ```bash
-# Derive DEFAULT_BRANCH first — see release-workflow.md, Phase 1
+# Derive in-block: each Bash call is a fresh shell. Same sequence as release-workflow.md, Phase 1.
+git remote set-head origin -a >/dev/null 2>&1
+DEFAULT_BRANCH=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|origin/||')
+DEFAULT_BRANCH=${DEFAULT_BRANCH:-$(git remote show origin | sed -n 's/.*HEAD branch: //p')}
+[ -n "$DEFAULT_BRANCH" ] || { echo "FAIL: no default branch — origin/HEAD is unset and origin is unreachable; fix the remote first"; exit 1; }
 git pull --rebase origin "$DEFAULT_BRANCH"
 ```
 

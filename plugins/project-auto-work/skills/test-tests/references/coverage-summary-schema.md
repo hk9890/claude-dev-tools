@@ -65,7 +65,7 @@ Pipe your command's output through the bundled validator to check it conforms be
 wiring it into the audit:
 
 ```bash
-your-coverage-summary-command | python3 scripts/validate-coverage-summary.py
+your-coverage-summary-command | python3 <test-tests skill directory>/scripts/validate-coverage-summary.py
 ```
 
 Exit `0` prints the normalized summary (per-file and total line counts with

@@ -2,14 +2,14 @@
 
 How an agent launches and drives the widget-service by hand to reproduce a reported bug
 or verify a change. For the automated suites and gates see [TESTING.md](TESTING.md); for
-the evidence trail of what already happened (logs, spans, metrics) see
+the evidence trail of what already happened (metrics, logs) see
 [MONITORING.md](MONITORING.md). For the generic launch-and-drive flow call the Skill tool
 with `run` — this file records only what is specific to this service.
 
 ## Launch locally
 
 ```bash
-docker compose up -d db        # Postgres on :5432
+make dev-db                    # Postgres on :5432
 make run                       # service on :8080, reads DATABASE_URL from .env
 ```
 
