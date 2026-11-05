@@ -21,6 +21,9 @@ let hold: object | undefined
 let inhibitor: HookStream<ProcessSpawnChunk, ProcessSpawnResult> | undefined
 let idleTimer: Timer | undefined
 let cannotInhibit = false
+// From v257 systemd-inhibit starts pkttyagent on the terminal Claude Code draws on, unless told not to.
+// Older ones start none and refuse the flag.
+let noAskPassword: string[] | undefined
 
 const PANEL = 'keep-awake-info'
 const REFRESH_MS = 5000
@@ -44,6 +47,7 @@ async function keepAwake($: EngineInterface) {
   const mine = {}
   hold = mine
   const why = `Claude session ${await $.session.id()}`
+  noAskPassword ??= await noAskPasswordFlag($)
   let hasStarted = false
   const startup = $.clock.after(STARTUP_MS, () => {
     hasStarted = true
@@ -57,7 +61,7 @@ async function keepAwake($: EngineInterface) {
         WHO,
         `--why=${why}`,
         '--mode=block',
-        '--no-ask-password', // else systemd-inhibit starts pkttyagent, which reads the terminal Claude Code draws on
+        ...noAskPassword,
         'sleep',
         String(LEASE_SECONDS),
       ],
@@ -88,6 +92,16 @@ async function keepAwake($: EngineInterface) {
   }
 
   startup.cancel()
+}
+
+async function noAskPasswordFlag($: EngineInterface) {
+  try {
+    const help = await $.process.run(['systemd-inhibit', '--help'])
+
+    return help.stdout.includes('--no-ask-password') ? ['--no-ask-password'] : []
+  } catch {
+    return []
+  }
 }
 
 function release() {
