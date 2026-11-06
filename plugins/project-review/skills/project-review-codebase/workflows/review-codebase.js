@@ -663,10 +663,11 @@ if (typeof agent === 'function') {
     `5. Produce recommended_actions: a prioritised list ordered by what the developer should tackle first, each entry's ` +
     `\`action\` referencing its finding(s). Mandatory even when there is only one action — the ordering is itself the ` +
     `deliverable. Then tag every action \`settled\` or \`open\`, leaving none untagged. SETTLED is a plain bug, a typo, ` +
-    `a dead exemption, a doc that contradicts the code — one correct answer, nothing to weigh. OPEN changes a public ` +
+    `a dead exemption, a doc that contradicts code that is clearly right — one correct answer, nothing to weigh. OPEN changes a public ` +
     `API or a name people type, picks one convention over another the repo also uses, trades one cost against another, ` +
-    `or is large enough that "not now" is a real answer. When you can argue it either way it is settled: asking about ` +
-    `a bug wastes the developer's attention. For every OPEN action also fill \`question\` (what is being decided, in ` +
+    `or is large enough that "not now" is a real answer. A proven bug with one obvious fix is settled: asking about ` +
+    `it wastes the developer's attention. An action is open where a finding it names is marked plausible, or where ` +
+    `a competent person could answer it differently. For every OPEN action also fill \`question\` (what is being decided, in ` +
     `ASD-STE100 Simplified Technical English — one idea per sentence, every identifier and abbreviation expanded — so ` +
     `a reader outside this review understands it), \`options\` (the real ` +
     `alternatives, including "leave it as is" wherever that is one), and \`recommendation\` (which option you would ` +

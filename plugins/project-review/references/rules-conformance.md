@@ -1,8 +1,9 @@
 # Rules conformance
 
 The procedure both rules reviews run: `project-review-change` over one change,
-`project-review-codebase`'s rules dimension over the whole tree. The caller names the
-subject; everything below is the same either way.
+`project-review-codebase`'s rules dimension over the whole tree. It is written for one
+change. The caller names the subject; a whole-tree caller states how the scope changes,
+and its statement wins.
 
 The question is never "is this good code". It is "does the subject do what this
 project's own documents say it must".

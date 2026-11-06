@@ -56,11 +56,16 @@ git stash  # Temporarily save changes
 
 ### Tag already exists
 
+Phase 5 rules out a version that is taken, so this tag is from an earlier try of Phase 7.
+
 ```bash
-git tag -l "v1.2.*"  # Check existing
-git tag -d v1.2.3  # Delete local
-git push origin --delete v1.2.3  # Delete remote
+git ls-remote origin refs/tags/v1.2.3 'refs/tags/v1.2.3^{}'  # the remote tag's commit: the ^{} line, else the plain line
+git rev-parse HEAD
 ```
+
+- No remote tag: the local tag is left over. `git tag -f v1.2.3`, then go on with Phase 7 from `git push origin v1.2.3`.
+- The remote tag is on HEAD: the earlier try pushed it. Skip the tag and the push. Where `gh release view v1.2.3` finds a release, put the notes on it with `gh release edit v1.2.3 --notes-file <the printed notes path>`; else run Phase 7's `gh release create`. Then go on with Phase 8.
+- The remote tag is on another commit: stop and report that commit to the user. Never delete or move a pushed tag.
 
 ### Not on default branch
 
@@ -90,7 +95,7 @@ git pull --rebase origin "$DEFAULT_BRANCH"
 ### CI not passing
 
 ```bash
-gh run list --limit 5
+gh run list --commit "$(git rev-parse HEAD)"
 gh run view <run-id> --log-failed
 ```
 

@@ -2,7 +2,7 @@
 
 1. Run `revier agent --help`. It is the authority for the `<agent>` address, the statuses, and what `prompt` refuses.
 2. Find the agent with `revier list --json <name>`, where `<name>` is the project's name.
-   - No `.home`, and there is no agent or the user asked for a new one: `revier open <name>` opens or raises the workspace and takes the focus, so give the command to the user.
+   - No `.home`, and there is no agent or the user asked for a new one: `revier open <name>` opens or raises the workspace and takes the focus, so give the command to the user and stop here.
    - `.home` is set, and there is no agent or the user asked for a new one: add one, and use the address the command prints as `<agent>`:
 
      ```bash
@@ -13,9 +13,8 @@
      - It prints `idle`: go to step 4.
      - It exits 2 on the timeout: the agent is there and is not idle, so run `revier list --json <name>` again and continue with step 3.
      - It fails with another error: the harness has not started, so run the `wait` again. After one minute of that error, report the message of revier to the user and stop here.
-   - An agent with no `.ref`: report that it runs on the other machine, out of reach from here.
-   - An agent with no `.target`: report that revier cannot reach it.
-   - Several agents: pick by `.state.activity`, and use its address as `<agent>`. Ask the user when the activity does not decide it.
+   - The agent the user means has no `.target`, or agents are listed but none has one: report that revier cannot reach it from here, and stop here.
+   - Several agents with a `.target`: pick by `.state.activity`, and use its address as `<agent>`. Ask the user when the activity does not decide it.
 3. Read its `.state.status`. An `idle` agent takes a prompt. `prompt` refuses an agent at `attention` and one at `unknown`. For `attention`, follow "An agent at attention". The state of one at `unknown` cannot be read: report that to the user. For a `running` one, wait first and read the status the wait prints:
 
    ```bash

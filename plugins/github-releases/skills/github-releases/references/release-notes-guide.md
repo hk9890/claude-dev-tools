@@ -4,20 +4,17 @@
 
 ### Highlights (required)
 
-3-5 key changes, emoji-prefixed for scanning:
+3-5 key changes, one line each:
 
 ```markdown
 ## Highlights
 
-✅ Fixed all E2E test failures
-🚀 2x faster query performance
-📚 Complete API documentation
-🔧 Improved error messages
-⚠️ Dropped Node 16 support
+- Fixed all E2E test failures
+- 2x faster query performance
+- Complete API documentation
+- Improved error messages
+- Breaking: dropped Node 16 support
 ```
-
-Common emojis: ✅ fix, 🚀 performance, 📚 docs, 🔧 improvement, ⚠️ breaking,
-🗑️ removal, 🐛 bugfix, ✨ new feature
 
 ### What's Changed (required)
 
