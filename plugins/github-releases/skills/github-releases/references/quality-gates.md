@@ -46,8 +46,8 @@ Run the project's linter with the command established in Phase 2 of [release-wor
 ## Gate 5: CI Status
 
 ```bash
-# The runs of the commit being released, not the newest runs on any branch
-gh run list --commit "$(git rev-parse HEAD)" --json name,status,conclusion
+# The runs of HEAD, the commit under test, not the newest runs on any branch
+gh run list --commit "$(git rev-parse HEAD)" --json databaseId,name,status,conclusion
 ```
 
-The gate passes when every listed run has `status` `completed` and `conclusion` `success` or `skipped`. Wait for a run in progress with `gh run watch <run-id>`. With no run listed, ask the user whether the project runs CI on this branch; with none, record that and move on. Never pass the gate on a run of another commit.
+The gate passes when the newest run of each workflow `name` has `status` `completed` and `conclusion` `success`, `skipped` or `neutral`. Wait for a run in progress with `gh run watch <databaseId>`. With no run listed, ask the user whether the project runs CI on this branch; with none, record that and move on. Never pass the gate on a run of another commit.
