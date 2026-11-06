@@ -119,7 +119,7 @@ Render the content inside `<div id="content">` per the markup contract in
 - A whole list is one block — `data-block-id` on the `<ul>`/`<ol>`, not each `<li>`.
 - Do NOT add `<script>const CSRF_TOKEN = "...";</script>` — the server injects it.
 - Keep every `<link>` and `<script src>` tag of the template as-is: same
-  paths, same order, same place.
+  paths, same order, same element (`<head>` or `<body>`).
 
 Consult `"$(cat "$HTML_DIR/.plugin-root")/references/feedback-markup.md"`
 for the full vocabulary (block rules, required IDs).

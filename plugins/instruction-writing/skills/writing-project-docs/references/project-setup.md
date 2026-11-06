@@ -54,8 +54,8 @@ Content outside a file's boundary is a defect even when every statement in it is
 
 - **Inside**: personal/local context — Claude preferences, machine-specific paths, scratch notes.
 - **Not inside**: shared/team guidance, routing, anything the canonical doc flows write.
-- Gitignored; never written by canonical doc flows (the user edits it directly). Surfaced by the reviewer's `manifest.py` (classification `personal-local`). A `.claude.local.md` is the same file under a name Claude Code never loads: `manifest.py` classes it `personal-legacy`, and the fix renames it to `CLAUDE.local.md`.
-- Present only in the checkout that holds it, so a git worktree starts without it. List `CLAUDE.local.md` in a committed `.worktreeinclude` and Claude Code copies it into each worktree it creates. For notes that stay the same in every checkout, keep them in a file under your home directory and make `CLAUDE.local.md` the one line `@~/<that file>`.
+- Gitignored; never written by canonical doc flows (the user edits it directly). Surfaced by the reviewer's `manifest.py` (classification `personal-local`). A `.claude.local.md` is the same file under a name Claude Code never loads: `manifest.py` classes it `personal-legacy`, and the fix moves its notes into `CLAUDE.local.md` (merged where that file exists) and keeps `CLAUDE.local.md` in `.gitignore`.
+- Present only in the checkout that holds it, so a git worktree starts without it. List `CLAUDE.local.md` in a committed `.worktreeinclude`: Claude Code then copies it into each worktree it creates. Each copy is a snapshot; for notes that stay the same in every checkout, keep them in a file under your home directory and make `CLAUDE.local.md` the one line `@~/<that file>`, so every copy imports the same notes.
 
 ### `README.md`
 

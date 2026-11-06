@@ -192,6 +192,6 @@ Before finalising a feedback-mode document:
       `id="state-submitted"`, `id="state-already-submitted"` are each present
       exactly once.
 - [ ] Every `<link>` and `<script src>` tag of `feedback-template.html` is
-      present, with the same paths, in the same order and in the same place
-      (`<head>`, or just before `</body>`).
+      present, with the same paths, in the same order and in the same element
+      (`<head>` or `<body>`).
 - [ ] No `<script>const CSRF_TOKEN = …</script>` block — the server injects it.

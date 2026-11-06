@@ -75,12 +75,16 @@ done
 
 # 2b. Every personal file manifest.py excludes is a file the standard names, with its own
 #     Inside and Not inside — else a rename on one side reviews personal notes as project docs.
-for name in $(python3 -c "
+#     Each legacy name moves to one of those files.
+PERSONAL=$(python3 -c "
 import importlib.util
 spec = importlib.util.spec_from_file_location('m', '$MANIFEST')
 m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+assert set(m.LEGACY_PERSONAL_LOCAL.values()) <= set(m.PERSONAL_LOCAL), 'a legacy name moves to a file PERSONAL_LOCAL lacks'
 print(' '.join(m.PERSONAL_LOCAL))
-"); do
+") || { printf 'FAIL: cannot load PERSONAL_LOCAL from manifest.py, or a legacy name moves outside it\n' >&2; exit 1; }
+[[ -n "$PERSONAL" ]] || { printf 'FAIL: PERSONAL_LOCAL is empty\n' >&2; exit 1; }
+for name in $PERSONAL; do
   CONTRACT=$(python3 -c "
 import importlib.util
 spec = importlib.util.spec_from_file_location('m', '$MANIFEST')

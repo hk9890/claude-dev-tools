@@ -311,7 +311,7 @@ async function main() {
       { path: 'docs/A.md', classification: 'non-standard', metrics },
       { path: '.claude.local.md', classification: 'personal-legacy', metrics },
     ],
-    legacy_personal: [{ path: '.claude.local.md', rename_to: 'CLAUDE.local.md' }],
+    legacy_personal: [{ path: '.claude.local.md', rename_to: 'CLAUDE.local.md', rename_to_exists: true }],
     agents_routes: [
       { kind: 'file', target: 'docs/CODING.md', text: '**MUST read [docs/CODING.md](docs/CODING.md) before editing ANY file.**' },
       { kind: 'file', target: 'docs/B.md', text: 'See [docs/B.md](docs/B.md) for details.' },
@@ -534,10 +534,17 @@ async function main() {
   // would read as a clean bill of health for docs nobody compared with the code.
   truthy('synthesis: the report must say the docs were not checked against the code',
     deep.prompts[deep.prompts.length - 1].includes('did not check documented commands, paths, or flags against the code'));
-  // A personal file under the old name is personal content: the only finding is its rename.
+  // A personal file under the old name is personal content: the only finding is its move,
+  // which the user makes, and which must neither overwrite notes nor expose them to a commit.
+  const synthesisPrompt = deep.prompts[deep.prompts.length - 1];
   truthy('synthesis: a personal file under a name Claude Code never loads reaches the report with its rename',
-    deep.prompts[deep.prompts.length - 1].includes('{"path":".claude.local.md","rename_to":"CLAUDE.local.md"}') &&
-    deep.prompts[deep.prompts.length - 1].includes('the fix renames it to its rename_to path'));
+    synthesisPrompt.includes('{"path":".claude.local.md","rename_to":"CLAUDE.local.md","rename_to_exists":true}') &&
+    synthesisPrompt.includes('the fix moves its content to its rename_to path'));
+  truthy('synthesis: the move merges where the target exists and keeps the target gitignored',
+    synthesisPrompt.includes('merged into that file where rename_to_exists is true') &&
+    synthesisPrompt.includes('adds rename_to to .gitignore'));
+  truthy('synthesis: moving a personal file is an open finding',
+    synthesisPrompt.includes('moves a personal file (the user edits those'));
   truthy('read-review: a personal file under the old name is never read-reviewed',
     !deep.prompts.slice(0, -1).some((p) => p.includes('.claude.local.md')));
 

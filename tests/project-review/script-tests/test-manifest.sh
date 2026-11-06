@@ -135,16 +135,28 @@ test_classification() {
   out=$("$SCRIPT" "$dir")
   local legacy; legacy=$(json_val "$out" "sorted(f['classification'] for f in d['files'] if f['path'].endswith('.claude.local.md'))")
   assert_eq "classify: .claude.local.md = personal-legacy" "['personal-legacy', 'personal-legacy']" "$legacy"
-  local renames; renames=$(json_val "$out" "sorted((l['path'], l['rename_to']) for l in d['legacy_personal'])")
-  assert_eq "legacy_personal: each names its rename" "[('.claude.local.md', 'CLAUDE.local.md'), ('docs/.claude.local.md', 'docs/CLAUDE.local.md')]" "$renames"
+  local renames; renames=$(json_val "$out" "sorted((l['path'], l['rename_to'], l['rename_to_exists']) for l in d['legacy_personal'])")
+  assert_eq "legacy_personal: each names its rename" "[('.claude.local.md', 'CLAUDE.local.md', False), ('docs/.claude.local.md', 'docs/CLAUDE.local.md', False)]" "$renames"
   orphaned=$(json_val "$out" "[p for p in d['orphans'] if p.endswith('.claude.local.md')]")
   assert_eq "orphans: a legacy personal file is never an orphan" "[]" "$orphaned"
   counts=$(json_val "$out" "(d['summary']['unresolved_links'], d['summary']['hollow'], d['summary']['legacy_personal'])")
   assert_eq "summary: a legacy personal file adds no dead link and no hollow doc, and is counted" "${base_counts%)}, 2)" "$counts"
   local text; text=$("$SCRIPT" "$dir" --format=text)
-  if grep -q 'LEGACY personal file: .claude.local.md (Claude Code never loads it; rename to CLAUDE.local.md)' <<< "$text"; then
-    ok "text: the legacy personal file and its rename are shown"
-  else fail "text: no LEGACY line for .claude.local.md"; fi
+  assert_contains "text: the legacy personal file and its rename are shown" \
+    'LEGACY personal file: .claude.local.md (Claude Code never loads it; rename to CLAUDE.local.md)' "$text"
+  local row; row=$(grep -F '  .claude.local.md ' <<< "$text")
+  assert_contains "text: the legacy row carries its class" 'personal-legacy' "$row"
+  [[ "$row" != *HOLLOW* && "$row" != *dead-link* ]] && ok "text: a personal row carries no HOLLOW or dead-link flag" \
+    || fail "text: a personal row carries a flag the summary does not count — $row"
+
+  # The file it moves to exists: the move is a merge, so neither file's notes are lost.
+  printf '# Newer\n\nNotes.\n' > "$dir/CLAUDE.local.md"
+  out=$("$SCRIPT" "$dir")
+  local exists; exists=$(json_val "$out" "[l['rename_to_exists'] for l in d['legacy_personal'] if l['path']=='.claude.local.md'][0]")
+  assert_eq "legacy_personal: an existing CLAUDE.local.md is flagged" "True" "$exists"
+  text=$("$SCRIPT" "$dir" --format=text)
+  assert_contains "text: an existing CLAUDE.local.md turns the rename into a merge" \
+    'LEGACY personal file: .claude.local.md (Claude Code never loads it; merge into CLAUDE.local.md, which exists)' "$text"
   rm -rf "$dir"
 }
 
