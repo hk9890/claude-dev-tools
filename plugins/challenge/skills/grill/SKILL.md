@@ -16,7 +16,8 @@ Work the tree in **rounds**. The **frontier** is every decision whose prerequisi
 settled — the questions you can ask *now* without guessing at answers you have not heard yet. Put
 the frontier to the user, then wait for the answers before recomputing it. A question whose answer
 depends on another question still open in this round belongs to a later round: a recommendation
-that reads "if Q1 is X" is the symptom. Each round's
+that reads "if Q1 is X", or a "what would change your mind" that names another open question, is
+the symptom. Each round's
 answers reshape the tree: settled decisions push the frontier outward and unblock the questions
 that depended on them.
 
@@ -25,23 +26,28 @@ that depended on them.
 Write every question for a **cold reader**: a user who comes back from other sessions and holds
 none of this one in mind. The goal is a decision the user understands, not a decision the user
 approves. A question restates the background it rests on: never "as discussed above", never an
-earlier question's number without what that question settled. Put each fact inside the question
-that rests on it, not in a block ahead of the questions. Expand every identifier and
-abbreviation, in picker labels too and also ones from the user's own instructions (BLUF, YAGNI),
-and write in ASD-STE100 Simplified Technical English. Keep this skill's own terms (round,
-frontier, design tree, simple, complex) out of what the user reads.
+earlier question's number, option, or answer that this message does not show. Open the message
+with the first question: put each fact inside the question that rests on it, each with its source,
+and leave out a fact no question in the message rests on. Follow every identifier (a file path,
+a task id, a commit hash, a skill or check name) with what it is, expand every abbreviation, in
+picker labels too and also ones from the user's own instructions (BLUF, YAGNI), and write in
+ASD-STE100 Simplified Technical English. Do not tell the user how you ordered, grouped, or held
+back the questions, or name this skill's own terms (round, frontier, design tree, simple,
+complex).
 
-One decision per question: a choice hidden inside an option is a question of its own. Every
-decision carries your recommendation: what you recommend, why, and what it costs us. A question
-about the user's own goal or situation is not a decision and carries none: say what each answer
-would change.
+One decision per question: a choice hidden inside an option, or two options that share a first
+choice and differ in a second, is a question of its own. Every decision carries your
+recommendation: exactly one option, why, and what it costs us. Only a question about the user's
+own goal or situation carries none, and only where no fact you can weigh makes one answer better:
+say what each answer would change. A choice of scope, wording, or design is a decision.
 
 ## Simple and complex questions
 
 A question is **simple** where a cold reader can decide it from the question text alone: the
 options explain themselves, and the effect of each stays local and is easy to undo. Every other
 question is **complex**: so is any question with an option that changes another file, skill, or
-plugin. Short option labels do not make a question simple. Where you are not sure, it is complex.
+plugin, and any question whose text needs more than two sentences of background. Short option
+labels do not make a question simple. Where you are not sure, it is complex.
 
 **Simple** questions go through the `AskUserQuestion` tool, several to a call.
 
@@ -64,7 +70,7 @@ decisions that hang on it.>
 - **<option>**: what it commits us to, what it costs, and what it rules out later, where it
   rules out anything.
 
-**Recommendation: <option>.** Why, what it costs us, and what would change your mind.
+**Recommendation: <one option's label, exactly>.** Why, what it costs us, and what would change your mind.
 ```
 
 In a round with both kinds, write the prose questions first, then make the `AskUserQuestion`
@@ -85,12 +91,13 @@ user decides, not when you think the question is clear.
 ## Facts and decisions
 
 Finding *facts* is your job, never the user's. When a frontier question turns on a fact from the
-environment — the working tree, the git history, a tool's output — go and get it. Dispatch a
+environment — the working tree, the git history, the project's hosting such as GitHub, a tool's
+output — go and get it, and ask the user only for the part no source can show. Dispatch a
 sub-agent for anything that takes real digging and keep asking the rest of the frontier while it
 runs: a live exploration is an unsettled prerequisite, so only the questions downstream of it wait
 for the answer. Never say you will check a fact later, and never offer an option that rests on a
-fact you have not checked. Where new facts change a question still open, put the whole question
-again in its full shape. The *decisions* are the user's — put each one to them and wait.
+fact you have not checked. Facts that arrive while questions are open never go out alone: put
+each open question again in its full shape, with the new facts inside it. The *decisions* are the user's — put each one to them and wait.
 
 The session is done when the frontier is empty: every branch of the design tree visited, nothing
 left silently assumed. Act on the plan once the user confirms you have reached a shared
