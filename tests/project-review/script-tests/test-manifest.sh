@@ -104,6 +104,10 @@ test_metrics() {
 # 4. classification
 test_classification() {
   local dir; dir=$(make_fixture)
+  printf '# Personal\n\nMy sandbox URL. See [scratch](../scratch.md).\n' > "$dir/CLAUDE.local.md"
+  printf '# Personal\n' > "$dir/docs/CLAUDE.local.md"
+  local base_dir; base_dir=$(make_fixture)
+  local base; base=$("$SCRIPT" "$base_dir"); rm -rf "$base_dir"
   local out; out=$("$SCRIPT" "$dir")
   local readme; readme=$(json_val "$out" "[f['classification'] for f in d['files'] if f['path']=='README.md'][0]")
   assert_eq "classify: README = canonical-root" "canonical-root" "$readme"
@@ -113,6 +117,49 @@ test_classification() {
   assert_eq "classify: docs/DOCUMENTING.md = canonical" "canonical" "$documenting"
   local notes; notes=$(json_val "$out" "[f['classification'] for f in d['files'] if f['path']=='docs/NOTES.md'][0]")
   assert_eq "classify: docs/NOTES.md = non-standard" "non-standard" "$notes"
+  local personal; personal=$(json_val "$out" "[f['classification'] for f in d['files'] if f['path']=='CLAUDE.local.md'][0]")
+  assert_eq "classify: CLAUDE.local.md = personal-local" "personal-local" "$personal"
+  local nested; nested=$(json_val "$out" "[f['classification'] for f in d['files'] if f['path']=='docs/CLAUDE.local.md'][0]")
+  assert_eq "classify: docs/CLAUDE.local.md = personal-local" "personal-local" "$nested"
+  local orphaned; orphaned=$(json_val "$out" "[p for p in d['orphans'] if p.endswith('CLAUDE.local.md')]")
+  assert_eq "orphans: a personal file is never an orphan" "[]" "$orphaned"
+  local counts; counts=$(json_val "$out" "(d['summary']['unresolved_links'], d['summary']['hollow'])")
+  local base_counts; base_counts=$(json_val "$base" "(d['summary']['unresolved_links'], d['summary']['hollow'])")
+  assert_eq "summary: a personal file adds no dead link and no hollow doc" "$base_counts" "$counts"
+  rm -rf "$dir"
+
+  # A personal file under the name Claude Code never loads: out of the review, its rename reported.
+  dir=$(make_fixture)
+  printf '# Personal\n\nMy sandbox URL. See [scratch](../scratch.md).\n' > "$dir/.claude.local.md"
+  printf '# Personal\n' > "$dir/docs/.claude.local.md"
+  out=$("$SCRIPT" "$dir")
+  local legacy; legacy=$(json_val "$out" "sorted(f['classification'] for f in d['files'] if f['path'].endswith('.claude.local.md'))")
+  assert_eq "classify: .claude.local.md = personal-legacy" "['personal-legacy', 'personal-legacy']" "$legacy"
+  local renames; renames=$(json_val "$out" "sorted((l['path'], l['rename_to'], l['rename_to_exists']) for l in d['legacy_personal'])")
+  assert_eq "legacy_personal: each names its rename" "[('.claude.local.md', 'CLAUDE.local.md', False), ('docs/.claude.local.md', 'docs/CLAUDE.local.md', False)]" "$renames"
+  orphaned=$(json_val "$out" "[p for p in d['orphans'] if p.endswith('.claude.local.md')]")
+  assert_eq "orphans: a legacy personal file is never an orphan" "[]" "$orphaned"
+  counts=$(json_val "$out" "(d['summary']['unresolved_links'], d['summary']['hollow'], d['summary']['legacy_personal'])")
+  assert_eq "summary: a legacy personal file adds no dead link and no hollow doc, and is counted" "${base_counts%)}, 2)" "$counts"
+  local text; text=$("$SCRIPT" "$dir" --format=text)
+  assert_contains "text: the legacy personal file and its rename are shown" \
+    'LEGACY personal file: .claude.local.md (Claude Code never loads it; rename to CLAUDE.local.md)' "$text"
+  local row; row=$(grep -F '  .claude.local.md ' <<< "$text")
+  assert_contains "text: the legacy row carries its class" 'personal-legacy' "$row"
+  [[ "$row" != *dead-link* ]] && ok "text: a personal row with a dead link carries no dead-link flag" \
+    || fail "text: a personal row carries a flag the summary does not count — $row"
+  row=$(grep -F '  docs/.claude.local.md ' <<< "$text")  # heading only
+  [[ -n "$row" && "$row" != *HOLLOW* ]] && ok "text: a heading-only personal row carries no HOLLOW flag" \
+    || fail "text: a heading-only personal row is missing or flagged HOLLOW — $row"
+
+  # The file it moves to exists: the move is a merge, so neither file's notes are lost.
+  printf '# Newer\n\nNotes.\n' > "$dir/CLAUDE.local.md"
+  out=$("$SCRIPT" "$dir")
+  local exists; exists=$(json_val "$out" "[l['rename_to_exists'] for l in d['legacy_personal'] if l['path']=='.claude.local.md'][0]")
+  assert_eq "legacy_personal: an existing CLAUDE.local.md is flagged" "True" "$exists"
+  text=$("$SCRIPT" "$dir" --format=text)
+  assert_contains "text: an existing CLAUDE.local.md turns the rename into a merge" \
+    'LEGACY personal file: .claude.local.md (Claude Code never loads it; merge into CLAUDE.local.md, which exists)' "$text"
   rm -rf "$dir"
 }
 
