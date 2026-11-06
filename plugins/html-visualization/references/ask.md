@@ -165,9 +165,8 @@ contract in
   every single-mode `approaches` widget its `.approaches-none` — see "The escape
   option" in `ask-markup.md`.
 - Do NOT add `<script>const CSRF_TOKEN = "...";</script>` — the server injects it.
-- The `/assets/ask/style.css` link and the `/assets/shared/submit.js`,
-  `/assets/shared/overlay.js`, `/assets/shared/heartbeat.js` and
-  `/assets/ask/app.js` scripts are correct as-is; keep their paths and order.
+- Keep every `<link>` and `<script>` tag of the template as-is: same paths,
+  same order.
 
 Consult `"$(cat "$HTML_DIR/.plugin-root")/references/ask-markup.md"`
 for the full vocabulary (classes, data attributes, required IDs, verdict radio

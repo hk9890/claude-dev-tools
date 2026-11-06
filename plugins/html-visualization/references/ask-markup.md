@@ -24,7 +24,7 @@ Every document must have this top-level structure:
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Feedback — [descriptive title]</title>
-  <link rel="stylesheet" href="/assets/ask/style.css">
+  <!-- the <link> tags of ask-template.html, as-is -->
 </head>
 <body>
   <div class="hv-topbar">                     <!-- mode, title, host -->
@@ -48,10 +48,7 @@ Every document must have this top-level structure:
       <div id="state-already-submitted" class="state-already-submitted"> … </div>
     </main>
   </div>
-  <script src="/assets/shared/submit.js"></script>
-  <script src="/assets/shared/overlay.js"></script>
-  <script src="/assets/shared/heartbeat.js"></script>
-  <script src="/assets/ask/app.js"></script>
+  <!-- the <script> tags of ask-template.html, as-is -->
 </body>
 </html>
 ```
@@ -346,5 +343,5 @@ Before finalising an ask-mode document:
 - [ ] The verdict section contains all three radio options with the exact values above.
 - [ ] `id="freeform-input"` is on the freeform textarea.
 - [ ] `id="submit-btn"`, `id="copy-btn"`, `id="submit-error"`, `id="main-form"`, `id="state-submitted"`, `id="state-already-submitted"` are all present once.
-- [ ] `<link>` to `/assets/ask/style.css` is in `<head>`; `<script>` for `/assets/shared/submit.js`, `/assets/shared/overlay.js`, `/assets/shared/heartbeat.js` and then `/assets/ask/app.js` — in that order — are before `</body>`.
+- [ ] Every `<link>` and `<script>` tag of `ask-template.html` is present, with the same paths and in the same order.
 - [ ] No `<script>const CSRF_TOKEN = …</script>` block — the server injects this.

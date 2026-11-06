@@ -38,7 +38,7 @@ Every document must have this top-level structure:
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Review — [descriptive title]</title>
-  <link rel="stylesheet" href="/assets/feedback/style.css">
+  <!-- the <link> tags of feedback-template.html, as-is -->
 </head>
 <body>
   <div class="hv-topbar">                     <!-- mode, title, host -->
@@ -70,9 +70,7 @@ Every document must have this top-level structure:
       <div id="state-already-submitted" class="state-already-submitted"> … </div>
     </main>
   </div>
-  <script src="/assets/shared/submit.js"></script>
-  <script src="/assets/shared/heartbeat.js"></script>
-  <script src="/assets/feedback/app.js"></script>
+  <!-- the <script> tags of feedback-template.html, as-is -->
 </body>
 </html>
 ```
@@ -193,7 +191,6 @@ Before finalising a feedback-mode document:
       `id="copy-btn"`, `id="submit-error"`, `id="state-applying"`,
       `id="state-submitted"`, `id="state-already-submitted"` are each present
       exactly once.
-- [ ] `<link>` to `/assets/feedback/style.css` is in `<head>`; `<script>` for
-      `/assets/shared/submit.js`, `/assets/shared/heartbeat.js` and then
-      `/assets/feedback/app.js` — in that order — are before `</body>`.
+- [ ] Every `<link>` and `<script>` tag of `feedback-template.html` is present,
+      with the same paths and in the same order.
 - [ ] No `<script>const CSRF_TOKEN = …</script>` block — the server injects it.
