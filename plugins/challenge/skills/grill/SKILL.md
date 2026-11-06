@@ -17,9 +17,8 @@ settled — the questions you can ask *now* without guessing at answers you have
 the frontier to the user, then wait for the answers before recomputing it. A question whose answer
 depends on another question still open in this round belongs to a later round: a recommendation
 that reads "if Q1 is X", or a "what would change your mind" that names another open question, is
-the symptom. Each round's
-answers reshape the tree: settled decisions push the frontier outward and unblock the questions
-that depended on them.
+the symptom. Each round's answers reshape the tree: settled decisions push the frontier outward
+and unblock the questions that depended on them.
 
 ## The cold reader
 
@@ -37,17 +36,18 @@ complex).
 
 One decision per question: a choice hidden inside an option, or two options that share a first
 choice and differ in a second, is a question of its own. Every decision carries your
-recommendation: exactly one option, why, and what it costs us. Only a question about the user's
-own goal or situation carries none, and only where no fact you can weigh makes one answer better:
-say what each answer would change. A choice of scope, wording, or design is a decision.
+recommendation: exactly one option, why, and what it costs us. A question about the user's own
+goal or situation carries your best read of it instead: the answer you think is true, marked as a
+guess, with what you read it from, and what each answer would change.
 
 ## Simple and complex questions
 
 A question is **simple** where a cold reader can decide it from the question text alone: the
 options explain themselves, and the effect of each stays local and is easy to undo. Every other
 question is **complex**: so is any question with an option that changes another file, skill, or
-plugin, and any question whose text needs more than two sentences of background. Short option
-labels do not make a question simple. Where you are not sure, it is complex.
+plugin, and any question whose text needs more than two sentences of background, the picker's
+`question` field included. Short option labels do not make a question simple. Where you are not
+sure, it is complex.
 
 **Simple** questions go through the `AskUserQuestion` tool, several to a call.
 
@@ -96,8 +96,9 @@ output — go and get it, and ask the user only for the part no source can show.
 sub-agent for anything that takes real digging and keep asking the rest of the frontier while it
 runs: a live exploration is an unsettled prerequisite, so only the questions downstream of it wait
 for the answer. Never say you will check a fact later, and never offer an option that rests on a
-fact you have not checked. Facts that arrive while questions are open never go out alone: put
-each open question again in its full shape, with the new facts inside it. The *decisions* are the user's — put each one to them and wait.
+fact you have not checked. Facts that arrive while questions are open, a sub-agent's report
+included, never go out alone: put each open question again in its full shape, with the new facts
+inside it, and drop the facts no question rests on. Send no progress notes between questions. The *decisions* are the user's — put each one to them and wait.
 
 The session is done when the frontier is empty: every branch of the design tree visited, nothing
 left silently assumed. Act on the plan once the user confirms you have reached a shared
