@@ -1,6 +1,6 @@
 ---
 name: test-tests
-description: "Empirical test-suite strength audit: mutation kill rate, flake, speed and unit isolation, measured rather than read. Reports and proposes; never keeps an edit."
+description: "Empirical test-suite strength audit: mutation kill rate, flake, speed and unit isolation, measured rather than read. With a taskmgr store, files its findings there and opens a PR for each settled survivor it can prove fixed."
 user-invocable: true
 disable-model-invocation: true
 argument-hint: "[low|medium|high|ultra] [path]"
@@ -12,7 +12,9 @@ suite inline. It returns a structured report.
 The audit temporarily mutates production code to check that tests fail, inside its own
 git worktrees when the suite can run there, or in the live tree under a backup/restore
 protocol when it cannot — either way every edit is reverted and integrity-checked.
-Nothing is ever committed, no test is written, nothing is installed.
+The audit itself commits nothing, writes no test and installs nothing. The triage step
+after it acts where the project has a taskmgr store: a settled survivor gets a test on its
+own branch and a PR, and every other item is filed in taskmgr.
 
 ## Run the workflow
 
@@ -49,10 +51,12 @@ when the skill loads. It is absolute and install-correct — build every path fr
 2. Check the prerequisite, snapshot the target tree so integrity is verifiable afterwards,
    and create a per-run scratch dir. Echo the scratch path: shell state does not survive
    between commands, so a value you only assign is gone by the time step 3 needs it.
-   `<scratch>` in steps 3-5 is that printed absolute path.
+   `<scratch>` in steps 3-6 is that printed absolute path, and the printed commit is
+   `<audited-head>`: the triage opens a fix only against the commit the audit measured.
 
    ```bash
    command -v python3 >/dev/null || { echo "python3 missing — stop and tell the user"; return 1 2>/dev/null || exit 1; }
+   git -C "<path>" rev-parse HEAD
    SCRATCH=$(mktemp -d /tmp/test-tests-XXXXXX) && echo "$SCRATCH" || { echo "mktemp failed — stop; do not launch without a scratch dir"; return 1 2>/dev/null || exit 1; }
    git -C "<path>" status --porcelain > "$SCRATCH/pre-status.txt"
    git -C "<path>" diff > "$SCRATCH/pre-diff.patch"
@@ -122,10 +126,12 @@ when the skill loads. It is absolute and install-correct — build every path fr
    [`references/how-the-audit-measures.md`](references/how-the-audit-measures.md). Read
    it before you explain such a finding or answer how the audit reached it.
 
-   Each proposal is tagged `settled` or `open`. Follow
-   `<SKILL_DIR>/../../references/decision-split.md` (plugin-root
-   layout: `../..` is correct) — it defines both words. Done
-   when every open item has been put to the user and the settled batch has been named.
+6. **Triage** — after the step-4 integrity check, never before it. Follow
+   `<SKILL_DIR>/../../references/triage.md` (plugin-root layout: `../..` is correct)
+   with `<tool>` = `test-tests`. Done when its summary table has an outcome for every
+   item; where that file skips the triage, when the items are relayed as it says; where
+   a step stops the triage, when the reason it stopped is stated and the items are
+   relayed as `decision-split.md` describes.
 
 If `python3` is missing or the workflow cannot launch, do not improvise an inline
 audit — report which prerequisite is missing and stop. If `result` holds an
@@ -141,5 +147,5 @@ with no `error` means the abort-report or synthesis agent died: say so, and rela
 Reading-based judgment about tests — whether a mock hides the failure path nobody tests,
 whether an expensive test covers a risk a fast one cannot, whether the test code is
 maintainable → `project-review:project-review-codebase`, which reviews test code across
-its consistency, structure and architecture dimensions. Writing or fixing tests → out of
-scope by design; the report's proposals name the missing tests, the user decides what to do.
+its consistency, structure and architecture dimensions. Any test beyond one that kills a
+settled survivor → filed in taskmgr by the triage, for the user to do.

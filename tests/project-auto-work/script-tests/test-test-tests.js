@@ -680,6 +680,17 @@ async function main() {
   truthy('orchestration: a timed-out baseline aborts as too slow, not as red (gate ordering)',
     slow.ret && /too slow/.test(slow.ret.abort_reason || ''), `got ${slow.ret && slow.ret.abort_reason}`);
 
+  // ── triage contract: bin/triage-plan.py links proposals to findings by id ────────
+  {
+    const s = helpers.REPORT_SCHEMA.properties;
+    const finding = s.findings.items;
+    eq('report schema: finding requires id and subject', true,
+      ['id', 'subject'].every((k) => finding.required.includes(k)));
+    eq('report schema: finding carries site', 'string', finding.properties.site && finding.properties.site.type);
+    eq('report schema: proposal requires related_finding_id and scope', true,
+      ['related_finding_id', 'scope'].every((k) => s.proposals.items.required.includes(k)));
+  }
+
   // ── broken-runtime guard ─────────────────────────────────────────────────────
   let threw = false;
   try {

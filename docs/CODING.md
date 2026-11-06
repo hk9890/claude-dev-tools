@@ -34,6 +34,7 @@ Depend on a specific technology only where the dependency is declared:
 - Another plugin, used only where it is installed → no entry: check that its skill is in the session's available skills, and state what the caller does without it. `worktree-flow:worktree-review` is the worked example: where `project-review-change` is absent, it reports the rules review as skipped.
 - A user-only skill of another plugin, offered to the user → no entry and no check, because a user-only skill is never in the available skills: print its slash command for the user to type, and name the plugin it needs. `project-review`'s `decision-split.md` is the worked example.
 - A CLI tool or runtime → a load-time check that stops with guidance when it is missing (below).
+- A CLI tool used only where it is installed → check for it at the step that uses it, name the missing tool, and state what the caller does without it. `project-auto-work`'s triage is the worked example: without `taskmgr` it relays the report instead of filing it.
 - A whole platform → name the plugin for it, so the constraint is visible before install. `keep-awake-linux` is the worked example: logind is the point of the plugin, and where `systemd-inhibit` is absent its mod holds nothing and says so once in a toast.
 
 ## Declaring plugin dependencies
@@ -51,7 +52,7 @@ Every skill is loaded with a `Base directory for this skill: <absolute path>` li
 <base directory for this skill>/workflows/<the-file-you-need>
 ```
 
-- Check which of the two layouts holds the file ([OVERVIEW.md](OVERVIEW.md)). A workflow owned by one skill sits under that skill — every workflow here currently does.
+- Check which of the two layouts holds the file ([OVERVIEW.md](OVERVIEW.md)). A workflow owned by one skill sits under that skill; one that two skills launch sits at the plugin root, as `project-auto-work`'s `triage.js` does.
 - One shared beyond a single skill sits at the plugin root, reached with `<base directory for this skill>/../../<dir>/<file>`; say in the skill that the plugin-root layout applies, or the `../..` reads as a mistake. Shared content takes this layout rather than a skill of its own — a skill costs a row in every session's skill index. `html-visualization` is the worked example — its three mode skills all read `references/` and run `bin/server.js` from the plugin root, so each climbs `../..` from its own base directory; `instruction-writing` and `project-review` share `references/` the same way.
 - Never `find` the plugin: it can select a stale cached version. Print the path you build ([State across `Bash` calls](#state-across-bash-calls)).
 - `$CLAUDE_PLUGIN_ROOT` is substituted in hook commands and `settings.json` only — it is not in a `Bash` call's environment.
