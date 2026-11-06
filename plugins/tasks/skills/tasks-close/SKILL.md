@@ -10,6 +10,10 @@ argument-hint: "[task-id]"
 
 Call the Skill tool with `tasks:tasks-core`, even where it loaded earlier in this session.
 
-Close $ARGUMENTS once each done criterion in its body is checked against the work: run
-`taskmgr guide progress` first. Where a criterion fails or cannot be run, report it and leave the
-task open. With no argument, the task under discussion.
+1. Take the task $ARGUMENTS names. With no argument, the task under discussion; with none, ask.
+2. Run `taskmgr guide progress`.
+3. Check each done criterion in the task's body against the work. A criterion you cannot check
+   yourself, such as a manual sign-off: ask the user to confirm it. A body with no criteria: report
+   that and stop.
+4. Close the task only when every criterion passes. Where one fails, report it and leave the task
+   open.

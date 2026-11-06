@@ -95,6 +95,8 @@ git show "origin/$DEFAULT_BRANCH:<a version file>" | grep -q "<the release versi
   || echo "FAIL: origin/$DEFAULT_BRANCH does not carry the release version — do not tag"
 ```
 
+Before Phase 7, run [Gate 5](quality-gates.md#gate-5-ci-status) on the bump commit, the one Phase 7 tags, in place of HEAD: Gate 5 ran before the bump. Its runs can take a minute to appear after the push: list again before you ask the user.
+
 ## Phase 7 — Create GitHub release
 
 Write the release notes first, then create the release from them. Writing them is its own
