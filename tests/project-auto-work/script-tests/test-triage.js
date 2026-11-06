@@ -83,6 +83,7 @@ const hooks = (agentImpl) => ({
     eq('serial unless the args say otherwise', [true, false],
       [h.normalizeArgs(GOOD).serial, h.normalizeArgs({ ...GOOD, serial: false }).serial]);
     truthy('fix prompt writes the dedup line', fix.includes('dedup-key: <the item'));
+    truthy('fix prompt always deletes its local branch', /CLEANUP, always:[^\n]*branch -D/.test(fix));
     truthy('body prompt carries the failure', h.bodyPrompt(cfg, 3, 'mutant still survives').includes('mutant still survives'));
     truthy('body prompt writes the dedup line', h.bodyPrompt(cfg, 3).includes('dedup-key: <the item'));
 

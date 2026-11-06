@@ -89,8 +89,8 @@ function fixPrompt(cfg, n) {
     `   dedup-key: <the item's key>\n` +
     `   Where the item has "related" ids, name them in the body as earlier closed tasks this one regresses.\n` +
     `   Never merge the PR, never push to <pr_base>, never request or run a review.\n\n` +
-    `CLEANUP, always: git -C ${cfg.repoRoot} worktree remove --force ${wt}. ` +
-    `After a failure also delete the branch locally (git -C ${cfg.repoRoot} branch -D <branch>) and on origin if you pushed it.\n\n` +
+    `CLEANUP, always: git -C ${cfg.repoRoot} worktree remove --force ${wt}, then git -C ${cfg.repoRoot} branch -D <branch>: ` +
+    `an opened PR keeps the branch on origin. After a failure also delete the branch on origin if you pushed it.\n\n` +
     `Return status "pr" with url and branch, or status "failed" with reason: the step that failed and what it printed.`
   )
 }
