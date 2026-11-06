@@ -8,8 +8,8 @@ argument-hint: "[low|medium|high|ultra] [focus-or-doc]"
 
 Exploratory testing of the application itself — what `test-tests` does to a test suite, this
 does to the running product. Launch the workflow; do **not** drive the app inline. The
-workflow returns a structured report; relay it, save it to a file, and file its items in
-taskmgr.
+workflow returns a structured report; relay it, save it to a file, and, where the project
+has a taskmgr store, file its items there.
 
 **This runs the application for real.** Every iteration launches it against whatever
 environment it is configured for and uses it as a user would — creating, changing, deleting

@@ -13,8 +13,8 @@ The audit temporarily mutates production code to check that tests fail, inside i
 git worktrees when the suite can run there, or in the live tree under a backup/restore
 protocol when it cannot — either way every edit is reverted and integrity-checked.
 The audit itself commits nothing, writes no test and installs nothing. The triage step
-after it acts: a settled survivor gets a test on its own branch and a PR, and every other
-item is filed in taskmgr.
+after it acts where the project has a taskmgr store: a settled survivor gets a test on its
+own branch and a PR, and every other item is filed in taskmgr.
 
 ## Run the workflow
 

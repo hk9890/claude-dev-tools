@@ -35,8 +35,8 @@ triage. Otherwise run:
 ```bash
 command -v python3 >/dev/null || echo "missing: python3"
 command -v taskmgr >/dev/null || echo "missing: taskmgr"
-command -v python3 >/dev/null && command -v taskmgr >/dev/null \
-  && { taskmgr where -C "<path>" --json | python3 -c 'import json,sys; sys.exit(json.load(sys.stdin).get("kind") == "none")' || echo "missing: taskmgr store"; }
+command -v taskmgr >/dev/null \
+  && taskmgr where -C "<path>" --json | grep -q '"kind": *"none"' && echo "missing: taskmgr store"
 ```
 
 `taskmgr where` exits 0 with no store too, so the check reads its `kind`. Where it prints a
