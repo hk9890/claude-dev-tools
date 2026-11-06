@@ -30,9 +30,8 @@ with the first question: put each fact inside the question that rests on it, eac
 and leave out a fact no question in the message rests on. Follow every identifier (a file path,
 a task id, a commit hash, a skill or check name) with what it is, expand every abbreviation, in
 picker labels too and also ones from the user's own instructions (BLUF, YAGNI), and write in
-ASD-STE100 Simplified Technical English. Do not tell the user how you ordered, grouped, or held
-back the questions, or name this skill's own terms (round, frontier, design tree, simple,
-complex).
+ASD-STE100 Simplified Technical English. Speak to the user only of the decisions and the facts
+they rest on.
 
 One decision per question: a choice hidden inside an option, or two options that share a first
 choice and differ in a second, is a question of its own. Every decision carries your
@@ -64,8 +63,7 @@ care: usually one, more only where each is short. Each takes this shape:
 ```
 **Q<n>: <the decision, in one line>**
 
-<The background: the facts the decision rests on, each with where you found it, and the later
-decisions that hang on it.>
+<The background: the facts the decision rests on, and the later decisions that hang on it.>
 
 - **<option>**: what it commits us to, what it costs, and what it rules out later, where it
   rules out anything.
@@ -84,8 +82,8 @@ frontier from it. Where the premise may be wrong — the call is not the user's,
 all — say so: in prose, or with one option of the picker.
 
 A request for more ("why", "explain", "what does this break", "let's discuss this") is not an
-answer. Give the deeper background and consequences it asks for, then put the same decision
-again, in prose. A simple question asked that way has become complex. The discussion ends when the
+answer. Put the same decision again, in prose, with the deeper background and consequences it
+asks for inside it. A simple question asked that way has become complex. The discussion ends when the
 user decides, not when you think the question is clear.
 
 ## Facts and decisions
@@ -96,9 +94,9 @@ output — go and get it, and ask the user only for the part no source can show.
 sub-agent for anything that takes real digging and keep asking the rest of the frontier while it
 runs: a live exploration is an unsettled prerequisite, so only the questions downstream of it wait
 for the answer. Never say you will check a fact later, and never offer an option that rests on a
-fact you have not checked. Facts that arrive while questions are open, a sub-agent's report
-included, never go out alone: put each open question again in its full shape, with the new facts
-inside it, and drop the facts no question rests on. Send no progress notes between questions. The *decisions* are the user's — put each one to them and wait.
+fact you have not checked. Every message to the user is a question or a full re-ask: facts that
+arrive while questions are open, a sub-agent's report included, go out inside each open question,
+put again in its full shape. The *decisions* are the user's — put each one to them and wait.
 
 The session is done when the frontier is empty: every branch of the design tree visited, nothing
 left silently assumed. Act on the plan once the user confirms you have reached a shared
