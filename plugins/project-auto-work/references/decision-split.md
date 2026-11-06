@@ -24,7 +24,7 @@ has to make.
 
 ## Relaying
 
-Where `triage.md` (same directory) skips the triage, relay the two groups separately: the settled ones as a batch, then the open ones
+Where `triage.md` (same directory) skips or stops the triage, relay the two groups separately: the settled ones as a batch, then the open ones
 last, as one numbered list the user answers in one reply, one question per item.
 Each question reads without the report beside it, and carries the item's `options`
 in the report's words. The option its `recommendation` picks comes first, marked as

@@ -8,7 +8,7 @@ export const meta = {
   ],
 }
 
-// args: { repoRoot, scratchDir, planDir, tool, serial, fixes: [n], bodies: [n] } — printed by
+// args: { repoRoot, scratchDir, planDir, tool, serial, fixes: [n], filed: [n], bodies: [n] } — printed by
 // bin/triage-plan.py. Each n names <planDir>/item-<n>.json.
 
 // ---------------------------------------------------------------------------
@@ -29,6 +29,7 @@ function normalizeArgs(rawArgs) {
   const numbers = v => (Array.isArray(v) ? v : []).map(Number).filter(n => Number.isInteger(n) && n > 0)
   const fixes = numbers(parsed.fixes)
   const bodies = numbers(parsed.bodies)
+  const filed = numbers(parsed.filed)
   // Each fix runs the whole suite twice. Run fixes side by side only where the audit proved
   // two suite runs do not interfere.
   const serial = parsed.serial !== false
@@ -41,7 +42,7 @@ function normalizeArgs(rawArgs) {
   else if (!['test-tests', 'test-app'].includes(tool)) error = `tool must be test-tests or test-app (got ${JSON.stringify(tool)})`
   else if (tool === 'test-app' && fixes.length) error = 'test-app items are never fixed unattended, but fixes is not empty'
 
-  return { repoRoot, scratchDir, planDir, tool, serial, fixes, bodies, receivedKeys: Object.keys(parsed), error }
+  return { repoRoot, scratchDir, planDir, tool, serial, fixes, filed, bodies, receivedKeys: Object.keys(parsed), error }
 }
 
 const FIX_SCHEMA = {
@@ -136,7 +137,7 @@ if (typeof agent === 'function') {
   const fixOne = n => agent(fixPrompt(cfg, n), { label: `fix:${n}`, phase: 'Fix', schema: FIX_SCHEMA })
   const afterFix = async (fix, n) => {
     const outcome = { n, ...(fix || { status: 'failed', reason: 'the fix agent returned nothing' }) }
-    const body = outcome.status === 'pr' ? null : await writeBody(n, outcome.reason)
+    const body = outcome.status === 'pr' || cfg.filed.includes(n) ? null : await writeBody(n, outcome.reason)
     return { fix: outcome, body }
   }
   const fixInTurn = async () => {

@@ -100,6 +100,9 @@ const hooks = (agentImpl) => ({
       { n: 3, status: 'failed', reason: 'the fix agent returned nothing' },
     ], ret.fixes);
     eq('bodies for the item to file and each failed fix', [4, 2, 3], ret.bodies.map((b) => b.n));
+    const { ret: noBody } = await load({ ...hooks(async (prompt, opts) => (opts.label.startsWith('fix') ? { status: 'failed', reason: 'red' } : { title: 't' })),
+      args: { ...GOOD, fixes: [1], filed: [1], bodies: [] } });
+    eq('no body for a failed fix of an already filed item', [], noBody.bodies);
     truthy('serial fixes run in order', prompts.filter((l) => l.startsWith('fix:')).join() === 'fix:1,fix:2,fix:3');
     truthy('no body for the fix that opened a PR', !prompts.includes('body:1'));
 

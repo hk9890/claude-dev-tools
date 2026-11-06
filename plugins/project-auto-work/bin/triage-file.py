@@ -64,7 +64,9 @@ def carry_out(plan, workflow, repo_root, plan_dir):
         existing = item.get('existing') or []
         if action == 'fix' and fix and fix.get('status') == 'pr':
             noted = comment(existing, f'{note} Fix PR: {fix.get("url")}') if existing else 'noted'
-            row.update(outcome='pr' if noted == 'noted' else noted, ref=fix.get('url'))
+            row.update(outcome='pr', ref=fix.get('url'), comment_failed=noted != 'noted')
+            if row['comment_failed']:
+                row['reason'] += f'; the comment on {", ".join(existing)} failed'
             rows.append(row)
             continue
         if action == 'fix':
@@ -125,7 +127,7 @@ def main(argv=None):
     with open(os.path.join(args.plan_dir, 'summary.json'), 'w') as fh:
         json.dump(rows, fh, indent=2)
     print(markdown(rows))
-    return 3 if any(r['outcome'] in ('not filed', 'comment failed') for r in rows) else 0
+    return 3 if any(r['outcome'] in ('not filed', 'comment failed') or r.get('comment_failed') for r in rows) else 0
 
 
 if __name__ == '__main__':

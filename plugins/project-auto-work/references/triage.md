@@ -24,7 +24,7 @@ correct. Placeholders:
 `bin/triage-plan.py` applies the tiers, the fix gates and the dedup. Each row of the final
 summary names the rule that placed its item, so read the reason there rather than
 re-deriving it. A tier-1 fix that fails its proving check is filed as tier 2 with the
-failure in its body. Every filed item carries the label `source:project-auto-work` and one
+failure in its body, or, where an earlier run filed the item, commented on that item. Every filed item carries the label `source:project-auto-work` and one
 `dedup:<hash>` label. Each body and each PR carries a `dedup-key:` line.
 
 ## 1. Check the store
@@ -59,17 +59,20 @@ wherever `gh` is signed in, PR base or not:
 
 ```bash
 command -v gh >/dev/null && gh auth status >/dev/null 2>&1 \
-  && (cd "<path>" && gh pr list --label source:project-auto-work --state all --limit 500 --json number,url,body,state) > "<scratch>/prs.json"
+  && (cd "<path>" && gh pr list --label source:project-auto-work --state all --limit 500 --json number,url,body,state) > "<scratch>/prs.json" \
+  || rm -f "<scratch>/prs.json"
 ```
 
-`test-tests` only — find the PR base. A fix PR is only possible from a pushed branch:
+`test-tests` only — find the PR base. A fix PR is only possible from a pushed branch, with
+`gh` signed in:
 
 ```bash
-git -C "<path>" rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' \
+command -v gh >/dev/null && gh auth status >/dev/null 2>&1 \
+  && git -C "<path>" rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' \
   && test -z "$(git -C "<path>" rev-list '@{upstream}..HEAD')"
 ```
 
-Where both commands succeeded and this prints `origin/<branch>`, `<pr-base>` is `<branch>`.
+Where it exits 0 and prints `origin/<branch>`, `<pr-base>` is `<branch>`.
 Otherwise, an upstream on another remote included, `<pr-base>` is empty and every settled
 item is filed instead of fixed: the fix agent pushes to `origin`.
 
@@ -83,7 +86,7 @@ python3 "<PLUGIN>/bin/triage-plan.py" --tool <tool> --out "<scratch>/triage" \
 ```
 
 Pass `--prs` where `prs.json` was written, and `--pr-base` where it is not empty. Exit 1 or 2: relay
-its stderr and stop the triage. Exit 0 prints one JSON line, `<triage-args>`.
+its stderr, stop the triage, and relay the items as `decision-split.md` describes. Exit 0 prints one JSON line, `<triage-args>`.
 
 ## 4. Fix and write bodies
 
@@ -105,16 +108,16 @@ python3 "<PLUGIN>/bin/triage-file.py" --plan-dir "<scratch>/triage" \
 ```
 
 It comments, files and records one item at a time and prints the summary table. Exit 1:
-relay its stderr and stop the triage. Exit 3: the rows marked `not filed` or
-`comment failed` give the reason.
+relay its stderr, stop the triage, and relay the items as `decision-split.md` describes. Exit 3: the rows marked `not filed` or
+`comment failed`, and each `pr` row whose reason names a failed comment, give the reason.
 
 ## 6. Report
 
 Show the summary table. Give the count of each value in the Outcome column. State the path `<scratch>/triage/summary.json`:
 it lists every PR and taskmgr item this run made, which is how a run is undone. Say that
 an item closed with a reason that starts with "won't fix", "not planned", "declined",
-"rejected", "duplicate" or "invalid" stops later runs from filing it again; so does a fix PR closed
-without a merge.
+"rejected", "duplicate" or "invalid" stops later runs from filing it again; so does closing a task or
+design doc, for any reason, and so does a fix PR closed without a merge.
 
 Done when every item has an outcome in the summary and the user has the table, or, where
 a step stopped the triage, when the reason it stopped is stated.

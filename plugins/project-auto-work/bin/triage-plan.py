@@ -214,10 +214,12 @@ def dedup(item, existing, pr_keys):
 
 
 def load(path, default):
+    """Read a JSON file; a missing path or an empty file is the default."""
     if not path:
         return default
     with open(path) as fh:
-        return json.load(fh)
+        text = fh.read()
+    return json.loads(text) if text.strip() else default
 
 
 def main(argv=None):
@@ -280,6 +282,8 @@ def main(argv=None):
         # Fixes run the suite in parallel only where the audit proved that safe.
         'serial': not result.get('parallel_workers'),
         'fixes': [i['n'] for i in items if i['action'] == 'fix'],
+        # A failed fix of an item an earlier run filed becomes a comment on it, not a body.
+        'filed': [i['n'] for i in items if i['action'] == 'fix' and i.get('existing')],
         'bodies': [i['n'] for i in items if i['action'] == 'file'],
     }))
     return 0

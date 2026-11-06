@@ -164,6 +164,12 @@ class PlanTest(unittest.TestCase):
         self.assertEqual(item['key'], 'test-tests|abort|suite is red at baseline')
         self.assertEqual(args['fixes'], [])
 
+    def test_empty_prs_file_reads_as_no_prs(self):
+        with tempfile.NamedTemporaryFile('w', suffix='.json', delete=False) as fh:
+            path = fh.name
+        self.assertEqual(plan_mod.load(path, []), [])
+        os.unlink(path)
+
     def test_error_result_exits_2(self):
         code, _, _ = self.plan({'error': 'bad args'})
         self.assertEqual(code, 2)
@@ -300,6 +306,7 @@ class FileTest(unittest.TestCase):
         code, rows, calls = self.run_file(items, workflow)
         self.assertEqual(code, 0)
         self.assertEqual((rows[1]['outcome'], rows[2]['outcome']), ('pr', 'noted'))
+        self.assertFalse(rows[1]['comment_failed'])
         self.assertTrue(any(c.startswith('comment add t-a') and 'https://pr/9' in c for c in calls))
         self.assertTrue(any(c.startswith('comment add t-b') and 'red' in c for c in calls))
         self.assertFalse(any(c.startswith('create') for c in calls))
