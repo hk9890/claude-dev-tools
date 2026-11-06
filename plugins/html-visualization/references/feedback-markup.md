@@ -70,7 +70,7 @@ Every document must have this top-level structure:
       <div id="state-already-submitted" class="state-already-submitted"> … </div>
     </main>
   </div>
-  <!-- the <script> tags of feedback-template.html, as-is -->
+  <!-- the <script src> tags of feedback-template.html, as-is -->
 </body>
 </html>
 ```
@@ -191,6 +191,7 @@ Before finalising a feedback-mode document:
       `id="copy-btn"`, `id="submit-error"`, `id="state-applying"`,
       `id="state-submitted"`, `id="state-already-submitted"` are each present
       exactly once.
-- [ ] Every `<link>` and `<script>` tag of `feedback-template.html` is present,
-      with the same paths and in the same order.
+- [ ] Every `<link>` and `<script src>` tag of `feedback-template.html` is
+      present, with the same paths, in the same order and in the same place
+      (`<head>`, or just before `</body>`).
 - [ ] No `<script>const CSRF_TOKEN = …</script>` block — the server injects it.

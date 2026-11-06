@@ -104,7 +104,10 @@ test_metrics() {
 # 4. classification
 test_classification() {
   local dir; dir=$(make_fixture)
-  printf '# Personal\n\nMy sandbox URL.\n' > "$dir/CLAUDE.local.md"
+  printf '# Personal\n\nMy sandbox URL. See [scratch](../scratch.md).\n' > "$dir/CLAUDE.local.md"
+  printf '# Personal\n' > "$dir/docs/CLAUDE.local.md"
+  local base_dir; base_dir=$(make_fixture)
+  local base; base=$("$SCRIPT" "$base_dir"); rm -rf "$base_dir"
   local out; out=$("$SCRIPT" "$dir")
   local readme; readme=$(json_val "$out" "[f['classification'] for f in d['files'] if f['path']=='README.md'][0]")
   assert_eq "classify: README = canonical-root" "canonical-root" "$readme"
@@ -116,6 +119,13 @@ test_classification() {
   assert_eq "classify: docs/NOTES.md = non-standard" "non-standard" "$notes"
   local personal; personal=$(json_val "$out" "[f['classification'] for f in d['files'] if f['path']=='CLAUDE.local.md'][0]")
   assert_eq "classify: CLAUDE.local.md = personal-local" "personal-local" "$personal"
+  local nested; nested=$(json_val "$out" "[f['classification'] for f in d['files'] if f['path']=='docs/CLAUDE.local.md'][0]")
+  assert_eq "classify: docs/CLAUDE.local.md = personal-local" "personal-local" "$nested"
+  local orphaned; orphaned=$(json_val "$out" "[p for p in d['orphans'] if p.endswith('CLAUDE.local.md')]")
+  assert_eq "orphans: a personal file is never an orphan" "[]" "$orphaned"
+  local counts; counts=$(json_val "$out" "(d['summary']['unresolved_links'], d['summary']['hollow'])")
+  local base_counts; base_counts=$(json_val "$base" "(d['summary']['unresolved_links'], d['summary']['hollow'])")
+  assert_eq "summary: a personal file adds no dead link and no hollow doc" "$base_counts" "$counts"
   rm -rf "$dir"
 }
 

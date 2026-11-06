@@ -48,7 +48,7 @@ Every document must have this top-level structure:
       <div id="state-already-submitted" class="state-already-submitted"> … </div>
     </main>
   </div>
-  <!-- the <script> tags of ask-template.html, as-is -->
+  <!-- the <script src> tags of ask-template.html, as-is -->
 </body>
 </html>
 ```
@@ -343,5 +343,5 @@ Before finalising an ask-mode document:
 - [ ] The verdict section contains all three radio options with the exact values above.
 - [ ] `id="freeform-input"` is on the freeform textarea.
 - [ ] `id="submit-btn"`, `id="copy-btn"`, `id="submit-error"`, `id="main-form"`, `id="state-submitted"`, `id="state-already-submitted"` are all present once.
-- [ ] Every `<link>` and `<script>` tag of `ask-template.html` is present, with the same paths and in the same order.
+- [ ] Every `<link>` and `<script src>` tag of `ask-template.html` is present, with the same paths, in the same order and in the same place (`<head>`, or just before `</body>`).
 - [ ] No `<script>const CSRF_TOKEN = …</script>` block — the server injects this.

@@ -118,8 +118,8 @@ Render the content inside `<div id="content">` per the markup contract in
   `data-block-id` (printable ASCII, no whitespace).
 - A whole list is one block — `data-block-id` on the `<ul>`/`<ol>`, not each `<li>`.
 - Do NOT add `<script>const CSRF_TOKEN = "...";</script>` — the server injects it.
-- Keep every `<link>` and `<script>` tag of the template as-is: same paths,
-  same order.
+- Keep every `<link>` and `<script src>` tag of the template as-is: same
+  paths, same order, same place.
 
 Consult `"$(cat "$HTML_DIR/.plugin-root")/references/feedback-markup.md"`
 for the full vocabulary (block rules, required IDs).
@@ -235,8 +235,8 @@ Then branch on `action`:
 
 ### `action: "apply"` — iterate
 
-1. Regenerate `$HTML_DIR/review.html` from the updated content. Rewriting the
-   file is all it takes — see `references/serve.md` Cycle C for the contract.
+1. Regenerate `$HTML_DIR/review.html` from the updated content, with its
+   `<link>` and `<script src>` tags as they are. Rewriting the file is all it takes — see `references/serve.md` Cycle C for the contract.
 2. Re-serve on the same port — see `references/serve.md` Cycle C (Apply rounds).
 3. Tell the user briefly, e.g. "Applied your 3 comments — the review page will
    refresh automatically." You do not need to resend the link.

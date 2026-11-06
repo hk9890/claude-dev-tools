@@ -73,6 +73,24 @@ print(','.join(missing) if missing else 'complete')
   else fail "example: examples/docs/$name is missing — every canonical doc carries a worked example"; fi
 done
 
+# 2b. Every personal file manifest.py excludes is a file the standard names, with its own
+#     Inside and Not inside — else a rename on one side reviews personal notes as project docs.
+for name in $(python3 -c "
+import importlib.util
+spec = importlib.util.spec_from_file_location('m', '$MANIFEST')
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+print(' '.join(m.PERSONAL_LOCAL))
+"); do
+  CONTRACT=$(python3 -c "
+import importlib.util
+spec = importlib.util.spec_from_file_location('m', '$MANIFEST')
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+c = m.parse_ownership('$SETUP_MD').get('$name') or {}
+print('complete' if c.get('inside') and c.get('not_inside') else 'missing')
+")
+  assert_eq "personal file: project-setup.md has an Inside and Not inside block for $name" "complete" "$CONTRACT"
+done
+
 # 3. Every canonical doc is the target of exactly one review use case. The reviewer spawns
 #    one read-review agent per use case, so a doc missing here is audited as a bare file
 #    with no idea what work it has to carry.

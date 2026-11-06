@@ -188,7 +188,7 @@ def classify(rel_path):
         return "canonical-root", name
     if at_root and name in OPTIONAL_CANONICAL_ROOT:
         return "optional-canonical", name
-    if at_root and name in PERSONAL_LOCAL:
+    if name in PERSONAL_LOCAL:
         return "personal-local", name
     if at_root and name in ROOT_META_IGNORE:
         return "meta", None
@@ -418,6 +418,8 @@ def build(repo_root, setup_md=None):
     routes = agents_routes(vr, repo_root)
 
     non_standard = [e for e in files if e["classification"] == "non-standard"]
+    # A personal file is out of the review, so its links and content count nowhere.
+    project_files = [e for e in files if e["classification"] != "personal-local"]
     # Orphan = a docs/** or non-standard doc no AGENTS routing reaches. Root entry
     # docs (README/AGENTS/CLAUDE) are entry points, not routed leaves — never orphans.
     orphans = [e["path"] for e in files
@@ -432,9 +434,9 @@ def build(repo_root, setup_md=None):
             "canonical_missing": len(missing),
             "optional_canonical_present": len(present_canonical & set(CANONICAL_DOCS + OPTIONAL_CANONICAL_ROOT)),
             "non_standard": len(non_standard),
-            "unresolved_links": sum(len(e["unresolved_links"]) for e in files),
+            "unresolved_links": sum(len(e["unresolved_links"]) for e in project_files),
             "orphans": len(orphans),
-            "hollow": sum(1 for e in files if e["hollow"]),
+            "hollow": sum(1 for e in project_files if e["hollow"]),
             "location_violations": len(location_violations),
             "injected_blocks": len(injected),
             "claude_md_ok": claude["canonical"],
