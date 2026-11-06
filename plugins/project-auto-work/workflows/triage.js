@@ -71,8 +71,8 @@ function fixPrompt(cfg, n) {
     `the dedup key and label, and context: repoRoot, test_cmd, worktree_setup, audited_head, pr_base.\n` +
     `The mutant SURVIVED: the suite stayed green with it applied. Your test must make the suite fail on it.\n\n` +
     `STEPS — stop at the first that fails, and go to CLEANUP:\n` +
-    `1. Branch name: auto-work/<the dedup label without "dedup:">-<the first 7 characters of audited_head>. ` +
-    `git -C ${cfg.repoRoot} worktree add -b <branch> ${wt} <audited_head>\n` +
+    `1. Branch name: auto-work/<the dedup label without "dedup:">-<the first 7 characters of audited_head>. It exists on origin only: ` +
+    `git -C ${cfg.repoRoot} worktree add --detach ${wt} <audited_head>\n` +
     `2. cd ${wt}; replay worktree_setup verbatim where it is not empty, adjusting only the worktree path.\n` +
     `3. Write the test the proposal names, following the conventions of the tests next to it. Rules: change test code only, never production code; ` +
     `never skip, disable, quarantine, delete or exclude a test. Stage only your test file (git add <file>), then check ` +
@@ -83,14 +83,14 @@ function fixPrompt(cfg, n) {
     `   b. Undo the mutant (git checkout -- <mutant.file>; you changed no production file). Run test_cmd: it MUST pass.\n` +
     `   Remove what worktree_setup added (links, copied files). git status must then show only your test file.\n` +
     `5. Commit only your test file, in the project's commit style (read its contributing or change-workflow doc if it has one). ` +
-    `git push -u origin <branch>.\n` +
+    `git push origin HEAD:refs/heads/<branch>. Never force it: a rejected push is a failure, and the branch on origin is not yours.\n` +
     `6. gh label create source:project-auto-work --force; then gh pr create --base <pr_base> --head <branch> --label source:project-auto-work, ` +
     `with a title and a body that states the finding, the mutant diff, and both proving-check results, and ends with the exact line\n` +
     `   dedup-key: <the item's key>\n` +
     `   Where the item has "related" ids, name them in the body as earlier closed tasks this one regresses.\n` +
     `   Never merge the PR, never push to <pr_base>, never request or run a review.\n\n` +
-    `CLEANUP, always: git -C ${cfg.repoRoot} worktree remove --force ${wt}. ` +
-    `After a failure also delete the branch locally (git -C ${cfg.repoRoot} branch -D <branch>) and on origin if you pushed it.\n\n` +
+    `CLEANUP, always: git -C ${cfg.repoRoot} worktree remove --force ${wt}, then git -C ${cfg.repoRoot} worktree prune. ` +
+    `Where your step-5 push succeeded and step 6 opened no PR, also delete the branch on origin (git push origin --delete <branch>).\n\n` +
     `Return status "pr" with url and branch, or status "failed" with reason: the step that failed and what it printed.`
   )
 }
