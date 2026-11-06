@@ -19,7 +19,7 @@ Call the Skill tool with `instruction-writing:writing-project-docs`, even where 
 
 Read what the project already carries and record two lists.
 
-**Present** — which of `README.md`, `AGENTS.md`, `CLAUDE.md` exist, and every file under `docs/`. Read each one against its *Inside* / *Not inside* contract in the standard and note what breaches it. Step 3 routes to these; step 4 reports the breaches.
+**Present** — which of `README.md`, `AGENTS.md`, `CLAUDE.md` exist, and every file under `docs/`. Read each one against its *Inside* / *Not inside* contract in the standard and note what breaches it for step 4.
 
 **Earned** — which canonical topics the repo has real local guidance for. A topic is *earned* only where the repo holds the evidence below; a topic doc for anything else would be hollow, which the standard rules out.
 
@@ -44,10 +44,11 @@ Keep the evidence you found for each earned topic. It is the material step 3 wri
 
 **Ground every line in this repo.** Where the repo settles a question, write what it settles; where it does not, drop the point.
 
-`AGENTS.md` routes the whole set — the docs you just wrote and the ones already present.
+A new `AGENTS.md` routes the whole set — the docs you just wrote and the ones already present.
 
 ## 4. Report
 
 - Every file created, one line each on what it carries.
 - Every topic left out, naming the evidence that was absent.
+- Every new topic doc an existing `AGENTS.md` does not route, with the `MUST read` route line to add.
 - Every existing file whose content breaches its contract in the standard — the file and what is off about it. These were left untouched: say so, and tell the user to run `/project-review:project-review-docs` for the full audit — a separate plugin, so mention it may need installing — and name `instruction-writing:writing-project-docs` for the fix.

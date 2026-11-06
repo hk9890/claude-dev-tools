@@ -37,7 +37,7 @@ means: it is the user's to type.
 Keep the filter in its argument, so it survives into a fresh turn:
 
 ```
-/html-visualization:html-visualize-ask the <N> open decisions from <what was reviewed> — the settled fixes are already agreed
+/html-visualization:html-visualize-ask the <N> open decisions from <what was reviewed> — leave out the settled fixes
 ```
 
 Then say that the form holds only the open items, and that a reply in chat stops any

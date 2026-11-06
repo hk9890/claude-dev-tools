@@ -136,34 +136,6 @@ run never started: surface `got.keys`, the arguments that arrived. A null `repor
 with no `error` means the abort-report or synthesis agent died: say so, and relay
 `abort_reason` where set, else `raw`, as not synthesized.
 
-## Verdicts
-
-The verdict (`strong` | `adequate` | `weak` | `untrustworthy` | `not-auditable` — the
-last is an abort report with remediation proposals) and its scoring thresholds are
-computed by the workflow. Below `high`, a surviving mutant the reachability probe proved
-*reachable* or left *inconclusive* is labeled `candidate: true` — a possible equivalent mutant,
-presented with its diff, never as proof. A brittle no-op break is labeled the same way: the
-open doubt is whether the edit was a no-op at all. A survivor proven *unreached* is never a candidate at any level:
-nothing there was argued, it was measured.
-Delay-injection findings are always candidates: a test failing under an added delay may be
-brittle or may encode a legitimate latency contract — the user decides.
-
-Two caps sit outside that scoring, and each puts `strong` out of reach:
-
-- **Reachability** — where a third or more of the *mutation sites* are run by no test,
-  `kill_rate` is a rate over the little the tests execute. The headline must give the share
-  no test reaches.
-- **Coverage truth** — a killed coverage-truth mutant means every ranking the summary drove
-  came from data proven incomplete. The headline must say the coverage source is unreliable.
-  A *surviving* one restates what the summary already said and is never reported as a
-  finding.
-
-The report also carries `untested_churn`: the repository's own coverage claim joined with
-git churn and ranked by churn × uncovered lines. It is an unverified pointer list — the
-audit builds no finding on it, it costs no suite run, carries no severity, changes no score,
-and is churn-weighted rather than risk-ranked. It is empty where the repo has no coverage
-command, and the proven-unreached sites among the findings are its audited counterpart.
-
 ## Not covered
 
 Reading-based judgment about tests — whether a mock hides the failure path nobody tests,
