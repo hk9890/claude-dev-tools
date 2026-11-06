@@ -46,7 +46,7 @@ means: it is the user's to type.
 Keep the filter in its argument, so it survives into a fresh turn:
 
 ```
-/html-visualization:html-visualize-ask the <N> open decisions from <the test-app run|the test-suite audit> — the settled proposals are already agreed
+/html-visualization:html-visualize-ask the <N> open decisions from <the test-app run|the test-suite audit> — leave out the settled proposals
 ```
 
 Then say that the form holds only the open items, not the settled batch.
