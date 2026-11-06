@@ -57,10 +57,14 @@ git stash  # Temporarily save changes
 ### Tag already exists
 
 ```bash
-git tag -l "v1.2.*"  # Check existing
-git tag -d v1.2.3  # Delete local
-git push origin --delete v1.2.3  # Delete remote
+gh release view v1.2.3                 # exits 0: the version is published
+git ls-remote origin refs/tags/v1.2.3 'refs/tags/v1.2.3^{}'  # the remote tag's commit: the ^{} line, else the plain line
+git rev-parse HEAD
 ```
+
+- A release or a registry package exists for the version: never delete or move its tag. Bump to the next patch version and release that.
+- No release, and the remote tag is on HEAD or absent: keep the local tag where it is on HEAD, else `git tag -f v1.2.3`. Then `git push origin v1.2.3` and `gh release create`.
+- No release, and the remote tag is on another commit: delete it (`git push origin --delete v1.2.3`) only after the user confirms.
 
 ### Not on default branch
 
@@ -90,7 +94,7 @@ git pull --rebase origin "$DEFAULT_BRANCH"
 ### CI not passing
 
 ```bash
-gh run list --limit 5
+gh run list --commit "$(git rev-parse HEAD)"
 gh run view <run-id> --log-failed
 ```
 
