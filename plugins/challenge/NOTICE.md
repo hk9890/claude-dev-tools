@@ -7,8 +7,9 @@ The following files in this plugin are derived from
   [v1.1.0](https://github.com/mattpocock/skills/releases/tag/v1.1.0), then reworked against
   [v1.2.0](https://github.com/mattpocock/skills/releases/tag/v1.2.0): the design tree, the
   rounds and the frontier, and the split between facts and decisions all trace there. The
-  `AskUserQuestion` round format replaces upstream's chat-prose question template and is locally
-  authored
+  prose shape for complex questions grows from upstream's chat-prose question template. The cold
+  reader, the split between simple and complex questions, the `AskUserQuestion` format for
+  simple ones, and the rule that a request for more is not an answer are locally authored
 - `skills/what-do-you-mean/SKILL.md` — adapted from the `wait-what` skill at
   [v1.2.0](https://github.com/mattpocock/skills/releases/tag/v1.2.0): the re-pitch prompt and
   the description trace there. The word limit, the naming rule, and the hand-off to
