@@ -59,6 +59,8 @@ CANONICAL_DOCS = [
     "MONITORING.md", "CHANGE-WORKFLOW.md", "REVIEWING.md", "RUNNING.md",
 ]
 PERSONAL_LOCAL = ["CLAUDE.local.md"]
+# Personal files under a name Claude Code never loads, mapped to the name it does load.
+LEGACY_PERSONAL_LOCAL = {".claude.local.md": "CLAUDE.local.md"}
 ROOT_META_IGNORE = [
     "SECURITY.md", "CHANGELOG.md", "CODE_OF_CONDUCT.md",
     "LICENSE.md", "NOTICE.md", "AUTHORS.md", "MAINTAINERS.md",
@@ -190,6 +192,8 @@ def classify(rel_path):
         return "optional-canonical", name
     if name in PERSONAL_LOCAL:
         return "personal-local", name
+    if name in LEGACY_PERSONAL_LOCAL:
+        return "personal-legacy", None
     if at_root and name in ROOT_META_IGNORE:
         return "meta", None
     # docs/<NAME> directly under docs/ — a canonical topic doc (all optional)
@@ -419,12 +423,16 @@ def build(repo_root, setup_md=None):
 
     non_standard = [e for e in files if e["classification"] == "non-standard"]
     # A personal file is out of the review, so its links and content count nowhere.
-    project_files = [e for e in files if e["classification"] != "personal-local"]
+    project_files = [e for e in files if e["classification"] not in ("personal-local", "personal-legacy")]
+    legacy_personal = [{"path": e["path"],
+                        "rename_to": os.path.join(os.path.dirname(e["path"]),
+                                                  LEGACY_PERSONAL_LOCAL[os.path.basename(e["path"])])}
+                       for e in files if e["classification"] == "personal-legacy"]
     # Orphan = a docs/** or non-standard doc no AGENTS routing reaches. Root entry
     # docs (README/AGENTS/CLAUDE) are entry points, not routed leaves — never orphans.
     orphans = [e["path"] for e in files
                if not e["reachable_from_agents"]
-               and e["classification"] not in ("meta", "personal-local", "canonical-root")]
+               and e["classification"] not in ("meta", "personal-local", "personal-legacy", "canonical-root")]
 
     return {
         "repo_root": os.path.abspath(repo_root),
@@ -439,12 +447,14 @@ def build(repo_root, setup_md=None):
             "hollow": sum(1 for e in project_files if e["hollow"]),
             "location_violations": len(location_violations),
             "injected_blocks": len(injected),
+            "legacy_personal": len(legacy_personal),
             "claude_md_ok": claude["canonical"],
         },
         "claude_md": claude,
         "missing_canonical": missing,
         "location_violations": location_violations,
         "injected_blocks": injected,
+        "legacy_personal": legacy_personal,
         "orphans": orphans,
         "agents_routes": routes,
         "files": files,
@@ -464,6 +474,8 @@ def format_text(data):
     out.append(f"  CLAUDE.md == @AGENTS.md: {s['claude_md_ok']}  |  location violations: {s['location_violations']}  injected blocks: {s['injected_blocks']}")
     if data["missing_canonical"]:
         out.append(f"  MISSING canonical: {', '.join(data['missing_canonical'])}")
+    for l in data["legacy_personal"]:
+        out.append(f"  LEGACY personal file: {l['path']} (Claude Code never loads it; rename to {l['rename_to']})")
     out.append("")
     out.append("--- files ---")
     orphan_set = set(data["orphans"])  # single source of truth, computed in build()

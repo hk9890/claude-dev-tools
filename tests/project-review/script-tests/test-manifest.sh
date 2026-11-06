@@ -127,6 +127,25 @@ test_classification() {
   local base_counts; base_counts=$(json_val "$base" "(d['summary']['unresolved_links'], d['summary']['hollow'])")
   assert_eq "summary: a personal file adds no dead link and no hollow doc" "$base_counts" "$counts"
   rm -rf "$dir"
+
+  # A personal file under the name Claude Code never loads: out of the review, its rename reported.
+  dir=$(make_fixture)
+  printf '# Personal\n\nMy sandbox URL. See [scratch](../scratch.md).\n' > "$dir/.claude.local.md"
+  printf '# Personal\n' > "$dir/docs/.claude.local.md"
+  out=$("$SCRIPT" "$dir")
+  local legacy; legacy=$(json_val "$out" "sorted(f['classification'] for f in d['files'] if f['path'].endswith('.claude.local.md'))")
+  assert_eq "classify: .claude.local.md = personal-legacy" "['personal-legacy', 'personal-legacy']" "$legacy"
+  local renames; renames=$(json_val "$out" "sorted((l['path'], l['rename_to']) for l in d['legacy_personal'])")
+  assert_eq "legacy_personal: each names its rename" "[('.claude.local.md', 'CLAUDE.local.md'), ('docs/.claude.local.md', 'docs/CLAUDE.local.md')]" "$renames"
+  orphaned=$(json_val "$out" "[p for p in d['orphans'] if p.endswith('.claude.local.md')]")
+  assert_eq "orphans: a legacy personal file is never an orphan" "[]" "$orphaned"
+  counts=$(json_val "$out" "(d['summary']['unresolved_links'], d['summary']['hollow'], d['summary']['legacy_personal'])")
+  assert_eq "summary: a legacy personal file adds no dead link and no hollow doc, and is counted" "${base_counts%)}, 2)" "$counts"
+  local text; text=$("$SCRIPT" "$dir" --format=text)
+  if grep -q 'LEGACY personal file: .claude.local.md (Claude Code never loads it; rename to CLAUDE.local.md)' <<< "$text"; then
+    ok "text: the legacy personal file and its rename are shown"
+  else fail "text: no LEGACY line for .claude.local.md"; fi
+  rm -rf "$dir"
 }
 
 # 5. docs/ are all optional — absent topic docs are NOT missing; only root files are.
