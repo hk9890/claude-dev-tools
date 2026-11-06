@@ -51,23 +51,35 @@ def carry_out(plan, workflow, repo_root, plan_dir):
     head = (plan['context'].get('audited_head') or '')[:12] or 'an unknown commit'
     note = f'Seen again by {plan["context"]["tool"]} at {head}.'
     rows = []
+
+    def comment(ids, text):
+        """Comment on each id; return 'noted', or 'comment failed' when any comment failed."""
+        failed = [tid for tid in ids if not taskmgr(repo_root, 'comment', 'add', tid, text)[0]]
+        return 'comment failed' if failed else 'noted'
+
     for item in plan['items']:
         row = {'n': item['n'], 'key': item['key'], 'tier': item['tier'], 'reason': item['reason']}
         action = item['action']
         fix = fixes.get(item['n'])
+        existing = item.get('existing') or []
         if action == 'fix' and fix and fix.get('status') == 'pr':
-            row.update(outcome='pr', ref=fix.get('url'))
+            noted = comment(existing, f'{note} Fix PR: {fix.get("url")}') if existing else 'noted'
+            row.update(outcome='pr' if noted == 'noted' else noted, ref=fix.get('url'))
             rows.append(row)
             continue
         if action == 'fix':
+            failure = (fix or {}).get('reason') or 'fix agent returned nothing'
             item = {**item, 'tier': 2}
-            row.update(tier=2, reason=f'fix attempt failed: {(fix or {}).get("reason") or "fix agent returned nothing"}')
+            row.update(tier=2, reason=f'fix attempt failed: {failure}')
+            if existing:
+                row.update(outcome=comment(existing, f'{note} An unattended fix failed: {failure}'), ref=', '.join(existing))
+                rows.append(row)
+                continue
             action = 'file'
         if action == 'skip':
             row.update(outcome='skipped', ref=', '.join(item.get('existing') or []))
         elif action == 'note':
-            failed = [tid for tid in item['existing'] if not taskmgr(repo_root, 'comment', 'add', tid, note)[0]]
-            row.update(outcome='comment failed' if failed else 'noted', ref=', '.join(item['existing']))
+            row.update(outcome=comment(existing, note), ref=', '.join(existing))
         else:
             body = bodies.get(item['n'])
             body_path = os.path.join(plan_dir, f'body-{item["n"]}.md')
@@ -81,9 +93,14 @@ def carry_out(plan, workflow, repo_root, plan_dir):
     return rows
 
 
+def cell(value):
+    """One Markdown table cell: dedup keys carry '|', and taskmgr errors span lines."""
+    return ' '.join(str(value).split()).replace('|', '\\|')
+
+
 def markdown(rows):
     lines = ['| # | Tier | Outcome | Ref | Why | dedup key |', '|---|---|---|---|---|---|']
-    lines += [f'| {r["n"]} | {r["tier"]} | {r["outcome"]} | {r["ref"]} | {r["reason"]} | `{r["key"]}` |' for r in rows]
+    lines += ['| ' + ' | '.join(cell(r[k]) for k in ('n', 'tier', 'outcome', 'ref', 'reason', 'key')) + ' |' for r in rows]
     return '\n'.join(lines)
 
 

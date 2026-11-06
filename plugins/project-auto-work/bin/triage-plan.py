@@ -6,10 +6,12 @@ tier-1 gates and the cross-run dedup, and writes one JSON file per item for the 
 workflow and triage-file.py. references/triage.md states the rules this implements.
 
 usage: triage-plan.py --tool test-tests|test-app --result <file> --tasks tasks.json
-                      --out <dir> [--prs prs.json] [--pr-base <branch>]
+                      --out <dir> [--prs prs.json] [--pr-base <branch>] [--scope <prefix>]
                       [--audited-head <sha>] [--current-head <sha>]
 
 --result takes the audit workflow's task output file, or its `result` value alone.
+--scope is the audited path relative to the repository root, so audits of two paths that
+share one taskmgr store keep apart keys.
 Prints the triage workflow's args as JSON. Exit 0 on a plan, 2 when the result holds no
 report to triage, 1 on unreadable input.
 """
@@ -36,29 +38,38 @@ def dedup_label(key):
     return 'dedup:' + hashlib.sha1(key.encode()).hexdigest()[:12]
 
 
-def survived_mutant(raw, site):
-    """The SURVIVED mutant recorded at file:line, or None."""
+def survived_mutants(raw, site):
+    """The SURVIVED mutants at file:line, from workers that passed their integrity check."""
     path, _, line = (site or '').rpartition(':')
-    if not path:
-        return None
-    for worker in (raw or {}).get('workers') or []:
-        for m in (worker or {}).get('mutants') or []:
-            if m.get('outcome') == 'SURVIVED' and m.get('file') == path and str(m.get('line')) == line.strip():
-                return m
-    return None
+    return [m for worker in (raw or {}).get('workers') or [] if worker and worker.get('integrity_ok') is not False
+            for m in worker.get('mutants') or []
+            if path and m.get('outcome') == 'SURVIVED' and m.get('file') == path and str(m.get('line')) == line.strip()]
 
 
-def group_items(tool, result):
+def by_id(entries, prefix):
+    """Index report entries by id. A repeated or missing id gets a fresh one, so no entry is
+    dropped; proposals keep pointing at the first entry that carried the id."""
+    index = {}
+    for n, entry in enumerate(entries or [], 1):
+        eid = entry.get('id') or f'{prefix}{n}'
+        while eid in index:
+            eid = f'{eid}#{n}'
+        index[eid] = entry
+    return index
+
+
+def group_items(tool, result, scope=''):
     """One item per finding with its proposals, per question, and per orphan proposal.
     An aborted run is one remediation item holding every proposal."""
     report = result['report']
-    findings = {f['id']: f for f in report.get('findings') or [] if f.get('id')}
-    questions = {q['id']: q for q in report.get('questions') or [] if q.get('id')}
+    findings = by_id(report.get('findings'), 'F?')
+    questions = by_id(report.get('questions'), 'Q?')
+    prefix = f'{tool}|{scope}|' if scope else f'{tool}|'
 
     if result.get('aborted'):
         reason = (result.get('abort_reason') or 'unknown').split(' — ')[0]
         return [{'kind': 'remediation', 'finding': next(iter(findings.values()), None),
-                 'proposals': report.get('proposals') or [], 'key': f'{tool}|abort|{normalize(reason)}'}]
+                 'proposals': report.get('proposals') or [], 'key': f'{prefix}abort|{normalize(reason)}'}]
 
     by_target, orphans = {}, []
     for p in report.get('proposals') or []:
@@ -71,13 +82,13 @@ def group_items(tool, result):
     items = []
     for fid, f in findings.items():
         axis = f'{f.get("axis")}|' if tool == 'test-tests' else ''
-        key = f'{tool}|{axis}{normalize(f.get("subject"))}'
+        key = f'{prefix}{axis}{normalize(f.get("subject"))}'
         items.append({'kind': 'finding', 'finding': f, 'proposals': by_target.get(fid, []), 'key': key})
     for qid, q in questions.items():
         items.append({'kind': 'question', 'question': q, 'proposals': by_target.get(qid, []),
-                      'key': f'{tool}|question|{normalize(q.get("title"))}'})
+                      'key': f'{prefix}question|{normalize(q.get("subject") or q.get("title"))}'})
     for p in orphans:
-        items.append({'kind': 'proposal', 'proposals': [p], 'key': f'{tool}|proposal|{normalize(p.get("action"))}'})
+        items.append({'kind': 'proposal', 'proposals': [p], 'key': f'{prefix}proposal|{normalize(p.get("action"))}'})
     return merge_by_key(items)
 
 
@@ -91,7 +102,7 @@ def merge_by_key(items):
         if first is None:
             merged[item['key']] = item
             continue
-        first.setdefault('more_findings', []).append(item.get('finding') or item.get('question'))
+        first.setdefault('more_findings', []).append(item.get('finding') or item.get('question') or {})
         first['proposals'] = first['proposals'] + item['proposals']
     return list(merged.values())
 
@@ -99,9 +110,9 @@ def merge_by_key(items):
 def place(item, tool, result, run_block):
     """Set the item's tier, type, priority and the reason that placed it."""
     props = item['proposals']
-    finding = item.get('finding') or {}
+    findings = [item.get('finding') or {}] + item.get('more_findings', [])
     open_props = [p for p in props if p.get('decision') != 'settled']
-    item['priority'] = SEVERITY_PRIORITY.get(finding.get('severity'), 2)
+    item['priority'] = min(SEVERITY_PRIORITY.get(f.get('severity'), 2) for f in findings)
     work_type = 'bug' if tool == 'test-app' else 'chore'
 
     if any(p.get('scope') == 'cross-cutting' for p in open_props):
@@ -137,10 +148,10 @@ def tier1_gate(item, tool, result, run_block):
         return 'several findings share this item'
     if len(item['proposals']) != 1:
         return 'more than one proposal on the finding'
-    mutant = survived_mutant(result.get('raw'), finding.get('site'))
-    if not mutant:
-        return f'no surviving mutant recorded at site {finding.get("site") or "(none)"}'
-    item['mutant'] = mutant
+    mutants = survived_mutants(result.get('raw'), finding.get('site'))
+    if len(mutants) != 1:
+        return f'{len(mutants)} surviving mutants recorded at site {finding.get("site") or "(none)"}, need exactly 1'
+    item['mutant'] = mutants[0]
     return None
 
 
@@ -176,18 +187,25 @@ def pr_keys(prs):
             for key in DEDUP_LINE.findall(pr.get('body') or '')}
 
 
+def decided(task):
+    """A closed item whose close settles the matter for later runs: closed as won't-fix, or a
+    task or design doc, which closes on a decision rather than on a fix."""
+    return bool(WONTFIX.match(task.get('close_reason') or '')) or task.get('type') in ('task', 'doc')
+
+
 def dedup(item, existing, pr_keys):
-    """Set item['action'] to fix, file, note or skip."""
+    """Set item['action'] to fix, file, note or skip. A fixable item an earlier run filed is
+    still fixed; triage-file.py then comments the PR onto the open item."""
     matches = existing.get(item['label'], [])
     open_matches = [t['id'] for t in matches if t.get('status') != 'closed']
     closed = [t for t in matches if t.get('status') == 'closed']
-    if open_matches:
-        item.update(action='note', existing=open_matches)
-    elif item['key'] in pr_keys:
+    if item['key'] in pr_keys:
         item.update(action='skip', existing=[pr_keys[item['key']]],
                     reason='a PR from an earlier run, open or closed unmerged, carries this key')
-    elif closed and all(WONTFIX.match(t.get('close_reason') or '') for t in closed):
-        item.update(action='skip', existing=[t['id'] for t in closed], reason="closed as won't-fix")
+    elif open_matches:
+        item.update(action='fix' if item['tier'] == 1 else 'note', existing=open_matches)
+    elif closed and all(decided(t) for t in closed):
+        item.update(action='skip', existing=[t['id'] for t in closed], reason="closed as decided or won't-fix")
     else:
         item['related'] = [t['id'] for t in closed]
         if closed:
@@ -211,6 +229,7 @@ def main(argv=None):
     ap.add_argument('--pr-base', default='')
     ap.add_argument('--audited-head', default='')
     ap.add_argument('--current-head', default='')
+    ap.add_argument('--scope', default='')
     ap.add_argument('--out', required=True)
     args = ap.parse_args(argv)
 
@@ -229,7 +248,7 @@ def main(argv=None):
 
     block = run_block(result, args)
     existing, keys = existing_by_label(tasks), pr_keys(prs)
-    items = group_items(args.tool, result)
+    items = group_items(args.tool, result, args.scope.strip('/'))
     fixes = 0
     for n, item in enumerate(items, 1):
         item['n'] = n
@@ -239,7 +258,7 @@ def main(argv=None):
         if item['action'] == 'fix':
             fixes += 1
             if fixes > PR_CAP:
-                item.update(tier=2, action='file', reason=f'{item["reason"]}; not fixed: PR cap of {PR_CAP} reached')
+                item.update(tier=2, action='note' if item.get('existing') else 'file', reason=f'{item["reason"]}; not fixed: PR cap of {PR_CAP} reached')
         item['labels'] = [SOURCE_LABEL, item['label']] + (['kind:design'] if item['tier'] == 3 else [])
 
     os.makedirs(args.out, exist_ok=True)
@@ -247,7 +266,8 @@ def main(argv=None):
     context = {'tool': args.tool, 'repoRoot': result.get('repoRoot'), 'level': result.get('level'),
                'verdict': result['report'].get('verdict'), 'headline': result['report'].get('headline'),
                'test_cmd': baseline.get('test_cmd'), 'worktree_setup': baseline.get('worktree_setup', ''),
-               'audited_head': args.audited_head, 'pr_base': args.pr_base}
+               'audited_head': args.audited_head, 'pr_base': args.pr_base,
+               'build_drift': result.get('build_drift') or ''}
     for item in items:
         with open(os.path.join(args.out, f'item-{item["n"]}.json'), 'w') as fh:
             json.dump({**item, 'context': context}, fh, indent=2)
@@ -257,6 +277,8 @@ def main(argv=None):
     print(json.dumps({
         'repoRoot': result.get('repoRoot'), 'scratchDir': result.get('scratchDir'),
         'planDir': os.path.abspath(args.out), 'tool': args.tool,
+        # Fixes run the suite in parallel only where the audit proved that safe.
+        'serial': not result.get('parallel_workers'),
         'fixes': [i['n'] for i in items if i['action'] == 'fix'],
         'bodies': [i['n'] for i in items if i['action'] == 'file'],
     }))

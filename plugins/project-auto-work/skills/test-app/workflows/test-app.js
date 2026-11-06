@@ -500,7 +500,6 @@ const REPORT_SCHEMA = {
           // The behaviour the finding is about, named so a later run names it the same way:
           // the triage step's cross-run dedup key.
           subject: { type: 'string' },
-          flow_id: { type: 'string' },
           title: { type: 'string' },
           severity: { type: 'string', enum: ['blocker', 'major', 'minor'] },
           what_was_done: { type: 'string' },
@@ -520,11 +519,13 @@ const REPORT_SCHEMA = {
         type: 'object',
         properties: {
           id: { type: 'string' },
+          // Named like a finding's subject: the triage step's cross-run dedup key.
+          subject: { type: 'string' },
           title: { type: 'string' },
           context: { type: 'string' },
           why_unclear: { type: 'string' },
         },
-        required: ['id', 'title', 'context', 'why_unclear'],
+        required: ['id', 'subject', 'title', 'context', 'why_unclear'],
       },
     },
     proposals: {
@@ -1018,7 +1019,7 @@ if (typeof agent === 'function') {
     `${dial.confirm
       ? 'repro_confirmed comes from the confirmation pass — never change it. A finding with repro_confirmed="no" stays in the report, presented as observed once and not reproduced, and cannot be a blocker.'
       : 'repro_confirmed is "not-run" for every finding — no confirmation pass runs below level=ultra. Say so where findings are presented rather than implying each was verified.'}\n` +
-    `2. questions: genuine ambiguity for a human to decide. Give each an id (Q1, Q2, …). Keep them separate from findings; do not promote or demote between the two lists.\n` +
+    `2. questions: genuine ambiguity for a human to decide. Give each an id (Q1, Q2, …) and a subject, named by the same rule as a finding's subject. Keep them separate from findings; do not promote or demote between the two lists.\n` +
     `3. proposals: concrete actions — what to fix, what to document. Each tied to its finding or question: related_finding_id is that finding's or question's id. No code. ` +
     `Classify every one with decision: "settled" when there is one correct answer and no consequence anyone could reasonably weigh ` +
     `differently — a confirmed defect with an obvious fix is settled, and needs no question. "open" when a competent person could answer ` +

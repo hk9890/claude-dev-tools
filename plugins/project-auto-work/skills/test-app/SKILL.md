@@ -51,7 +51,7 @@ know what the app reaches. Point it at an environment whose data you can afford 
 
    ```bash
    SCRATCH=$(mktemp -d /tmp/test-app-XXXXXX) && echo "$SCRATCH" || { echo "mktemp failed — stop; do not launch without a scratch dir"; return 1 2>/dev/null || exit 1; }
-   git -C "<absolute path to the project>" rev-parse HEAD
+   git -C "<absolute path to the project>" rev-parse HEAD 2>/dev/null || echo none
    ```
 
 4. Invoke the **Workflow** tool:

@@ -48,35 +48,41 @@ This step is the one place that decides whether the triage runs.
 
 ```bash
 taskmgr list --all -C "<path>" --json > "<scratch>/tasks.json"
-git -C "<path>" rev-parse HEAD
+git -C "<path>" rev-parse HEAD 2>/dev/null || echo none
+git -C "<path>" rev-parse --show-prefix 2>/dev/null
 ```
 
-The printed commit is `<current-head>`.
+The first printed line is `<current-head>`; the second, possibly empty, is `<scope>`.
 
-`test-tests` only — find the PR base. A fix PR is only possible from a pushed branch, with
-`gh` signed in:
+The PRs earlier runs opened, so a fix PR closed without a merge is not opened again. Run it
+wherever `gh` is signed in, PR base or not:
 
 ```bash
 command -v gh >/dev/null && gh auth status >/dev/null 2>&1 \
-  && git -C "<path>" rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' \
-  && test -z "$(git -C "<path>" rev-list '@{upstream}..HEAD')" \
   && (cd "<path>" && gh pr list --label source:project-auto-work --state all --limit 500 --json number,url,body,state) > "<scratch>/prs.json"
 ```
 
-Where it prints `origin/<branch>` and exits 0, `<pr-base>` is `<branch>`. Otherwise,
-an upstream on another remote included, `<pr-base>` is empty and every settled item is
-filed instead of fixed: the fix agent pushes to `origin`.
+`test-tests` only — find the PR base. A fix PR is only possible from a pushed branch:
+
+```bash
+git -C "<path>" rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' \
+  && test -z "$(git -C "<path>" rev-list '@{upstream}..HEAD')"
+```
+
+Where both commands succeeded and this prints `origin/<branch>`, `<pr-base>` is `<branch>`.
+Otherwise, an upstream on another remote included, `<pr-base>` is empty and every settled
+item is filed instead of fixed: the fix agent pushes to `origin`.
 
 ## 3. Plan
 
 ```bash
 python3 "<PLUGIN>/bin/triage-plan.py" --tool <tool> --out "<scratch>/triage" \
   --result "<output-file>" --tasks "<scratch>/tasks.json" \
-  --audited-head "<audited-head>" --current-head "<current-head>" \
-  [--prs "<scratch>/prs.json" --pr-base "<pr-base>"]
+  --audited-head "<audited-head>" --current-head "<current-head>" --scope "<scope>" \
+  [--prs "<scratch>/prs.json"] [--pr-base "<pr-base>"]
 ```
 
-The bracketed flags are for `test-tests` with a non-empty `<pr-base>`. Exit 1 or 2: relay
+Pass `--prs` where `prs.json` was written, and `--pr-base` where it is not empty. Exit 1 or 2: relay
 its stderr and stop the triage. Exit 0 prints one JSON line, `<triage-args>`.
 
 ## 4. Fix and write bodies

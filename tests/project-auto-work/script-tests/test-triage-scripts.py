@@ -48,7 +48,7 @@ def tt_result(findings, proposals, mutants=(), **kw):
 
 
 class PlanTest(unittest.TestCase):
-    def plan(self, result, tasks=(), prs=(), tool='test-tests', pr_base='master', current=HEAD):
+    def plan(self, result, tasks=(), prs=(), tool='test-tests', pr_base='master', current=HEAD, scope=''):
         with tempfile.TemporaryDirectory() as d:
             paths = {}
             for name, data in (('result', result), ('tasks', list(tasks)), ('prs', list(prs))):
@@ -57,7 +57,8 @@ class PlanTest(unittest.TestCase):
                     json.dump(data, fh)
             out = os.path.join(d, 'plan')
             argv = ['--tool', tool, '--result', paths['result'], '--tasks', paths['tasks'], '--prs', paths['prs'],
-                    '--pr-base', pr_base, '--audited-head', HEAD, '--current-head', current, '--out', out]
+                    '--pr-base', pr_base, '--audited-head', HEAD, '--current-head', current, '--scope', scope,
+                    '--out', out]
             proc = subprocess.run([sys.executable, os.path.join(BIN, 'triage-plan.py'), *argv],
                                   capture_output=True, text=True)
             if proc.returncode != 0:
@@ -90,7 +91,7 @@ class PlanTest(unittest.TestCase):
         self.assertIn('kind:design', items['F4']['labels'])
         self.assertEqual(got['F5'], (2, 'task'))
         self.assertEqual(got['F6'], (2, 'chore'))
-        self.assertIn('no surviving mutant', items['F7']['reason'])
+        self.assertIn('0 surviving mutants', items['F7']['reason'])
 
     def test_findings_sharing_a_key_share_one_item(self):
         result = tt_result([finding('F1'), finding('F2', subject='src/F1.py::run', site='src/F1.py:3')],
@@ -99,6 +100,33 @@ class PlanTest(unittest.TestCase):
         self.assertEqual(list(items), ['F1'])
         self.assertEqual(([f['id'] for f in items['F1']['more_findings']], len(items['F1']['proposals'])), (['F2'], 2))
         self.assertEqual(args['fixes'], [])
+
+    def test_report_defects_lose_nothing(self):
+        dup = tt_result([finding('F1'), finding('F1', axis='speed', subject='suite')], [settled('F1')])
+        _, args, _ = self.plan(dup)
+        self.assertEqual(len(args['bodies']), 2)
+        merged = tt_result([finding('F1', severity='minor'), finding('F2', subject='src/F1.py::run', severity='blocker')],
+                           [settled('F1')])
+        _, _, items = self.plan(merged)
+        self.assertEqual(items['F1']['priority'], 1)
+
+    def test_mutant_must_be_unique_and_from_a_clean_worker(self):
+        two = tt_result([finding('F1')], [settled('F1')], [mutant('F1'), {**mutant('F1'), 'operator': 'boundary-constant'}])
+        _, args, items = self.plan(two)
+        self.assertEqual(args['fixes'], [])
+        self.assertIn('2 surviving mutants', items['F1']['reason'])
+        dirty = tt_result([finding('F1')], [settled('F1')], [mutant('F1')])
+        dirty['raw']['workers'][0]['integrity_ok'] = False
+        _, args, _ = self.plan(dirty)
+        self.assertEqual(args['fixes'], [])
+
+    def test_scope_and_serial(self):
+        result = tt_result([finding('F1')], [settled('F1')], [mutant('F1')])
+        _, args, items = self.plan(result, scope='services/a/')
+        self.assertEqual(items['F1']['key'], 'test-tests|services/a|sensitivity|src/f1.py::run')
+        self.assertTrue(args['serial'])
+        _, args, _ = self.plan({**result, 'parallel_workers': True})
+        self.assertFalse(args['serial'])
 
     def test_run_blocks_stop_every_fix(self):
         base = tt_result([finding('F1')], [settled('F1')], [mutant('F1')])
@@ -148,9 +176,10 @@ class PlanTest(unittest.TestCase):
         self.assertEqual(args['fixes'], [1])
 
     def test_dedup(self):
-        findings = [finding(f) for f in ('F1', 'F2', 'F3', 'F4')]
-        result = tt_result(findings, [settled(f) for f in ('F1', 'F2', 'F3', 'F4')], [mutant('F1')])
-        key = {f: f'test-tests|sensitivity|src/{f.lower()}.py::run' for f in ('F1', 'F2', 'F3', 'F4')}
+        ids = ('F1', 'F2', 'F3', 'F4', 'F5', 'F6')
+        findings = [finding(f) for f in ids]
+        result = tt_result(findings, [settled(f) for f in ids], [mutant('F1'), mutant('F5')])
+        key = {f: f'test-tests|sensitivity|src/{f.lower()}.py::run' for f in ids}
         label = {f: plan_mod.dedup_label(k) for f, k in key.items()}
         tasks = [
             {'id': 't-open', 'status': 'open', 'labels': ['source:project-auto-work', label['F2']]},
@@ -161,6 +190,9 @@ class PlanTest(unittest.TestCase):
             {'id': 't-fixed', 'status': 'closed', 'close_reason': 'fixed: invalid input now rejected',
              'labels': ['source:project-auto-work', label['F4']]},
             {'id': 't-foreign', 'status': 'open', 'labels': [label['F4']]},
+            {'id': 't-filed', 'status': 'open', 'labels': ['source:project-auto-work', label['F5']]},
+            {'id': 't-task', 'status': 'closed', 'type': 'task', 'close_reason': 'decided: keep it',
+             'labels': ['source:project-auto-work', label['F6']]},
         ]
         prs = [{'number': 7, 'url': 'https://pr/7', 'state': 'CLOSED', 'body': f'text\ndedup-key: {key["F1"]}\n'},
                {'number': 8, 'url': 'https://pr/8', 'state': 'MERGED', 'body': f'dedup-key: {key["F4"]}\n'}]
@@ -170,7 +202,9 @@ class PlanTest(unittest.TestCase):
         self.assertEqual(items['F3']['action'], 'skip')
         self.assertEqual((items['F4']['action'], items['F4']['related']), ('file', ['t-done', 't-fixed']))
         self.assertIn('regression', items['F4']['reason'])
-        self.assertEqual(args['fixes'], [])
+        self.assertEqual((items['F5']['action'], items['F5']['existing']), ('fix', ['t-filed']))
+        self.assertEqual(items['F6']['action'], 'skip')
+        self.assertEqual(args['fixes'], [items['F5']['n']])
 
     def test_keys_are_stable_across_runs(self):
         a = tt_result([finding('F1', subject='src/a.py::Run ')], [settled('F1')])
@@ -258,6 +292,26 @@ class FileTest(unittest.TestCase):
         self.assertIn('--label source:project-auto-work --label dedup:3', creates[1])
         self.assertTrue(all('-C /repo --json' in c for c in calls))
         self.assertTrue(any(c.startswith('comment add t-a') for c in calls))
+
+    def test_fix_on_a_filed_item_comments_on_it(self):
+        items = [self.item(1, 'fix', tier=1, existing=['t-a']), self.item(2, 'fix', tier=1, existing=['t-b'])]
+        workflow = {'fixes': [{'n': 1, 'status': 'pr', 'url': 'https://pr/9'}, {'n': 2, 'status': 'failed', 'reason': 'red'}],
+                    'bodies': []}
+        code, rows, calls = self.run_file(items, workflow)
+        self.assertEqual(code, 0)
+        self.assertEqual((rows[1]['outcome'], rows[2]['outcome']), ('pr', 'noted'))
+        self.assertTrue(any(c.startswith('comment add t-a') and 'https://pr/9' in c for c in calls))
+        self.assertTrue(any(c.startswith('comment add t-b') and 'red' in c for c in calls))
+        self.assertFalse(any(c.startswith('create') for c in calls))
+
+    def test_table_cells_survive_pipes_and_newlines(self):
+        sys.path.insert(0, BIN)
+        spec = importlib.util.spec_from_file_location('triage_file', os.path.join(BIN, 'triage-file.py'))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        row = {'n': 1, 'tier': 2, 'outcome': 'not filed', 'ref': '', 'reason': 'refused:\n{\n "x": 1\n}', 'key': 'a|b|c'}
+        line = mod.markdown([row]).splitlines()[2]
+        self.assertEqual(line.replace('\\|', '').count('|'), 7)
 
     def test_missing_body_and_refusal_exit_3(self):
         items = [self.item(1, 'file'), self.item(2, 'file')]

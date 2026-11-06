@@ -8,7 +8,7 @@ export const meta = {
   ],
 }
 
-// args: { repoRoot, scratchDir, planDir, tool, fixes: [n], bodies: [n] } — printed by
+// args: { repoRoot, scratchDir, planDir, tool, serial, fixes: [n], bodies: [n] } — printed by
 // bin/triage-plan.py. Each n names <planDir>/item-<n>.json.
 
 // ---------------------------------------------------------------------------
@@ -29,6 +29,9 @@ function normalizeArgs(rawArgs) {
   const numbers = v => (Array.isArray(v) ? v : []).map(Number).filter(n => Number.isInteger(n) && n > 0)
   const fixes = numbers(parsed.fixes)
   const bodies = numbers(parsed.bodies)
+  // Each fix runs the whole suite twice. Run fixes side by side only where the audit proved
+  // two suite runs do not interfere.
+  const serial = parsed.serial !== false
 
   // Each path is interpolated into git and shell commands: an unsubstituted "<…>"
   // placeholder or a relative path would put worktrees and bodies inside the audited repo.
@@ -38,7 +41,7 @@ function normalizeArgs(rawArgs) {
   else if (!['test-tests', 'test-app'].includes(tool)) error = `tool must be test-tests or test-app (got ${JSON.stringify(tool)})`
   else if (tool === 'test-app' && fixes.length) error = 'test-app items are never fixed unattended, but fixes is not empty'
 
-  return { repoRoot, scratchDir, planDir, tool, fixes, bodies, receivedKeys: Object.keys(parsed), error }
+  return { repoRoot, scratchDir, planDir, tool, serial, fixes, bodies, receivedKeys: Object.keys(parsed), error }
 }
 
 const FIX_SCHEMA = {
@@ -70,14 +73,15 @@ function fixPrompt(cfg, n) {
     `1. Branch name: auto-work/<the dedup label without "dedup:">-<the first 7 characters of audited_head>. ` +
     `git -C ${cfg.repoRoot} worktree add -b <branch> ${wt} <audited_head>\n` +
     `2. cd ${wt}; replay worktree_setup verbatim where it is not empty, adjusting only the worktree path.\n` +
-    `3. Write the test the proposal names. Rules: change test code only, never production code; ` +
-    `never skip, disable, quarantine, delete or exclude a test; at most 1 file and 50 added lines ` +
-    `(check with git diff --numstat <audited_head>); follow the conventions of the tests next to it.\n` +
+    `3. Write the test the proposal names, following the conventions of the tests next to it. Rules: change test code only, never production code; ` +
+    `never skip, disable, quarantine, delete or exclude a test. Stage only your test file (git add <file>), then check ` +
+    `git diff --cached --numstat <audited_head>: exactly 1 file, at most 50 added lines.\n` +
     `4. Proving check, each run wrapped in timeout 590:\n` +
-    `   a. apply mutant.diff (git apply), run test_cmd: it MUST fail, and fail in your new test.\n` +
-    `   b. revert it (git apply -R), run test_cmd: it MUST pass.\n` +
-    `   git status must then show only your test change.\n` +
-    `5. Commit in the project's commit style (read its contributing or change-workflow doc if it has one). ` +
+    `   a. Apply the mutant to mutant.file: git apply mutant.diff where it applies as a patch, else make the same edit by hand at ` +
+    `mutant.line, as mutant.diff and mutant.stated_behavior_change describe. Run test_cmd: it MUST fail, and fail in your new test.\n` +
+    `   b. Undo the mutant (git checkout -- <mutant.file>; you changed no production file). Run test_cmd: it MUST pass.\n` +
+    `   Remove what worktree_setup added (links, copied files). git status must then show only your test file.\n` +
+    `5. Commit only your test file, in the project's commit style (read its contributing or change-workflow doc if it has one). ` +
     `git push -u origin <branch>.\n` +
     `6. gh label create source:project-auto-work --force; then gh pr create --base <pr_base> --head <branch> --label source:project-auto-work, ` +
     `with a title and a body that states the finding, the mutant diff, and both proving-check results, and ends with the exact line\n` +
@@ -129,13 +133,18 @@ if (typeof agent === 'function') {
       .then(r => (r ? { n, title: r.title } : null))
 
   // A fix that fails is filed instead, so its body is written as soon as the fix returns.
-  const fixRuns = pipeline(cfg.fixes,
-    n => agent(fixPrompt(cfg, n), { label: `fix:${n}`, phase: 'Fix', schema: FIX_SCHEMA }),
-    async (fix, n) => {
-      const outcome = { n, ...(fix || { status: 'failed', reason: 'the fix agent returned nothing' }) }
-      const body = outcome.status === 'pr' ? null : await writeBody(n, outcome.reason)
-      return { fix: outcome, body }
-    })
+  const fixOne = n => agent(fixPrompt(cfg, n), { label: `fix:${n}`, phase: 'Fix', schema: FIX_SCHEMA })
+  const afterFix = async (fix, n) => {
+    const outcome = { n, ...(fix || { status: 'failed', reason: 'the fix agent returned nothing' }) }
+    const body = outcome.status === 'pr' ? null : await writeBody(n, outcome.reason)
+    return { fix: outcome, body }
+  }
+  const fixInTurn = async () => {
+    const out = []
+    for (const n of cfg.fixes) out.push(await afterFix(await fixOne(n), n))
+    return out
+  }
+  const fixRuns = cfg.serial ? fixInTurn() : pipeline(cfg.fixes, fixOne, afterFix)
   const [fixed, bodies] = await Promise.all([fixRuns, parallel(cfg.bodies.map(n => () => writeBody(n)))])
 
   const done = fixed.filter(Boolean)

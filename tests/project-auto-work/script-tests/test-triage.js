@@ -77,6 +77,11 @@ const hooks = (agentImpl) => ({
     truthy('fix prompt demands the mutant fail the suite', /it MUST fail/.test(fix));
     truthy('fix prompt forbids merging', /Never merge the PR/.test(fix));
     truthy('fix prompt forbids skipping tests', /never skip, disable, quarantine/.test(fix));
+    truthy('fix prompt counts a new file in the size limit', fix.includes('git diff --cached --numstat'));
+    truthy('fix prompt applies a mutant that is not a patch by hand', /else make the same edit by hand/.test(fix));
+    truthy('fix prompt commits only the test file', /Commit only your test file/.test(fix));
+    eq('serial unless the args say otherwise', [true, false],
+      [h.normalizeArgs(GOOD).serial, h.normalizeArgs({ ...GOOD, serial: false }).serial]);
     truthy('fix prompt writes the dedup line', fix.includes('dedup-key: <the item'));
     truthy('body prompt carries the failure', h.bodyPrompt(cfg, 3, 'mutant still survives').includes('mutant still survives'));
     truthy('body prompt writes the dedup line', h.bodyPrompt(cfg, 3).includes('dedup-key: <the item'));
@@ -95,6 +100,7 @@ const hooks = (agentImpl) => ({
       { n: 3, status: 'failed', reason: 'the fix agent returned nothing' },
     ], ret.fixes);
     eq('bodies for the item to file and each failed fix', [4, 2, 3], ret.bodies.map((b) => b.n));
+    truthy('serial fixes run in order', prompts.filter((l) => l.startsWith('fix:')).join() === 'fix:1,fix:2,fix:3');
     truthy('no body for the fix that opened a PR', !prompts.includes('body:1'));
 
     truthy('missing agent hook throws', noHook && /did not inject/.test(noHook.message));
