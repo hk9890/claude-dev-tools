@@ -67,7 +67,7 @@ function fixPrompt(cfg, n) {
     `the dedup key and label, and context: repoRoot, test_cmd, worktree_setup, audited_head, pr_base.\n` +
     `The mutant SURVIVED: the suite stayed green with it applied. Your test must make the suite fail on it.\n\n` +
     `STEPS — stop at the first that fails, and go to CLEANUP:\n` +
-    `1. Branch name: auto-work/<the dedup label without "dedup:">. ` +
+    `1. Branch name: auto-work/<the dedup label without "dedup:">-<the first 7 characters of audited_head>. ` +
     `git -C ${cfg.repoRoot} worktree add -b <branch> ${wt} <audited_head>\n` +
     `2. cd ${wt}; replay worktree_setup verbatim where it is not empty, adjusting only the worktree path.\n` +
     `3. Write the test the proposal names. Rules: change test code only, never production code; ` +

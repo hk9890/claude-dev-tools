@@ -70,10 +70,8 @@ def group_items(tool, result):
 
     items = []
     for fid, f in findings.items():
-        if tool == 'test-tests':
-            key = f'{tool}|{f.get("axis")}|{normalize(f.get("subject"))}'
-        else:
-            key = f'{tool}|{normalize(f.get("flow_id"))}|{normalize(f.get("expected_source"))}'
+        axis = f'{f.get("axis")}|' if tool == 'test-tests' else ''
+        key = f'{tool}|{axis}{normalize(f.get("subject"))}'
         items.append({'kind': 'finding', 'finding': f, 'proposals': by_target.get(fid, []), 'key': key})
     for qid, q in questions.items():
         items.append({'kind': 'question', 'question': q, 'proposals': by_target.get(qid, []),
@@ -170,9 +168,12 @@ def existing_by_label(tasks):
     return index
 
 
-def open_pr_keys(prs):
+def pr_keys(prs):
+    """Keys of PRs an earlier run opened that are still open, or closed without a merge.
+    A merged PR fixed its item, so its key coming back is a regression to act on."""
     return {key.strip(): pr.get('url') or str(pr.get('number'))
-            for pr in prs for key in DEDUP_LINE.findall(pr.get('body') or '')}
+            for pr in prs if pr.get('state') != 'MERGED'
+            for key in DEDUP_LINE.findall(pr.get('body') or '')}
 
 
 def dedup(item, existing, pr_keys):
@@ -184,7 +185,7 @@ def dedup(item, existing, pr_keys):
         item.update(action='note', existing=open_matches)
     elif item['key'] in pr_keys:
         item.update(action='skip', existing=[pr_keys[item['key']]],
-                    reason='an open PR from an earlier run carries this key')
+                    reason='a PR from an earlier run, open or closed unmerged, carries this key')
     elif closed and all(WONTFIX.search(t.get('close_reason') or '') for t in closed):
         item.update(action='skip', existing=[t['id'] for t in closed], reason="closed as won't-fix")
     else:
@@ -227,14 +228,14 @@ def main(argv=None):
         return 2
 
     block = run_block(result, args)
-    existing, pr_keys = existing_by_label(tasks), open_pr_keys(prs)
+    existing, keys = existing_by_label(tasks), pr_keys(prs)
     items = group_items(args.tool, result)
     fixes = 0
     for n, item in enumerate(items, 1):
         item['n'] = n
         item['label'] = dedup_label(item['key'])
         place(item, args.tool, result, block)
-        dedup(item, existing, pr_keys)
+        dedup(item, existing, keys)
         if item['action'] == 'fix':
             fixes += 1
             if fixes > PR_CAP:

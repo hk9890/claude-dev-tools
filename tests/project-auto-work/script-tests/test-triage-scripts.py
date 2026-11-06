@@ -160,7 +160,8 @@ class PlanTest(unittest.TestCase):
              'labels': ['source:project-auto-work', label['F4']]},
             {'id': 't-foreign', 'status': 'open', 'labels': [label['F4']]},
         ]
-        prs = [{'number': 7, 'url': 'https://pr/7', 'body': f'text\ndedup-key: {key["F1"]}\n'}]
+        prs = [{'number': 7, 'url': 'https://pr/7', 'state': 'CLOSED', 'body': f'text\ndedup-key: {key["F1"]}\n'},
+               {'number': 8, 'url': 'https://pr/8', 'state': 'MERGED', 'body': f'dedup-key: {key["F4"]}\n'}]
         _, args, items = self.plan(result, tasks, prs)
         self.assertEqual((items['F1']['action'], items['F1']['existing']), ('skip', ['https://pr/7']))
         self.assertEqual((items['F2']['action'], items['F2']['existing']), ('note', ['t-open']))
@@ -179,14 +180,14 @@ class PlanTest(unittest.TestCase):
     def test_test_app_never_fixes(self):
         result = {'repoRoot': '/repo', 'level': 'ultra', 'scratchDir': '/tmp/s', 'mode': 'worktree',
                   'report': {'verdict': 'rough', 'findings': [
-                      {'id': 'F1', 'flow_id': 'export', 'expected_source': 'README.md#export', 'severity': 'blocker',
+                      {'id': 'F1', 'subject': 'Export: CSV keeps the header row', 'flow_id': 'flow-3', 'severity': 'blocker',
                        'repro_confirmed': 'yes'}],
                       'questions': [{'id': 'Q1', 'title': 'Is CSV required?', 'context': 'c', 'why_unclear': 'w'}],
                       'proposals': [settled('F1')]}}
         _, args, items = self.plan(result, tool='test-app')
         self.assertEqual(args['fixes'], [])
         self.assertEqual((items['F1']['tier'], items['F1']['type'], items['F1']['priority']), (2, 'bug', 1))
-        self.assertEqual(items['F1']['key'], 'test-app|export|readme.md#export')
+        self.assertEqual(items['F1']['key'], 'test-app|export: csv keeps the header row')
         question = items['test-app|question|is csv required?']
         self.assertEqual((question['tier'], question['type']), (2, 'task'))
 

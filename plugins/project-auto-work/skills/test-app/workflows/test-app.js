@@ -497,8 +497,9 @@ const REPORT_SCHEMA = {
         properties: {
           // Unique within one report; proposals point at it through related_finding_id.
           id: { type: 'string' },
-          // The inventory flow the finding came from. With expected_source it is the triage
-          // step's cross-run dedup key.
+          // The behaviour the finding is about, named so a later run names it the same way:
+          // the triage step's cross-run dedup key.
+          subject: { type: 'string' },
           flow_id: { type: 'string' },
           title: { type: 'string' },
           severity: { type: 'string', enum: ['blocker', 'major', 'minor'] },
@@ -510,7 +511,7 @@ const REPORT_SCHEMA = {
           evidence: { type: 'string' },
           repro_confirmed: { type: 'string', enum: ['yes', 'no', 'not-run'] },
         },
-        required: ['id', 'flow_id', 'title', 'severity', 'what_was_done', 'expected', 'expected_source', 'actual', 'repro', 'repro_confirmed'],
+        required: ['id', 'subject', 'title', 'severity', 'what_was_done', 'expected', 'expected_source', 'actual', 'repro', 'repro_confirmed'],
       },
     },
     questions: {
@@ -633,7 +634,7 @@ if (typeof agent === 'function') {
       `Evidence:\n${evidence}\n` +
       `Remediation direction: ${remediationHint}\n\n` +
       `Rules: verdict is 'not-runnable'. evidence_basis is 'surface-only'. ` +
-      `One finding (id "F1", flow_id "abort", expected_source "${reason}", severity blocker, repro_confirmed 'not-run') carrying the evidence verbatim. ` +
+      `One finding (id "F1", subject "${reason}", severity blocker, repro_confirmed 'not-run') carrying the evidence verbatim. ` +
       `Each proposal is one concrete action — name the file to edit and the content to add where the evidence allows it, ` +
       `with decision "settled" (the run cannot happen until it is done, so there is nothing to weigh), related_finding_id "F1" and scope "local". ` +
       `checked lists the little that WAS done (the docs recon); not_checked states that the application was never launched. ` +
@@ -1011,7 +1012,9 @@ if (typeof agent === 'function') {
     `FLOWS ATTEMPTED BUT NOT COMPLETABLE (present these as attempted-and-blocked, never as untested):\n${JSON.stringify(ledger.blocked, null, 2)}\n` +
     `NOT-CHECKED LIST — include every entry verbatim, and add anything else you notice was missed:\n${JSON.stringify(notChecked, null, 2)}\n\n` +
     `Build the report:\n` +
-    `1. findings: carry each one through with its evidence and flow_id intact, and give each an id (F1, F2, … unique in this report). Dedupe: the same problem seen twice is ONE finding with the strongest evidence. ` +
+    `1. findings: carry each one through with its evidence intact, and give each an id (F1, F2, … unique in this report) and a subject: ` +
+    `the user-visible behaviour that went wrong, as "<area>: <behaviour>" in the docs' words (for example "export: CSV keeps the header row"). ` +
+    `No flow ids, counts or run-specific words in subject: the triage step dedups across runs on it. Dedupe: the same problem seen twice is ONE finding with the strongest evidence. ` +
     `${dial.confirm
       ? 'repro_confirmed comes from the confirmation pass — never change it. A finding with repro_confirmed="no" stays in the report, presented as observed once and not reproduced, and cannot be a blocker.'
       : 'repro_confirmed is "not-run" for every finding — no confirmation pass runs below level=ultra. Say so where findings are presented rather than implying each was verified.'}\n` +
