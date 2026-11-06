@@ -29,6 +29,9 @@ failure in its body. Every filed item carries the label `source:project-auto-wor
 
 ## 1. Check the store
 
+Where the result holds `error` or no `report`, there is nothing to act on: skip the
+triage. Otherwise run:
+
 ```bash
 command -v python3 >/dev/null && command -v taskmgr >/dev/null \
   && taskmgr where -C "<path>" --json | python3 -c 'import json,sys; sys.exit(json.load(sys.stdin).get("kind") == "none")'
@@ -37,9 +40,9 @@ command -v python3 >/dev/null && command -v taskmgr >/dev/null \
 `taskmgr where` exits 0 with no store too, so the check reads its `kind`. Where the
 command fails, `python3` or `taskmgr` is missing or the project has no taskmgr store.
 Name which. Skip the triage and relay the items as `decision-split.md` (same directory)
-describes. The store is the user's to
-create, so leave `taskmgr init` to them. Skip it too where the result holds `error` or no
-`report`: there is nothing to act on.
+describes. The store is the user's to create, so leave `taskmgr init` to them.
+
+This step is the one place that decides whether the triage runs.
 
 ## 2. Collect
 
@@ -73,8 +76,8 @@ python3 "<PLUGIN>/bin/triage-plan.py" --tool <tool> --out "<scratch>/triage" \
   [--prs "<scratch>/prs.json" --pr-base "<pr-base>"]
 ```
 
-The bracketed flags are for `test-tests` with a non-empty `<pr-base>`. Exit 2 means the
-result holds no report: stop the triage. Exit 0 prints one JSON line, `<triage-args>`.
+The bracketed flags are for `test-tests` with a non-empty `<pr-base>`. Exit 1 or 2: relay
+its stderr and stop the triage. Exit 0 prints one JSON line, `<triage-args>`.
 
 ## 4. Fix and write bodies
 
@@ -95,16 +98,17 @@ python3 "<PLUGIN>/bin/triage-file.py" --plan-dir "<scratch>/triage" \
   --workflow-result "<triage-output-file>" --repo-root "<path>"
 ```
 
-It comments, files and records one item at a time and prints the summary table. Exit 3
-means one or more items were not filed. Each such row has the reason.
+It comments, files and records one item at a time and prints the summary table. Exit 1:
+relay its stderr and stop the triage. Exit 3: the rows marked `not filed` or
+`comment failed` give the reason.
 
 ## 6. Report
 
-Show the summary table. Give the count of each outcome: PRs opened, items filed, comments
-added, items skipped, items not filed. State the path `<scratch>/triage/summary.json`:
+Show the summary table. Give the count of each value in the Outcome column. State the path `<scratch>/triage/summary.json`:
 it lists every PR and taskmgr item this run made, which is how a run is undone. Say that
 an item closed with a reason that starts with "won't fix", "not planned", "declined",
 "rejected", "duplicate" or "invalid" stops later runs from filing it again; so does a fix PR closed
 without a merge.
 
-Done when every item has an outcome in the summary and the user has the table.
+Done when every item has an outcome in the summary and the user has the table, or, where
+a step stopped the triage, when the reason it stopped is stated.

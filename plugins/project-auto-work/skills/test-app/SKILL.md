@@ -86,7 +86,8 @@ know what the app reaches. Point it at an environment whose data you can afford 
 6. **Triage.** Follow `<SKILL_DIR>/../../references/triage.md` (plugin-root layout:
    `../..` is correct) with `<tool>` = `test-app` and `<path>` = the project. It files
    every item and opens no PR. Done when its summary table has an outcome for every
-   item, or, with no taskmgr store, when the items are relayed as that file says.
+   item; where that file skips the triage, when the items are relayed as it says; where
+   a step stops the triage, when the reason it stopped is stated.
 
 If `result` holds an object with `error` and no `report`, relay the error verbatim and do
 not improvise findings. Without `raw`, state that the run did not happen. With `raw`, the

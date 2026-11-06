@@ -129,7 +129,8 @@ when the skill loads. It is absolute and install-correct — build every path fr
 6. **Triage** — after the step-4 integrity check, never before it. Follow
    `<SKILL_DIR>/../../references/triage.md` (plugin-root layout: `../..` is correct)
    with `<tool>` = `test-tests`. Done when its summary table has an outcome for every
-   item, or, with no taskmgr store, when the items are relayed as that file says.
+   item; where that file skips the triage, when the items are relayed as it says; where
+   a step stops the triage, when the reason it stopped is stated.
 
 If `python3` is missing or the workflow cannot launch, do not improvise an inline
 audit — report which prerequisite is missing and stop. If `result` holds an
