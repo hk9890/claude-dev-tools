@@ -634,7 +634,7 @@ if (typeof agent === 'function') {
       `Evidence:\n${evidence}\n` +
       `Remediation direction: ${remediationHint}\n\n` +
       `Rules: verdict is 'not-runnable'. evidence_basis is 'surface-only'. ` +
-      `One finding (id "F1", subject "${reason}", severity blocker, repro_confirmed 'not-run') carrying the evidence verbatim. ` +
+      `One finding (id "F1", subject "${reason}", expected_source "none: the run aborted", severity blocker, repro_confirmed 'not-run') carrying the evidence verbatim. ` +
       `Each proposal is one concrete action — name the file to edit and the content to add where the evidence allows it, ` +
       `with decision "settled" (the run cannot happen until it is done, so there is nothing to weigh), related_finding_id "F1" and scope "local". ` +
       `checked lists the little that WAS done (the docs recon); not_checked states that the application was never launched. ` +

@@ -24,7 +24,7 @@ SOURCE_LABEL = 'source:project-auto-work'
 PR_CAP = 3
 NO_FIX_VERDICTS = {'untrustworthy', 'not-auditable', 'not-runnable'}
 SEVERITY_PRIORITY = {'blocker': 1, 'major': 2, 'minor': 3}
-WONTFIX = re.compile(r"won'?t[ -]?fix|not planned|declined|rejected|duplicate|invalid", re.I)
+WONTFIX = re.compile(r"\s*(won'?t[ -]?fix|not planned|declined|rejected|duplicate|invalid)\b", re.I)
 DEDUP_LINE = re.compile(r'^dedup-key: (.+)$', re.M)
 
 
@@ -186,7 +186,7 @@ def dedup(item, existing, pr_keys):
     elif item['key'] in pr_keys:
         item.update(action='skip', existing=[pr_keys[item['key']]],
                     reason='a PR from an earlier run, open or closed unmerged, carries this key')
-    elif closed and all(WONTFIX.search(t.get('close_reason') or '') for t in closed):
+    elif closed and all(WONTFIX.match(t.get('close_reason') or '') for t in closed):
         item.update(action='skip', existing=[t['id'] for t in closed], reason="closed as won't-fix")
     else:
         item['related'] = [t['id'] for t in closed]

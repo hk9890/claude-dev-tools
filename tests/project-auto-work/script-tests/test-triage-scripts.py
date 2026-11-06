@@ -158,6 +158,8 @@ class PlanTest(unittest.TestCase):
              'labels': ['source:project-auto-work', label['F3']]},
             {'id': 't-done', 'status': 'closed', 'close_reason': 'shipped in abc',
              'labels': ['source:project-auto-work', label['F4']]},
+            {'id': 't-fixed', 'status': 'closed', 'close_reason': 'fixed: invalid input now rejected',
+             'labels': ['source:project-auto-work', label['F4']]},
             {'id': 't-foreign', 'status': 'open', 'labels': [label['F4']]},
         ]
         prs = [{'number': 7, 'url': 'https://pr/7', 'state': 'CLOSED', 'body': f'text\ndedup-key: {key["F1"]}\n'},
@@ -166,7 +168,7 @@ class PlanTest(unittest.TestCase):
         self.assertEqual((items['F1']['action'], items['F1']['existing']), ('skip', ['https://pr/7']))
         self.assertEqual((items['F2']['action'], items['F2']['existing']), ('note', ['t-open']))
         self.assertEqual(items['F3']['action'], 'skip')
-        self.assertEqual((items['F4']['action'], items['F4']['related']), ('file', ['t-done']))
+        self.assertEqual((items['F4']['action'], items['F4']['related']), ('file', ['t-done', 't-fixed']))
         self.assertIn('regression', items['F4']['reason'])
         self.assertEqual(args['fixes'], [])
 

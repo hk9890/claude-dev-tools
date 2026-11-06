@@ -103,8 +103,8 @@ means one or more items were not filed. Each such row has the reason.
 Show the summary table. Give the count of each outcome: PRs opened, items filed, comments
 added, items skipped, items not filed. State the path `<scratch>/triage/summary.json`:
 it lists every PR and taskmgr item this run made, which is how a run is undone. Say that
-an item closed with a reason containing "won't fix", "not planned", "declined", "rejected",
-"duplicate" or "invalid" stops later runs from filing it again; so does a fix PR closed
+an item closed with a reason that starts with "won't fix", "not planned", "declined",
+"rejected", "duplicate" or "invalid" stops later runs from filing it again; so does a fix PR closed
 without a merge.
 
 Done when every item has an outcome in the summary and the user has the table.
