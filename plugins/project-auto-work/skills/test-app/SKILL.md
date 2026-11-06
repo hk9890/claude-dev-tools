@@ -1,6 +1,6 @@
 ---
 name: test-app
-description: "Exploratory application testing: launches the application, actually uses it, and judges what happened against the project's own user-facing docs and monitoring data. Reports findings, questions and proposals; writes no code and fixes nothing."
+description: "Exploratory application testing: launches the application, actually uses it, and judges what happened against the project's own user-facing docs and monitoring data. Files its findings, questions and proposals in taskmgr; writes no code and fixes nothing."
 user-invocable: true
 disable-model-invocation: true
 argument-hint: "[low|medium|high|ultra] [focus-or-doc]"
@@ -8,7 +8,8 @@ argument-hint: "[low|medium|high|ultra] [focus-or-doc]"
 
 Exploratory testing of the application itself — what `test-tests` does to a test suite, this
 does to the running product. Launch the workflow; do **not** drive the app inline. The
-workflow returns a structured report; relay it and save it to a file.
+workflow returns a structured report; relay it, save it to a file, and file its items in
+taskmgr.
 
 **This runs the application for real.** Every iteration launches it against whatever
 environment it is configured for and uses it as a user would — creating, changing, deleting
@@ -45,10 +46,12 @@ know what the app reaches. Point it at an environment whose data you can afford 
    identify one: this will launch the application and use it for real, and data may be
    created, changed or deleted. Then create the scratch dir and echo it — shell state does
    not survive between commands, so a value you only assign is gone by the time step 4
-   needs it. `<scratch>` in steps 4-5 is that printed absolute path.
+   needs it. `<scratch>` in steps 4-6 is that printed absolute path, and the printed
+   commit is `<audited-head>`.
 
    ```bash
    SCRATCH=$(mktemp -d /tmp/test-app-XXXXXX) && echo "$SCRATCH" || { echo "mktemp failed — stop; do not launch without a scratch dir"; return 1 2>/dev/null || exit 1; }
+   git -C "<absolute path to the project>" rev-parse HEAD
    ```
 
 4. Invoke the **Workflow** tool:
@@ -80,10 +83,10 @@ know what the app reaches. Point it at an environment whose data you can afford 
    For a "did you really check X?" follow-up, **re-run the skill**; never answer from the
    report alone.
 
-   Each proposal is tagged `settled` or `open`. Follow
-   `<SKILL_DIR>/../../references/decision-split.md` (plugin-root layout:
-   `../..` is correct) — it defines both words. Done when
-   every open item has been put to the user and the settled batch has been named.
+6. **Triage.** Follow `<SKILL_DIR>/../../references/triage.md` (plugin-root layout:
+   `../..` is correct) with `<tool>` = `test-app` and `<path>` = the project. It files
+   every item and opens no PR. Done when its summary table has an outcome for every
+   item, or, with no taskmgr store, when the items are relayed as that file says.
 
 If `result` holds an object with `error` and no `report`, relay the error verbatim and do
 not improvise findings. Without `raw`, state that the run did not happen. With `raw`, the
@@ -128,5 +131,5 @@ of `monitoring-backed` or `surface-only`; on a surface-only run the headline say
 
 Reading-based review of the code → `/project-review:project-review-codebase` (needs the
 separate `project-review` plugin). Proving the test suite detects bugs →
-`/project-auto-work:test-tests`. Writing tests or fixing what this finds → out of scope by
-design; the report's proposals name the work, you decide what to do with it.
+`/project-auto-work:test-tests`. Fixing what this finds → out of scope by design; the
+triage files each item in taskmgr, and you decide what to do with it.
