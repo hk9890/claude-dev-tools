@@ -9,6 +9,7 @@
 //   - normalizeArgs rejects relative paths, an unknown tool, and fixes for test-app
 //   - each fix agent's prompt names its own item and worktree, the proving check and the
 //     never-merge rule
+//   - a fix agent works in a detached worktree and pushes to origin, so no local branch is left
 //   - a failed fix gets a body written with its reason; a PR gets none
 //   - a dead fix agent is recorded as failed, not dropped
 //   - a broken runtime (no agent hook) fails loudly
@@ -83,8 +84,8 @@ const hooks = (agentImpl) => ({
     eq('serial unless the args say otherwise', [true, false],
       [h.normalizeArgs(GOOD).serial, h.normalizeArgs({ ...GOOD, serial: false }).serial]);
     truthy('fix prompt writes the dedup line', fix.includes('dedup-key: <the item'));
-    truthy('fix prompt always deletes its local branch',
-      /CLEANUP, always:[^\n]*branch -D[^\n]*After a failure/.test(fix) && !fix.includes('After a failure also delete the branch locally'));
+    truthy('fix prompt makes no local branch',
+      fix.includes('worktree add --detach /tmp/s/fix-2') && fix.includes('git push origin HEAD:refs/heads/<branch>') && !/ -b <branch>| -u origin/.test(fix));
     truthy('body prompt carries the failure', h.bodyPrompt(cfg, 3, 'mutant still survives').includes('mutant still survives'));
     truthy('body prompt writes the dedup line', h.bodyPrompt(cfg, 3).includes('dedup-key: <the item'));
 
