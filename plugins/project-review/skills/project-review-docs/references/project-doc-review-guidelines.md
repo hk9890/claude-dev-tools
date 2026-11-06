@@ -41,7 +41,7 @@ script deciding what counts as a claim, which is guessing.
 1. **Manifest** — `scripts/manifest.py` emits the deterministic facts: files, present and
    missing canonical docs, line/word/byte counts, link and anchor resolution, reachability
    from `AGENTS.md`, the `CLAUDE.md` invariant, hollow docs, location violations, injected
-   tool-blocks, and the route list. Scripts do facts; agents do judgment — nothing here
+   tool-blocks, the personal files with each legacy name's move, and the route list. Scripts do facts; agents do judgment — nothing here
    judges belonging or accuracy.
 2. **Read-review** — the docs are ordered (the steering files, then the use-case docs, then
    the rest by path) and packed into batches of up to `BATCH_BYTES` of doc text, so a 45-doc
@@ -55,7 +55,8 @@ script deciding what counts as a claim, which is guessing.
    - *The rest*: `README.md` and `CONTRIBUTING.md` serve humans, `AGENTS.md` is the router
      itself and is judged for trigger edges, and a non-standard doc is judged for
      canonical-topic placement. `CLAUDE.md` is excluded — the manifest checks its invariant
-     mechanically and synthesis raises it.
+     mechanically and synthesis raises it. So are the personal files: a `CLAUDE.local.md`
+     is the user's own, and synthesis raises the move of a legacy `.claude.local.md`.
 
    Every file is asked *belongs here?* of each unit of content against its ownership
    contract, and accurate-but-misplaced content is a finding under *Ownership*. In a file

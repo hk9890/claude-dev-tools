@@ -135,7 +135,7 @@ set's version of sediment is the routing file swelling into a handbook.
   create it when there is something to record.
 - **Injected block** — an external tool's `<!-- BEGIN <TOOL> -->` … `<!-- END <TOOL> -->` markers in
   `CLAUDE.md` or `AGENTS.md`. Those two are hand-authored steering surfaces; a generated block
-  belongs in a topic doc under `docs/`, or in `.claude.local.md` when it is personal or transient.
+  belongs in a topic doc under `docs/`, or in `CLAUDE.local.md` when it is personal or transient.
 - **Left-behind commentary** — review notes, TODOs, and "we should probably…" in the body. Land the
   decision or drop the line.
 

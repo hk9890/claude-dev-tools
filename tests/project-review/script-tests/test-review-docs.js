@@ -214,7 +214,8 @@ async function main() {
     { path: 'docs/WHATEVER.md', classification: 'non-standard' },
     { path: 'CLAUDE.md', classification: 'canonical' },
     { path: 'CHANGELOG.md', classification: 'meta' },
-    { path: '.claude.local.md', classification: 'personal-local' },
+    { path: 'CLAUDE.local.md', classification: 'personal-local' },
+    { path: '.claude.local.md', classification: 'personal-legacy' },
   ]);
   eq('splitReviewTargets: a canonical topic doc becomes its use case',
     ['coding', 'testing'], targets.useCases.map((u) => u.useCase).sort());
@@ -222,8 +223,8 @@ async function main() {
     ['AGENTS.md', 'README.md', 'docs/WHATEVER.md'], targets.residual.map((f) => f.path).sort());
   truthy('splitReviewTargets: CLAUDE.md is excluded — the manifest checks it mechanically',
     !targets.residual.some((f) => f.path === 'CLAUDE.md'));
-  truthy('splitReviewTargets: meta and personal-local files are excluded',
-    !targets.residual.some((f) => f.path === 'CHANGELOG.md' || f.path === '.claude.local.md'));
+  truthy('splitReviewTargets: meta, personal-local and personal-legacy files are excluded',
+    !targets.residual.some((f) => ['CHANGELOG.md', 'CLAUDE.local.md', '.claude.local.md'].includes(f.path)));
   // The standard makes every topic doc optional and never reports one missing, so an
   // absent doc must produce no review at all rather than an empty-file finding.
   eq('splitReviewTargets: a use case whose doc does not exist is not reviewed',
@@ -308,7 +309,9 @@ async function main() {
       { path: 'docs/CODING.md', classification: 'canonical', metrics, contract },
       { path: 'AGENTS.md', classification: 'canonical', metrics, contract },
       { path: 'docs/A.md', classification: 'non-standard', metrics },
+      { path: '.claude.local.md', classification: 'personal-legacy', metrics },
     ],
+    legacy_personal: [{ path: '.claude.local.md', rename_to: 'CLAUDE.local.md', rename_to_exists: true }],
     agents_routes: [
       { kind: 'file', target: 'docs/CODING.md', text: '**MUST read [docs/CODING.md](docs/CODING.md) before editing ANY file.**' },
       { kind: 'file', target: 'docs/B.md', text: 'See [docs/B.md](docs/B.md) for details.' },
@@ -531,6 +534,19 @@ async function main() {
   // would read as a clean bill of health for docs nobody compared with the code.
   truthy('synthesis: the report must say the docs were not checked against the code',
     deep.prompts[deep.prompts.length - 1].includes('did not check documented commands, paths, or flags against the code'));
+  // A personal file under the old name is personal content: the only finding is its move,
+  // which the user makes, and which must neither overwrite notes nor expose them to a commit.
+  const synthesisPrompt = deep.prompts[deep.prompts.length - 1];
+  truthy('synthesis: a personal file under a name Claude Code never loads reaches the report with its rename',
+    synthesisPrompt.includes('{"path":".claude.local.md","rename_to":"CLAUDE.local.md","rename_to_exists":true}') &&
+    synthesisPrompt.includes('the fix moves its content to its rename_to path'));
+  truthy('synthesis: the move merges where the target exists and keeps the target gitignored',
+    synthesisPrompt.includes('merged into that file where rename_to_exists is true') &&
+    synthesisPrompt.includes('adds rename_to to .gitignore'));
+  truthy('synthesis: moving a personal file is an open finding',
+    synthesisPrompt.includes('moves a personal file (the user edits those'));
+  truthy('read-review: a personal file under the old name is never read-reviewed',
+    !deep.prompts.slice(0, -1).some((p) => p.includes('.claude.local.md')));
 
   const medium = await runAudit({ level: 'medium' });
   truthy('history: medium clears the finding floor, so a finding is allowed',
