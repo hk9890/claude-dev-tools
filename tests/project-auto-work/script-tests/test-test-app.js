@@ -692,6 +692,16 @@ async function main() {
   eq('dry streak: two genuinely consecutive dry iterations still stop the run',
     'dry', interrupted.ret && interrupted.ret.stop_reason);
 
+  // ── triage contract: bin/triage-plan.py links proposals to findings by id ────────
+  {
+    const s = helpers.REPORT_SCHEMA.properties;
+    eq('report schema: finding requires id', true, s.findings.items.required.includes('id'));
+    eq('report schema: finding carries flow_id', 'string', s.findings.items.properties.flow_id.type);
+    eq('report schema: question requires id', true, s.questions.items.required.includes('id'));
+    eq('report schema: proposal requires related_finding_id and scope', true,
+      ['related_finding_id', 'scope'].every((k) => s.proposals.items.required.includes(k)));
+  }
+
   // ── broken-runtime guard ─────────────────────────────────────────────────────
   let threw = false;
   try {

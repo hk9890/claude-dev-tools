@@ -495,6 +495,11 @@ const REPORT_SCHEMA = {
       items: {
         type: 'object',
         properties: {
+          // Unique within one report; proposals point at it through related_finding_id.
+          id: { type: 'string' },
+          // The inventory flow the finding came from. With expected_source it is the triage
+          // step's cross-run dedup key.
+          flow_id: { type: 'string' },
           title: { type: 'string' },
           severity: { type: 'string', enum: ['blocker', 'major', 'minor'] },
           what_was_done: { type: 'string' },
@@ -505,7 +510,7 @@ const REPORT_SCHEMA = {
           evidence: { type: 'string' },
           repro_confirmed: { type: 'string', enum: ['yes', 'no', 'not-run'] },
         },
-        required: ['title', 'severity', 'what_was_done', 'expected', 'expected_source', 'actual', 'repro', 'repro_confirmed'],
+        required: ['id', 'flow_id', 'title', 'severity', 'what_was_done', 'expected', 'expected_source', 'actual', 'repro', 'repro_confirmed'],
       },
     },
     questions: {
@@ -513,11 +518,12 @@ const REPORT_SCHEMA = {
       items: {
         type: 'object',
         properties: {
+          id: { type: 'string' },
           title: { type: 'string' },
           context: { type: 'string' },
           why_unclear: { type: 'string' },
         },
-        required: ['title', 'context', 'why_unclear'],
+        required: ['id', 'title', 'context', 'why_unclear'],
       },
     },
     proposals: {
@@ -527,9 +533,13 @@ const REPORT_SCHEMA = {
         properties: {
           action: { type: 'string' },
           rationale: { type: 'string' },
-          related_finding: { type: 'string' },
+          // The id of the finding or question this proposal acts on.
+          related_finding_id: { type: 'string' },
           // Settled or open — the vocabulary is defined once in references/decision-split.md.
           decision: { type: 'string', enum: ['settled', 'open'] },
+          // Where the decision lands. The triage step files an open cross-cutting proposal
+          // as a design doc and an open local one as a task.
+          scope: { type: 'string', enum: ['local', 'cross-cutting'] },
           // The three below are what an open decision needs to be answerable by someone who
           // did not watch the run. Required in practice when decision is 'open' — JSON
           // Schema cannot express that conditional, so the synthesis prompt states it.
@@ -537,7 +547,7 @@ const REPORT_SCHEMA = {
           options: { type: 'array', items: { type: 'string' } },
           recommendation: { type: 'string' },
         },
-        required: ['action', 'rationale', 'decision'],
+        required: ['action', 'rationale', 'related_finding_id', 'decision', 'scope'],
       },
     },
     checked: { type: 'array', items: { type: 'string' } },
@@ -565,7 +575,7 @@ if (typeof module !== 'undefined' && module.exports) {
     normalizeArgs, dialFor, reconAbort, composeBatch, leadId, isDry,
     evidenceBasis, stampBasis, notCheckedList, unreachedReason,
     buildDrift, isUsableMarkdown, renderFallbackMarkdown,
-    LEVELS, DIALS, DRY_LIMIT, FINDINGS_CAP, AGGRESSION_BRIEF,
+    LEVELS, DIALS, DRY_LIMIT, FINDINGS_CAP, AGGRESSION_BRIEF, REPORT_SCHEMA,
   }
 }
 
@@ -623,9 +633,9 @@ if (typeof agent === 'function') {
       `Evidence:\n${evidence}\n` +
       `Remediation direction: ${remediationHint}\n\n` +
       `Rules: verdict is 'not-runnable'. evidence_basis is 'surface-only'. ` +
-      `One finding (severity blocker, repro_confirmed 'not-run') carrying the evidence verbatim. ` +
+      `One finding (id "F1", flow_id "abort", expected_source "${reason}", severity blocker, repro_confirmed 'not-run') carrying the evidence verbatim. ` +
       `Each proposal is one concrete action — name the file to edit and the content to add where the evidence allows it, ` +
-      `with decision "settled" (the run cannot happen until it is done, so there is nothing to weigh). ` +
+      `with decision "settled" (the run cannot happen until it is done, so there is nothing to weigh), related_finding_id "F1" and scope "local". ` +
       `checked lists the little that WAS done (the docs recon); not_checked states that the application was never launched. ` +
       `stop_reason is "abort:${reason}".`,
       { label: 'abort-report', phase: 'Synthesis', schema: REPORT_SCHEMA }
@@ -1001,12 +1011,12 @@ if (typeof agent === 'function') {
     `FLOWS ATTEMPTED BUT NOT COMPLETABLE (present these as attempted-and-blocked, never as untested):\n${JSON.stringify(ledger.blocked, null, 2)}\n` +
     `NOT-CHECKED LIST — include every entry verbatim, and add anything else you notice was missed:\n${JSON.stringify(notChecked, null, 2)}\n\n` +
     `Build the report:\n` +
-    `1. findings: carry each one through with its evidence intact. Dedupe: the same problem seen twice is ONE finding with the strongest evidence. ` +
+    `1. findings: carry each one through with its evidence and flow_id intact, and give each an id (F1, F2, … unique in this report). Dedupe: the same problem seen twice is ONE finding with the strongest evidence. ` +
     `${dial.confirm
       ? 'repro_confirmed comes from the confirmation pass — never change it. A finding with repro_confirmed="no" stays in the report, presented as observed once and not reproduced, and cannot be a blocker.'
       : 'repro_confirmed is "not-run" for every finding — no confirmation pass runs below level=ultra. Say so where findings are presented rather than implying each was verified.'}\n` +
-    `2. questions: genuine ambiguity for a human to decide. Keep them separate from findings; do not promote or demote between the two lists.\n` +
-    `3. proposals: concrete actions — what to fix, what to document. Each tied to its finding or question. No code. ` +
+    `2. questions: genuine ambiguity for a human to decide. Give each an id (Q1, Q2, …). Keep them separate from findings; do not promote or demote between the two lists.\n` +
+    `3. proposals: concrete actions — what to fix, what to document. Each tied to its finding or question: related_finding_id is that finding's or question's id. No code. ` +
     `Classify every one with decision: "settled" when there is one correct answer and no consequence anyone could reasonably weigh ` +
     `differently — a confirmed defect with an obvious fix is settled, and needs no question. "open" when a competent person could answer ` +
     `differently: it trades one cost against another, picks between conventions the project already uses, or is big enough that "not now" ` +
@@ -1014,7 +1024,9 @@ if (typeof agent === 'function') {
     `Every open proposal MUST also carry question (what the human is being asked, in ASD-STE100 Simplified Technical English — one idea per ` +
     `sentence, every identifier and abbreviation expanded — so it is understandable without having watched ` +
     `the run), options (the answers they can pick between), and recommendation (which one you would take and the tradeoff that decided it). ` +
-    `Leave those three off settled proposals.\n` +
+    `Leave those three off settled proposals. ` +
+    `Give every proposal a scope: "cross-cutting" when acting on it changes how something works across the project — a convention, a tool, a shared structure — ` +
+    `"local" when it touches one place.\n` +
     `4. checked: one line per flow actually exercised, saying what was established about it. This is the honest counterweight to not_checked.\n` +
     `5. not_checked: the list above verbatim, plus anything else.\n` +
     `6. stop_reason: "${stopReason}".\n` +
