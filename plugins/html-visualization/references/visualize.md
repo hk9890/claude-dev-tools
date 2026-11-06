@@ -154,9 +154,6 @@ dark/light theme.
 
 ### Mermaid (for graph-shaped content)
 
-Mermaid is the right tool whenever the content is **edges between named things** —
-dependency graphs, call flow, sequences, state machines.
-
 The integration — the module block that bridges Mermaid to the `--hv-*` tokens, the
 `.vis-mermaid-wrap` markup, the `classDef`/CSS colour split, and before/after pairs —
 lives in `references/mermaid.md`. Read it before authoring a diagram:
@@ -246,9 +243,8 @@ renderer that cannot see those tokens — it needs the `themeVariables` bridge a
 re-render listener, and `references/mermaid.md` carries both plus what each rendering
 symptom means.
 
-**Responsive visuals.** Keep `max-width: 900px; margin: 0 auto` on the content
-container (already in the template). For SVGs, set `width="100%"` plus a
-`viewBox`. Wrap wide tables in `<div style="overflow-x: auto">`.
+**Responsive visuals.** Keep the content width the template sets. For SVGs, set
+`width="100%"` plus a `viewBox`. Wrap wide tables in `<div class="vis-table-wrap">`.
 
 ---
 
@@ -271,9 +267,9 @@ the URL to the user as a markdown link with the message:
 After surfacing the URL, continue the conversation immediately. The server runs
 non-blocking in the background.
 
-The three submit outcomes are tabulated in `references/serve.md` — Cycle B. Full
-submit schema (payload shape, CSRF, feedback file format):
-`"$(cat "$HTML_DIR/.plugin-root")/references/visualize-submit-schema.md"`.
+The three submit outcomes are tabulated in `references/serve.md` — Cycle B. Payload
+shape: `"$(cat "$HTML_DIR/.plugin-root")/references/visualize-submit-schema.md"`;
+wire format, CSRF and the feedback file: `references/submit-contract.md`.
 
 If the user later asks to update or re-render the visualization, run the full
 procedure again from Step 1 — create a fresh temp directory, build a new HTML

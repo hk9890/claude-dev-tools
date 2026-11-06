@@ -517,7 +517,15 @@ const REPORT_SCHEMA = {
       items: {
         type: 'object',
         properties: {
+          // Unique within one report; proposals point at it through related_finding_id.
+          id: { type: 'string' },
           axis: { type: 'string', enum: ['sensitivity', 'specificity', 'reliability', 'timing', 'speed', 'isolation', 'auditability'] },
+          // What the finding is about, named so a later run names the same thing the same
+          // way: the triage step builds its cross-run dedup key from axis + subject.
+          subject: { type: 'string' },
+          // file:line of the mutation or delay site, as the worker recorded it, so the triage
+          // step can find the mutant diff in raw.workers.
+          site: { type: 'string' },
           component: { type: 'string' },
           severity: { type: 'string', enum: ['blocker', 'major', 'minor'] },
           observation: { type: 'string' },
@@ -525,7 +533,7 @@ const REPORT_SCHEMA = {
           implication: { type: 'string' },
           candidate: { type: 'boolean' },
         },
-        required: ['axis', 'severity', 'observation', 'evidence', 'implication', 'candidate'],
+        required: ['id', 'axis', 'subject', 'severity', 'observation', 'evidence', 'implication', 'candidate'],
       },
     },
     proposals: {
@@ -535,9 +543,13 @@ const REPORT_SCHEMA = {
         properties: {
           action: { type: 'string' },
           rationale: { type: 'string' },
-          related_finding: { type: 'string' },
+          // The id of the finding this proposal acts on.
+          related_finding_id: { type: 'string' },
           // Settled or open — the vocabulary is defined once in references/decision-split.md.
           decision: { type: 'string', enum: ['settled', 'open'] },
+          // Where the decision lands. The triage step files an open cross-cutting proposal
+          // as a design doc and an open local one as a task.
+          scope: { type: 'string', enum: ['local', 'cross-cutting'] },
           // The three below are what an open decision needs to be answerable by someone who
           // did not watch the audit. Required in practice when decision is 'open' — JSON
           // Schema cannot express that conditional, so the synthesis prompt states it.
@@ -545,7 +557,7 @@ const REPORT_SCHEMA = {
           options: { type: 'array', items: { type: 'string' } },
           recommendation: { type: 'string' },
         },
-        required: ['action', 'rationale', 'decision'],
+        required: ['action', 'rationale', 'related_finding_id', 'decision', 'scope'],
       },
     },
     components: {
@@ -590,7 +602,7 @@ const REPORT_SCHEMA = {
 // tests/project-auto-work/script-tests use this). Assigned before the orchestration below
 // so it is reached whichever path that takes.
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { normalizeArgs, dialFor, baselineAbort, scoreabilityAbort, notCheckedList, findingSignals, reachabilitySummary, LEVELS, DIALS, FINDINGS_CAP, UNREACHED_CAP_RATIO }
+  module.exports = { normalizeArgs, dialFor, baselineAbort, scoreabilityAbort, notCheckedList, findingSignals, reachabilitySummary, LEVELS, DIALS, FINDINGS_CAP, UNREACHED_CAP_RATIO, REPORT_SCHEMA }
 }
 
 // ---------------------------------------------------------------------------
@@ -622,10 +634,10 @@ if (typeof agent === 'function') {
       `Evidence:\n${evidence}\n` +
       `Remediation direction: ${remediationHint}\n\n` +
       `Rules: verdict is '${reason.startsWith('suite is red') ? 'untrustworthy' : 'not-auditable'}'. ` +
-      `One finding on axis '${reason.startsWith('suite is red') ? 'reliability' : 'auditability'}' (severity blocker, candidate false) carrying the evidence verbatim. ` +
+      `One finding on axis '${reason.startsWith('suite is red') ? 'reliability' : 'auditability'}' (id "F1", subject "${reason}", severity blocker, candidate false) carrying the evidence verbatim. ` +
       `Each proposal is one concrete action with its exact command or edit where derivable from the evidence ` +
       `(e.g. the failing test to quarantine, the slow tests to exclude from the audited command), ` +
-      `with decision "settled" (the audit cannot happen until it is done, so there is nothing to weigh). ` +
+      `with decision "settled" (the audit cannot happen until it is done, so there is nothing to weigh), related_finding_id "F1" and scope "local". ` +
       `checked describes the little that WAS done; not_checked lists every audit axis that never ran.`,
       { label: 'abort-report', phase: 'Synthesis', schema: REPORT_SCHEMA }
     )
@@ -1190,6 +1202,10 @@ if (typeof agent === 'function') {
     `isolation (a "unit" test that failed once its external environment was denied — name the test and the resource it reached for; major when several share one resource, minor for an isolated case), ` +
     `auditability (a KILLED coverage-truth mutant: the repo's coverage command under-reports, and any site it ranked was ranked from data that is provably incomplete — severity major, candidate false, evidence = the diff and the test that killed it` +
     `${coverageOn ? '' : '; and, on this run, that the repo exposes no coverage-summary command at all — severity minor, candidate false, evidence = the baseline how_to_enable text. The audit did not need it, so it is not a blocker; it is the one axis the missing command touches'}). ` +
+    `Give each finding an id (F1, F2, … unique in this report) and a subject: the one thing it is about, named the way a later audit of the same code would name it — ` +
+    `sensitivity and timing: <file>::<enclosing function or method>; specificity, reliability and isolation: the test's full name; speed: the test, or "suite"; auditability: exactly "no coverage command" when the repository has none, else "coverage misses <file>". ` +
+    `No line numbers, counts or run-specific words in subject: the triage step dedups across runs on axis + subject. ` +
+    `Sensitivity and timing findings also carry site: the "<file>:<line>" of the mutation or delay, copied from the worker record.\n` +
     `Each carries the concrete evidence (the diff or run-log excerpt), an implication stating what broken behavior would ship undetected or what the weakness costs, and candidate: ` +
     `${dial.verify
       ? 'false for verify-confirmed survivors and brittle breaks — EXCEPT items flagged verify_failed=true (their verify agent failed), which stay candidate=true; '
@@ -1199,7 +1215,7 @@ if (typeof agent === 'function') {
     `Severity rubric: blocker = a core behavior could be fully inverted/removed undetected or a test is proven vacuous; major = a meaningful branch, bound, or computation is unpinned, or a proven flake/brittle break; minor = a narrow edge case or an inefficiency. ` +
     `Timing findings: major when multiple tests share the timing dependence, minor for an isolated test.\n` +
     `3. proposals: concrete next actions — "add a test that kills this survivor in <file>:<line> (assert <behavior>)", "quarantine flaky test X", "split/exclude slow test Y", ` +
-    `"move test Z into the integration suite, or give it a double for <resource>", "fix the coverage command so it sees <file>". Each tied to its finding. No code, just the actions. ` +
+    `"move test Z into the integration suite, or give it a double for <resource>", "fix the coverage command so it sees <file>". Each tied to its finding: related_finding_id is that finding's id. No code, just the actions. ` +
     `Classify every one with decision: "settled" when there is one correct answer and no consequence anyone could reasonably weigh differently — ` +
     `a verify-confirmed survivor with an obvious missing assertion is settled, and needs no question. "open" when a competent person could answer ` +
     `differently: it trades one cost against another, picks between conventions the suite already uses, or is big enough that "not now" is a real ` +
@@ -1207,7 +1223,9 @@ if (typeof agent === 'function') {
     `contract is exactly the call a human has to make. Every open proposal MUST also carry question (what the human is being asked, in ` +
     `ASD-STE100 Simplified Technical English — one idea per sentence, every identifier and abbreviation expanded — so it is understandable ` +
     `without having watched the audit), options (the answers they can pick between), and recommendation (which one you ` +
-    `would take and the tradeoff that decided it). Leave those three off settled proposals.\n` +
+    `would take and the tradeoff that decided it). Leave those three off settled proposals. ` +
+    `Give every proposal a scope: "cross-cutting" when acting on it changes how something works across the suite — a convention, a tool, a shared structure — ` +
+    `"local" when it touches one place.\n` +
     `4. components table: per component kill_rate, flakes, brittle, slice_wall_s, audited.\n` +
     `5. untested_churn: copy the derived list above through unchanged, in the order given. Present it as what it is — the REPOSITORY'S OWN coverage claim, unverified by this audit, churn-weighted and not risk-ranked: it ranks by how often a file changes and how much of it is untested, neither of which says how dangerous the gap is. No severity, no findings built from it, and it changes no score. ` +
     `The proven-unreached sites are its audited counterpart, and those DO carry findings.` +
@@ -1238,7 +1256,8 @@ if (typeof agent === 'function') {
       baseline: {
         test_cmd: baseline.test_cmd, wall_s: baseline.wall_s,
         coverage: baseline.coverage, shuffle_flag: baseline.shuffle_flag,
-        worktree_ok: baseline.worktree_ok, dirty_tree: baseline.dirty_tree,
+        worktree_ok: baseline.worktree_ok, worktree_setup: baseline.worktree_setup || '',
+        dirty_tree: baseline.dirty_tree,
       },
       components: grouping.components,
       reachability: reach,

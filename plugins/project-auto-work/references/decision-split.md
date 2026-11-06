@@ -24,7 +24,7 @@ has to make.
 
 ## Relaying
 
-Relay the two groups separately: the settled ones as a batch, then the open ones
+Where `triage.md` (same directory) skips or stops the triage, relay the two groups separately: the settled ones as a batch, then the open ones
 last, as one numbered list the user answers in one reply, one question per item.
 Each question reads without the report beside it, and carries the item's `options`
 in the report's words. The option its `recommendation` picks comes first, marked as
@@ -32,8 +32,8 @@ recommended, with the reason and the cost the report gave. An item with no `opti
 asks whether to apply it as stated, and a `questions[]` entry asks its `title`, with its
 `context` and `why_unclear`; an item with no `recommendation` says that it has none.
 
-Neither skill acts on either group. The report names the work; what happens next
-is the user's to say, in the same way they would answer any other message.
+The relay acts on neither group. The report names the work; what happens next is
+the user's to say, in the same way they would answer any other message.
 
 ## The browser form
 
@@ -46,7 +46,7 @@ means: it is the user's to type.
 Keep the filter in its argument, so it survives into a fresh turn:
 
 ```
-/html-visualization:html-visualize-ask the <N> open decisions from <the test-app run|the test-suite audit> — the settled proposals are already agreed
+/html-visualization:html-visualize-ask the <N> open decisions from <the test-app run|the test-suite audit> — leave out the settled proposals
 ```
 
 Then say that the form holds only the open items, not the settled batch.

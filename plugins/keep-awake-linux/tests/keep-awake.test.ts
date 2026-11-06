@@ -7,8 +7,9 @@ const TEN_MINUTES = 10 * 60_000
 const TURN_END = { answer: '', durationMs: 1, isAborted: false, reason: 'answer' } as const
 
 // Stands for the host: records each inhibitor started and each one ended. `exit` ends the running
-// child as its own exit would; a `systemd-inhibit` that cannot start is `host(on, { canStart: false })`.
-function host(on: On, { canStart = true } = {}) {
+// child as its own exit would; a `systemd-inhibit` that cannot start is `host(on, { canStart: false })`,
+// one older than v257, which knows no --no-ask-password, is `host(on, { knowsNoAskPassword: false })`.
+function host(on: On, { canStart = true, knowsNoAskPassword = true } = {}) {
   const seen = {
     started: [] as (readonly string[])[],
     ended: 0,
@@ -17,6 +18,7 @@ function host(on: On, { canStart = true } = {}) {
     exit: (code: number) => {},
   }
 
+  on('process.run', () => ran(knowsNoAskPassword ? ['     --no-ask-password    Do not attempt interactive authorization'] : ['  -h --help']))
   on('process.spawn', async function* ($, e, next) {
     if (!canStart) {
       throw new Error('spawn systemd-inhibit ENOENT')
@@ -62,6 +64,17 @@ test('the first turn starts one inhibitor', async ($, on) => {
 
   expect(seen.started).toHaveLength(1)
   expect(seen.started[0]?.slice(0, 3)).toEqual(['systemd-inhibit', '--what=idle:sleep', '--who=claude-keep-awake'])
+  expect(seen.started[0]?.slice(-4)).toEqual(['--mode=block', '--no-ask-password', 'sleep', '1800'])
+})
+
+test('a systemd-inhibit older than v257 gets no --no-ask-password', async ($, on) => {
+  const clock = mock.clock(on)
+  const seen = host(on, { knowsNoAskPassword: false })
+
+  await $.turn.start({ text: 'go', turnId: 't1' })
+  await clock.settle()
+
+  expect(seen.started[0]?.slice(-3)).toEqual(['--mode=block', 'sleep', '1800'])
 })
 
 test('a second turn starts no second inhibitor', async ($, on) => {
@@ -309,7 +322,7 @@ const TYPED = {
 
 const INHIBIT = 'systemd-inhibit --what=idle:sleep --who=claude-keep-awake'
 const CHILDREN = [
-  `  101   11    97 ${INHIBIT} --why=Claude session s1 --mode=block sleep 1800`,
+  `  101   11    97 ${INHIBIT} --why=Claude session s1 --mode=block --no-ask-password sleep 1800`,
   `  102 2221  1509 ${INHIBIT} --why=Claude session 36eed69b-7898 --mode=block sleep 1800`,
   '  103   12    40 systemd-inhibit --who=someone-else sleep 60',
 ]
@@ -391,8 +404,8 @@ test('two inhibitors of one session with a claude parent are both a duplicate', 
   mock.clock(on)
   panelHost(on, {
     children: [
-      `  101   11    97 ${INHIBIT} --why=Claude session s1 --mode=block sleep 1800`,
-      `  104   11     5 ${INHIBIT} --why=Claude session s1 --mode=block sleep 1800`,
+      `  101   11    97 ${INHIBIT} --why=Claude session s1 --mode=block --no-ask-password sleep 1800`,
+      `  104   11     5 ${INHIBIT} --why=Claude session s1 --mode=block --no-ask-password sleep 1800`,
     ],
     parents: PARENTS,
   })
@@ -411,8 +424,8 @@ test('one session open in two Claude processes holds two active blocks', async (
   mock.clock(on)
   panelHost(on, {
     children: [
-      `  101   11    97 ${INHIBIT} --why=Claude session s1 --mode=block sleep 1800`,
-      `  104   12     5 ${INHIBIT} --why=Claude session s1 --mode=block sleep 1800`,
+      `  101   11    97 ${INHIBIT} --why=Claude session s1 --mode=block --no-ask-password sleep 1800`,
+      `  104   12     5 ${INHIBIT} --why=Claude session s1 --mode=block --no-ask-password sleep 1800`,
     ],
     parents: ['   11 claude', '   12 claude'],
   })

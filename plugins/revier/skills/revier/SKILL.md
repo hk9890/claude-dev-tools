@@ -11,7 +11,7 @@ revier is the user's registry of every project on this machine: each project's c
 
 Installed: !`revier version 2>/dev/null || echo "STOP: revier is not on PATH. Tell the user to install it from https://github.com/hk9890/revier, and do nothing else with this skill."`
 
-Scripts: !`python3 --version 2>/dev/null || echo "python3 is not on PATH, so the two scripts of this skill do not run. To find a project, read the revier list table: it names no repository, directory, host project or agent name, and the activity of one agent per project, so ask the user where no row fits. For past use, follow the Past use section below."`
+Scripts: !`python3 --version 2>/dev/null || echo "python3 is not on PATH, so the two scripts of this skill do not run. To find a project, read the revier list table: it shows each project's state and the activity of one agent, but no repository, directory, host project or agent name, so ask the user where no row fits. For past use, follow the Past use section below."`
 
 ## The focus rule
 
@@ -57,7 +57,7 @@ The JSON of `revier list --json` is an array with one element per named project.
   - `.state.harness`: what runs the agent, `claude` for Claude Code.
   - `.state.name`: the name the harness gives the agent. For Claude Code, it is the name that ListAgents and SendMessage use. It is neither unique nor fixed.
   - `.state.session`: the conversation of a Claude Code agent. It and `.state.name` are absent while revier has not matched the agent's process.
-  - `.ref`: an object, set for an agent in a panel on this machine. One without it runs on a link's host. Its `.ref.id` is `<server>/<instance>`: the kitty socket, the tmux server pid or the herdr server pid, then the window, session or workspace that holds the panel.
+  - `.ref`: an object, set for an agent in a panel on this machine. One without it is an agent of a link that no panel here shows. Its `.ref.id` is `<server>/<instance>`: the kitty socket, the tmux server pid or the herdr server pid, then the window, session or workspace that holds the panel.
   - `.state.dir`: the directory the agent works in now, set where revier knows one other than `.project.path`: a git worktree for example. An agent without it works in `.project.path`, or revier has no directory for it.
 
 Your own entry is in the project that `revier status` names: the one whose `.state.session` equals `$CLAUDE_CODE_SESSION_ID`. Where none or several do, it is the one whose `.panel` equals `$KITTY_WINDOW_ID`, `$TMUX_PANE` or `$HERDR_PANE_ID`, for the kitty, tmux or herdr that the `runtime` line of `revier status` names. A kitty or tmux panel id is unique only within one server, so there the `.ref.id` must also start with the server and then a `/`: `$KITTY_LISTEN_ON` without `unix:`, or the server pid, the next-to-last comma field of `$TMUX`. Where that variable is empty, ask the user which entry is yours. Where several still match, ask the user. Every other entry is another agent, in your own project too.

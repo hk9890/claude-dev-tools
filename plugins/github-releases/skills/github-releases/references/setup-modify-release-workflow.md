@@ -175,7 +175,7 @@ grep -i "## Verif" docs/RELEASING.md
 # Check: Do they still work? Are there new tests not documented?
 
 # Check version files from RELEASING.md
-<version-files-from-file>
+ls -la <version-files-from-file>
 # Check: Do files still exist? Are there new version files?
 
 # Check release commands from RELEASING.md
@@ -208,11 +208,11 @@ git log --oneline -n 10 .github/workflows/  # Workflow updated?
 ```
 I verified docs/RELEASING.md and found:
 
-✅ Build command works: npm run build
-✅ Unit tests work: npm test
-✅ Integration tests work: npm run test:integration
-❌ E2E tests found but not documented: npm run test:e2e
-❌ New version file found: README.md (has version in install command)
+- OK: build command works: npm run build
+- OK: unit tests work: npm test
+- OK: integration tests work: npm run test:integration
+- Missing: E2E tests found but not documented: npm run test:e2e
+- Missing: new version file found: README.md (has version in install command)
 
 Should I update RELEASING.md to include:
 1. E2E test command: npm run test:e2e

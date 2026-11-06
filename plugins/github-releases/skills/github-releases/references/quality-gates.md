@@ -46,12 +46,8 @@ Run the project's linter with the command established in Phase 2 of [release-wor
 ## Gate 5: CI Status
 
 ```bash
-# Check CI status of latest commit
-gh run list --limit 5
-gh run view <run-id>
-
-# Or check PR checks
-gh pr checks
+# The runs of HEAD, the commit under test, not the newest runs on any branch
+gh run list --commit "$(git rev-parse HEAD)" --json name,status,conclusion
 ```
 
-All CI checks MUST be green. Do not release with failing CI.
+The gate passes when the newest run of each workflow `name` has `status` `completed` and `conclusion` `success`, `skipped` or `neutral`. For a run in progress, list again after a few minutes. With no run listed, ask the user whether the project runs CI on this branch; with none, record that and move on. Never pass the gate on a run of another commit.

@@ -165,9 +165,9 @@ contract in
   every single-mode `approaches` widget its `.approaches-none` — see "The escape
   option" in `ask-markup.md`.
 - Do NOT add `<script>const CSRF_TOKEN = "...";</script>` — the server injects it.
-- The `/assets/ask/style.css` link and the `/assets/shared/submit.js` +
-  `/assets/ask/app.js` scripts are correct as-is; do not change the paths or
-  their order.
+- The `/assets/ask/style.css` link and the `/assets/shared/submit.js`,
+  `/assets/shared/overlay.js`, `/assets/shared/heartbeat.js` and
+  `/assets/ask/app.js` scripts are correct as-is; keep their paths and order.
 
 Consult `"$(cat "$HTML_DIR/.plugin-root")/references/ask-markup.md"`
 for the full vocabulary (classes, data attributes, required IDs, verdict radio
@@ -248,7 +248,7 @@ The file contains:
 ```json
 {
   "submittedAt": "<ISO-8601 timestamp>",
-  "verdict":    "approve" | "approve-with-changes" | "reject",
+  "verdict":    "approve" | "approve-with-changes" | "reject" | "",
   "answers":    { "<qID>": <value> },
   "comments":   [ { "anchor": "#<qid>", "text": "<string>" } ],
   "freeform":   "<string>"
