@@ -14,6 +14,10 @@ With no argument, ship **the change the user stated or approved in this conversa
 
 Record from the project's workflow docs (AGENTS.md or CLAUDE.md routing, a change-workflow or contributing doc, a PR template): the remote and its `<base-branch>` (else the remote's default branch), the branch naming, the setup a fresh checkout needs, the **gates** a PR needs green, how to run the product by hand, and the commit style.
 
+Where the change names tracker issues (`#N`, an issue URL, a taskmgr id), resolve each one before step 2 names the worktree. For taskmgr, where `tasks:tasks-core` is in your available skills, call the Skill tool with it, even where it loaded earlier in this session. Read each issue from the tracker, state its title, and take its body as the spec; where a reference could name more than one issue, or none, ask the user. Where you cannot read the tracker (taskmgr without `tasks:tasks-core`, or no CLI for it), ask the user for each issue's title and text.
+
+Done when each item above is recorded, and each named issue has a stated title and a spec.
+
 ## 2. Enter a worktree
 
 Where `git rev-parse --git-dir` and `git rev-parse --git-common-dir` print different paths, the session is in a worktree: stay. Look its PR up with `gh pr view <upstream-branch>`, the upstream without the remote name. With no upstream there is no PR yet. Where the PR is `MERGED` or `CLOSED`, stop: a new change needs a new worktree.
@@ -26,7 +30,7 @@ Done when the session is in a worktree, the setup has run there, and that `git b
 
 ## 3. Implement
 
-Where the change implements tracker issues, mark each one in progress before the first edit; for taskmgr, where `tasks:tasks-core` is in your available skills, call the Skill tool with it, even where it loaded earlier in this session; else report the issue as not marked. Make the change and its tests.
+Where the change implements tracker issues, mark each one in progress before the first edit; where step 1 could not read the tracker, report the issue as not marked. Make the change and its tests.
 
 ## 4. Prove it
 
@@ -44,4 +48,4 @@ Call the Skill tool with `worktree-flow:worktree-review` and the PR number, even
 
 ## 7. Report and stop
 
-Report the PR URL, the worktree path, each gate and drive with its result, each step skipped, stray work left on the main checkout, the next step (the user starts `/worktree-flow:worktree-merge`), and last the review: the items `worktree-review` kept, in their form, or why it stopped. Stay in the worktree.
+Report the PR URL, the worktree path, each gate and drive with its result, each step skipped, stray work left on the main checkout, each issue not marked, the next step (the user starts `/worktree-flow:worktree-merge`), and last the review: the items `worktree-review` kept, in their form, or why it stopped. Stay in the worktree.

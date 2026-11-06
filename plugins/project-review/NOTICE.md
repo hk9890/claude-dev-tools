@@ -21,7 +21,10 @@ commit [`d81f3a1`](https://github.com/mattpocock/skills/blob/d81f3a183412e71a5b1
 the text is upstream's, with the frontmatter, the style-guide skills it names, and the name of
 the coding-standards document changed to fit this plugin; the first use of that name points at
 the Files section. Upstream's step 1, which loads its
-style guide, is removed; each remaining step gains a completion criterion, and the step that
+style guide, is replaced by a step that loads the two `instruction-writing` skills before any
+category is judged, as upstream's own
+[`.out-of-scope/lazy-load-writing-for-agents.md`](https://github.com/mattpocock/skills/blob/82672251ee9d9a0b823202c94a613f5038dd28c9/.out-of-scope/lazy-load-writing-for-agents.md)
+(commit `8267225`) argues for its step 1; each remaining step gains a completion criterion, and the step that
 reads the session names `$ARGUMENTS`, the directory its extracts go to, the records it reads
 in full, and the repo under review, and the last step reports what was not read; the Files section
 names each file by absolute path and is shortened to what the two `instruction-writing` skills do
