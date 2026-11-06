@@ -14,11 +14,11 @@ Interview the user relentlessly until you reach a shared understanding. Map the 
 
 Work the tree in **rounds**. The **frontier** is every decision whose prerequisites are already
 settled — the questions you can ask *now* without guessing at answers you have not heard yet. Put
-the frontier to the user, then wait for the answers before recomputing it. A question whose answer
-depends on another question still open in this round belongs to a later round: a recommendation
-that reads "if Q1 is X", or a "what would change your mind" that names another open question, is
-the symptom. Each round's answers reshape the tree: settled decisions push the frontier outward
-and unblock the questions that depended on them.
+the frontier to the user, and recompute it after each answer, before you ask anything further: a
+question not yet asked may change or drop out. A question whose answer depends on another question
+still open belongs to a later round: a recommendation that reads "if Q1 is X", or a "what would
+change your mind" that names another open question, is the symptom. Each answer reshapes the tree:
+settled decisions push the frontier outward and unblock the questions that depended on them.
 
 ## The cold reader
 
@@ -39,8 +39,11 @@ choice and differ in a second, is a question of its own. Each option is a choice
 commit to, and says what it commits us to, what it costs, and what it rules out later, where it
 rules out anything. Each decision carries your **recommendation**: one option, why, what it costs
 us, and what would change your mind. A question about the user's own goal or situation carries
-your best read of it instead: the answer you think is true, marked as a guess, with what you read
-it from, and what each answer would change.
+your **best read** of it instead: the answer you think is true, marked as a guess, with what you
+read it from, and what each answer would change. Such a question is always complex.
+
+Where a question's premise may be wrong — the call is not the user's, or is not a call at all —
+say so inside that question: in prose, or with one option of the picker.
 
 ## Simple and complex questions
 
@@ -73,6 +76,10 @@ care: usually one, more only where each is short. Each takes this shape:
 your mind.
 ```
 
+A question about the user's goal or situation ends on
+`**Best read (a guess, from <source>): <one option's label, exactly>.**` in place of the
+recommendation.
+
 In a round with both kinds, make the `AskUserQuestion` call first, then write the prose questions
 once it returns.
 
@@ -81,8 +88,7 @@ once it returns.
 An answer in the user's own words — typed into the free-text field the tool puts on every
 question, or as a message — settles its decision as firmly as a pick. An answer that hands the
 decision to you ("your call", "go with your recommendation") settles it on your recommendation.
-Take it and recompute the frontier from it. Where the premise may be wrong — the call is not the
-user's, or is not a call at all — say so: in prose, or with one option of the picker.
+Take it and recompute the frontier from it.
 
 A request for more ("why", "explain", "what does this break", "let's discuss this") is not an
 answer. Put the same decision again, in prose, with the deeper background and consequences it
