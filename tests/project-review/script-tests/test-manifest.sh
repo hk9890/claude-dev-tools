@@ -146,8 +146,11 @@ test_classification() {
     'LEGACY personal file: .claude.local.md (Claude Code never loads it; rename to CLAUDE.local.md)' "$text"
   local row; row=$(grep -F '  .claude.local.md ' <<< "$text")
   assert_contains "text: the legacy row carries its class" 'personal-legacy' "$row"
-  [[ "$row" != *HOLLOW* && "$row" != *dead-link* ]] && ok "text: a personal row carries no HOLLOW or dead-link flag" \
+  [[ "$row" != *dead-link* ]] && ok "text: a personal row with a dead link carries no dead-link flag" \
     || fail "text: a personal row carries a flag the summary does not count — $row"
+  row=$(grep -F '  docs/.claude.local.md ' <<< "$text")  # heading only
+  [[ -n "$row" && "$row" != *HOLLOW* ]] && ok "text: a heading-only personal row carries no HOLLOW flag" \
+    || fail "text: a heading-only personal row is missing or flagged HOLLOW — $row"
 
   # The file it moves to exists: the move is a merge, so neither file's notes are lost.
   printf '# Newer\n\nNotes.\n' > "$dir/CLAUDE.local.md"
