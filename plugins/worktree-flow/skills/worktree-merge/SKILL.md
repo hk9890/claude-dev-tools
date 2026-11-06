@@ -42,14 +42,14 @@ Done when the worktree is gone, and each of the user's files is copied or droppe
 
 ## 4. Update the default branch
 
-In the main checkout, read `git branch --show-current` in a call of its own: another session can have switched it. Then `git fetch --prune`. Below, `<default>` is the PR's base branch and `<remote>` its remote.
+Below, `<default>` is the PR's base branch and `<remote>` its remote. In the main checkout, read `git branch --show-current` in a call of its own, and `git status --porcelain` in another: another session can have switched it or left changes. Then `git fetch --prune <remote>`.
 
-- **On `<default>`:** record `git rev-parse HEAD`, then `git pull --ff-only`.
-- **On another branch, or none:** leave that checkout as it is, and move `<default>` alone: `git fetch . <remote>/<default>:<default>`.
+- **On `<default>`, with no changes:** record `git rev-parse HEAD`, then `git pull --ff-only <remote> <default>`.
+- **Otherwise:** leave that checkout as it is, and move `<default>` alone: `git fetch . <remote>/<default>:<default>`.
 
 `ExitWorktree` with `remove` can have deleted the PR's local branch with the worktree: delete it where `git branch --list <branch>` still prints it, with the name the worktree's branch had, which can differ from the PR's head branch (`-D` after a squash or rebase merge). Delete its remote branch where it still exists. The dependencies were installed in the removed worktree only: where the pull ran and the PR's files or `git diff --name-only <recorded> HEAD` hold a dependency manifest, lockfile or tool-version pin, run the project's install step, and nothing else of its setup, in the main checkout.
 
-Done when `<default>` is at `<remote>/<default>` or git refused, the merged branches are deleted, and the install ran or is not needed.
+Done when `<default>` is at `<remote>/<default>` or git refused, the merged branches are deleted, and the install ran, is not needed, or is left to the user.
 
 ## 5. Close the resolved issues
 
@@ -61,6 +61,6 @@ Done when each issue is closed, or open with the reason.
 
 ## 6. Report
 
-Report how the PR merged (by this run with its method, or already), what was removed, where each of the user's files went, whether `<default>` is current, else git's refusal, the install with its result, and each issue by its id and title: closed, or open with the reason. Print `git worktree list` and `git branch -vv`, and name each worktree or branch whose upstream is gone. Remove them only when the user says so.
+Report how the PR merged (by this run with its method, or already), what was removed, where each of the user's files went, whether `<default>` is current, else git's refusal, the install with its result, or the install that the user must run, and each issue by its id and title: closed, or open with the reason. Print `git worktree list` and `git branch -vv`, and name each worktree or branch whose upstream is gone. Remove them only when the user says so.
 
 Done when the report holds each item, or says that it does not apply.

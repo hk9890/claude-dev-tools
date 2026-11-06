@@ -184,7 +184,7 @@ if [[ -f "$MERGE" ]]; then
       fail "issues: worktree-merge lost \"${phrase}\""
     fi
   done
-  for phrase in 'read `git branch --show-current` in a call of its own' 'leave that checkout as it is' '`git fetch . <remote>/<default>:<default>`'; do
+  for phrase in 'read `git branch --show-current` in a call of its own' '`git status --porcelain` in another' 'leave that checkout as it is' '`git fetch . <remote>/<default>:<default>`'; do
     if grep -Fq "$phrase" "$MERGE"; then
       ok "default branch: worktree-merge states \"${phrase}\""
     else

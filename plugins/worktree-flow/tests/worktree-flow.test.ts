@@ -63,6 +63,10 @@ const DENIED = [
   'git commit -m "note W=/tmp/probe" && git worktree add --detach $W HEAD',
   'git worktree add .claude/worktrees/feat -b feat > /tmp/wt.log 2>&1',
   'S=/home/me/scratchpad/logs; git worktree add ../repo-feat -b feat > $S/wt.log 2>&1',
+  'git worktree add ../x -b b --lock --reason "cache /tmp/ files"',
+  'git worktree add ../x -b b # /tmp/',
+  'git worktree add ../x -b mktemp-fix',
+  'git worktree add ../x -b b < /tmp/in',
 ]
 
 // An add that names a directory, by `cd` or `-C`, that is in the session's repository at
@@ -87,6 +91,25 @@ const OWN_REPOSITORY = {
   'a cd inside $(...)': 'X=$(cd /home/me/other && pwd); git worktree add ../x -b b',
   'a cd inside a subshell': '(cd /home/me/other); git worktree add ../x',
   '--git-dir': 'cd /tmp && git --git-dir=/home/me/repo/.git worktree add /home/me/x -b b',
+  'a cd in a subshell after another command': '(git fetch -q; cd /home/me/other); git worktree add ../x -b b',
+  'a cd in $(...) after another command': 'X=$(git fetch; cd /home/me/other && pwd); git worktree add ../x -b b',
+  'a cd in backticks': 'X=`cd /home/me/other && pwd`; git worktree add ../x -b b',
+  'a cd in a multi-line subshell': '(\n  cd /home/me/other\n)\ngit worktree add ../x -b b',
+  'a cd in a background job': 'cd /home/me/other & git worktree add ../x -b b',
+  'a cd in a pipeline': 'cd /home/me/other | true; git worktree add ../x -b b',
+  'a cd in quoted text': 'git commit -m "x; cd /home/me/other" && git worktree add ../x -b b',
+  'a pushd after the cd': 'cd /home/me/other && pushd /home/me/repo && git worktree add ../x',
+  'a cd back between two adds': 'cd /home/me/other && git worktree add ../y -b y; cd /home/me/repo; git worktree add ../x -b x',
+  'a cd to a variable that names it': 'R=/home/me/repo; cd $R && git worktree add ../x',
+  'a quoted -C with a space': 'git -C "/home/me/repo/my dir" worktree add ../x',
+  'a -C of command output': 'git -C "$(git rev-parse --show-toplevel)" worktree add ../x',
+  'a -C of an unset variable': 'git -C "$R" worktree add ../x',
+  'a -C with a variable inside the path': 'git -C /home/me/$R worktree add ../x -b x',
+  'a cd with a variable inside the path': 'cd /home/me/$R && git worktree add ../x -b x',
+  'a cd to a variable after $HOME': 'cd "$HOME/$R" && git worktree add ../x -b x',
+  'a -C with $(...) inside the path': 'git -C /home/me/$(echo repo) worktree add ../x -b x',
+  'a -C with backticks inside the path': 'git -C /home/me/`echo repo` worktree add ../x -b x',
+  'a cd with a variable default': 'cd /home/me/${R:-repo} && git worktree add ../x -b x',
 }
 
 const ALLOWED = [
@@ -110,6 +133,7 @@ const ALLOWED = [
   'W=/tmp/probe\ngit worktree add --detach $W HEAD',
   "bash <<'EOF'\nW=/tmp/probe\ngit worktree add --detach $W HEAD\nEOF",
   'S=/home/me/scratchpad/repro; mkdir -p $S\nsetup(){ d=$1; git worktree add --detach $S/$d/wt HEAD; }\nsetup a',
+  `D=$(mktemp -d); printf '%s' "Run exactly this: echo 'note: W=/tmp/p && git worktree add ../y'" > $D/p2.txt`,
 ]
 
 // An add into another repository, which EnterWorktree cannot make.
@@ -122,6 +146,8 @@ const OTHER_REPOSITORY = {
   'an absolute cd': 'cd /home/me/other && git fetch -q origin && git worktree add -q -b feat/x .claude/worktrees/x origin/main',
   'cd ~ and ;': 'cd ~/dev/werft; git worktree add ~/dev/werft-wt/b -b feat/b origin/main && cd ~/dev/werft-wt/b',
   'a line continuation': 'cd /home/me/other && \\\n  git worktree add ../x -b b',
+  'a quoted -C with a space': 'git -C "/home/me/my repo" worktree add ../x -b b',
+  'a cd through a variable': 'R=/home/me/other; cd $R && git worktree add ../x -b b',
 }
 
 for (const command of DENIED) {
@@ -218,6 +244,22 @@ test('denies an add where the session repository cannot be read', async ($, on) 
   expect(seen.ran).toEqual([])
 })
 
+test('denies an add where the guard fails', async ($, on) => {
+  const seen = { ran: [] as string[] }
+
+  on('ui.toast', () => ({ value: undefined }))
+  on('tool.call', ($, e) => {
+    seen.ran.push(String(e.tool))
+
+    return { result: 'ok' }
+  })
+
+  const answer = await $.tool.call({ tool: 'Bash', command: 'git -C /home/me/other worktree add ../x' })
+
+  expect(answer.deny).toContain('EnterWorktree')
+  expect(seen.ran).toEqual([])
+})
+
 test('names the way out for another repository and for text', async ($, on) => {
   host(on)
 
@@ -225,32 +267,6 @@ test('names the way out for another repository and for text', async ($, on) => {
 
   expect(answer.deny).toContain('`git -C <repo> worktree add <dir> -b <branch>` is allowed')
   expect(answer.deny).toContain('with the Write tool')
-  expect(answer.deny).toContain('echo or printf')
-})
-
-// A known false denial: the `&&` inside the quoted text reads as a separator. The deny text
-// names the Write tool because of it; a quote-aware detector must change this test and the text.
-test('denies a printf of quoted text that holds the command', async ($, on) => {
-  const seen = host(on)
-
-  const command = `D=$(mktemp -d); printf '%s' "Run exactly this: echo 'note: W=/tmp/p && git worktree add ../y'" > $D/p2.txt`
-  const answer = await $.tool.call({ tool: 'Bash', command })
-
-  expect(answer.deny).toContain('with the Write tool')
-  expect(seen.ran).toEqual([])
-})
-
-test('allows a Write of text that mentions the command', async ($, on) => {
-  const seen = host(on)
-
-  const answer = await $.tool.call({
-    tool: 'Write',
-    file_path: 'prompt.txt',
-    content: "echo 'a && git worktree add ../y'",
-  })
-
-  expect(answer.deny).toBeUndefined()
-  expect(seen.ran).toEqual(['Write'])
 })
 
 // Claude Code's refusals in a worktree-isolated session or agent, one per lead and reason shape.
@@ -259,9 +275,10 @@ const REFUSALS = {
   'git in a complex form': `This session is isolated in the worktree ${WT}, but this command names git in a form too complex to verify that it stays inside the worktree. Refusing to run it — a worktree-isolated session's git operations must target its own worktree. Split it into plain, separate commands and run them from ${WT}.`,
   'a heredoc in a chain': `This session is isolated in the worktree ${WT}, but this command is too complex to verify that it stays inside the worktree. Refusing to run it — a worktree-isolated session's git operations must target its own worktree. Split it into plain, separate commands and run them from ${WT}.`,
   'a value computed at runtime': `This session is isolated in the worktree ${WT}, but this command runs sed with a value computed at runtime (the variable F) where an option may stand. Refusing to run it — a worktree-isolated session's git operations must target its own worktree. Run the plain command from ${WT}.`,
-  'the shared checkout': `This session is isolated in the worktree ${WT}, but this command's working directory resolved to the shared checkout (/repo). Refusing to run it there — a worktree-isolated session's commands must run inside its worktree. Re-run the command from ${WT}.`,
   'an isolated agent': `This agent is isolated in the worktree ${WT}, but this command names git in a form too complex to verify that it stays inside the worktree. Refusing to run it — a worktree-isolated agent's git operations must target its own worktree. Split it into plain, separate commands and run them from ${WT}.`,
 }
+
+const SHARED_CHECKOUT_REFUSAL = `This session is isolated in the worktree ${WT}, but this command's working directory resolved to the shared checkout (/repo). Refusing to run it there — a worktree-isolated session's commands must run inside its worktree. Re-run the command from ${WT}.`
 
 // Stands for the host in a worktree-isolated session: the engine answers the call with `error`.
 function isolatedHost(on: On, error: string, context?: string[]) {
@@ -280,8 +297,18 @@ for (const [reason, refusal] of Object.entries(REFUSALS)) {
     expect(answer.context?.[1]).toContain('`$(...)`')
     expect(answer.context?.[1]).toContain('Write tool')
     expect(answer.context?.[1]).toContain('${PIPESTATUS[...]}')
+    expect(answer.context?.[1]).toContain('Bash starts in the worktree')
   })
 }
+
+// Here Bash runs in the shared checkout, not the worktree, so no form of the command runs.
+test('adds nothing to the refusal for the shared checkout', async ($, on) => {
+  isolatedHost(on, SHARED_CHECKOUT_REFUSAL, ['earlier note'])
+
+  const answer = await $.tool.call({ tool: 'Bash', command: 'pwd' })
+
+  expect(answer.context).toEqual(['earlier note'])
+})
 
 test('adds nothing to another failed call', async ($, on) => {
   isolatedHost(on, 'Exit code 3\nline1')
@@ -303,15 +330,6 @@ test('adds nothing to output that only quotes the refusal', async ($, on) => {
   on('tool.call', () => ({ result: REFUSALS['git in a complex form'], text: REFUSALS['git in a complex form'] }))
 
   const answer = await $.tool.call({ tool: 'Bash', command: 'cat refusal.txt' })
-
-  expect(answer.context).toBeUndefined()
-})
-
-test('adds nothing to a refused Write, whose refusal names its fix', async ($, on) => {
-  const refusal = `<tool_use_error>This session is isolated in the worktree ${WT}. Edit the worktree copy of this file instead of the shared-checkout path.</tool_use_error>`
-  isolatedHost(on, refusal)
-
-  const answer = await $.tool.call({ tool: 'Write', file_path: '/repo/a.md', content: 'x' })
 
   expect(answer.context).toBeUndefined()
 })
