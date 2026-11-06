@@ -26,7 +26,13 @@ SOURCE_LABEL = 'source:project-auto-work'
 PR_CAP = 3
 NO_FIX_VERDICTS = {'untrustworthy', 'not-auditable', 'not-runnable'}
 SEVERITY_PRIORITY = {'blocker': 1, 'major': 2, 'minor': 3}
+# The close reasons that stop later runs from filing an item again. triage-file.py prints
+# them under its summary, so the user learns them from this one list.
+WONTFIX_WORDS = ("won't fix", 'not planned', 'declined', 'rejected', 'duplicate', 'invalid')
 WONTFIX = re.compile(r"\s*(won'?t[ -]?fix|not planned|declined|rejected|duplicate|invalid)\b", re.I)
+STOP_REFILING = ('Later runs file an item again unless it is closed with a reason that starts with '
+                 + ', '.join(f'"{w}"' for w in WONTFIX_WORDS)
+                 + ', or it is a task or design doc closed for any reason. A fix PR closed without a merge is not opened again.')
 DEDUP_LINE = re.compile(r'^dedup-key: (.+)$', re.M)
 
 
@@ -269,7 +275,7 @@ def main(argv=None):
                'verdict': result['report'].get('verdict'), 'headline': result['report'].get('headline'),
                'test_cmd': baseline.get('test_cmd'), 'worktree_setup': baseline.get('worktree_setup', ''),
                'audited_head': args.audited_head, 'pr_base': args.pr_base,
-               'build_drift': result.get('build_drift') or ''}
+               'build_drift': result.get('build_drift') or '', 'stop_refiling': STOP_REFILING}
     for item in items:
         with open(os.path.join(args.out, f'item-{item["n"]}.json'), 'w') as fh:
             json.dump({**item, 'context': context}, fh, indent=2)

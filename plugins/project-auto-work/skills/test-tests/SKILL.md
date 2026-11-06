@@ -1,6 +1,6 @@
 ---
 name: test-tests
-description: "Empirical test-suite strength audit: mutation kill rate, flake, speed and unit isolation, measured rather than read. Then acts on it: settled survivors become PRs, the rest taskmgr items."
+description: "Empirical test-suite strength audit: mutation kill rate, flake, speed and unit isolation, measured rather than read. With a taskmgr store, files its findings there and opens a PR for each settled survivor it can prove fixed."
 user-invocable: true
 disable-model-invocation: true
 argument-hint: "[low|medium|high|ultra] [path]"

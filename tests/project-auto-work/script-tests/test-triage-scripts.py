@@ -176,6 +176,11 @@ class PlanTest(unittest.TestCase):
         code, _, _ = self.plan({'summary': 's', 'result': {'error': 'bad args'}})
         self.assertEqual(code, 2)
 
+    def test_stop_refiling_names_every_wontfix_word(self):
+        for word in plan_mod.WONTFIX_WORDS:
+            self.assertIn(f'"{word}"', plan_mod.STOP_REFILING)
+            self.assertTrue(plan_mod.WONTFIX.match(f'{word}: reason'), word)
+
     def test_reads_the_task_output_file(self):
         result = tt_result([finding('F1')], [settled('F1')], [mutant('F1')])
         _, args, _ = self.plan({'summary': 's', 'agentCount': 9, 'result': result})
@@ -259,17 +264,19 @@ class FileTest(unittest.TestCase):
                 'labels': ['source:project-auto-work', f'dedup:{n}'], 'action': action, **kw}
 
     def run_file(self, items, workflow, bodies=()):
-        with open(os.path.join(self.dir, 'plan.json'), 'w') as fh:
-            json.dump({'context': {'tool': 'test-tests', 'audited_head': HEAD}, 'items': items}, fh)
         for n in bodies:
             with open(os.path.join(self.dir, f'body-{n}.md'), 'w') as fh:
                 fh.write('## Context\n')
         wf = os.path.join(self.dir, 'wf.json')
         with open(wf, 'w') as fh:
             json.dump(workflow, fh)
+        context = {'tool': 'test-tests', 'audited_head': HEAD, 'stop_refiling': plan_mod.STOP_REFILING}
+        with open(os.path.join(self.dir, 'plan.json'), 'w') as fh:
+            json.dump({'context': context, 'items': items}, fh)
         proc = subprocess.run([sys.executable, os.path.join(BIN, 'triage-file.py'), '--plan-dir', self.dir,
                                '--workflow-result', wf, '--repo-root', '/repo'],
                               capture_output=True, text=True, env=self.env)
+        self.stdout = proc.stdout
         with open(os.path.join(self.dir, 'summary.json')) as fh:
             rows = {r['n']: r for r in json.load(fh)}
         calls = []
@@ -298,6 +305,7 @@ class FileTest(unittest.TestCase):
         self.assertIn('--label source:project-auto-work --label dedup:3', creates[1])
         self.assertTrue(all('-C /repo --json' in c for c in calls))
         self.assertTrue(any(c.startswith('comment add t-a') for c in calls))
+        self.assertIn('"not planned"', self.stdout)
 
     def test_fix_on_a_filed_item_comments_on_it(self):
         items = [self.item(1, 'fix', tier=1, existing=['t-a']), self.item(2, 'fix', tier=1, existing=['t-b'])]

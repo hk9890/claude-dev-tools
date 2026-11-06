@@ -34,6 +34,7 @@ Depend on a specific technology only where the dependency is declared:
 - Another plugin, used only where it is installed → no entry: check that its skill is in the session's available skills, and state what the caller does without it. `worktree-flow:worktree-review` is the worked example: where `project-review-change` is absent, it reports the rules review as skipped.
 - A user-only skill of another plugin, offered to the user → no entry and no check, because a user-only skill is never in the available skills: print its slash command for the user to type, and name the plugin it needs. `project-review`'s `decision-split.md` is the worked example.
 - A CLI tool or runtime → a load-time check that stops with guidance when it is missing (below).
+- A CLI tool used only where it is installed → check for it at the step that uses it, name the missing tool, and state what the caller does without it. `project-auto-work`'s triage is the worked example: without `taskmgr` it relays the report instead of filing it.
 - A whole platform → name the plugin for it, so the constraint is visible before install. `keep-awake-linux` is the worked example: logind is the point of the plugin, and where `systemd-inhibit` is absent its mod holds nothing and says so once in a toast.
 
 ## Declaring plugin dependencies

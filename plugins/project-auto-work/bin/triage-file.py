@@ -127,6 +127,7 @@ def main(argv=None):
     with open(os.path.join(args.plan_dir, 'summary.json'), 'w') as fh:
         json.dump(rows, fh, indent=2)
     print(markdown(rows))
+    print('\n' + plan['context'].get('stop_refiling', ''))
     return 3 if any(r['outcome'] in ('not filed', 'comment failed') or r.get('comment_failed') for r in rows) else 0
 
 

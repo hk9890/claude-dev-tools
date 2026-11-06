@@ -1,6 +1,6 @@
 ---
 name: test-app
-description: "Exploratory application testing: launches the application, actually uses it, and judges what happened against the project's own user-facing docs and monitoring data. Files its findings, questions and proposals in taskmgr; writes no code and fixes nothing."
+description: "Exploratory application testing: launches the application, actually uses it, and judges what happened against the project's own user-facing docs and monitoring data. With a taskmgr store, files its findings, questions and proposals there; writes no code and fixes nothing."
 user-invocable: true
 disable-model-invocation: true
 argument-hint: "[low|medium|high|ultra] [focus-or-doc]"

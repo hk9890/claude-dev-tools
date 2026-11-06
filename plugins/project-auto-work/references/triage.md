@@ -33,13 +33,14 @@ Where the result holds `error` or no `report`, there is nothing to act on: skip 
 triage. Otherwise run:
 
 ```bash
+command -v python3 >/dev/null || echo "missing: python3"
+command -v taskmgr >/dev/null || echo "missing: taskmgr"
 command -v python3 >/dev/null && command -v taskmgr >/dev/null \
-  && taskmgr where -C "<path>" --json | python3 -c 'import json,sys; sys.exit(json.load(sys.stdin).get("kind") == "none")'
+  && { taskmgr where -C "<path>" --json | python3 -c 'import json,sys; sys.exit(json.load(sys.stdin).get("kind") == "none")' || echo "missing: taskmgr store"; }
 ```
 
-`taskmgr where` exits 0 with no store too, so the check reads its `kind`. Where the
-command fails, `python3` or `taskmgr` is missing or the project has no taskmgr store.
-Name which. Skip the triage and relay the items as `decision-split.md` (same directory)
+`taskmgr where` exits 0 with no store too, so the check reads its `kind`. Where it prints a
+`missing:` line, name what is missing, skip the triage and relay the items as `decision-split.md` (same directory)
 describes. The store is the user's to create, so leave `taskmgr init` to them.
 
 This step is the one place that decides whether the triage runs.
@@ -114,10 +115,9 @@ relay its stderr, stop the triage, and relay the items as `decision-split.md` de
 ## 6. Report
 
 Show the summary table. Give the count of each value in the Outcome column. State the path `<scratch>/triage/summary.json`:
-it lists every PR and taskmgr item this run made, which is how a run is undone. Say that
-an item closed with a reason that starts with "won't fix", "not planned", "declined",
-"rejected", "duplicate" or "invalid" stops later runs from filing it again; so does closing a task or
-design doc, for any reason, and so does a fix PR closed without a merge.
+it lists every PR and taskmgr item this run made, which is how a run is undone. Relay the
+line `triage-file.py` printed under the table: it says which closes stop later runs from
+filing an item again.
 
 Done when every item has an outcome in the summary and the user has the table, or, where
 a step stopped the triage, when the reason it stopped is stated and the items are relayed
