@@ -29,7 +29,7 @@ approves.
 Until the user confirms the shared understanding, each message to the user holds questions and
 nothing else. It opens with the first question, and a remark goes inside the question it bears
 on. Each question carries the background it rests on: its facts, each with its source, and the
-earlier answers it builds on, restated in this message. A fact no question in the message rests
+earlier questions and answers it builds on, restated in this message, never named as "Q1". A fact no question in the message rests
 on stays out. Follow each identifier (a file path, a task id, a commit hash, a skill or check
 name) with what it is, and expand each abbreviation, the user's own (BLUF, YAGNI) included; a
 picker `header` may stay short. Write in ASD-STE100 Simplified Technical English.
@@ -39,8 +39,8 @@ choice and differ in a second, is a question of its own. Each option is a choice
 commit to, and says what it commits us to, what it costs, and what it rules out later, where it
 rules out anything. Each decision carries your **recommendation**: one option, why, what it costs
 us, and what would change your mind. A question about the user's own goal or situation carries
-your **best read** of it instead: the answer you think is true, marked as a guess, with what you
-read it from, and what each answer would change. Such a question is always complex.
+your **guess** instead: the answer you think is true, why you think so in plain words, how thin
+that evidence is, and what each answer would change. Such a question is always complex.
 
 Where a question's premise may be wrong — the call is not the user's, or is not a call at all —
 say so inside that question: in prose, or with one option of the picker.
@@ -77,8 +77,8 @@ your mind.
 ```
 
 A question about the user's goal or situation ends on
-`**Best read (a guess, from <source>): <one option's label, exactly>.**` in place of the
-recommendation.
+`**My guess: <one option's label, exactly>.** Why I think so: <the evidence, in plain words>.` in
+place of the recommendation.
 
 In a round with both kinds, make the `AskUserQuestion` call first, then write the prose questions
 once it returns.
