@@ -104,6 +104,7 @@ test_metrics() {
 # 4. classification
 test_classification() {
   local dir; dir=$(make_fixture)
+  printf '# Personal\n\nMy sandbox URL.\n' > "$dir/CLAUDE.local.md"
   local out; out=$("$SCRIPT" "$dir")
   local readme; readme=$(json_val "$out" "[f['classification'] for f in d['files'] if f['path']=='README.md'][0]")
   assert_eq "classify: README = canonical-root" "canonical-root" "$readme"
@@ -113,6 +114,8 @@ test_classification() {
   assert_eq "classify: docs/DOCUMENTING.md = canonical" "canonical" "$documenting"
   local notes; notes=$(json_val "$out" "[f['classification'] for f in d['files'] if f['path']=='docs/NOTES.md'][0]")
   assert_eq "classify: docs/NOTES.md = non-standard" "non-standard" "$notes"
+  local personal; personal=$(json_val "$out" "[f['classification'] for f in d['files'] if f['path']=='CLAUDE.local.md'][0]")
+  assert_eq "classify: CLAUDE.local.md = personal-local" "personal-local" "$personal"
   rm -rf "$dir"
 }
 

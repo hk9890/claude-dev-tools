@@ -58,7 +58,7 @@ CANONICAL_DOCS = [
     "OVERVIEW.md", "CODING.md", "DOCUMENTING.md", "TESTING.md", "RELEASING.md",
     "MONITORING.md", "CHANGE-WORKFLOW.md", "REVIEWING.md", "RUNNING.md",
 ]
-PERSONAL_LOCAL = [".claude.local.md"]
+PERSONAL_LOCAL = ["CLAUDE.local.md"]
 ROOT_META_IGNORE = [
     "SECURITY.md", "CHANGELOG.md", "CODE_OF_CONDUCT.md",
     "LICENSE.md", "NOTICE.md", "AUTHORS.md", "MAINTAINERS.md",

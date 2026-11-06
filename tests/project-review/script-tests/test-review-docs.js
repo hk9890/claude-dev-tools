@@ -214,7 +214,7 @@ async function main() {
     { path: 'docs/WHATEVER.md', classification: 'non-standard' },
     { path: 'CLAUDE.md', classification: 'canonical' },
     { path: 'CHANGELOG.md', classification: 'meta' },
-    { path: '.claude.local.md', classification: 'personal-local' },
+    { path: 'CLAUDE.local.md', classification: 'personal-local' },
   ]);
   eq('splitReviewTargets: a canonical topic doc becomes its use case',
     ['coding', 'testing'], targets.useCases.map((u) => u.useCase).sort());
@@ -223,7 +223,7 @@ async function main() {
   truthy('splitReviewTargets: CLAUDE.md is excluded — the manifest checks it mechanically',
     !targets.residual.some((f) => f.path === 'CLAUDE.md'));
   truthy('splitReviewTargets: meta and personal-local files are excluded',
-    !targets.residual.some((f) => f.path === 'CHANGELOG.md' || f.path === '.claude.local.md'));
+    !targets.residual.some((f) => f.path === 'CHANGELOG.md' || f.path === 'CLAUDE.local.md'));
   // The standard makes every topic doc optional and never reports one missing, so an
   // absent doc must produce no review at all rather than an empty-file finding.
   eq('splitReviewTargets: a use case whose doc does not exist is not reviewed',
