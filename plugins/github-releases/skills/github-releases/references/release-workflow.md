@@ -53,7 +53,7 @@ See [documentation-checklist.md](documentation-checklist.md) for the full checkl
 
 ## Phase 5 — Version bump
 
-Determine the new version using semver rules, then update all version references in project files. Afterwards re-run the Phase 4 consistency check — now every reference must match the *release* version.
+Determine the new version using semver rules, and check that it is free: `git ls-remote origin refs/tags/v<version>` prints nothing, and `gh release view v<version>` reports "release not found". Where either finds it, ask the user for another version. Then update all version references in project files. Afterwards re-run the Phase 4 consistency check — now every reference must match the *release* version.
 
 See [version-management.md](version-management.md) for semver rules and which files to update.
 
@@ -95,7 +95,7 @@ git show "origin/$DEFAULT_BRANCH:<a version file>" | grep -q "<the release versi
   || echo "FAIL: origin/$DEFAULT_BRANCH does not carry the release version — do not tag"
 ```
 
-Before Phase 7, run [Gate 5](quality-gates.md#gate-5-ci-status) on the bump commit, the one Phase 7 tags, in place of HEAD: Gate 5 ran before the bump. Its runs can take a minute to appear after the push: list again before you ask the user.
+Gate 5 ran before the bump, so run [Gate 5](quality-gates.md#gate-5-ci-status) again on the bump commit before Phase 7 tags it. On the version-bump-PR path, first bring HEAD to that commit: `git checkout <default branch>`, then `git pull --ff-only origin <default branch>`. Its runs can take a minute to appear after the push: list again before you ask the user.
 
 ## Phase 7 — Create GitHub release
 

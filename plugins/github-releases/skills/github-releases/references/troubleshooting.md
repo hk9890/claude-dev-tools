@@ -56,18 +56,16 @@ git stash  # Temporarily save changes
 
 ### Tag already exists
 
+Phase 5 rules out a version that is taken, so this tag is from an earlier try of Phase 7.
+
 ```bash
-gh release view v1.2.3 --json isDraft                       # "release not found": no release
 git ls-remote origin refs/tags/v1.2.3 'refs/tags/v1.2.3^{}'  # the remote tag's commit: the ^{} line, else the plain line
-git rev-parse HEAD 'v1.2.3^{commit}'                         # HEAD, then the local tag's commit
+git rev-parse HEAD
 ```
 
-Another error from `gh release view`: stop and report it. A draft is not a published release.
-
-- A published release, and the remote tag is on HEAD: this version is released. Go on with Phase 8.
-- A published release, and the remote tag is on another commit: never delete or move the tag. Bump to the next patch version and release that.
-- No published release, and the remote tag is on HEAD or absent: where the local tag is not on HEAD, `git tag -f v1.2.3`. Go on with Phase 7 from `git push origin v1.2.3`.
-- No published release, and the remote tag is on another commit: ask the user, and name that commit. Only after they confirm, `git push origin --delete v1.2.3` and `git tag -f v1.2.3`, then go on with Phase 7 from the push.
+- No remote tag: the local tag is left over. `git tag -f v1.2.3`, then go on with Phase 7 from `git push origin v1.2.3`.
+- The remote tag is on HEAD: the earlier try pushed it. Skip the tag and the push. Where `gh release view v1.2.3` finds a release, put the notes on it with `gh release edit v1.2.3 --notes-file <the printed notes path>`; else run Phase 7's `gh release create`. Then go on with Phase 8.
+- The remote tag is on another commit: stop and report that commit to the user. Never delete or move a pushed tag.
 
 ### Not on default branch
 
