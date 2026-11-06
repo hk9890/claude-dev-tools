@@ -120,4 +120,5 @@ an item closed with a reason that starts with "won't fix", "not planned", "decli
 design doc, for any reason, and so does a fix PR closed without a merge.
 
 Done when every item has an outcome in the summary and the user has the table, or, where
-a step stopped the triage, when the reason it stopped is stated.
+a step stopped the triage, when the reason it stopped is stated and the items are relayed
+as `decision-split.md` describes.

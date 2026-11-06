@@ -130,7 +130,8 @@ when the skill loads. It is absolute and install-correct — build every path fr
    `<SKILL_DIR>/../../references/triage.md` (plugin-root layout: `../..` is correct)
    with `<tool>` = `test-tests`. Done when its summary table has an outcome for every
    item; where that file skips the triage, when the items are relayed as it says; where
-   a step stops the triage, when the reason it stopped is stated.
+   a step stops the triage, when the reason it stopped is stated and the items are
+   relayed as `decision-split.md` describes.
 
 If `python3` is missing or the workflow cannot launch, do not improvise an inline
 audit — report which prerequisite is missing and stop. If `result` holds an

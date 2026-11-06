@@ -4,7 +4,7 @@ export const meta = {
   whenToUse: 'Launched by the test-tests and test-app skills after bin/triage-plan.py. Opens a PR for each planned fix and writes one taskmgr body per item to file; bin/triage-file.py files them.',
   phases: [
     { title: 'Fix', detail: 'one agent per planned fix: worktree, test, proving check, PR' },
-    { title: 'Bodies', detail: 'one agent per item to file, plus each fix that failed' },
+    { title: 'Bodies', detail: 'one agent per item to file, plus each failed fix of an item no earlier run filed' },
   ],
 }
 
@@ -133,7 +133,8 @@ if (typeof agent === 'function') {
     agent(bodyPrompt(cfg, n, failedFix), { label: `body:${n}`, phase: 'Bodies', schema: BODY_SCHEMA })
       .then(r => (r ? { n, title: r.title } : null))
 
-  // A fix that fails is filed instead, so its body is written as soon as the fix returns.
+  // A failed fix is filed instead, so its body is written as soon as the fix returns — unless
+  // an earlier run filed the item, which then gets a comment from triage-file.py.
   const fixOne = n => agent(fixPrompt(cfg, n), { label: `fix:${n}`, phase: 'Fix', schema: FIX_SCHEMA })
   const afterFix = async (fix, n) => {
     const outcome = { n, ...(fix || { status: 'failed', reason: 'the fix agent returned nothing' }) }
