@@ -1,7 +1,7 @@
 ---
 name: tasks-core
 description: "taskmgr: its commands and the store's conventions."
-when_to_use: "Use before any work on a taskmgr issue: filing, picking, writing a body, progress, closing. Triggers on 'taskmgr', 'the tracker', 'the backlog', a taskmgr id ('abc-y9gcem'). Not for writing a SKILL.md (`instruction-writing:writing-skills`) or a project doc (`instruction-writing:writing-project-docs`); a task body about either stays here."
+when_to_use: "Use before any work on a taskmgr issue: filing, picking, writing a body, progress, closing. Triggers on 'taskmgr', 'the tracker', 'the backlog', a taskmgr id ('abc-y9gcem'). Not for writing a SKILL.md (`instruction-writing:writing-skills`) or a project doc (`instruction-writing:writing-project-docs`); a task body or tracker-held design page about either stays here."
 allowed-tools: Bash(taskmgr *)
 ---
 
