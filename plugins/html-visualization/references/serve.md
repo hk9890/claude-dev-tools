@@ -275,8 +275,6 @@ here gives the user a 403 on round two after round one worked.
   open tab stays valid across an Apply restart — mint a fresh one per round and
   that tab's pings start failing, the new server credits no liveness, and it
   counts down to exit with a live page in front of it.
-- **`--host NAME`**: not persisted anywhere — if the first round needed one, every
-  Apply re-serve must repeat it. See [Host allow-list](#host-allow-list).
 - **Generation**: the served file's mtime, which the server injects into the
   page and reports on the heartbeat. Rewriting `review.html` advances it and the
   open tab reloads itself. The document carries nothing — write the file and the
