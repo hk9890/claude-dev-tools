@@ -109,20 +109,13 @@ in the template.
 
 ### 2c. Render the content
 
-Render the content inside `<div id="content">` per the markup contract in
-`"$(cat "$HTML_DIR/.plugin-root")/references/feedback-markup.md"`. Key rules:
+Render the content inside `<div id="content">` per the markup contract:
 
-- Render the content as semantic HTML — headings, paragraphs, lists, tables,
-  `<blockquote>`, `<pre><code>`.
-- Every commentable block is a **direct child of `#content`** with a unique
-  `data-block-id` (printable ASCII, no whitespace).
-- A whole list is one block — `data-block-id` on the `<ul>`/`<ol>`, not each `<li>`.
-- Do NOT add `<script>const CSRF_TOKEN = "...";</script>` — the server injects it.
-- Keep every `<link>` and `<script src>` tag of the template as-is: same
-  paths, same order, same element (`<head>` or `<body>`).
+```
+Read: "$(cat "$HTML_DIR/.plugin-root")/references/feedback-markup.md"
+```
 
-Consult `"$(cat "$HTML_DIR/.plugin-root")/references/feedback-markup.md"`
-for the full vocabulary (block rules, required IDs).
+Before you start the server, run its "Authoring checklist" against the page.
 
 ### 2d. Use HTML to render the content well
 
@@ -169,9 +162,6 @@ link with the message:
 `http://localhost:PORT/` on the same port when they are on an SSH tunnel, and
 otherwise stop the server and take the feedback in chat.
 
-**Capture the port and save it** to `$HTML_DIR/.port` immediately after seeing the
-startup lines — every Apply re-serve must use `--port "$(cat "$HTML_DIR/.port")"`.
-
 ---
 
 ## Step 4 — Read the feedback and act on `action`
@@ -186,8 +176,9 @@ If `FEEDBACK_FILE` is missing or the server exited non-zero, the round timed
 out — recover as in serve.md Cycle C (tell the user; offer to re-serve or take the
 feedback in chat).
 
-After reading and parsing the file, delete it (`rm -f "$HTML_DIR/review.feedback.json"`) — see
-serve.md Cycle C for why a stale copy must not linger.
+After reading and parsing the file, delete it (`rm -f "$HTML_DIR/review.feedback.json"`): the
+server overwrites it only on the next submit, so a stale copy could pass for fresh
+feedback if a later round times out.
 
 The file contains:
 
@@ -218,9 +209,6 @@ Interpret the comment fields:
 | `comments` | Each is one located piece of feedback. `blockId` + `blockText` tell you which passage; `quote` (when non-empty) narrows it to the exact phrase; `text` is what they want changed. |
 | `quote` + `quoteStart` | When `quote` is non-empty and `quoteStart >= 0`, the phrase is located at `blockText.substring(quoteStart, quoteStart + quote.length)`. Use `quoteStart` to disambiguate when the same phrase appears multiple times in a block. When `quoteStart` is `-1`, fall back to `blockText.indexOf(quote)` or treat the comment as applying to the whole block. |
 | `freeform` | Feedback not tied to a block — overall direction, tone, what is missing, or new ideas to add. May be empty. During brainstorming, `freeform` and "what is missing" comments are the primary way the user adds new ideas; an Apply round may therefore introduce new options, not only edit existing ones. |
-
-If the content came from a file, `Read` that file first — `Edit`/`Write` requires
-a prior `Read` of the file in the same session.
 
 **Apply every comment to the underlying source** of the content. If the content
 originated from a file (e.g. a markdown document), apply to that file. If the
