@@ -22,8 +22,8 @@ Every skill spends one of two budgets:
 
 Two choices, each spending one of the loads:
 
-- **Model-invoked** — keeps a description the agent can see, so the agent can fire the skill and other skills can reach it; you can still type its name, since model-invocation always _includes_ user reach. Pays permanent context load. Mechanics: omit `disable-model-invocation`, and write a model-facing description carrying the trigger branches.
-- **User-invoked** — puts the description out of the agent's reach: only the human typing its name can invoke it, and no other skill can. Zero context load, spends cognitive load. Mechanics: set `disable-model-invocation: true`; the `description` field stays but turns human-facing — a one-line summary, trigger lists stripped.
+- **Model-invoked** — keeps a description the agent can see, so the agent can fire the skill and other skills can reach it; you can still type its name, since model-invocation always _includes_ user reach. Pays permanent context load. Mechanics: omit `disable-model-invocation`, and write the trigger branches in `when_to_use`.
+- **User-invoked** — puts the description out of the agent's reach: only the human typing its name can invoke it, and no other skill can. Zero context load, spends cognitive load. Mechanics: set `disable-model-invocation: true` and drop `when_to_use`; `description` stays as a human-facing one-line summary.
 
 Pick model-invocation only where the agent must reach the skill on its own, or another skill must.
 
@@ -37,11 +37,11 @@ A **hand-off** is a step that sends the agent into another skill. Write it as an
 
 A **context pointer** names out-of-context material and encodes the condition for reaching it. A description is the top-level one (context window → skill); a pointer to a disclosed file is the same object one level down. The pointer's _wording_, not its target, decides when the agent reaches the material and how reliably — so a must-have target behind a weak pointer is a variance bug: sharpen the wording first, and inline the material only if that fails.
 
-A description does two jobs: state what the skill is, and list the **branches** that should trigger it (a branch is a distinct way the skill can be invoked, so different runs take different paths through it). Every word costs on every turn, so it earns harder pruning than the body.
+A description does two jobs, one per frontmatter field: `description` states what the skill is, and `when_to_use` lists the **branches** that should trigger it (a branch is a distinct way the skill can be invoked, so different runs take different paths through it). The agent's skill listing joins the two into one entry, and the rules below hold for both. Every word costs on every turn, so it earns harder pruning than the body.
 
 - **Front-load the skill's leading word** — the description is where it does its invocation work.
 - **One trigger per branch.** Synonyms that rename a single branch are one branch written twice — "build features using TDD … asks for test-first development". Collapse them.
-- **Cut identity the body already carries.** Triggers, plus any "when another skill needs…" reach clause.
+- **One line of identity.** `description` says what the skill is in one line and leaves the rest to the body. A "when another skill needs…" reach clause is a branch: it goes in `when_to_use`.
 
 ## Information hierarchy
 
