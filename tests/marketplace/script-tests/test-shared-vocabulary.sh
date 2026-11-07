@@ -24,6 +24,11 @@
 #    each skill acts on it alone. The states that block, and the wait on
 #    UNKNOWN, must stay the same in both.
 #
+# 5. worktree-ship names the issues a PR resolves on the **Issues:** line of
+#    pr-body.md, and worktree-merge closes them after the merge. Its update of
+#    the default branch reads the main checkout's branch first and leaves a
+#    checkout on another branch as it is: another session can be working there.
+#
 # Exit codes: 0 — all assertions passed; 1 — one or more failed.
 set -uo pipefail
 
@@ -153,6 +158,40 @@ for f in "$REVIEW" "$MERGE"; do
     fail "merge state: $name lost \"${phrase}\" — change it in worktree-review and worktree-merge together"
   fi
 done
+
+# ── 5. The issues a PR resolves, from worktree-ship to worktree-merge ───────
+BODY="$REPO_ROOT/plugins/worktree-flow/skills/worktree-ship/references/pr-body.md"
+[[ -f "$BODY" ]] || fail "missing $BODY"
+
+if [[ -f "$BODY" ]]; then
+  if grep -q '^\*\*Issues:\*\* <each issue the change resolves' "$BODY"; then
+    ok "issues: pr-body.md has the **Issues:** line"
+  else
+    fail "issues: pr-body.md lost the **Issues:** line worktree-merge reads"
+  fi
+fi
+
+if [[ -f "$MERGE" ]]; then
+  if grep -q '^## [0-9]\+\. Close the resolved issues$' "$MERGE"; then
+    ok "issues: worktree-merge has the close step"
+  else
+    fail "issues: worktree-merge lost its '## <n>. Close the resolved issues' step"
+  fi
+  for phrase in 'issues are those the PR resolves' 'without asking'; do
+    if grep -Fq "$phrase" "$MERGE"; then
+      ok "issues: worktree-merge states \"${phrase}\""
+    else
+      fail "issues: worktree-merge lost \"${phrase}\""
+    fi
+  done
+  for phrase in 'read `git branch --show-current` in a call of its own' '`git status --porcelain` in another' 'leave that checkout as it is' '`git fetch . <remote>/<default>:<default>`'; do
+    if grep -Fq "$phrase" "$MERGE"; then
+      ok "default branch: worktree-merge states \"${phrase}\""
+    else
+      fail "default branch: worktree-merge lost \"${phrase}\" — a pull can move another session's branch"
+    fi
+  done
+fi
 
 printf '\nResults: %d passed, %d failed\n' "$PASS" "$FAIL"
 [[ "$FAIL" -eq 0 ]] || exit 1
