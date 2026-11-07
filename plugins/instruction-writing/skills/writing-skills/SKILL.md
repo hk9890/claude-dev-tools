@@ -15,7 +15,7 @@ defect. Reading the rubric is not the work.
 
 Every skill spends one of two budgets:
 
-- **Context load** — always-loaded material on the agent's window: a listing entry, spending tokens and attention every turn whether or not the skill fires.
+- **Context load** — always-loaded material on the agent's window: a **listing entry**, the line the agent's skill listing shows for a skill, spending tokens and attention every turn whether or not the skill fires.
 - **Cognitive load** — the cost on the human: which skills exist, and when to reach for each. The human is the index. Not a cost to minimise — it is the price of human agency; spend it where human judgement matters, remove it where it does not.
 
 ## Invocation
@@ -37,9 +37,9 @@ A **hand-off** is a step that sends the agent into another skill. Write it as an
 
 A **context pointer** names out-of-context material and encodes the condition for reaching it. A listing entry is the top-level one (context window → skill); a pointer to a disclosed file is the same object one level down. The pointer's _wording_, not its target, decides when the agent reaches the material and how reliably — so a must-have target behind a weak pointer is a variance bug: sharpen the wording first, and inline the material only if that fails.
 
-A skill's **listing entry** is its two frontmatter fields, which the agent's skill listing joins into one entry: `description` states what the skill is, and `when_to_use` lists the **branches** that should trigger it (a branch is a distinct way the skill can be invoked, so different runs take different paths through it), a "when another skill needs…" reach clause and the "Not for …" exclusions included. `when_to_use` is a Claude Code field: on a host that reads only `description`, the branches go there too. Every word costs on every turn, so the entry earns harder pruning than the body.
+The listing entry joins the skill's name and two frontmatter fields: `description` states what the skill is, and `when_to_use` lists the **branches** that should trigger it (a branch is a distinct way the skill can be invoked, so different runs take different paths through it), with a "when another skill needs…" reach clause, a "Not for …" exclusion naming the sibling to reach for, and any note on the argument shape. `when_to_use` is a Claude Code field: on a host that reads only `description`, the branches go there too. An agent file has no `when_to_use`, so its `description` carries the triggers. Every word costs on every turn, so the entry earns harder pruning than the body.
 
-- **Front-load the skill's leading word in `description`** — the entry's first words, where it does its invocation work.
+- **Front-load the skill's leading word in `description`** — the entry's first words after the name, where it does its invocation work.
 - **One trigger per branch.** Synonyms that rename a single branch are one branch written twice — "build features using TDD … asks for test-first development". Collapse them.
 - **One line of identity.** `description` says what the skill is in one line; where the host reads `when_to_use`, nothing else.
 
