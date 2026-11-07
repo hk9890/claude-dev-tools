@@ -15,33 +15,33 @@ defect. Reading the rubric is not the work.
 
 Every skill spends one of two budgets:
 
-- **Context load** — always-loaded material on the agent's window: a **description**, spending tokens and attention every turn whether or not the skill fires.
+- **Context load** — always-loaded material on the agent's window: a **listing entry**, the line the agent's skill listing shows for a skill, spending tokens and attention every turn whether or not the skill fires.
 - **Cognitive load** — the cost on the human: which skills exist, and when to reach for each. The human is the index. Not a cost to minimise — it is the price of human agency; spend it where human judgement matters, remove it where it does not.
 
 ## Invocation
 
 Two choices, each spending one of the loads:
 
-- **Model-invoked** — keeps a description the agent can see, so the agent can fire the skill and other skills can reach it; you can still type its name, since model-invocation always _includes_ user reach. Pays permanent context load. Mechanics: omit `disable-model-invocation`, and write the trigger branches in `when_to_use`.
-- **User-invoked** — puts the description out of the agent's reach: only the human typing its name can invoke it, and no other skill can. Zero context load, spends cognitive load. Mechanics: set `disable-model-invocation: true` and drop `when_to_use`; `description` stays as a human-facing one-line summary.
+- **Model-invoked** — keeps a listing entry the agent can see, so the agent can fire the skill and other skills can reach it; you can still type its name, since model-invocation always _includes_ user reach. Pays permanent context load. Mechanics: omit `disable-model-invocation`, and write the trigger branches in `when_to_use`.
+- **User-invoked** — puts the listing entry out of the agent's reach: only the human typing its name can invoke it, and no other skill can. Zero context load, spends cognitive load. Mechanics: set `disable-model-invocation: true` and drop `when_to_use`; `description` stays as a human-facing one-line summary.
 
 Pick model-invocation only where the agent must reach the skill on its own, or another skill must.
 
-Reference that several skills need has two homes. A model-invoked skill of pure reference is one, since any skill can invoke it — but it only works where the sibling _is_ the reference, because invoking it loads its whole body, and it buys that reach with a description loaded in every session. Weigh that against how much is shared: a few hundred words rarely earns permanent context load. Otherwise — and always between two **user-invoked** skills — push it to **external reference**: a plain file outside the skill system that any skill points at.
+Reference that several skills need has two homes. A model-invoked skill of pure reference is one, since any skill can invoke it — but it only works where the sibling _is_ the reference, because invoking it loads its whole body, and it buys that reach with a listing entry loaded in every session. Weigh that against how much is shared: a few hundred words rarely earns permanent context load. Otherwise — and always between two **user-invoked** skills — push it to **external reference**: a plain file outside the skill system that any skill points at.
 
 When user-invoked skills multiply past what you can remember, that cognitive load is cured by a **router skill**: one user-invoked skill naming the others and when to reach for each. It can only hint, never fire them.
 
 A **hand-off** is a step that sends the agent into another skill. Write it as an explicit call — "Call the Skill tool with `plugin:skill`" — add "even where it loaded earlier in this session", and give it a trigger the agent can test. Each part closes a failure seen in real runs: a skill named in prose ("load `x`", "use the `x` skill") gets skipped; a skill that ran earlier in the session gets replayed from memory, its steps dropped; a fuzzy condition ("where a candidate depends on that") never fires. A **user-invoked** target cannot be handed off to: tell the user to run `/plugin:skill` instead.
 
-## Writing the description
+## Writing the listing entry
 
-A **context pointer** names out-of-context material and encodes the condition for reaching it. A description is the top-level one (context window → skill); a pointer to a disclosed file is the same object one level down. The pointer's _wording_, not its target, decides when the agent reaches the material and how reliably — so a must-have target behind a weak pointer is a variance bug: sharpen the wording first, and inline the material only if that fails.
+A **context pointer** names out-of-context material and encodes the condition for reaching it. A listing entry is the top-level one (context window → skill); a pointer to a disclosed file is the same object one level down. The pointer's _wording_, not its target, decides when the agent reaches the material and how reliably — so a must-have target behind a weak pointer is a variance bug: sharpen the wording first, and inline the material only if that fails.
 
-A description does two jobs, one per frontmatter field: `description` states what the skill is, and `when_to_use` lists the **branches** that should trigger it (a branch is a distinct way the skill can be invoked, so different runs take different paths through it). The agent's skill listing joins the two into one entry, and the rules below hold for both. Every word costs on every turn, so it earns harder pruning than the body.
+The listing entry joins the skill's name and two frontmatter fields: `description` states what the skill is, and `when_to_use` lists the **branches** that should trigger it (a branch is a distinct way the skill can be invoked, so different runs take different paths through it), with a "when another skill needs…" reach clause and a "Not for …" exclusion naming the sibling to reach for. Every word costs on every turn, so the entry earns harder pruning than the body.
 
-- **Front-load the skill's leading word** — the description is where it does its invocation work.
+- **Front-load the skill's leading word in `description`** — the entry's first words after the name, where it does its invocation work.
 - **One trigger per branch.** Synonyms that rename a single branch are one branch written twice — "build features using TDD … asks for test-first development". Collapse them.
-- **One line of identity.** `description` says what the skill is in one line and leaves the rest to the body. A "when another skill needs…" reach clause is a branch: it goes in `when_to_use`.
+- **One line of identity.** `description` says what the skill is in one line, and nothing else.
 
 ## Information hierarchy
 
@@ -80,9 +80,9 @@ Splitting one skill into two spends one of the two loads, so split only where th
 
 A **leading word** is a compact concept already in the model's pretraining that the agent thinks with while running the skill (_lesson_, _fog of war_, _tracer bullets_). Repeated as a token, never as a sentence, it accumulates a distributed definition and anchors a whole region of behaviour by recruiting priors the model already holds. Coining your own works if you define it clearly, but a made-up word recruits no priors — reach for an existing word first.
 
-It anchors twice. In the body, _execution_: the agent reaches for the same behaviour every time the word appears, and inside flat reference it focuses attention on a class of thing to look for. In the description, _invocation_: when the same word lives in your prompts, your docs and your codebase, the agent links that shared language to the skill and fires it more reliably.
+It anchors twice. In the body, _execution_: the agent reaches for the same behaviour every time the word appears, and inside flat reference it focuses attention on a class of thing to look for. In the listing entry, _invocation_: when the same word lives in your prompts, your docs and your codebase, the agent links that shared language to the skill and fires it more reliably.
 
-A triad spelled out at three sites, a description spending a sentence to gesture at one idea — each is a passage begging to collapse into a single token:
+A triad spelled out at three sites, a listing entry spending a sentence to gesture at one idea — each is a passage begging to collapse into a single token:
 
 - "fast, deterministic, low-overhead" → _tight_ (a _tight_ loop).
 - "a loop you believe in" → _red_ — a fuzzy gate becomes a binary observable state.

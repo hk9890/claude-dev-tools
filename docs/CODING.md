@@ -89,7 +89,7 @@ A mod is a plugin whose `hooks/hooks.json` names a hooks module under `modules`;
 
 ## SKILL.md conventions
 
-For every `SKILL.md` under `plugins/<plugin-name>/skills/<skill-name>/`. The authoring rubric — invocation choice, description writing, information hierarchy, pruning — is [`instruction-writing:writing-skills`](../plugins/instruction-writing/skills/writing-skills/SKILL.md): call the Skill tool with `instruction-writing:writing-skills` before writing or editing a `SKILL.md`, a file it bundles or shares, or a file under a plugin's `agents/`, even where it loaded earlier in this session.
+For every `SKILL.md` under `plugins/<plugin-name>/skills/<skill-name>/`. The authoring rubric — invocation choice, the listing entry, information hierarchy, pruning — is [`instruction-writing:writing-skills`](../plugins/instruction-writing/skills/writing-skills/SKILL.md): call the Skill tool with `instruction-writing:writing-skills` before writing or editing a `SKILL.md`, a file it bundles or shares, or a file under a plugin's `agents/`, even where it loaded earlier in this session.
 
 ### Naming
 
@@ -119,7 +119,7 @@ disable-model-invocation: true
 ---
 name: <skill-name>
 description: "<one-line summary>"
-when_to_use: "Use when … Triggers on '…', '…'. Does not apply to …"
+when_to_use: "Use when … Triggers on '…', '…'. Also loaded by name when … Not for … (`<sibling>`)."
 ---
 ```
 
