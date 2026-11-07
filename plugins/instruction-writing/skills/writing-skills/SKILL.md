@@ -15,7 +15,7 @@ defect. Reading the rubric is not the work.
 
 Every skill spends one of two budgets:
 
-- **Context load** — always-loaded material on the agent's window: a **listing entry**, spending tokens and attention every turn whether or not the skill fires.
+- **Context load** — always-loaded material on the agent's window: a listing entry, spending tokens and attention every turn whether or not the skill fires.
 - **Cognitive load** — the cost on the human: which skills exist, and when to reach for each. The human is the index. Not a cost to minimise — it is the price of human agency; spend it where human judgement matters, remove it where it does not.
 
 ## Invocation
@@ -41,7 +41,7 @@ A skill's **listing entry** is its two frontmatter fields, which the agent's ski
 
 - **Front-load the skill's leading word in `description`** — the entry's first words, where it does its invocation work.
 - **One trigger per branch.** Synonyms that rename a single branch are one branch written twice — "build features using TDD … asks for test-first development". Collapse them.
-- **One line of identity.** `description` says what the skill is in one line, and nothing else.
+- **One line of identity.** `description` says what the skill is in one line; where the host reads `when_to_use`, nothing else.
 
 ## Information hierarchy
 
