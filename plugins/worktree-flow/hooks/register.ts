@@ -3,18 +3,6 @@ import type { Register } from 'claude-code'
 const DENY_REASON =
   'Use the EnterWorktree tool for a persistent worktree, not `git worktree add`: it creates the worktree under .claude/worktrees/ and enters it in one step, and ExitWorktree can remove it later. A throwaway probe (`git worktree add --detach <dir> <ref>`) into /tmp or the scratchpad is allowed. For a repository other than the one this session runs in, give its absolute path: `git -C <repo> worktree add <dir> -b <branch>` is allowed. If EnterWorktree cannot express what you need, tell the user instead of creating the worktree by hand. Where the command only mentions `git worktree add` in text, such as a prompt or a commit message, write that text to a file with the Write tool and pass the file in its place (`git commit -F <file>`, `claude -p < <file>`). A script that runs the add still makes a persistent worktree.'
 
-// Claude Code refuses a Bash call in a worktree-isolated session or agent where it cannot prove
-// that git stays in the worktree; its refusal names the reason but not the form that runs. Where
-// the refusal is that Bash runs in the shared checkout, no form runs, so it gets no note.
-const ISOLATION_REFUSAL = /^This (?:session|agent) is isolated in the worktree [^\n]*?, but this command(?!'s working directory)/
-const ISOLATION_FORMS = [
-  'worktree-flow: Forms the isolation check accepts:',
-  '- Run git as a plain command of its own with literal arguments, not in `$(...)`, a loop, `xargs`, `bash -c` or `python3 -c`. Bash starts in the worktree, so drop any `cd` or `-C` to this repository. To use the output of git, read it and write the value into the next call.',
-  '- Double-quote each variable (`"$f"`), put `--` before a glob (`rg x -- *.md`), and write computed numbers out (`sed -n 3,9p`, not `$((l+3))`).',
-  '- Put file content, a multi-line script or a long text argument in a file with the Write tool, then run or pass the file (`python3 <file>`, `git commit -F <file>`).',
-  '- For an exit code, redirect to a file (`cmd > <file> 2>&1; echo "exit=$?"`), not `${PIPESTATUS[...]}` or `${pipestatus[...]}`.',
-].join('\n')
-
 // A shell is a word of its own or the end of a path (`/bin/sh`), not a file name such as `run.sh`.
 const SHELL = /(?<![\w.-])(?:bash|sh|zsh)(?![\w.-])/
 const QUOTED = /'[^']*'|"(?:\\[\s\S]|[^"\\])*"/g
@@ -249,12 +237,6 @@ export const register: Register = on => {
       return { deny: DENY_REASON }
     }
 
-    const answer = await next(e)
-
-    if (answer.isError && ISOLATION_REFUSAL.test(answer.text ?? '')) {
-      return { ...answer, context: [...(answer.context ?? []), ISOLATION_FORMS] }
-    }
-
-    return answer
+    return next(e)
   }).catch(($, e, next) => (next.called || !/worktree\s+add/.test(e.command) ? next(e) : { deny: DENY_REASON }))
 }

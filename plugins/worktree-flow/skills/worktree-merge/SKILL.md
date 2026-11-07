@@ -53,7 +53,7 @@ Done when `<default>` is at `<remote>/<default>` or git refused, the merged bran
 
 ## 5. Close the resolved issues
 
-The issues are those the PR resolves, as its body or this conversation names them. Where an available skill covers their tracker, call the Skill tool with it, even where it loaded earlier in this session.
+The issues are those the PR resolves, as its body or this conversation names them. Where an available skill covers their tracker, call the Skill tool with it, even where it loaded earlier in this session; else use the tracker's own CLI where it is installed. Where neither reaches the tracker, leave each issue open with that reason.
 
 For each issue still open, check its criteria, else what its body asks for, against what merged: the files at `<remote>/<default>`, and the PR's evidence for a criterion that needs a run. Close each issue whose criteria all hold, without asking, citing the PR's URL.
 
