@@ -323,8 +323,7 @@ node "$(cat "$HTML_DIR/.plugin-root")/bin/server.js" "$HTML_DIR/review.html" --m
 
 `--host` is repeatable and **adds to** the defaults rather than replacing them. A
 value that is not a hostname exits non-zero at startup rather than failing later
-at submit time. In feedback mode (Cycle C) pass the same `--host` on every Apply
-re-serve, alongside `--port`.
+at submit time. Cycle C carries it to every Apply re-serve: see "Apply rounds".
 
 ---
 

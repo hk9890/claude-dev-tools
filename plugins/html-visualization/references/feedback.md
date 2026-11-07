@@ -91,11 +91,12 @@ See `references/serve.md` — temp directory section. Use the prefix
 
 ### 2b. Author the destination from the template
 
-Read the template using its resolved absolute path (use the `.plugin-root` file
-written in the temp-directory step):
+Read the template and the markup contract using their resolved absolute paths
+(use the `.plugin-root` file written in the temp-directory step):
 
 ```
 Read: "$(cat "$HTML_DIR/.plugin-root")/references/feedback-template.html"
+Read: "$(cat "$HTML_DIR/.plugin-root")/references/feedback-markup.md"
 ```
 
 Then author `$HTML_DIR/review.html` **with the Write tool**, directly at the
@@ -109,13 +110,8 @@ in the template.
 
 ### 2c. Render the content
 
-Render the content inside `<div id="content">` per the markup contract:
-
-```
-Read: "$(cat "$HTML_DIR/.plugin-root")/references/feedback-markup.md"
-```
-
-Before you start the server, run its "Authoring checklist" against the page.
+Render the content inside `<div id="content">` per the markup contract. Before
+you start the server, run its "Authoring checklist" against the page.
 
 ### 2d. Use HTML to render the content well
 

@@ -125,28 +125,24 @@ See `references/serve.md` — temp directory section. Use the prefix `html-ask`.
 
 ### 2b. Author the destination from the template
 
-Read the template using its resolved absolute path (use the `.plugin-root` file
-written in the temp-directory step):
+Read the template and the markup contract using their resolved absolute paths
+(use the `.plugin-root` file written in the temp-directory step):
 
 ```
 Read: "$(cat "$HTML_DIR/.plugin-root")/references/ask-template.html"
+Read: "$(cat "$HTML_DIR/.plugin-root")/references/ask-markup.md"
 ```
 
 Then author `$HTML_DIR/feedback.html` **with the Write tool**, directly at the
 destination path — see `references/serve.md` — "Authoring files into the temp
-directory".
+directory". Author every widget from the markup contract.
 
 The template contains example widgets — remove every example widget you do not
 need. Keep the page structure, top bar, rail, header, verdict section, freeform
 section, and action bar exactly as in the template.
 
-Author every widget from the markup contract:
-
-```
-Read: "$(cat "$HTML_DIR/.plugin-root")/references/ask-markup.md"
-```
-
-Before you start the server, run its "Authoring checklist" against the page.
+Before you start the server, run the markup contract's "Authoring checklist"
+against the page.
 
 ### 2c. Use HTML to make the content clear
 

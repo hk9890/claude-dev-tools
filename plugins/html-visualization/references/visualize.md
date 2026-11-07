@@ -162,6 +162,9 @@ lives in `references/mermaid.md`. Read it before authoring a diagram:
 Read: "$(cat "$HTML_DIR/.plugin-root")/references/mermaid.md"
 ```
 
+This template already carries the `.vis-mermaid-wrap` styling and the semantic
+colour rules that file shows: add a colour rule only for a class the template lacks.
+
 ### Editorial diagrams (hand-built)
 
 Some points are visual arguments rather than graphs, and Mermaid renders them limply.

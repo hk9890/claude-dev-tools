@@ -328,6 +328,7 @@ These answers live in `answers`, not in `verdict`. The overall `verdict` is alwa
 
 Before finalising an ask-mode document:
 
+- [ ] Nothing from "What app.js generates" is written by hand, and every element that section says to leave empty is empty.
 - [ ] Every `.widget` has a unique `data-qid` (printable ASCII, no whitespace).
 - [ ] Every `.widget` has a `data-qtype` matching its input type.
 - [ ] Every question is answerable from the page alone — the thing being decided is quoted, drawn, or explained on it.
