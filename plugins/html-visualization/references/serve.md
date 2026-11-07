@@ -255,40 +255,26 @@ Cycle A — see [the exit-code table](#what-an-exit-code-means).
 
 #### Apply rounds (iterate)
 
-After each `action: "apply"` response:
+After each `action: "apply"` round, once `review.html` is rewritten, re-serve on
+the **same port** (`run_in_background: true`):
 
-1. Apply the feedback to the underlying content source. After reading the
-   feedback file, delete it (`rm -f "$HTML_DIR/review.feedback.json"`) — the
-   server only overwrites it on the next submit, so a stale copy from this
-   round could otherwise be misread as fresh feedback if a later round times
-   out.
-2. Regenerate `$HTML_DIR/review.html` from the updated content. Rewriting the
-   file is the whole protocol: its mtime is the generation the server reports.
-3. Re-serve on the **same port** (`run_in_background: true`):
-   ```bash
-   node "$(cat "$HTML_DIR/.plugin-root")/bin/server.js" "$HTML_DIR/review.html" --mode feedback --port "$(cat "$HTML_DIR/.port")"
-   ```
-   If the port is momentarily unavailable, wait ~1 s and retry once.
-   **Carry every flag the first round used** — in particular `--host NAME` if the
-   first round needed one. Flags do not persist across rounds; dropping `--host`
-   here gives the user a 403 on round two after round one worked.
-4. Tell the user the comments have been applied; the URL is unchanged and the
-   open tab reloads itself automatically.
-5. The loop continues until an `action: "submit"` response.
+```bash
+node "$(cat "$HTML_DIR/.plugin-root")/bin/server.js" "$HTML_DIR/review.html" --mode feedback --port "$(cat "$HTML_DIR/.port")"
+```
 
-#### `.port`, `.csrf` and the generation (authoritative)
+If the port is momentarily unavailable, wait ~1 s and retry once.
+**Carry every flag the first round used** — in particular `--host NAME` if the
+first round needed one. Flags do not persist across rounds; dropping `--host`
+here gives the user a 403 on round two after round one worked.
 
-- **`.port` file** (`$HTML_DIR/.port`): written by you on the first serve round
-  (Cycle C first round), never overwritten. Contains only the port number as a
-  plain string. Used by every Apply re-serve via `--port "$(cat "$HTML_DIR/.port")"`.
+#### `.csrf` and the generation (authoritative)
+
 - **`.csrf` file** (`$HTML_DIR/.csrf`): written by the **server**, mode 0600, on
   the first serve into a directory and reused by every later one. Never create,
   edit, or delete it. It exists so the token already injected into the user's
   open tab stays valid across an Apply restart — mint a fresh one per round and
   that tab's pings start failing, the new server credits no liveness, and it
   counts down to exit with a live page in front of it.
-- **`--host NAME`**: not persisted anywhere — if the first round needed one, every
-  Apply re-serve must repeat it. See [Host allow-list](#host-allow-list).
 - **Generation**: the served file's mtime, which the server injects into the
   page and reports on the heartbeat. Rewriting `review.html` advances it and the
   open tab reloads itself. The document carries nothing — write the file and the
@@ -337,8 +323,7 @@ node "$(cat "$HTML_DIR/.plugin-root")/bin/server.js" "$HTML_DIR/review.html" --m
 
 `--host` is repeatable and **adds to** the defaults rather than replacing them. A
 value that is not a hostname exits non-zero at startup rather than failing later
-at submit time. In feedback mode (Cycle C) pass the same `--host` on every Apply
-re-serve, alongside `--port`.
+at submit time. Cycle C carries it to every Apply re-serve: see "Apply rounds".
 
 ---
 
