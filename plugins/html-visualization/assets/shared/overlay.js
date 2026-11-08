@@ -31,9 +31,10 @@
     // The `id` attributes stay. Mermaid emits a <style> INSIDE the <svg> whose
     // every rule is scoped to that svg's own id, so stripping ids to keep the
     // document unique would leave the clone unstyled: black default node fills
-    // and labels clipped out of their boxes. Duplicate ids are harmless here —
-    // nothing looks a diagram up by id, and the scoped rules matching both
-    // copies is exactly what makes the panel render like the page.
+    // and labels clipped out of their boxes. The scoped rules matching both
+    // copies is exactly what makes the panel render like the page. Mermaid
+    // finds an svg by its id when it renders, so the page's render() empties
+    // every panel before it draws.
     body.replaceChildren(copy);
   }
 
