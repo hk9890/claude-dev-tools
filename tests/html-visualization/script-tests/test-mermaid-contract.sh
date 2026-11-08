@@ -95,10 +95,17 @@ for f in "$DOC" "$TPL"; do
   fi
   # Without it Mermaid takes each svg id from Date.now(): two diagrams drawn in the same
   # millisecond share an id, and their id-scoped styles draw them over each other.
-  if grep -Eq 'deterministicIds:[[:space:]]*true' "$f"; then
-    ok "$n sets deterministicIds"
+  if awk '/mermaid\.initialize\(\{/,/^[[:space:]]*\}\);/' "$f" | grep -Eq '^[[:space:]]*deterministicIds:[[:space:]]*true'; then
+    ok "$n sets deterministicIds in mermaid.initialize"
   else
-    fail "$n — no deterministicIds: true; diagrams drawn in one millisecond share an svg id"
+    fail "$n — no deterministicIds: true in mermaid.initialize; diagrams drawn in one millisecond share an svg id"
+  fi
+  # Counter ids start again at mermaid-0 on each run: a zoom clone left from the last run
+  # would share the new svg's id, restyle it, or take its render.
+  if awk '/async function render\(\)/,/await mermaid\.run/' "$f" | grep -Fq '.hv-popover-body").forEach(b => b.replaceChildren())'; then
+    ok "$n empties the zoom panels before each render"
+  else
+    fail "$n — render() does not empty .hv-popover-body before mermaid.run; a stale zoom clone collides with the new ids"
   fi
   # The FOUC guard hides pre.mermaid until it is marked processed. If Mermaid never
   # loads, something must release it or the page shows an empty bordered box forever.

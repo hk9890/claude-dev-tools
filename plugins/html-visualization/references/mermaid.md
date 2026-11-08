@@ -64,6 +64,9 @@ it is the whole integration:
     // HTML mangles any diagram containing "<": stateDiagram's <<choice>>/<<fork>>, or an
     // edge label like |"n < 10"|. First render would look fine; the theme flip breaks it.
     blocks.forEach(b => { b.textContent = b.dataset.src; b.removeAttribute("data-processed"); });
+    // Each run counts ids from mermaid-0 again, so a zoom clone left from the last run
+    // would share an id with the new svg and restyle it, or take its render.
+    document.querySelectorAll(".hv-popover-body").forEach(b => b.replaceChildren());
     await mermaid.run({ nodes: blocks });
   }
 
