@@ -674,6 +674,16 @@ def mirror(host):
     return target
 
 
+def window_summaries(session_files, cutoff, plugins):
+    """The summary of each session written since `cutoff`, less those Claude Code deletes while the pick reads them."""
+    for session_file in session_files:
+        try:
+            if session_file.stat().st_mtime >= cutoff:
+                yield summarize(session_file, plugins)
+        except FileNotFoundError:
+            print(f"warning: {session_file} was deleted while the pick read it; the pick leaves it out", file=sys.stderr)
+
+
 def latest_copies(summaries):
     """One summary for each session id: Claude Code can keep a session in two project folders."""
     latest = {}
@@ -698,13 +708,8 @@ def pick(args):
         ended = json.loads(path.read_text(encoding="utf-8"))["ended"]
         reviewed_until[path.stem] = max(reviewed_until.get(path.stem, ""), ended)
     cutoff = time.time() - args.since_days * 86400
-    recent = (
-        f
-        for f in sorted(projects_dir.glob("*/*.jsonl"))
-        if f.stat().st_mtime >= cutoff
-    )
     # Every session of the window: context.md covers each.
-    latest = latest_copies([summarize(f, plugins) for f in recent])
+    latest = latest_copies(list(window_summaries(sorted(projects_dir.glob("*/*.jsonl")), cutoff, plugins)))
     summaries = [(session, usage) for session, usage in latest if session["skills"]]
     # A session that went on after its review is picked again, and reviewed whole.
     unreviewed = [

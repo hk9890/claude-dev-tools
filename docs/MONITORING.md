@@ -28,7 +28,7 @@ SESSION_REVIEW_DIR = "/home/<you>/dev/github/session-data"
 
 ## Run a review
 
-`git fetch --tags` first: the pick finds the last release in the local tags only. Then run the `review-sessions` workflow ([`.claude/workflows/review-sessions.js`](../.claude/workflows/review-sessions.js)) from the repo root, with `{perBucket, sinceDays, host}`:
+`git fetch --tags` first: the pick finds the last release in the local tags only. Then run the `review-sessions` workflow ([`.claude/workflows/review-sessions.js`](../.claude/workflows/review-sessions.js)) from the repo root, with `{perBucket, sinceDays, host}`: the sessions each bucket takes, the window in days, and the ssh host ([Another machine](#another-machine)). The script's head sets the defaults of the first two:
 
 1. **Pick** — `mise run pick-sessions -- pick` starts the run folder, copies the transcripts, writes `usage.md` and `context.md`, and prints the picks.
 2. **Review** — one agent per session reports each plugin problem and judges each loaded file.
