@@ -234,6 +234,34 @@ class PlanTest(unittest.TestCase):
         _, _, ib = self.plan(b)
         self.assertEqual(ia['F1']['label'], ib['F9']['label'])
 
+    def test_items_no_key_matched_go_to_the_match_agent(self):
+        result = tt_result([finding('F1'), finding('F2', axis='speed', subject='suite')], [settled('F1')])
+        f1_label = plan_mod.dedup_label('test-tests|svc|sensitivity|src/f1.py::run')
+        tasks = [{'id': 't-key', 'status': 'open', 'title': 'F1', 'labels': ['source:project-auto-work', f1_label]},
+                 {'id': 't-open', 'status': 'open', 'title': 'slow suite', 'type': 'chore',
+                  'labels': ['source:project-auto-work', 'dedup:x']},
+                 {'id': 't-wontfix', 'status': 'closed', 'close_reason': "won't fix", 'labels': ['source:project-auto-work']},
+                 {'id': 't-fixed', 'status': 'closed', 'close_reason': 'fixed', 'type': 'bug', 'labels': ['source:project-auto-work']},
+                 {'id': 't-mine', 'status': 'open', 'labels': ['dedup:y']}]
+        with tempfile.TemporaryDirectory() as d:
+            for name, data in (('result', result), ('tasks', tasks)):
+                with open(os.path.join(d, f'{name}.json'), 'w') as fh:
+                    json.dump(data, fh)
+            out = os.path.join(d, 'plan')
+            proc = subprocess.run([sys.executable, os.path.join(BIN, 'triage-plan.py'), '--tool', 'test-tests',
+                                   '--result', os.path.join(d, 'result.json'), '--tasks', os.path.join(d, 'tasks.json'),
+                                   '--scope', 'svc/', '--out', out], capture_output=True, text=True)
+            args = json.loads(proc.stdout)
+            with open(os.path.join(out, 'earlier.json')) as fh:
+                earlier = {e['id']: e['on_match'] for e in json.load(fh)}
+            with open(os.path.join(out, 'plan.json')) as fh:
+                context = json.load(fh)['context']
+        self.assertEqual(earlier, {'t-open': 'note', 't-wontfix': 'skip'})
+        self.assertEqual((args['match'], args['earlier']), (args['bodies'], ['t-open', 't-wontfix']))
+        self.assertEqual(context['key_prefix'], 'test-tests|svc|')
+        _, args, _ = self.plan(result)
+        self.assertEqual(args['match'], [])
+
     def test_test_app_never_fixes(self):
         result = {'repoRoot': '/repo', 'level': 'ultra', 'scratchDir': '/tmp/s', 'mode': 'worktree',
                   'report': {'verdict': 'rough', 'findings': [
@@ -273,7 +301,10 @@ class FileTest(unittest.TestCase):
         return {'n': n, 'key': f'k{n}', 'tier': 2, 'type': 'chore', 'priority': 2, 'reason': 'r',
                 'labels': ['source:project-auto-work', f'dedup:{n}'], 'action': action, **kw}
 
-    def run_file(self, items, workflow, bodies=()):
+    def run_file(self, items, workflow, bodies=(), earlier=None):
+        if earlier is not None:
+            with open(os.path.join(self.dir, 'earlier.json'), 'w') as fh:
+                json.dump(earlier, fh)
         for n in bodies:
             with open(os.path.join(self.dir, f'body-{n}.md'), 'w') as fh:
                 fh.write('## Context\n')
@@ -328,6 +359,20 @@ class FileTest(unittest.TestCase):
         self.assertTrue(any(c.startswith('comment add t-a') and 'https://pr/9' in c for c in calls))
         self.assertTrue(any(c.startswith('comment add t-b') and 'red' in c for c in calls))
         self.assertFalse(any(c.startswith('create') for c in calls))
+
+    def test_a_match_by_meaning_comments_or_skips(self):
+        items = [self.item(1, 'file', finding={'subject': 'sub: subtracts b from a'}), self.item(2, 'file'),
+                 self.item(3, 'file'), self.item(4, 'file')]
+        earlier = [{'id': 't-open', 'on_match': 'note'}, {'id': 't-decided', 'on_match': 'skip'}]
+        workflow = {'fixes': [], 'bodies': [{'n': 3, 'title': 'Three'}, {'n': 4, 'title': 'Four'}],
+                    'matches': [{'n': 1, 'id': 't-open'}, {'n': 2, 'id': 't-decided'}, {'n': 3, 'id': 't-unknown'}]}
+        code, rows, calls = self.run_file(items, workflow, bodies=(3, 4), earlier=earlier)
+        self.assertEqual(code, 0)
+        self.assertEqual((rows[1]['outcome'], rows[1]['ref']), ('noted', 't-open'))
+        self.assertTrue(any(c.startswith('comment add t-open') and 'sub: subtracts b from a' in c for c in calls))
+        self.assertEqual((rows[2]['outcome'], rows[2]['ref']), ('skipped', 't-decided'))
+        self.assertEqual((rows[3]['outcome'], rows[4]['outcome']), ('filed', 'filed'))
+        self.assertEqual(len([c for c in calls if c.startswith('create')]), 2)
 
     def test_table_cells_survive_pipes_and_newlines(self):
         sys.path.insert(0, BIN)

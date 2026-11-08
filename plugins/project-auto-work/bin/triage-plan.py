@@ -3,7 +3,9 @@
 
 Reads the audit workflow's return value, puts every report item in a tier, applies the
 tier-1 gates and the cross-run dedup, and writes one JSON file per item for the triage
-workflow and triage-file.py. references/triage.md states the rules this implements.
+workflow and triage-file.py, plus earlier.json: the items earlier runs filed that no key of
+this run matched, for the workflow's match agent. references/triage.md states the rules
+this implements.
 
 usage: triage-plan.py --tool test-tests|test-app --result <file> --tasks tasks.json
                       --out <dir> [--prs prs.json] [--pr-base <branch>] [--scope <prefix>]
@@ -64,6 +66,10 @@ def by_id(entries, prefix):
     return index
 
 
+def key_prefix(tool, scope):
+    return f'{tool}|{scope}|' if scope else f'{tool}|'
+
+
 def group_items(tool, result, scope=''):
     """One item per finding with its proposals, per question, per orphan proposal, and per
     finding or question with an open cross-cutting proposal. An aborted run is one
@@ -71,7 +77,7 @@ def group_items(tool, result, scope=''):
     report = result['report']
     findings = by_id(report.get('findings'), 'F?')
     questions = by_id(report.get('questions'), 'Q?')
-    prefix = f'{tool}|{scope}|' if scope else f'{tool}|'
+    prefix = key_prefix(tool, scope)
 
     if result.get('aborted'):
         reason = (result.get('abort_reason') or 'unknown').split(' — ')[0]
@@ -242,6 +248,22 @@ def dedup(item, existing, pr_keys):
         item['action'] = 'fix' if item['tier'] == 1 else 'file'
 
 
+def earlier_items(tasks, items):
+    """The items earlier runs filed that no key of this run matched, each with what a match
+    by meaning does: a comment on an open item, a skip of one closed as decided. A closed
+    item that is not decided is left out: a match with it would be a regression to file."""
+    taken = {tid for item in items for tid in item.get('existing') or []}
+    out = []
+    for t in tasks:
+        if SOURCE_LABEL not in (t.get('labels') or []) or t['id'] in taken:
+            continue
+        if t.get('status') != 'closed':
+            out.append({'id': t['id'], 'title': t.get('title'), 'type': t.get('type'), 'on_match': 'note'})
+        elif decided(t):
+            out.append({'id': t['id'], 'title': t.get('title'), 'type': t.get('type'), 'on_match': 'skip'})
+    return out
+
+
 def load(path, default):
     """Read a JSON file; a missing path or an empty file is the default."""
     if not path:
@@ -279,7 +301,8 @@ def main(argv=None):
 
     block = run_block(result, args)
     existing, keys = existing_by_label(tasks), pr_keys(prs)
-    items = group_items(args.tool, result, args.scope.strip('/'))
+    scope = args.scope.strip('/')
+    items = group_items(args.tool, result, scope)
     fixes = 0
     for n, item in enumerate(items, 1):
         item['n'] = n
@@ -298,12 +321,17 @@ def main(argv=None):
                'verdict': result['report'].get('verdict'), 'headline': result['report'].get('headline'),
                'test_cmd': baseline.get('test_cmd'), 'worktree_setup': baseline.get('worktree_setup', ''),
                'audited_head': args.audited_head, 'pr_base': args.pr_base,
-               'build_drift': result.get('build_drift') or '', 'stop_refiling': STOP_REFILING}
+               'build_drift': result.get('build_drift') or '', 'stop_refiling': STOP_REFILING,
+               'key_prefix': key_prefix(args.tool, scope)}
     for item in items:
         with open(os.path.join(args.out, f'item-{item["n"]}.json'), 'w') as fh:
             json.dump({**item, 'context': context}, fh, indent=2)
     with open(os.path.join(args.out, 'plan.json'), 'w') as fh:
         json.dump({'context': context, 'run_block': block, 'items': items}, fh, indent=2)
+    earlier = earlier_items(tasks, items)
+    with open(os.path.join(args.out, 'earlier.json'), 'w') as fh:
+        json.dump(earlier, fh, indent=2)
+    to_file = [i['n'] for i in items if i['action'] == 'file']
 
     print(json.dumps({
         'repoRoot': result.get('repoRoot'), 'scratchDir': result.get('scratchDir'),
@@ -313,7 +341,10 @@ def main(argv=None):
         'fixes': [i['n'] for i in items if i['action'] == 'fix'],
         # A failed fix of an item an earlier run filed becomes a comment on it, not a body.
         'filed': [i['n'] for i in items if i['action'] == 'fix' and i.get('existing')],
-        'bodies': [i['n'] for i in items if i['action'] == 'file'],
+        'bodies': to_file,
+        # Items no key matched, for the workflow's agent to match against earlier.json by meaning.
+        'match': to_file if earlier else [],
+        'earlier': [e['id'] for e in earlier],
     }))
     return 0
 

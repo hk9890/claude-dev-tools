@@ -2,8 +2,8 @@
 """Carry out a triage plan in taskmgr and write the run summary.
 
 Reads <plan-dir>/plan.json (from triage-plan.py) and the triage workflow's return value,
-then, one item at a time: comments on the open item a repeated finding matches, files each
-item that has a body, and records each PR and skip. Writes <plan-dir>/summary.json and
+then, one item at a time: comments on the open item a repeated finding matches, by key or
+by the workflow's match agent, files each item that has a body, and records each PR and skip. Writes <plan-dir>/summary.json and
 prints the summary as Markdown.
 
 usage: triage-file.py --plan-dir <dir> --workflow-result <file> --repo-root <path>
@@ -45,9 +45,29 @@ def file_item(repo_root, item, title, body_path):
     return (out.get('id') if isinstance(out, dict) else None), None
 
 
+def subject(item):
+    for part in ('finding', 'question'):
+        named = (item.get(part) or {}).get('subject') or (item.get(part) or {}).get('title')
+        if named:
+            return named
+    return next((p.get('action') for p in item.get('proposals') or [] if p.get('action')), item['key'])
+
+
+def load_earlier(plan_dir):
+    """earlier.json by id; a plan from before the match step has none."""
+    path = os.path.join(plan_dir, 'earlier.json')
+    if not os.path.isfile(path):
+        return {}
+    with open(path) as fh:
+        return {e['id']: e for e in json.load(fh)}
+
+
 def carry_out(plan, workflow, repo_root, plan_dir):
     fixes = {f['n']: f for f in workflow.get('fixes') or [] if f}
     bodies = {b['n']: b for b in workflow.get('bodies') or [] if b}
+    earlier = load_earlier(plan_dir)
+    # Only a match to an item of earlier.json counts: the agent's answer is checked, not trusted.
+    matches = {m['n']: earlier[m['id']] for m in workflow.get('matches') or [] if m and m.get('id') in earlier}
     head = (plan['context'].get('audited_head') or '')[:12] or 'an unknown commit'
     note = f'Seen again by {plan["context"]["tool"]} at {head}.'
     rows = []
@@ -78,7 +98,14 @@ def carry_out(plan, workflow, repo_root, plan_dir):
                 rows.append(row)
                 continue
             action = 'file'
-        if action == 'skip':
+        match = matches.get(item['n']) if action == 'file' else None
+        if match and match['on_match'] == 'skip':
+            row.update(outcome='skipped', ref=match['id'],
+                       reason=row['reason'] + f"; same problem as {match['id']}, closed as decided")
+        elif match:
+            row.update(outcome=comment([match['id']], f'{note} Named this time: {subject(item)}'), ref=match['id'],
+                       reason=row['reason'] + f"; same problem as {match['id']}, under other words")
+        elif action == 'skip':
             row.update(outcome='skipped', ref=', '.join(item.get('existing') or []))
         elif action == 'note':
             row.update(outcome=comment(existing, note), ref=', '.join(existing))
