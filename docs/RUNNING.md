@@ -19,7 +19,7 @@ An agent drives the plugins with the first form — `-p` writes the reply to std
 - **Mods** — load the one plugin with `claude -p "<prompt>" --plugin-dir plugins/<plugin> --debug-file <file>`; the debug file has a `hooks module <plugin>@inline loaded` line and a line for every hook the engine skipped. [OVERVIEW.md](OVERVIEW.md) has the expression that lists the mods. Then confirm the effect:
   - `keep-awake-linux` — send any prompt and find `$.process.spawn (keep-awake-linux): systemd-inhibit` in the debug file. `claude -p "/keep-awake-info" --plugin-dir plugins/keep-awake-linux` lists the blocks of the other sessions alone: a command starts no turn, so that run holds none.
   - `tasks` — `claude -p "/tasks-board" --plugin-dir plugins/tasks`.
-  - `worktree-flow` — ask for `git worktree add ../x` and read the refusal.
+  - `worktree-flow` — ask for `git worktree add ../x` and read the refusal, then for `git -C <another repository> worktree add <dir> -b <branch>` and see it run.
   - `revier` — ask for `revier agent focus no-such-project` and read the refusal; the command moves nothing where the guard fails.
   - A pane or a status line shows in an interactive terminal alone. Start one with `tmux new-session -d -s mod -x 180 -y 50 "claude --plugin-dir plugins/<plugin>"`, type with `tmux send-keys -t mod "/tasks-board" Enter`, and read the screen with `tmux capture-pane -t mod -p`.
 

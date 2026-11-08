@@ -1,6 +1,6 @@
 ---
 name: worktree-merge
-description: "Merge a green PR, or take one already merged, then remove its worktree, update the default branch, and delete the merged branches."
+description: "Merge a green PR, or take one already merged, then remove its worktree, update the default branch, delete the merged branches, and close the issues it resolved."
 user-invocable: true
 disable-model-invocation: true
 argument-hint: "[pr-number]"
@@ -42,12 +42,25 @@ Done when the worktree is gone, and each of the user's files is copied or droppe
 
 ## 4. Update the default branch
 
-In the main checkout: record `git rev-parse HEAD`, then `git fetch --prune` and `git pull --ff-only`. `ExitWorktree` with `remove` can have deleted the PR's local branch with the worktree: delete it where `git branch --list <branch>` still prints it, with the name the worktree's branch had, which can differ from the PR's head branch (`-D` after a squash or rebase merge). Delete its remote branch where it still exists. The dependencies were installed in the removed worktree only: where the PR's files or `git diff --name-only <recorded> HEAD` hold a dependency manifest, lockfile or tool-version pin, run the project's install step, and nothing else of its setup, in the main checkout.
+Below, `<default>` is the PR's base branch and `<remote>` its remote. In the main checkout, read `git branch --show-current` in a call of its own, and `git status --porcelain` in another: another session can have switched it or left changes. Then `git fetch --prune <remote>`.
 
-Done when the merged branches are deleted and the install ran or is not needed.
+- **On `<default>`, with no changes:** record `git rev-parse HEAD`, then `git pull --ff-only <remote> <default>`.
+- **Otherwise:** leave that checkout as it is, and move `<default>` alone: `git fetch . <remote>/<default>:<default>`.
 
-## 5. Report
+`ExitWorktree` with `remove` can have deleted the PR's local branch with the worktree: delete it where `git branch --list <branch>` still prints it, with the name the worktree's branch had, which can differ from the PR's head branch (`-D` after a squash or rebase merge). Delete its remote branch where it still exists. The dependencies were installed in the removed worktree only: where the pull ran and the PR's files or `git diff --name-only <recorded> HEAD` hold a dependency manifest, lockfile or tool-version pin, run the project's install step, and nothing else of its setup, in the main checkout.
 
-Report how the PR merged (by this run with its method, or already), what was removed, where each of the user's files went, and the install with its result, or the install that the user must run. Print `git worktree list` and `git branch -vv`, and name each worktree or branch whose upstream is gone. Remove them only when the user says so.
+Done when `<default>` is at `<remote>/<default>` or git refused, the merged branches are deleted, and the install ran, is not needed, or is left to the user.
+
+## 5. Close the resolved issues
+
+The issues are those the PR resolves, as its body or this conversation names them. Where an available skill covers their tracker, call the Skill tool with it, even where it loaded earlier in this session; else use the tracker's own CLI where it is installed. Where neither reaches the tracker, leave each issue open with that reason.
+
+For each issue still open, check its criteria, else what its body asks for, against what merged: the files at `<remote>/<default>`, and the PR's evidence for a criterion that needs a run. Close each issue whose criteria all hold, without asking, citing the PR's URL.
+
+Done when each issue is closed, or open with the reason.
+
+## 6. Report
+
+Report how the PR merged (by this run with its method, or already), what was removed, where each of the user's files went, whether `<default>` is current, else git's refusal, the install with its result, or the install that the user must run, and each issue by its id and title: closed, or open with the reason. Print `git worktree list` and `git branch -vv`, and name each worktree or branch whose upstream is gone. Remove them only when the user says so.
 
 Done when the report holds each item, or says that it does not apply.

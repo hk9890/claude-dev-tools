@@ -7,6 +7,8 @@
 
 <optional: the smallest view that makes the point clear: pseudocode, a call tree, a file tree, a Mermaid diagram, a diff of a changed shape, or the whole of a mostly new one>
 
+**Issues:** <each issue the change resolves, by its id and title; leave the line out where there is none>
+
 ## Evidence
 
 - **Gate:** `<command>`: <passed, failed, or skipped, and why>
