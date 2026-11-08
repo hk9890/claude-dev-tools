@@ -43,6 +43,9 @@ it is the whole integration:
   async function render() {
     mermaid.initialize({
       startOnLoad: false,
+      // Ids from a counter, not Date.now(): two diagrams drawn in the same millisecond
+      // would share an id and draw over each other.
+      deterministicIds: true,
       securityLevel: "strict",
       theme: "base",
       themeVariables: {

@@ -93,6 +93,13 @@ for f in "$DOC" "$TPL"; do
   else
     fail "$n — themeVariables only apply under theme \"base\""
   fi
+  # Without it Mermaid takes each svg id from Date.now(): two diagrams drawn in the same
+  # millisecond share an id, and their id-scoped styles draw them over each other.
+  if grep -Eq 'deterministicIds:[[:space:]]*true' "$f"; then
+    ok "$n sets deterministicIds"
+  else
+    fail "$n — no deterministicIds: true; diagrams drawn in one millisecond share an svg id"
+  fi
   # The FOUC guard hides pre.mermaid until it is marked processed. If Mermaid never
   # loads, something must release it or the page shows an empty bordered box forever.
   # The import must be DYNAMIC: a failing static import aborts the module, so a catch
