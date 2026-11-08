@@ -23,6 +23,7 @@ Stop and report at the first failure:
 - The PR is `OPEN` or `MERGED`, and its base is the remote's default branch.
 - For an `OPEN` PR, `mergeStateStatus` is not `DIRTY`, and not `UNKNOWN` a minute later. On `BEHIND`, run `gh pr update-branch <pr>`, then `git pull --ff-only` in the worktree.
 - For an `OPEN` PR, `gh pr checks <pr> --watch` shows no failed check. Where it prints `no checks reported` for a minute, the project has none. Then read `mergeStateStatus` again, because the base can move while the checks run. Apply the check above to it, and after an update watch the checks again. Stop on `BLOCKED`, a branch rule the PR does not meet.
+- For an `OPEN` PR whose body has a **Review** line, `git log --first-parent --no-merges --oneline <through>..<headRefOid>` in the worktree prints nothing, `<through>` being the commit after `through` in that line. Each commit it prints went in after the review: report them, and name `worktree-flow:worktree-review <pr>` as the way to review them.
 
 Done when each check holds.
 
