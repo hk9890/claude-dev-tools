@@ -154,6 +154,10 @@ with tempfile.TemporaryDirectory() as tmp:
         sparse.truncate(60 * 1024 * 1024)
     last_month = time.time() - 30 * 86400
     os.utime(project / "old.jsonl", (last_month, last_month))
+    # Stand for transcripts that Claude Code deletes between the glob and the read.
+    (project / "deleted.jsonl").symlink_to(project / "gone.jsonl")
+    (project / "foreign" / "subagents").mkdir(parents=True)
+    (project / "foreign" / "subagents" / "agent-gone.jsonl").symlink_to(project / "gone.jsonl")
 
     pick_args = ("pick", "--review-dir", str(store), "--projects-dir", str(projects), "--plugins-dir", str(plugins), "--per-bucket", "1", "--seed", "0")
     first = run(*pick_args)
@@ -167,6 +171,9 @@ with tempfile.TemporaryDirectory() as tmp:
           result.get("large_transcripts"))
     check("both are warned about", (True, True),
           ("session big holds a 100 MB file, not picked" in first.stderr, "session pushback holds a 60 MB file, large" in first.stderr))
+    check("a session deleted during the pick is left out, a subagent read as empty, each with a warning", (True, True),
+          (f"{project / 'deleted.jsonl'} was deleted while the pick ran; the pick leaves it out" in first.stderr,
+           f"{project / 'foreign' / 'subagents' / 'agent-gone.jsonl'} was deleted while the pick ran; the pick reads it as empty" in first.stderr))
     check("each bucket takes its top session, random the rest",
           {"pushback": "pushback", "errors": "errors", "tokens": "output_tokens", "quiet": "random"},
           {name: s["bucket"] for name, s in by_name.items()})
