@@ -2,8 +2,8 @@
 """Carry out a triage plan in taskmgr and write the run summary.
 
 Reads <plan-dir>/plan.json (from triage-plan.py) and the triage workflow's return value,
-then, one item at a time: comments on the open item a repeated finding matches, files each
-item that has a body, and records each PR and skip. Writes <plan-dir>/summary.json and
+then, one item at a time: comments on the open item a repeated finding matches, by key or
+by the workflow's match agent, files each item that has a body, and records each PR and skip. Writes <plan-dir>/summary.json and
 prints the summary as Markdown.
 
 usage: triage-file.py --plan-dir <dir> --workflow-result <file> --repo-root <path>
@@ -45,9 +45,11 @@ def file_item(repo_root, item, title, body_path):
     return (out.get('id') if isinstance(out, dict) else None), None
 
 
-def carry_out(plan, workflow, repo_root, plan_dir):
+def carry_out(plan, workflow, earlier, repo_root, plan_dir):
     fixes = {f['n']: f for f in workflow.get('fixes') or [] if f}
     bodies = {b['n']: b for b in workflow.get('bodies') or [] if b}
+    # The workflow checked each pair; earlier.json says what a match does.
+    matches = {m['n']: earlier[m['id']] for m in workflow.get('matches') or [] if m and m.get('id') in earlier}
     head = (plan['context'].get('audited_head') or '')[:12] or 'an unknown commit'
     note = f'Seen again by {plan["context"]["tool"]} at {head}.'
     rows = []
@@ -56,6 +58,12 @@ def carry_out(plan, workflow, repo_root, plan_dir):
         """Comment on each id; return 'noted', or 'comment failed' when any comment failed."""
         failed = [tid for tid in ids if not taskmgr(repo_root, 'comment', 'add', tid, text)[0]]
         return 'comment failed' if failed else 'noted'
+
+    def adopt(match, item):
+        """Give the earlier item this run's key, so a later run in the same words matches it
+        by key; return a reason suffix where that failed."""
+        ok, err = taskmgr(repo_root, 'update', match['id'], '--add-label', item['label'])
+        return '' if ok else f"; adding {item['label']} to {match['id']} failed: {err}"
 
     for item in plan['items']:
         row = {'n': item['n'], 'key': item['key'], 'tier': item['tier'], 'reason': item['reason']}
@@ -78,7 +86,15 @@ def carry_out(plan, workflow, repo_root, plan_dir):
                 rows.append(row)
                 continue
             action = 'file'
-        if action == 'skip':
+        match = matches.get(item['n']) if action == 'file' else None
+        if match:
+            decided = match['on_match'] == 'skip'
+            outcome = 'skipped' if decided else comment([match['id']], f"{note} Named this time: {item.get('subject') or item['key']}")
+            failed = adopt(match, item)
+            row.update(outcome=outcome, ref=match['id'], comment_failed=bool(failed),
+                       reason=row['reason'] + f"; same problem as {match['id']}, "
+                       + ('closed as decided' if decided else 'under other words') + failed)
+        elif action == 'skip':
             row.update(outcome='skipped', ref=', '.join(item.get('existing') or []))
         elif action == 'note':
             row.update(outcome=comment(existing, note), ref=', '.join(existing))
@@ -119,11 +135,13 @@ def main(argv=None):
             workflow = json.load(fh) or {}
         if 'result' in workflow and 'fixes' not in workflow:
             workflow = workflow['result'] or {}
-    except (OSError, ValueError) as exc:
+        with open(os.path.join(args.plan_dir, 'earlier.json')) as fh:
+            earlier = {e['id']: e for e in json.load(fh)}
+    except (OSError, ValueError, TypeError, KeyError) as exc:
         print(f'triage-file: cannot read input: {exc}', file=sys.stderr)
         return 1
 
-    rows = carry_out(plan, workflow, args.repo_root, args.plan_dir)
+    rows = carry_out(plan, workflow, earlier, args.repo_root, args.plan_dir)
     with open(os.path.join(args.plan_dir, 'summary.json'), 'w') as fh:
         json.dump(rows, fh, indent=2)
     print(markdown(rows))

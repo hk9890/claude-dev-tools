@@ -3,7 +3,9 @@
 
 Reads the audit workflow's return value, puts every report item in a tier, applies the
 tier-1 gates and the cross-run dedup, and writes one JSON file per item for the triage
-workflow and triage-file.py. references/triage.md states the rules this implements.
+workflow and triage-file.py, plus earlier.json: the items earlier runs filed that no key of
+this run matched, for the workflow's match agent. references/triage.md states the rules
+this implements.
 
 usage: triage-plan.py --tool test-tests|test-app --result <file> --tasks tasks.json
                       --out <dir> [--prs prs.json] [--pr-base <branch>] [--scope <prefix>]
@@ -23,6 +25,8 @@ import re
 import sys
 
 SOURCE_LABEL = 'source:project-auto-work'
+DESIGN_LABEL = 'kind:design'
+DESIGN_SUFFIX = '|design'
 PR_CAP = 3
 NO_FIX_VERDICTS = {'untrustworthy', 'not-auditable', 'not-runnable'}
 SEVERITY_PRIORITY = {'blocker': 1, 'major': 2, 'minor': 3}
@@ -64,17 +68,28 @@ def by_id(entries, prefix):
     return index
 
 
+def key_prefix(tool, scope):
+    return f'{tool}|{scope}|' if scope else f'{tool}|'
+
+
+def scope_label(prefix):
+    """The label every item one tool files for one path carries, so a later run finds the
+    items it may match by meaning without reading their bodies."""
+    return 'dedup-scope:' + hashlib.sha1(prefix.encode()).hexdigest()[:12]
+
+
 def group_items(tool, result, scope=''):
-    """One item per finding with its proposals, per question, and per orphan proposal.
-    An aborted run is one remediation item holding every proposal."""
+    """One item per finding with its proposals, per question, per orphan proposal, and per
+    finding or question with an open cross-cutting proposal. An aborted run is one
+    remediation item holding every proposal."""
     report = result['report']
     findings = by_id(report.get('findings'), 'F?')
     questions = by_id(report.get('questions'), 'Q?')
-    prefix = f'{tool}|{scope}|' if scope else f'{tool}|'
+    prefix = key_prefix(tool, scope)
 
     if result.get('aborted'):
         reason = (result.get('abort_reason') or 'unknown').split(' — ')[0]
-        return [{'kind': 'remediation', 'finding': next(iter(findings.values()), None),
+        return [{'kind': 'remediation', 'finding': next(iter(findings.values()), None), 'subject': reason,
                  'proposals': report.get('proposals') or [], 'key': f'{prefix}abort|{normalize(reason)}'}]
 
     by_target, orphans = {}, []
@@ -88,14 +103,38 @@ def group_items(tool, result, scope=''):
     items = []
     for fid, f in findings.items():
         axis = f'{f.get("axis")}|' if tool == 'test-tests' else ''
-        key = f'{prefix}{axis}{normalize(f.get("subject"))}'
-        items.append({'kind': 'finding', 'finding': f, 'proposals': by_target.get(fid, []), 'key': key})
+        items.append({'kind': 'finding', 'finding': f, 'subject': f.get('subject'), 'proposals': by_target.get(fid, []),
+                      'key': f'{prefix}{axis}{normalize(f.get("subject"))}'})
     for qid, q in questions.items():
-        items.append({'kind': 'question', 'question': q, 'proposals': by_target.get(qid, []),
-                      'key': f'{prefix}question|{normalize(q.get("subject") or q.get("title"))}'})
+        subject = q.get('subject') or q.get('title')
+        items.append({'kind': 'question', 'question': q, 'subject': subject, 'proposals': by_target.get(qid, []),
+                      'key': f'{prefix}question|{normalize(subject)}'})
     for p in orphans:
-        items.append({'kind': 'proposal', 'proposals': [p], 'key': f'{prefix}proposal|{normalize(p.get("action"))}'})
-    return merge_by_key(items)
+        items.append({'kind': 'proposal', 'subject': p.get('action'), 'proposals': [p],
+                      'key': f'{prefix}proposal|{normalize(p.get("action"))}'})
+    return split_designs(merge_by_key(items))
+
+
+def is_design(proposal):
+    return proposal.get('decision') != 'settled' and proposal.get('scope') == 'cross-cutting'
+
+
+def split_designs(items):
+    """An open cross-cutting proposal is a decision for the whole project, so it becomes a
+    design item of its own: it never takes the fix or the task of the finding it names into
+    a doc. The finding keeps its key with the proposals that are left, and is dropped where
+    none are left, because the design item carries it."""
+    out = []
+    for item in items:
+        designs = [p for p in item['proposals'] if is_design(p)]
+        if item['kind'] not in ('finding', 'question') or not designs:
+            out.append(item)
+            continue
+        rest = [p for p in item['proposals'] if not is_design(p)]
+        if rest:
+            out.append({**item, 'proposals': rest})
+        out.append({**item, 'kind': 'design', 'proposals': designs, 'key': item['key'] + DESIGN_SUFFIX})
+    return out
 
 
 def merge_by_key(items):
@@ -121,7 +160,9 @@ def place(item, tool, result, run_block):
     item['priority'] = min(SEVERITY_PRIORITY.get(f.get('severity'), 2) for f in findings)
     work_type = 'bug' if tool == 'test-app' else 'chore'
 
-    if any(p.get('scope') == 'cross-cutting' for p in open_props):
+    if item['kind'] == 'remediation':
+        item.update(tier=2, type='task', reason='aborted run: remediation is never fixed unattended')
+    elif any(is_design(p) for p in props):
         item.update(tier=3, type='doc', reason='open cross-cutting proposal')
     elif item['kind'] == 'question':
         item.update(tier=2, type='task', reason='question the run could not settle')
@@ -129,8 +170,6 @@ def place(item, tool, result, run_block):
         item.update(tier=2, type='task', reason='open proposal')
     elif not props:
         item.update(tier=2, type=work_type, reason='finding without a proposal')
-    elif item['kind'] == 'remediation':
-        item.update(tier=2, type='task', reason='aborted run: remediation is never fixed unattended')
     else:
         gate = tier1_gate(item, tool, result, run_block)
         item.update(tier=2 if gate else 1, type=work_type,
@@ -199,10 +238,22 @@ def decided(task):
     return bool(WONTFIX.match(task.get('close_reason') or '')) or task.get('type') in ('task', 'doc')
 
 
+def is_design_task(task):
+    return DESIGN_LABEL in (task.get('labels') or [])
+
+
 def dedup(item, existing, pr_keys):
     """Set item['action'] to fix, file, note or skip. A fixable item an earlier run filed is
-    still fixed; triage-file.py then comments the PR onto the open item."""
-    matches = existing.get(item['label'], [])
+    still fixed; triage-file.py then comments the PR onto the open item.
+    A design item and the other item of one finding never match each other's earlier item.
+    Before design items had keys of their own, a design doc carried its finding's key, so a
+    design item also looks that key up among design docs."""
+    design = item['tier'] == 3
+    labels = [item['label']]
+    if item['kind'] == 'design':
+        labels.append(dedup_label(item['key'].removesuffix(DESIGN_SUFFIX)))
+    matches = list({t['id']: t for label in labels for t in existing.get(label, [])
+                    if is_design_task(t) == design}.values())
     open_matches = [t['id'] for t in matches if t.get('status') != 'closed']
     closed = [t for t in matches if t.get('status') == 'closed']
     if item['key'] in pr_keys:
@@ -217,6 +268,24 @@ def dedup(item, existing, pr_keys):
         if closed:
             item['reason'] += '; regression of a closed item'
         item['action'] = 'fix' if item['tier'] == 1 else 'file'
+
+
+def earlier_items(tasks, items, scope_lbl):
+    """The items earlier runs of this tool and path filed that no key of this run matched,
+    each with what a match by meaning does: a comment on an open item, a skip of one closed
+    as decided. A closed item that is not decided is left out: a match with it would be a
+    regression to file."""
+    taken = {tid for item in items for tid in item.get('existing') or []}
+    out = []
+    for t in tasks:
+        if scope_lbl not in (t.get('labels') or []) or t['id'] in taken:
+            continue
+        entry = {'id': t['id'], 'title': t.get('title'), 'type': t.get('type'), 'design': is_design_task(t)}
+        if t.get('status') != 'closed':
+            out.append({**entry, 'on_match': 'note'})
+        elif decided(t):
+            out.append({**entry, 'on_match': 'skip'})
+    return out
 
 
 def load(path, default):
@@ -256,7 +325,9 @@ def main(argv=None):
 
     block = run_block(result, args)
     existing, keys = existing_by_label(tasks), pr_keys(prs)
-    items = group_items(args.tool, result, args.scope.strip('/'))
+    scope = args.scope.strip('/')
+    scope_lbl = scope_label(key_prefix(args.tool, scope))
+    items = group_items(args.tool, result, scope)
     fixes = 0
     for n, item in enumerate(items, 1):
         item['n'] = n
@@ -267,7 +338,7 @@ def main(argv=None):
             fixes += 1
             if fixes > PR_CAP:
                 item.update(tier=2, action='note' if item.get('existing') else 'file', reason=f'{item["reason"]}; not fixed: PR cap of {PR_CAP} reached')
-        item['labels'] = [SOURCE_LABEL, item['label']] + (['kind:design'] if item['tier'] == 3 else [])
+        item['labels'] = [SOURCE_LABEL, item['label'], scope_lbl] + ([DESIGN_LABEL] if item['tier'] == 3 else [])
 
     os.makedirs(args.out, exist_ok=True)
     baseline = (result.get('raw') or {}).get('baseline') or {}
@@ -281,6 +352,11 @@ def main(argv=None):
             json.dump({**item, 'context': context}, fh, indent=2)
     with open(os.path.join(args.out, 'plan.json'), 'w') as fh:
         json.dump({'context': context, 'run_block': block, 'items': items}, fh, indent=2)
+    earlier = earlier_items(tasks, items, scope_lbl)
+    with open(os.path.join(args.out, 'earlier.json'), 'w') as fh:
+        json.dump(earlier, fh, indent=2)
+    to_file = [i['n'] for i in items if i['action'] == 'file']
+    match = to_file if earlier else []
 
     print(json.dumps({
         'repoRoot': result.get('repoRoot'), 'scratchDir': result.get('scratchDir'),
@@ -290,7 +366,12 @@ def main(argv=None):
         'fixes': [i['n'] for i in items if i['action'] == 'fix'],
         # A failed fix of an item an earlier run filed becomes a comment on it, not a body.
         'filed': [i['n'] for i in items if i['action'] == 'fix' and i.get('existing')],
-        'bodies': [i['n'] for i in items if i['action'] == 'file'],
+        'bodies': to_file,
+        # Items no key matched, for the workflow's agent to match against earlier.json by meaning.
+        # A design item matches only an earlier design doc, any other item only a non-design one.
+        'match': match,
+        'design': [i['n'] for i in items if i['n'] in match and i['tier'] == 3],
+        'earlier': {e['id']: e['design'] for e in earlier},
     }))
     return 0
 

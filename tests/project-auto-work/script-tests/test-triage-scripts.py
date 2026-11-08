@@ -66,8 +66,8 @@ class PlanTest(unittest.TestCase):
             with open(os.path.join(out, 'plan.json')) as fh:
                 plan = json.load(fh)
             self.assertTrue(os.path.isfile(os.path.join(out, 'item-1.json')))
-            return 0, json.loads(proc.stdout), {i['finding']['id'] if i.get('finding') else i['key']: i
-                                                for i in plan['items']}
+            return 0, json.loads(proc.stdout), {i['finding']['id'] + ('|design' if i['kind'] == 'design' else '')
+                                                if i.get('finding') else i['key']: i for i in plan['items']}
 
     def test_settled_survivor_is_fixed(self):
         _, args, items = self.plan(tt_result([finding('F1')], [settled('F1')], [mutant('F1')]))
@@ -87,11 +87,21 @@ class PlanTest(unittest.TestCase):
         self.assertIn('candidate', items['F2']['reason'])
         self.assertEqual(got['F3'], (2, 'chore'))
         self.assertIn('no proving check', items['F3']['reason'])
-        self.assertEqual(got['F4'], (3, 'doc'))
-        self.assertIn('kind:design', items['F4']['labels'])
+        self.assertEqual(got['F4|design'], (3, 'doc'))
+        self.assertIn('kind:design', items['F4|design']['labels'])
+        self.assertNotIn('F4', items)
         self.assertEqual(got['F5'], (2, 'task'))
         self.assertEqual(got['F6'], (2, 'chore'))
         self.assertIn('0 surviving mutants', items['F7']['reason'])
+
+    def test_design_proposal_leaves_the_fix_of_its_finding(self):
+        design = {**settled('F1'), 'decision': 'open', 'scope': 'cross-cutting', 'options': ['a', 'b']}
+        _, args, items = self.plan(tt_result([finding('F1')], [settled('F1'), design], [mutant('F1')]))
+        self.assertEqual((items['F1']['tier'], items['F1']['action']), (1, 'fix'))
+        self.assertEqual(items['F1']['key'], 'test-tests|sensitivity|src/f1.py::run')
+        self.assertEqual((items['F1|design']['tier'], items['F1|design']['proposals']), (3, [design]))
+        self.assertEqual(items['F1|design']['key'], 'test-tests|sensitivity|src/f1.py::run|design')
+        self.assertEqual((args['fixes'], len(args['bodies'])), ([items['F1']['n']], 1))
 
     def test_findings_sharing_a_key_share_one_item(self):
         result = tt_result([finding('F1'), finding('F2', subject='src/F1.py::run', site='src/F1.py:3')],
@@ -224,6 +234,64 @@ class PlanTest(unittest.TestCase):
         _, _, ib = self.plan(b)
         self.assertEqual(ia['F1']['label'], ib['F9']['label'])
 
+    def plan_dir(self, result, tasks, scope='', tool='test-tests'):
+        """Plan into a temp dir; return the printed args, earlier.json and the items by n."""
+        with tempfile.TemporaryDirectory() as d:
+            for name, data in (('result', result), ('tasks', tasks)):
+                with open(os.path.join(d, f'{name}.json'), 'w') as fh:
+                    json.dump(data, fh)
+            out = os.path.join(d, 'plan')
+            proc = subprocess.run([sys.executable, os.path.join(BIN, 'triage-plan.py'), '--tool', tool,
+                                   '--result', os.path.join(d, 'result.json'), '--tasks', os.path.join(d, 'tasks.json'),
+                                   '--scope', scope, '--out', out], capture_output=True, text=True)
+            with open(os.path.join(out, 'earlier.json')) as fh:
+                earlier = json.load(fh)
+            with open(os.path.join(out, 'plan.json')) as fh:
+                items = {i['n']: i for i in json.load(fh)['items']}
+            return json.loads(proc.stdout), earlier, items
+
+    def test_items_no_key_matched_go_to_the_match_agent(self):
+        result = tt_result([finding('F1'), finding('F2', axis='speed', subject='suite')], [settled('F1')])
+        mine = plan_mod.scope_label('test-tests|svc|')
+        f1_label = plan_mod.dedup_label('test-tests|svc|sensitivity|src/f1.py::run')
+        source = 'source:project-auto-work'
+        tasks = [{'id': 't-key', 'status': 'open', 'title': 'F1', 'labels': [source, f1_label, mine]},
+                 {'id': 't-open', 'status': 'open', 'title': 'slow suite', 'type': 'chore', 'labels': [source, 'dedup:x', mine]},
+                 {'id': 't-doc', 'status': 'open', 'type': 'doc', 'labels': [source, 'dedup:z', mine, 'kind:design']},
+                 {'id': 't-wontfix', 'status': 'closed', 'close_reason': "won't fix", 'labels': [source, mine]},
+                 {'id': 't-fixed', 'status': 'closed', 'close_reason': 'fixed', 'type': 'bug', 'labels': [source, mine]},
+                 {'id': 't-root', 'status': 'open', 'labels': [source, plan_mod.scope_label('test-tests|')]},
+                 {'id': 't-mine', 'status': 'open', 'labels': ['dedup:y']}]
+        args, earlier, items = self.plan_dir(result, tasks, scope='svc/')
+        self.assertEqual({e['id']: (e['on_match'], e['design']) for e in earlier},
+                         {'t-open': ('note', False), 't-doc': ('note', True), 't-wontfix': ('skip', False)})
+        self.assertEqual((args['match'], args['design']), (args['bodies'], []))
+        self.assertEqual(args['earlier'], {'t-open': False, 't-doc': True, 't-wontfix': False})
+        self.assertTrue(all(mine in i['labels'] for i in items.values()))
+        _, args, _ = self.plan(result)
+        self.assertEqual((args['match'], args['earlier']), ([], {}))
+
+    def test_a_doc_filed_under_the_finding_key_stays_the_design_item(self):
+        """Before design items had keys of their own, a doc carried its finding's key."""
+        design = {**settled('F1'), 'decision': 'open', 'scope': 'cross-cutting', 'options': ['a', 'b']}
+        result = {'repoRoot': '/repo', 'level': 'medium', 'mode': 'worktree', 'scratchDir': '/tmp/s',
+                  'report': {'verdict': 'rough', 'findings': [{'id': 'F1', 'subject': 'sub: wrong sign', 'severity': 'blocker'}],
+                             'proposals': [settled('F1'), design]}}
+        old = plan_mod.dedup_label('test-app|sub: wrong sign')
+        for status, close, want in (('open', None, 'note'), ('closed', 'answered', 'skip')):
+            doc = {'id': 't-doc', 'status': status, 'close_reason': close, 'type': 'doc',
+                   'labels': ['source:project-auto-work', old, 'kind:design']}
+            _, _, items = self.plan_dir(result, [doc], tool='test-app')
+            bug, doc_item = items[1], items[2]
+            self.assertEqual((bug['tier'], bug['action']), (2, 'file'), status)
+            self.assertEqual((doc_item['kind'], doc_item['action'], doc_item['existing']), ('design', want, ['t-doc']), status)
+
+    def test_an_aborted_run_with_a_design_proposal_is_still_a_remediation_task(self):
+        design = {'action': 'decide', 'decision': 'open', 'scope': 'cross-cutting', 'options': ['a', 'b']}
+        result = {**tt_result([finding('F1')], [settled('F1'), design]), 'aborted': True, 'abort_reason': 'suite is red'}
+        _, _, items = self.plan_dir(result, [])
+        self.assertEqual([(i['tier'], i['type']) for i in items.values()], [(2, 'task')])
+
     def test_test_app_never_fixes(self):
         result = {'repoRoot': '/repo', 'level': 'ultra', 'scratchDir': '/tmp/s', 'mode': 'worktree',
                   'report': {'verdict': 'rough', 'findings': [
@@ -242,6 +310,7 @@ class PlanTest(unittest.TestCase):
 STUB = """#!/usr/bin/env bash
 printf '%s\\n' "$*" >> "$STUB_LOG"
 case "$1" in
+  update) echo '{}' ;;
   create) [[ "$*" == *"--title refuse"* ]] && { echo "missing ## Problem" >&2; exit 1; }
           n=$(wc -l < "$STUB_LOG"); echo "{\\"id\\": \\"stub-$n\\"}" ;;
   comment) echo '{}' ;;
@@ -261,9 +330,11 @@ class FileTest(unittest.TestCase):
 
     def item(self, n, action, **kw):
         return {'n': n, 'key': f'k{n}', 'tier': 2, 'type': 'chore', 'priority': 2, 'reason': 'r',
-                'labels': ['source:project-auto-work', f'dedup:{n}'], 'action': action, **kw}
+                'label': f'dedup:{n}', 'labels': ['source:project-auto-work', f'dedup:{n}'], 'action': action, **kw}
 
-    def run_file(self, items, workflow, bodies=()):
+    def run_file(self, items, workflow, bodies=(), earlier=()):
+        with open(os.path.join(self.dir, 'earlier.json'), 'w') as fh:
+            json.dump(list(earlier), fh)
         for n in bodies:
             with open(os.path.join(self.dir, f'body-{n}.md'), 'w') as fh:
                 fh.write('## Context\n')
@@ -318,6 +389,36 @@ class FileTest(unittest.TestCase):
         self.assertTrue(any(c.startswith('comment add t-a') and 'https://pr/9' in c for c in calls))
         self.assertTrue(any(c.startswith('comment add t-b') and 'red' in c for c in calls))
         self.assertFalse(any(c.startswith('create') for c in calls))
+
+    def test_a_match_by_meaning_comments_or_skips(self):
+        items = [self.item(1, 'file', subject='sub: subtracts b from a'), self.item(2, 'file'),
+                 self.item(3, 'file'), self.item(4, 'file')]
+        earlier = [{'id': 't-open', 'on_match': 'note'}, {'id': 't-decided', 'on_match': 'skip'}]
+        workflow = {'fixes': [], 'bodies': [{'n': 3, 'title': 'Three'}, {'n': 4, 'title': 'Four'}],
+                    'matches': [{'n': 1, 'id': 't-open'}, {'n': 2, 'id': 't-decided'}, {'n': 3, 'id': 't-unknown'}]}
+        code, rows, calls = self.run_file(items, workflow, bodies=(3, 4), earlier=earlier)
+        self.assertEqual(code, 0)
+        self.assertEqual((rows[1]['outcome'], rows[1]['ref']), ('noted', 't-open'))
+        self.assertTrue(any(c.startswith('comment add t-open') and 'sub: subtracts b from a' in c for c in calls))
+        self.assertTrue(any(c.startswith('update t-open --add-label dedup:1') for c in calls))
+        self.assertTrue(any(c.startswith('update t-decided --add-label dedup:2') for c in calls))
+        self.assertEqual((rows[2]['outcome'], rows[2]['ref']), ('skipped', 't-decided'))
+        self.assertEqual((rows[3]['outcome'], rows[4]['outcome']), ('filed', 'filed'))
+        self.assertEqual(len([c for c in calls if c.startswith('create')]), 2)
+
+    def test_a_broken_earlier_list_is_unreadable_input(self):
+        with open(os.path.join(self.dir, 'plan.json'), 'w') as fh:
+            json.dump({'context': {'tool': 'test-app'}, 'items': []}, fh)
+        wf = os.path.join(self.dir, 'wf.json')
+        with open(wf, 'w') as fh:
+            json.dump({'fixes': [], 'bodies': []}, fh)
+        for broken in ('{"x": 1', '[{"title": "no id"}]'):
+            with open(os.path.join(self.dir, 'earlier.json'), 'w') as fh:
+                fh.write(broken)
+            proc = subprocess.run([sys.executable, os.path.join(BIN, 'triage-file.py'), '--plan-dir', self.dir,
+                                   '--workflow-result', wf, '--repo-root', '/repo'], capture_output=True, text=True)
+            self.assertEqual(proc.returncode, 1, broken)
+            self.assertIn('cannot read input', proc.stderr)
 
     def test_table_cells_survive_pipes_and_newlines(self):
         sys.path.insert(0, BIN)

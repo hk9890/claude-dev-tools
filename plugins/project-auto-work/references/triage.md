@@ -19,13 +19,18 @@ correct. Placeholders:
 |---|---|---|
 | Settled `test-tests` sensitivity survivor that passes every fix gate | 1 | A PR with a test that kills the mutant |
 | Any other settled proposal, an open `local` proposal, a question, a finding without a proposal, an aborted run's remediation | 2 | A taskmgr bug, chore or task |
-| Open `cross-cutting` proposal | 3 | A taskmgr doc, label `kind:design` |
+| Open `cross-cutting` proposal | 3 | A taskmgr doc, label `kind:design`. The finding's other proposals make an item of their own; a finding with none is in the doc alone |
 
 `bin/triage-plan.py` applies the tiers, the fix gates and the dedup. Each row of the final
 summary names the rule that placed its item, so read the reason there rather than
 re-deriving it. A tier-1 fix that fails its proving check is filed as tier 2 with the
 failure in its body, or, where an earlier run filed the item, commented on that item. Every filed item carries the label `source:project-auto-work` and one
-`dedup:<hash>` label. Each body and each PR carries a `dedup-key:` line.
+`dedup:<hash>` label, plus one `dedup-scope:<hash>` label for the tool and path. Each body and each PR carries a `dedup-key:` line. An audit can name
+one problem in new words on each run, so an item to file that no key matched goes to one
+match agent in the workflow: where an earlier item of the same tool and path is the same
+problem, the item becomes a comment on it, or a skip where it was closed as decided, and
+the earlier item takes the item's `dedup:` label. A design doc and the other item of one
+finding never match each other.
 
 ## 1. Check the store
 
@@ -89,7 +94,7 @@ python3 "<PLUGIN>/bin/triage-plan.py" --tool <tool> --out "<scratch>/triage" \
 Pass `--prs` where `prs.json` was written, and `--pr-base` where it is not empty. Exit 1 or 2: relay
 its stderr, stop the triage, and relay the items as `decision-split.md` describes. Exit 0 prints one JSON line, `<triage-args>`.
 
-## 4. Fix and write bodies
+## 4. Fix, match and write bodies
 
 Where `<triage-args>` has an empty `fixes` and an empty `bodies`, write `{}` to
 `<scratch>/triage/workflow.json` and use that file as `<triage-output-file>` in step 5.

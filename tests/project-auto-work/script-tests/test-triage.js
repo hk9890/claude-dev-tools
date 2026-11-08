@@ -12,6 +12,8 @@
 //   - a fix agent works in a detached worktree and pushes to origin, so no local branch is left
 //   - a failed fix gets a body written with its reason; a PR gets none
 //   - a dead fix agent is recorded as failed, not dropped
+//   - the match agent runs before the bodies; a match to a known earlier item replaces the
+//     item's body, and a dead match agent files every item
 //   - a broken runtime (no agent hook) fails loudly
 
 const fs = require('fs');
@@ -108,6 +110,42 @@ const hooks = (agentImpl) => ({
     eq('no body for a failed fix of an already filed item', [], noBody.bodies);
     truthy('serial fixes run in order', prompts.filter((l) => l.startsWith('fix:')).join() === 'fix:1,fix:2,fix:3');
     truthy('no body for the fix that opened a PR', !prompts.includes('body:1'));
+
+    const matchArgs = { ...GOOD, fixes: [], bodies: [4, 5, 6], match: [4, 5, 6], design: [6], earlier: { 't-a': false, 't-d': true } };
+    const mcfg = h.normalizeArgs(matchArgs);
+    const mp = h.matchPrompt(mcfg);
+    truthy('match prompt names each new item and the earlier list',
+      ['/tmp/s/triage/item-4.json', '/tmp/s/triage/item-6.json', '/tmp/s/triage/earlier.json'].every((p) => mp.includes(p)));
+    truthy('match prompt keeps a design item apart from its finding', /a design question and the fix of the finding it names are two items/.test(mp));
+    truthy('match prompt prefers a copy to a wrong match', /not sure, it is not a match/.test(mp));
+    eq('a pair needs the same design side', [{ n: 6, id: 't-d' }],
+      h.acceptMatches(mcfg, { matches: [{ n: 4, id: 't-d' }, { n: 6, id: 't-d' }, { n: 5, id: 't-x' }] })
+        .filter((m) => m.n !== 4));
+    eq('an earlier id two items claim matches neither', [],
+      h.acceptMatches(mcfg, { matches: [{ n: 4, id: 't-a' }, { n: 5, id: 't-a' }] }));
+    eq('an item not sent to the agent is never paired', [],
+      h.acceptMatches(mcfg, { matches: [{ n: 9, id: 't-a' }] }));
+    const matchLabels = [];
+    const { ret: matched } = await load({ ...hooks(async (prompt, opts) => {
+      matchLabels.push(opts.label);
+      if (opts.label === 'match') return { matches: [{ n: 4, id: 't-a' }, { n: 5, id: 't-unknown' }] };
+      return { title: `title ${opts.label}` };
+    }), args: matchArgs });
+    eq('a match to a known earlier item replaces its body', [{ n: 4, id: 't-a' }], matched.matches);
+    eq('bodies for the items not matched', [5, 6], matched.bodies.map((b) => b.n));
+    truthy('the match runs before any body', matchLabels[0] === 'match');
+    const { ret: deadMatch } = await load({ ...hooks(async (prompt, opts) => (opts.label === 'match' ? null : { title: 't' })),
+      args: matchArgs });
+    eq('a dead match agent files every item', [4, 5, 6], deadMatch.bodies.map((b) => b.n));
+    const { ret: thrown } = await load({ ...hooks(async (prompt, opts) => {
+      if (opts.label === 'match') throw new Error('budget spent');
+      return { title: 't' };
+    }), args: matchArgs });
+    eq('a match agent that throws files every item', [4, 5, 6], thrown.bodies.map((b) => b.n));
+    const noMatchLabels = [];
+    const { ret: none } = await load({ ...hooks(async (prompt, opts) => { noMatchLabels.push(opts.label); return { title: 't' }; }),
+      args: { ...matchArgs, match: [], earlier: {} } });
+    truthy('no match agent where the plan sends no item', !noMatchLabels.includes('match') && none.bodies.length === 3);
 
     truthy('missing agent hook throws', noHook && /did not inject/.test(noHook.message));
   } catch (e) {

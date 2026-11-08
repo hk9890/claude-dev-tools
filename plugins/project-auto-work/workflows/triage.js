@@ -1,14 +1,15 @@
 export const meta = {
   name: 'auto-work-triage',
-  description: 'Act on a planned project-auto-work audit: fix settled survivors as PRs, write the taskmgr bodies for the rest',
-  whenToUse: 'Launched by the test-tests and test-app skills after bin/triage-plan.py. Opens a PR for each planned fix and writes one taskmgr body per item to file; bin/triage-file.py files them.',
+  description: 'Act on a planned project-auto-work audit: fix settled survivors as PRs, match the items no key matched to earlier items, write the taskmgr bodies for the rest',
+  whenToUse: 'Launched by the test-tests and test-app skills after bin/triage-plan.py. Opens a PR for each planned fix, matches the items no key matched to earlier filed items, and writes one taskmgr body per item left to file; bin/triage-file.py files them.',
   phases: [
     { title: 'Fix', detail: 'one agent per planned fix: worktree, test, proving check, PR' },
+    { title: 'Match', detail: 'one agent: match the items no key matched to earlier items by meaning' },
     { title: 'Bodies', detail: 'one agent per item to file, plus each failed fix of an item no earlier run filed' },
   ],
 }
 
-// args: { repoRoot, scratchDir, planDir, tool, serial, fixes: [n], filed: [n], bodies: [n] } — printed by
+// args: { repoRoot, scratchDir, planDir, tool, serial, fixes: [n], filed: [n], bodies: [n], match: [n], design: [n], earlier: {id: design} } — printed by
 // bin/triage-plan.py. Each n names <planDir>/item-<n>.json.
 
 // ---------------------------------------------------------------------------
@@ -30,6 +31,10 @@ function normalizeArgs(rawArgs) {
   const fixes = numbers(parsed.fixes)
   const bodies = numbers(parsed.bodies)
   const filed = numbers(parsed.filed)
+  const match = numbers(parsed.match)
+  const design = numbers(parsed.design)
+  // id -> whether the earlier item is a design doc
+  const earlier = parsed.earlier && typeof parsed.earlier === 'object' && !Array.isArray(parsed.earlier) ? parsed.earlier : {}
   // Each fix runs the whole suite twice. Run fixes side by side only where the audit proved
   // two suite runs do not interfere.
   const serial = parsed.serial !== false
@@ -42,7 +47,7 @@ function normalizeArgs(rawArgs) {
   else if (!['test-tests', 'test-app'].includes(tool)) error = `tool must be test-tests or test-app (got ${JSON.stringify(tool)})`
   else if (tool === 'test-app' && fixes.length) error = 'test-app items are never fixed unattended, but fixes is not empty'
 
-  return { repoRoot, scratchDir, planDir, tool, serial, fixes, filed, bodies, receivedKeys: Object.keys(parsed), error }
+  return { repoRoot, scratchDir, planDir, tool, serial, fixes, filed, bodies, match, design, earlier, receivedKeys: Object.keys(parsed), error }
 }
 
 const FIX_SCHEMA = {
@@ -60,6 +65,52 @@ const BODY_SCHEMA = {
   type: 'object',
   properties: { title: { type: 'string' } },
   required: ['title'],
+}
+
+const MATCH_SCHEMA = {
+  type: 'object',
+  properties: {
+    matches: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: { n: { type: 'integer' }, id: { type: 'string' } },
+        required: ['n', 'id'],
+      },
+    },
+  },
+  required: ['matches'],
+}
+
+// An audit names a finding in new words on each run, so a key built from those words
+// misses an item an earlier run filed. One agent compares meaning instead.
+function matchPrompt(cfg) {
+  return (
+    `You stop a ${cfg.tool} audit from filing a second copy of an issue an earlier run filed. You change nothing.\n\n` +
+    `New items: ${cfg.match.map(n => `${cfg.planDir}/item-${n}.json`).join(', ')}. Each holds its finding or question, its proposals, ` +
+    `its kind and its tier.\n` +
+    `Earlier items: ${cfg.planDir}/earlier.json (id, title, type, design), all filed by earlier runs of this tool on this path. ` +
+    `Read an earlier item's body with taskmgr show <id> -C ${cfg.repoRoot} where its title alone does not settle it.\n\n` +
+    `A new item matches an earlier item only where both hold:\n` +
+    `- both are design items (new kind "design" or tier 3, earlier design true), or neither is: a design question and the fix of the finding it names are two items;\n` +
+    `- both are the same problem: the same wrong behaviour at the same place, or the same open decision. ` +
+    `Two symptoms in one area are two problems. Words, order of words and severity may differ.\n` +
+    `Where you are not sure, it is not a match: a wrong match hides a new problem, a missed one only files a copy. ` +
+    `Two new items never match one earlier item.\n\n` +
+    `Return matches: one {n, id} for each new item that matches, with n the item's number; leave out the rest.`
+  )
+}
+
+// The match agent's answer is checked, not trusted: a pair counts only where the item was
+// sent to it, the id is an earlier item of the same design side, and no other item claims
+// that id. An item left unpaired is filed.
+function acceptMatches(cfg, found) {
+  const pairs = ((found && found.matches) || []).map(m => ({ n: Number(m.n), id: String(m.id) }))
+    .filter(m => cfg.match.includes(m.n) && Object.hasOwn(cfg.earlier, m.id) &&cfg.earlier[m.id] === cfg.design.includes(m.n))
+  const claims = id => new Set(pairs.filter(m => m.id === id).map(m => m.n)).size
+  const byN = new Map()
+  for (const m of pairs) if (claims(m.id) === 1 && !byN.has(m.n)) byN.set(m.n, m)
+  return [...byN.values()]
 }
 
 function fixPrompt(cfg, n) {
@@ -115,7 +166,7 @@ function bodyPrompt(cfg, n, failedFix) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { normalizeArgs, fixPrompt, bodyPrompt, FIX_SCHEMA, BODY_SCHEMA }
+  module.exports = { normalizeArgs, fixPrompt, bodyPrompt, matchPrompt, acceptMatches, FIX_SCHEMA, BODY_SCHEMA, MATCH_SCHEMA }
 }
 
 // ---------------------------------------------------------------------------
@@ -147,12 +198,25 @@ if (typeof agent === 'function') {
     return out
   }
   const fixRuns = cfg.serial ? fixInTurn() : pipeline(cfg.fixes, fixOne, afterFix)
-  const [fixed, bodies] = await Promise.all([fixRuns, parallel(cfg.bodies.map(n => () => writeBody(n)))])
+
+  // A matched item gets a comment from triage-file.py, not a body. A match agent that dies
+  // or throws matches nothing, so every item is still filed.
+  const matchThenBodies = async () => {
+    const found = cfg.match.length
+      ? await agent(matchPrompt(cfg), { label: 'match', phase: 'Match', schema: MATCH_SCHEMA }).catch(() => null)
+      : null
+    const matches = acceptMatches(cfg, found)
+    const matched = new Set(matches.map(m => m.n))
+    const bodies = await parallel(cfg.bodies.filter(n => !matched.has(n)).map(n => () => writeBody(n)))
+    return { matches, bodies }
+  }
+  const [fixed, filing] = await Promise.all([fixRuns, matchThenBodies()])
 
   const done = fixed.filter(Boolean)
   return {
     fixes: done.map(r => r.fix),
-    bodies: [...bodies, ...done.map(r => r.body)].filter(Boolean),
+    bodies: [...filing.bodies, ...done.map(r => r.body)].filter(Boolean),
+    matches: filing.matches,
   }
 } else {
   throw new Error('auto-work-triage: the Workflow runtime did not inject the `agent` hook')
