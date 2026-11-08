@@ -65,8 +65,9 @@ def by_id(entries, prefix):
 
 
 def group_items(tool, result, scope=''):
-    """One item per finding with its proposals, per question, and per orphan proposal.
-    An aborted run is one remediation item holding every proposal."""
+    """One item per finding with its proposals, per question, per orphan proposal, and per
+    finding or question with an open cross-cutting proposal. An aborted run is one
+    remediation item holding every proposal."""
     report = result['report']
     findings = by_id(report.get('findings'), 'F?')
     questions = by_id(report.get('questions'), 'Q?')
@@ -95,7 +96,29 @@ def group_items(tool, result, scope=''):
                       'key': f'{prefix}question|{normalize(q.get("subject") or q.get("title"))}'})
     for p in orphans:
         items.append({'kind': 'proposal', 'proposals': [p], 'key': f'{prefix}proposal|{normalize(p.get("action"))}'})
-    return merge_by_key(items)
+    return split_designs(merge_by_key(items))
+
+
+def is_design(proposal):
+    return proposal.get('decision') != 'settled' and proposal.get('scope') == 'cross-cutting'
+
+
+def split_designs(items):
+    """An open cross-cutting proposal is a decision for the whole project, so it becomes a
+    design item of its own: it never takes the fix or the task of the finding it names into
+    a doc. The finding keeps its key with the proposals that are left, and is dropped where
+    none are left, because the design item carries it."""
+    out = []
+    for item in items:
+        designs = [p for p in item['proposals'] if is_design(p)]
+        if item['kind'] not in ('finding', 'question') or not designs:
+            out.append(item)
+            continue
+        rest = [p for p in item['proposals'] if not is_design(p)]
+        if rest:
+            out.append({**item, 'proposals': rest})
+        out.append({**item, 'kind': 'design', 'proposals': designs, 'key': f'{item["key"]}|design'})
+    return out
 
 
 def merge_by_key(items):
@@ -121,7 +144,7 @@ def place(item, tool, result, run_block):
     item['priority'] = min(SEVERITY_PRIORITY.get(f.get('severity'), 2) for f in findings)
     work_type = 'bug' if tool == 'test-app' else 'chore'
 
-    if any(p.get('scope') == 'cross-cutting' for p in open_props):
+    if any(is_design(p) for p in props):
         item.update(tier=3, type='doc', reason='open cross-cutting proposal')
     elif item['kind'] == 'question':
         item.update(tier=2, type='task', reason='question the run could not settle')

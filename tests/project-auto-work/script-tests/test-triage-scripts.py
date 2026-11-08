@@ -66,8 +66,8 @@ class PlanTest(unittest.TestCase):
             with open(os.path.join(out, 'plan.json')) as fh:
                 plan = json.load(fh)
             self.assertTrue(os.path.isfile(os.path.join(out, 'item-1.json')))
-            return 0, json.loads(proc.stdout), {i['finding']['id'] if i.get('finding') else i['key']: i
-                                                for i in plan['items']}
+            return 0, json.loads(proc.stdout), {i['finding']['id'] + ('|design' if i['kind'] == 'design' else '')
+                                                if i.get('finding') else i['key']: i for i in plan['items']}
 
     def test_settled_survivor_is_fixed(self):
         _, args, items = self.plan(tt_result([finding('F1')], [settled('F1')], [mutant('F1')]))
@@ -87,11 +87,21 @@ class PlanTest(unittest.TestCase):
         self.assertIn('candidate', items['F2']['reason'])
         self.assertEqual(got['F3'], (2, 'chore'))
         self.assertIn('no proving check', items['F3']['reason'])
-        self.assertEqual(got['F4'], (3, 'doc'))
-        self.assertIn('kind:design', items['F4']['labels'])
+        self.assertEqual(got['F4|design'], (3, 'doc'))
+        self.assertIn('kind:design', items['F4|design']['labels'])
+        self.assertNotIn('F4', items)
         self.assertEqual(got['F5'], (2, 'task'))
         self.assertEqual(got['F6'], (2, 'chore'))
         self.assertIn('0 surviving mutants', items['F7']['reason'])
+
+    def test_design_proposal_leaves_the_fix_of_its_finding(self):
+        design = {**settled('F1'), 'decision': 'open', 'scope': 'cross-cutting', 'options': ['a', 'b']}
+        _, args, items = self.plan(tt_result([finding('F1')], [settled('F1'), design], [mutant('F1')]))
+        self.assertEqual((items['F1']['tier'], items['F1']['action']), (1, 'fix'))
+        self.assertEqual(items['F1']['key'], 'test-tests|sensitivity|src/f1.py::run')
+        self.assertEqual((items['F1|design']['tier'], items['F1|design']['proposals']), (3, [design]))
+        self.assertEqual(items['F1|design']['key'], 'test-tests|sensitivity|src/f1.py::run|design')
+        self.assertEqual((args['fixes'], len(args['bodies'])), ([items['F1']['n']], 1))
 
     def test_findings_sharing_a_key_share_one_item(self):
         result = tt_result([finding('F1'), finding('F2', subject='src/F1.py::run', site='src/F1.py:3')],

@@ -19,7 +19,7 @@ correct. Placeholders:
 |---|---|---|
 | Settled `test-tests` sensitivity survivor that passes every fix gate | 1 | A PR with a test that kills the mutant |
 | Any other settled proposal, an open `local` proposal, a question, a finding without a proposal, an aborted run's remediation | 2 | A taskmgr bug, chore or task |
-| Open `cross-cutting` proposal | 3 | A taskmgr doc, label `kind:design` |
+| Open `cross-cutting` proposal | 3 | A taskmgr doc, label `kind:design`, apart from the item of the finding it names |
 
 `bin/triage-plan.py` applies the tiers, the fix gates and the dedup. Each row of the final
 summary names the rule that placed its item, so read the reason there rather than
