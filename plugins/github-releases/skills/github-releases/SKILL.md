@@ -15,7 +15,7 @@ This skill covers three release tasks — identify which one the user wants:
 
 1. **Cut or publish a release** (default) — run the Prerequisites and Workflow below.
 2. **Set up or update `docs/RELEASING.md`** — the project's release guide. Follow [setup-modify-release-workflow.md](references/setup-modify-release-workflow.md) instead of the release workflow.
-3. **Set up release CI** — automate the mechanical *publish* half of a release in a CI pipeline. This is design guidance only; it does not write provider-specific pipeline files. Follow [ci-pipeline-guide.md](references/ci-pipeline-guide.md).
+3. **Set up release CI** — automate the mechanical *publish* half of a release in a CI pipeline. This is design guidance only; it does not write provider-specific pipeline files. Follow [ci-pipeline-guide.md](references/ci-pipeline-guide.md). Done when each pipeline-anatomy stage and each security checklist item is mapped to this project's concrete tool, or marked not applicable with a reason, and the result is presented to the user.
 
 ## Prerequisites (Phase 1)
 

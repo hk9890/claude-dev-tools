@@ -35,23 +35,8 @@ curl -X POST http://localhost:8080/widgets \
   -d '{"name": "Sprocket", "quantity": 42}'
 ```
 
-List widgets:
-
-```bash
-curl http://localhost:8080/widgets
-```
-
-Get a widget by ID:
-
-```bash
-curl http://localhost:8080/widgets/a1b2c3d4-...
-```
-
-Delete a widget:
-
-```bash
-curl -X DELETE http://localhost:8080/widgets/a1b2c3d4-...
-```
+Every endpoint, field, and status code is in [api/openapi.yaml](api/openapi.yaml), rendered at
+https://api.acme.com/widget-service/docs.
 
 ## Contributing
 
