@@ -102,7 +102,7 @@ Finding *facts* is your job, never the user's. When a frontier question turns on
 environment — the working tree, the git history, the project's hosting such as GitHub, a tool's
 output — go and get it, and ask the user only for the part no source can show. Check each fact
 before you put a question that rests on it. Where a check queries a system outside the checkout,
-or runs longer than a minute, first tell the user in one line what you check and where. Dispatch a sub-agent for anything that takes real
+or can run longer than a minute, first tell the user in one line what you check and where. Dispatch a sub-agent for anything that takes real
 digging and keep asking the rest of the frontier while it runs: a question waits for it only where
 an option in that question rests on a fact it can change. When it reports while questions are
 open, put again in full each open question its facts change, with them inside, and add the
