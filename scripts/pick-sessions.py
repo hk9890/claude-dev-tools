@@ -117,7 +117,13 @@ TROUBLE_COUNTS = ("turns", "failed", "rejected", "inherited_turns", "inherited_f
 
 
 def records(path):
-    with open(path, encoding="utf-8", errors="replace") as lines:
+    """The records of a transcript: none where Claude Code deleted it while the pick runs."""
+    try:
+        lines = open(path, encoding="utf-8", errors="replace")
+    except FileNotFoundError:
+        print(f"warning: {path} was deleted while the pick ran; the pick reads it as empty", file=sys.stderr)
+        return
+    with lines:
         for line in lines:
             try:
                 record = json.loads(line)
@@ -125,6 +131,14 @@ def records(path):
                 continue
             if isinstance(record, dict):
                 yield record
+
+
+def size(path):
+    """The size of a file in bytes: 0 where it was deleted while the pick runs."""
+    try:
+        return path.stat().st_size
+    except FileNotFoundError:
+        return 0
 
 
 def blocks(record):
@@ -259,7 +273,7 @@ def summarize(session_file, plugins):
         "project": session_file.parent.name,
         "started": started,
         "ended": ended,
-        "largest_file_mb": max(f.stat().st_size for f in copied) >> 20,
+        "largest_file_mb": max(map(size, copied)) >> 20,
         "skills": list(skill_versions),
         "versions": sorted({label for labels in skill_versions.values() for label in labels}),
         "skill_versions": skill_versions,
@@ -674,6 +688,18 @@ def mirror(host):
     return target
 
 
+def window_summaries(session_files, cutoff, plugins):
+    """The summary of each session written since `cutoff`, less those Claude Code deleted after the glob."""
+    for session_file in session_files:
+        try:
+            written = session_file.stat().st_mtime
+        except FileNotFoundError:
+            print(f"warning: {session_file} was deleted while the pick ran; the pick leaves it out", file=sys.stderr)
+            continue
+        if written >= cutoff:
+            yield summarize(session_file, plugins)
+
+
 def latest_copies(summaries):
     """One summary for each session id: Claude Code can keep a session in two project folders."""
     latest = {}
@@ -698,13 +724,8 @@ def pick(args):
         ended = json.loads(path.read_text(encoding="utf-8"))["ended"]
         reviewed_until[path.stem] = max(reviewed_until.get(path.stem, ""), ended)
     cutoff = time.time() - args.since_days * 86400
-    recent = (
-        f
-        for f in sorted(projects_dir.glob("*/*.jsonl"))
-        if f.stat().st_mtime >= cutoff
-    )
     # Every session of the window: context.md covers each.
-    latest = latest_copies([summarize(f, plugins) for f in recent])
+    latest = latest_copies(list(window_summaries(sorted(projects_dir.glob("*/*.jsonl")), cutoff, plugins)))
     summaries = [(session, usage) for session, usage in latest if session["skills"]]
     # A session that went on after its review is picked again, and reviewed whole.
     unreviewed = [
@@ -771,8 +792,12 @@ def pick(args):
     # findings.json and context-judgments.json.
     run_dir = args.review_dir / "runs" / f"{now:%Y-%m-%dT%H%M%S}-{host}-v{version}"
     run_dir.mkdir(parents=True)
-    for session in picked:
-        session["transcript"] = str(copy_transcripts(Path(session["session"]), run_dir / "transcripts"))
+    for session in list(picked):
+        try:
+            session["transcript"] = str(copy_transcripts(Path(session["session"]), run_dir / "transcripts"))
+        except (FileNotFoundError, shutil.Error):
+            print(f"warning: session {session['session_id']} was deleted while the pick ran; the pick leaves it out", file=sys.stderr)
+            picked.remove(session)
 
     commit = subprocess.run(["git", "-C", str(REPO_ROOT), "rev-parse", "HEAD"], capture_output=True, text=True)
     picks = {

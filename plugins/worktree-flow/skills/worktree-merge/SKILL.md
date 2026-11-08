@@ -23,12 +23,13 @@ Stop and report at the first failure:
 - The PR is `OPEN` or `MERGED`, and its base is the remote's default branch.
 - For an `OPEN` PR, `mergeStateStatus` is not `DIRTY`, and not `UNKNOWN` a minute later. On `BEHIND`, run `gh pr update-branch <pr>`, then `git pull --ff-only` in the worktree.
 - For an `OPEN` PR, `gh pr checks <pr> --watch` shows no failed check. Where it prints `no checks reported` for a minute, the project has none. Then read `mergeStateStatus` again, because the base can move while the checks run. Apply the check above to it, and after an update watch the checks again. Stop on `BLOCKED`, a branch rule the PR does not meet.
+- For an `OPEN` PR whose body has a **Review** line, the review covers `headRefOid`. With `<through>` the commit after `through` in that line, in the worktree after `git fetch <remote> <base>`: `git merge-base --is-ancestor <through> <headRefOid>` exits 0, and each commit that `git log --format=%H <through>..<headRefOid> ^<remote>/<base>` prints is a merge whose `git show --remerge-diff --format= <commit>` prints nothing. Any other commit, or a non-zero exit, went in after the review: report it, and name `worktree-flow:worktree-review <pr>` as the way to review it.
 
 Done when each check holds.
 
 ## 2. Merge
 
-For an `OPEN` PR: `gh pr merge <pr>` with the project's method. Where it names none, take the one method the repository allows, else the method of its last merged PRs where they agree (two parents: `--merge`; one parent with a subject that ends in `(#<number>)`: `--squash`; else `--rebase`), else `--merge` where the repository allows it, else ask. Leave out `--delete-branch`: it switches branches locally, which fails while another worktree holds the base branch.
+For an `OPEN` PR: `gh pr merge <pr> --match-head-commit <headRefOid>` with the project's method, `<headRefOid>` as step 1 last read it. Where it names none, take the one method the repository allows, else the method of its last merged PRs where they agree (two parents: `--merge`; one parent with a subject that ends in `(#<number>)`: `--squash`; else `--rebase`), else `--merge` where the repository allows it, else ask. Leave out `--delete-branch`: it switches branches locally, which fails while another worktree holds the base branch.
 
 Done when `gh pr view <pr> --json state` prints `MERGED`.
 
