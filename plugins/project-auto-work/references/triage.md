@@ -25,10 +25,12 @@ correct. Placeholders:
 summary names the rule that placed its item, so read the reason there rather than
 re-deriving it. A tier-1 fix that fails its proving check is filed as tier 2 with the
 failure in its body, or, where an earlier run filed the item, commented on that item. Every filed item carries the label `source:project-auto-work` and one
-`dedup:<hash>` label. Each body and each PR carries a `dedup-key:` line. An audit can name
+`dedup:<hash>` label, plus one `dedup-scope:<hash>` label for the tool and path. Each body and each PR carries a `dedup-key:` line. An audit can name
 one problem in new words on each run, so an item to file that no key matched goes to one
 match agent in the workflow: where an earlier item of the same tool and path is the same
-problem, the item becomes a comment on it, or a skip where it was closed as decided.
+problem, the item becomes a comment on it, or a skip where it was closed as decided, and
+the earlier item takes the item's `dedup:` label. A design doc and the other item of one
+finding never match each other.
 
 ## 1. Check the store
 

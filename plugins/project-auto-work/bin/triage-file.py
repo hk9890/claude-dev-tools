@@ -45,28 +45,10 @@ def file_item(repo_root, item, title, body_path):
     return (out.get('id') if isinstance(out, dict) else None), None
 
 
-def subject(item):
-    for part in ('finding', 'question'):
-        named = (item.get(part) or {}).get('subject') or (item.get(part) or {}).get('title')
-        if named:
-            return named
-    return next((p.get('action') for p in item.get('proposals') or [] if p.get('action')), item['key'])
-
-
-def load_earlier(plan_dir):
-    """earlier.json by id; a plan from before the match step has none."""
-    path = os.path.join(plan_dir, 'earlier.json')
-    if not os.path.isfile(path):
-        return {}
-    with open(path) as fh:
-        return {e['id']: e for e in json.load(fh)}
-
-
-def carry_out(plan, workflow, repo_root, plan_dir):
+def carry_out(plan, workflow, earlier, repo_root, plan_dir):
     fixes = {f['n']: f for f in workflow.get('fixes') or [] if f}
     bodies = {b['n']: b for b in workflow.get('bodies') or [] if b}
-    earlier = load_earlier(plan_dir)
-    # Only a match to an item of earlier.json counts: the agent's answer is checked, not trusted.
+    # The workflow checked each pair; earlier.json says what a match does.
     matches = {m['n']: earlier[m['id']] for m in workflow.get('matches') or [] if m and m.get('id') in earlier}
     head = (plan['context'].get('audited_head') or '')[:12] or 'an unknown commit'
     note = f'Seen again by {plan["context"]["tool"]} at {head}.'
@@ -76,6 +58,12 @@ def carry_out(plan, workflow, repo_root, plan_dir):
         """Comment on each id; return 'noted', or 'comment failed' when any comment failed."""
         failed = [tid for tid in ids if not taskmgr(repo_root, 'comment', 'add', tid, text)[0]]
         return 'comment failed' if failed else 'noted'
+
+    def adopt(match, item):
+        """Give the earlier item this run's key, so a later run in the same words matches it
+        by key; return a reason suffix where that failed."""
+        ok, err = taskmgr(repo_root, 'update', match['id'], '--add-label', item['label'])
+        return '' if ok else f"; adding {item['label']} to {match['id']} failed: {err}"
 
     for item in plan['items']:
         row = {'n': item['n'], 'key': item['key'], 'tier': item['tier'], 'reason': item['reason']}
@@ -99,12 +87,13 @@ def carry_out(plan, workflow, repo_root, plan_dir):
                 continue
             action = 'file'
         match = matches.get(item['n']) if action == 'file' else None
-        if match and match['on_match'] == 'skip':
-            row.update(outcome='skipped', ref=match['id'],
-                       reason=row['reason'] + f"; same problem as {match['id']}, closed as decided")
-        elif match:
-            row.update(outcome=comment([match['id']], f'{note} Named this time: {subject(item)}'), ref=match['id'],
-                       reason=row['reason'] + f"; same problem as {match['id']}, under other words")
+        if match:
+            decided = match['on_match'] == 'skip'
+            outcome = 'skipped' if decided else comment([match['id']], f"{note} Named this time: {item.get('subject') or item['key']}")
+            failed = adopt(match, item)
+            row.update(outcome=outcome, ref=match['id'], comment_failed=bool(failed),
+                       reason=row['reason'] + f"; same problem as {match['id']}, "
+                       + ('closed as decided' if decided else 'under other words') + failed)
         elif action == 'skip':
             row.update(outcome='skipped', ref=', '.join(item.get('existing') or []))
         elif action == 'note':
@@ -146,11 +135,13 @@ def main(argv=None):
             workflow = json.load(fh) or {}
         if 'result' in workflow and 'fixes' not in workflow:
             workflow = workflow['result'] or {}
-    except (OSError, ValueError) as exc:
+        with open(os.path.join(args.plan_dir, 'earlier.json')) as fh:
+            earlier = {e['id']: e for e in json.load(fh)}
+    except (OSError, ValueError, TypeError, KeyError) as exc:
         print(f'triage-file: cannot read input: {exc}', file=sys.stderr)
         return 1
 
-    rows = carry_out(plan, workflow, args.repo_root, args.plan_dir)
+    rows = carry_out(plan, workflow, earlier, args.repo_root, args.plan_dir)
     with open(os.path.join(args.plan_dir, 'summary.json'), 'w') as fh:
         json.dump(rows, fh, indent=2)
     print(markdown(rows))
