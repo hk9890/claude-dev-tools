@@ -7,8 +7,6 @@ const DENY_REASON =
 const SHELL = /(?<![\w.-])(?:bash|sh|zsh)(?![\w.-])/
 const QUOTED = /'[^']*'|"(?:\\[\s\S]|[^"\\])*"/g
 const HEREDOC = /^<<(-?)[ \t]*(['"]?)([A-Za-z_]\w*)\2/
-// A `;`, `&&`, `||` or background `&` ends a pipeline; `2>&1` and `&>` do not.
-const PIPELINE_END = /;|&&|\|\||(?<![>&|])&(?![&>])/g
 
 // How the shell reads each character of the command, and which shell runs it. Text that runs
 // nothing reads as `_` where it is a quoted word, so it stays one word, and as blanks where it is a
@@ -25,21 +23,11 @@ function runnable(command: string) {
     read.fill(as, from, to)
   }
 
-  // A heredoc body reaches a shell named anywhere on its line, quoted text only one named in its
-  // own pipeline: `bash run.sh; enqueue "x"` hands `x` to no shell.
-  const shellReads = (at: number, reach: 'line' | 'pipeline') => {
-    const start = command.lastIndexOf('\n', at - 1) + 1
+  const shellReads = (at: number) => {
     const end = command.indexOf('\n', at)
-    const line = command.slice(start, end < 0 ? undefined : end).replace(QUOTED, quoted => '_'.repeat(quoted.length))
+    const line = command.slice(command.lastIndexOf('\n', at - 1) + 1, end < 0 ? undefined : end)
 
-    if (reach === 'line') {
-      return SHELL.test(line)
-    }
-
-    const from = Math.max(0, ...[...line.slice(0, at - start).matchAll(PIPELINE_END)].map(m => m.index + m[0].length))
-    const to = line.slice(at - start).search(PIPELINE_END)
-
-    return SHELL.test(line.slice(from, to < 0 ? undefined : at - start + to))
+    return SHELL.test(line.replace(QUOTED, ' '))
   }
 
   const heredoc = (at: number) => {
@@ -48,7 +36,7 @@ function runnable(command: string) {
     closing.lastIndex = command.indexOf('\n', at) + 1
     const line = word !== undefined && closing.lastIndex > 0 ? closing.exec(command) : null
 
-    return line ? { shell: shellReads(at, 'line'), start: closing.lastIndex - line[0].length, end: closing.lastIndex } : null
+    return line ? { shell: shellReads(at), start: closing.lastIndex - line[0].length, end: closing.lastIndex } : null
   }
 
   // A double-quoted string is one word, but the command substitutions in it run.
@@ -91,7 +79,7 @@ function runnable(command: string) {
         const end = command.indexOf('\n', at)
         mask(at, end < 0 ? command.length : end, id, ' ')
         at = (end < 0 ? command.length : end) - 1
-      } else if ((c === "'" || c === '"') && shellReads(at, 'pipeline')) {
+      } else if ((c === "'" || c === '"') && shellReads(at)) {
         mask(at, at + 1, id, '_')
         at = scan(at + 1, c)
         mask(at, at + 1, id, '_')
@@ -146,7 +134,8 @@ const WORKTREE_ADD = new RegExp(
 
 // Only a whole command, run in the same shell before the add, sets a variable for it or changes
 // its directory: not `echo W=/tmp/x`, the prefix in `W=/tmp/x true`, a background job or a
-// pipeline.
+// pipeline. Where the last `cd`, `pushd` or `popd` before the add is not such a `cd <dir>`, the
+// add's directory is unknown.
 const AFTER = String.raw`(?:^|[;\n]|&&|\|\|)\s*`
 const BEFORE = String.raw`\s*(?:[;\n]|&&|\|\||$)`
 const ASSIGNMENT = new RegExp(String.raw`(?<=${AFTER})([A-Za-z_]\w*)=([^\s;&|]*)(?=${BEFORE})`, 'dg')
@@ -155,40 +144,6 @@ const CD = new RegExp(String.raw`(?<=${AFTER})cd\s+([^\s;&|]+)(?=${BEFORE})`, 'd
 const VARIABLE = /\$(?:\{([A-Za-z_]\w*)\}|([A-Za-z_]\w*))/g
 
 const THROWAWAY_TARGET = /^(?:\/tmp\/|\$\{?TMPDIR\b|\$\(mktemp\b)|\/scratchpad\//
-const THROWAWAY_DIR = /^(?:\/tmp(?=\/|$)|\$\{?TMPDIR\}?(?=\/|$)|\$\(mktemp\b[^)]*\))/
-
-// The directory that the whole `cd` commands before the add lead to, each relative one taken from
-// the one before it: unknown where a `cd`, `pushd` or `popd` is not such a `cd <dir>`, or where a
-// relative one has no known start.
-function cdChain(before: string, word: (range: [number, number]) => string) {
-  let dir: string | undefined
-
-  for (const change of before.matchAll(DIRECTORY_CHANGE)) {
-    CD.lastIndex = change.index
-    const to = CD.exec(before)?.indices?.[1]
-    const target = to && word(to)
-    dir = target === undefined ? undefined : /^[/~$]/.test(target) ? target : dir && `${dir}/${target}`
-  }
-
-  return dir
-}
-
-// A path lies in /tmp, $TMPDIR or a mktemp directory where it starts there, no `..` leaves that
-// directory, and no value the shell computes stands in the rest of it.
-function inThrowaway(dir: string) {
-  const root = dir.match(THROWAWAY_DIR)?.[0]
-  let depth = 0
-
-  for (const part of root === undefined ? [] : dir.slice(root.length).split('/')) {
-    depth += part === '..' ? -1 : part === '' || part === '.' ? 0 : 1
-
-    if (depth < 0 || /[$`]/.test(part)) {
-      return false
-    }
-  }
-
-  return root !== undefined
-}
 
 // The <path> of `git worktree add [<option>...] <path> [<commit-ish>]`: its first word that is
 // not an option, the value of `-b`, `-B` or `--reason`, or a redirect.
@@ -243,15 +198,11 @@ function persistentAdds(command: string) {
       }
 
       const dashC = optionWords.lastIndexOf('-C')
-      const dir = dashC >= 0 ? optionWords[dashC + 1] : cdChain(before, word)
+      CD.lastIndex = [...before.matchAll(DIRECTORY_CHANGE)].at(-1)?.index ?? before.length
+      const cd = CD.exec(before)?.indices?.[1]
+      const dir = dashC >= 0 ? optionWords[dashC + 1] : cd && word(cd)
 
-      if (optionWords.some(option => /^--(?:git-dir|work-tree)\b/.test(option))) {
-        return [undefined]
-      }
-
-      const relative = path !== undefined && !/^[/~$]/.test(path)
-
-      return relative && dir !== undefined && inThrowaway(`${dir}/${path}`) ? [] : [dir]
+      return [optionWords.some(option => /^--(?:git-dir|work-tree)\b/.test(option)) ? undefined : dir]
     })
   })
 }

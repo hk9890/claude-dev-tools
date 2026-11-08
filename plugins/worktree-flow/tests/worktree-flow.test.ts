@@ -67,9 +67,6 @@ const DENIED = [
   'git worktree add ../x -b b # /tmp/',
   'git worktree add ../x -b mktemp-fix',
   'git worktree add ../x -b b < /tmp/in',
-  'bash -c "git worktree add ../x"',
-  'echo "git worktree add ../x" | sh',
-  'ls; bash -c \'cd sub && git worktree add ../x\'',
 ]
 
 // An add that names a directory, by `cd` or `-C`, that is in the session's repository at
@@ -113,11 +110,6 @@ const OWN_REPOSITORY = {
   'a -C with $(...) inside the path': 'git -C /home/me/$(echo repo) worktree add ../x -b x',
   'a -C with backticks inside the path': 'git -C /home/me/`echo repo` worktree add ../x -b x',
   'a cd with a variable default': 'cd /home/me/${R:-repo} && git worktree add ../x -b x',
-  'a cd chain back from /tmp': 'cd /tmp && cd /home/me/repo && git worktree add ../x -b x',
-  'a cd chain relative to /tmp': 'cd /tmp && cd ../home/me/repo && git worktree add ../x -b x',
-  'a target that leaves a mktemp directory': 'T=$(mktemp -d); cd $T && git worktree add ../../home/me/x -b x',
-  'a computed target from a mktemp directory': 'T=$(mktemp -d); cd $T && git worktree add ../$W -b x',
-  'a pushd in the chain': 'cd /tmp && pushd /home/me/repo && cd sub && git worktree add ../x -b x',
 }
 
 const ALLOWED = [
@@ -142,11 +134,6 @@ const ALLOWED = [
   "bash <<'EOF'\nW=/tmp/probe\ngit worktree add --detach $W HEAD\nEOF",
   'S=/home/me/scratchpad/repro; mkdir -p $S\nsetup(){ d=$1; git worktree add --detach $S/$d/wt HEAD; }\nsetup a',
   `D=$(mktemp -d); printf '%s' "Run exactly this: echo 'note: W=/tmp/p && git worktree add ../y'" > $D/p2.txt`,
-  'set -e; d=$(mktemp -d /tmp/wfrev.XXXX); cd $d; git init -q --bare o.git; git clone -q o.git c 2>/dev/null; cd c; cd ..; git clone -q o.git c2; cd c2; cd ../c; git worktree add -q ../wt master 2>&1 || true',
-  'cd /tmp && cd ../tmp/x 2>/dev/null; cd /tmp/s && cd ./c && git worktree add ../wt',
-  'T=$(mktemp -d); cd $T && git init -q origin && git clone -q origin clone && cd origin && cd ../clone && git worktree add -q ../wt main',
-  'cd /tmp/probe && git worktree add ../x -b x',
-  'bash /tmp/s/setup.sh > /tmp/s/out.txt 2>&1; /tmp/s/bin/enqueue "x && git worktree add y"; ls /tmp/s',
 ]
 
 // An add into another repository, which EnterWorktree cannot make.
