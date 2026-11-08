@@ -30,7 +30,9 @@ applies the fixes it settled.
    own base. The diff is `git diff HEAD` for a dirty tree, plus each untracked file
    `git ls-files --others --exclude-standard` prints; `git diff <base>...<branch>` for a
    branch (`HEAD` for the current one), three dots for the merge base; `gh pr diff <n>`
-   for a pull request.
+   for a pull request. Where `gh pr diff` refuses a diff as too large, `git fetch origin` and take
+   `git diff origin/<baseRefName>...origin/<headRefName>`, both names from `gh pr view <n>`,
+   and its `--name-only` form for the file list below.
 
    **Prove the subject exists before you spawn anything**: the reviewer takes the diff
    itself, and an empty subject comes back as a confident review of nothing. For a branch,
