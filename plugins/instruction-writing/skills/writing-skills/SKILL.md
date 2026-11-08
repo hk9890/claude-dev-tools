@@ -23,7 +23,7 @@ Every skill spends one of two budgets:
 Two choices, each spending one of the loads:
 
 - **Model-invoked** — keeps a listing entry the agent can see, so the agent can fire the skill and other skills can reach it; you can still type its name, since model-invocation always _includes_ user reach. Pays permanent context load. Mechanics: omit `disable-model-invocation`, and write the trigger branches in `when_to_use`.
-- **User-invoked** — puts the listing entry out of the agent's reach: only the human typing its name can invoke it, and no other skill can. Zero context load, spends cognitive load. Mechanics: set `disable-model-invocation: true` and drop `when_to_use`; `description` stays as a human-facing one-line summary.
+- **User-invoked** — drops the skill from the agent's listing: only the human typing its name can invoke it, and no other skill can. Zero context load, spends cognitive load. Mechanics: set `disable-model-invocation: true` and drop `when_to_use`; `description` stays as a human-facing one-line summary.
 
 Pick model-invocation only where the agent must reach the skill on its own, or another skill must.
 
