@@ -162,9 +162,8 @@ lives in `references/mermaid.md`. Read it before authoring a diagram:
 Read: "$(cat "$HTML_DIR/.plugin-root")/references/mermaid.md"
 ```
 
-This template already carries the `.vis-mermaid-wrap` styling that file refers to,
-including the semantic node colours (`leak`, `dead`, `god`, `misplaced`, `deep`) that
-project-review's Markdown artifacts emit.
+This template already carries the `.vis-mermaid-wrap` styling and the semantic
+colour rules that file shows: add a colour rule only for a class the template lacks.
 
 ### Editorial diagrams (hand-built)
 
@@ -288,20 +287,5 @@ section (visualize mode).
 ## `file://` vs server
 
 Always serve via the server, even when the page is fully self-contained and
-would open correctly as a `file://` URL.
-
-**Send is inert in saved / offline copies.** When the user clicks **Save**, the page
-produces a self-contained HTML download with the CSRF token stripped and the Send
-button disabled. This is intentional: a saved copy opened as a `file://` URL cannot
-reach the server, so Send cannot work. Save is the intended "keep this page offline"
-path; Send requires the live server.
-
-> **Degraded-environment fallback only**: the server binds every interface and
-> prints its URL under the machine's own hostname, so a remote box is reachable
-> by DNS name without port forwarding. That name does not always resolve for the
-> user's browser, and an SSH tunnel reaches the server over loopback instead —
-> both cases are handled in "When the printed hostname does not resolve" in
-> `references/serve.md`, whose first move is `http://localhost:PORT/` on the same
-> port. Only when no address is reachable, offer to save the HTML file to a
-> user-specified path so they can open it directly. This is a last-resort
-> accommodation — the normal path is always to serve via the server.
+would open correctly as a `file://` URL. When the user cannot open the link, see
+"When the printed hostname does not resolve" in `references/serve.md`.

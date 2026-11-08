@@ -8,7 +8,6 @@ What a change to this plugin marketplace needs in order to work.
 2. Write `.claude-plugin/plugin.json` with `name`, `version`, `description`, `author`. Set `version` to whatever `.claude-plugin/marketplace.json` `metadata.version` already carries, not `1.0.0` — all plugins ship in lockstep under one repo tag ([RELEASING.md](RELEASING.md)), and `mise run check-consistency` fails on a second distinct version string.
 3. Register it in `.claude-plugin/marketplace.json` under `plugins` with `name`, `source`, `description`, `version`, `author`, `category`, `keywords`. `description` must be **byte-identical** to `plugin.json`'s and `version` must match it — the CI `consistency` job compares both.
 4. Add a row to the plugin table in `README.md`, in `marketplace.json` order.
-5. Scaffold components with the `plugin-dev` skill set — an external plugin, installed separately ([TESTING.md](TESTING.md)).
 
 ## Renaming a plugin
 

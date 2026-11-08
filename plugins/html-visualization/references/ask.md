@@ -125,52 +125,24 @@ See `references/serve.md` — temp directory section. Use the prefix `html-ask`.
 
 ### 2b. Author the destination from the template
 
-Read the template using its resolved absolute path (use the `.plugin-root` file
-written in the temp-directory step):
+Read the template and the markup contract using their resolved absolute paths
+(use the `.plugin-root` file written in the temp-directory step):
 
 ```
 Read: "$(cat "$HTML_DIR/.plugin-root")/references/ask-template.html"
+Read: "$(cat "$HTML_DIR/.plugin-root")/references/ask-markup.md"
 ```
 
 Then author `$HTML_DIR/feedback.html` **with the Write tool**, directly at the
 destination path — see `references/serve.md` — "Authoring files into the temp
-directory".
+directory". Author every widget from the markup contract.
 
 The template contains example widgets — remove every example widget you do not
 need. Keep the page structure, top bar, rail, header, verdict section, freeform
 section, and action bar exactly as in the template.
 
-Four things are generated at load and must be left empty or absent in what you
-write: the `.hv-rail-list` and `.hv-rail-count` (the question index and
-progress), the `.hv-topbar-meta` (the host), the `.hv-status-hint` and
-`data-hv-mod` keycap (the platform's modifier), and the `.widget-index` line
-that numbers each question and tags its type. Numbering a question by hand goes
-stale the moment another is inserted above it. Fill in the content per the markup
-contract in
-`"$(cat "$HTML_DIR/.plugin-root")/references/ask-markup.md"`. Key rules:
-
-- Replace `[Claude: replace with document title]` in `<h1>` and `<title>` with
-  your page title.
-- Replace `[Claude: replace with a one-sentence description...]` in `.subtitle`
-  with your subtitle.
-- Add one widget `<div>` per question inside `<div id="main-form">`, before the
-  verdict section.
-- Every widget `<div>` must have `data-qid` (your question slug), `data-qtype`
-  (`text`|`radio`|`checkbox`|`approaches`), and `class="widget widget-<type>"`.
-- Add `annotatable` and `data-anchor-id="<qid>"` to every `radio`/`checkbox`/
-  `approaches` widget — this gives that question an always-visible free-text
-  answer field. Do NOT add it to `text` widgets; their `<textarea>` is already the
-  free-text field.
-- End every `radio` and `checkbox` option list with the escape option, and give
-  every single-mode `approaches` widget its `.approaches-none` — see "The escape
-  option" in `ask-markup.md`.
-- Do NOT add `<script>const CSRF_TOKEN = "...";</script>` — the server injects it.
-- Keep every `<link>` and `<script src>` tag of the template as-is: same
-  paths, same order, same element (`<head>` or `<body>`).
-
-Consult `"$(cat "$HTML_DIR/.plugin-root")/references/ask-markup.md"`
-for the full vocabulary (classes, data attributes, required IDs, verdict radio
-values).
+Before you start the server, run the markup contract's "Authoring checklist"
+against the page.
 
 ### 2c. Use HTML to make the content clear
 
