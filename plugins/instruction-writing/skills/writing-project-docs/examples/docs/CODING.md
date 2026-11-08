@@ -30,3 +30,8 @@ make generate   # regenerates mocks under internal/mocks/
 ```
 
 Re-run after changing any interface in `internal/store/` or `internal/api/`.
+
+## Changing the dashboard
+
+Upload `monitoring/dynatrace/widget-service.json` with `monitoring/deploy-dashboard.sh` after
+changing it; nothing deploys it on merge.

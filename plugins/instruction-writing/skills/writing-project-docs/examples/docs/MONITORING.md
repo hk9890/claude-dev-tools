@@ -28,6 +28,5 @@ GET /healthz   → 200 OK when DB connection is live
 
 ## Dashboards
 
-Dynatrace dashboard source: `monitoring/dynatrace/widget-service.json` — request rate, error rate,
-and DB latency tiles. Upload it with `monitoring/deploy-dashboard.sh` after changing it; the
-environment is `https://abc12345.apps.dynatrace.com`.
+The `widget-service` dashboard in `https://abc12345.apps.dynatrace.com` shows request rate, error
+rate, and DB latency tiles. Its source is `monitoring/dynatrace/widget-service.json`.
