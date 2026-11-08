@@ -100,7 +100,9 @@ the user decides, not when you think the question is clear.
 Finding *facts* is your job, never the user's. When a frontier question turns on a fact from the
 environment — the working tree, the git history, the project's hosting such as GitHub, a tool's
 output — go and get it, and ask the user only for the part no source can show. Check each fact
-before you put a question that rests on it. Dispatch a sub-agent for anything that takes real
+before you put a question that rests on it. Where a check queries a system outside the checkout,
+or runs longer than a minute, first tell the user in one line what you check and where: the one
+line a message may hold outside its questions. Dispatch a sub-agent for anything that takes real
 digging and keep asking the rest of the frontier while it runs: a question waits for it only where
 an option in that question rests on a fact it can change. When it reports while questions are
 open, put again in full each open question its facts change, with them inside, and add the
@@ -108,4 +110,5 @@ questions they unblock. The *decisions* are the user's — put each one to them 
 
 The session is done when the frontier is empty: every branch of the design tree visited, nothing
 left silently assumed. Act on the plan once the user confirms you have reached a shared
-understanding.
+understanding. Where a step of the plan is a skill that is not in your available skills, such as
+a user-only one, print its slash command for the user to type.
