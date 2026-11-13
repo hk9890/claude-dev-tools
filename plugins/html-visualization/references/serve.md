@@ -31,9 +31,9 @@ Two things follow that change what you do:
 | Exit | Means |
 |---|---|
 | `0` with a feedback file | The user submitted. Read the file. |
-| `0`, no feedback file | **visualize only** — the user closed the page, or sent an empty message. The normal ending; say nothing. |
-| `2` | **ask and feedback** — the page was closed, or its heartbeat stopped, without a submit. Tell the user, and offer to re-serve or continue in chat. |
-| `1` | The server refused to start. The message on stderr says why; do not retry blindly. |
+| `0`, no feedback file | **visualize only** — the user closed the page, or sent an empty message. The normal ending; say nothing. In ask and feedback mode, treat it as `2`. |
+| `2` | **ask and feedback** — the page was abandoned: closed, or its heartbeat stopped, without a submit. Tell the user, and offer to re-serve or continue in chat. |
+| `1` | The server failed: it refused to start, or crashed. The message on stderr says why; give it to the user, and do not retry blindly. |
 
 ---
 
@@ -168,7 +168,8 @@ record it when you start the server so you can read it back without globbing.
 
 **Abandoned form**: a closed or heartbeat-less page exits **2 with no feedback
 file** — read that result off [the exit-code table](#what-an-exit-code-means).
-Treat a missing feedback file the same way, whatever the exit code.
+Exit 0 with no feedback file counts the same; exit 1 is a server failure, not an
+abandoned form.
 
 **Optional flags**: `--port N` (fixed port), `--grace-sec N` (default 900 s),
 `--host NAME` (see [Host allow-list](#host-allow-list)).

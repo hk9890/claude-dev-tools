@@ -211,10 +211,8 @@ FEEDBACK_FILE  (the path you computed in Step 2d)
 ```
 
 If `FEEDBACK_FILE` is missing or the server exited non-zero, act on the exit code's
-row in the exit-code table of `references/serve.md`. Exit 2, or exit 0 with no file,
-means the form was abandoned: recover as in Cycle A (tell the user; offer to re-serve or take the
-answers in chat). Any other non-zero exit is a server failure: relay its stderr
-to the user and do not re-serve blindly.
+row in the exit-code table of `references/serve.md`. For an abandoned form, recover
+as in Cycle A (tell the user; offer to re-serve or take the answers in chat).
 
 The file contains:
 
