@@ -72,6 +72,7 @@ Every skill is loaded with a `Base directory for this skill: <absolute path>` li
 Each `Bash` call starts a fresh shell: a variable a skill assigns in one call is empty in the next.
 
 - Print every value a later step needs — a path, a temp dir — and name it in later steps with one placeholder, defined at the step that prints it. `test-tests`' `<scratch>` is the worked example.
+- Make a scratch dir or temp file the file tools write to under the session scratchpad, or `${TMPDIR:-/tmp}` where the session has none: under `permissions.blockWritesOutsideWorkingDirectories` they cannot write to `/tmp`. `test-app`'s `<session-tmp>` is the worked example. A dir that a project's test suite runs in stays under `/tmp`, as `test-tests`' does: the long scratchpad path pushes a socket the suite binds past the 108-byte limit.
 - Stop a process started with `run_in_background` by calling `TaskStop` with the task id the start returned. No later shell holds its PID. `html-visualization`'s `serve.md` is the worked example.
 
 ## Mods
@@ -81,7 +82,7 @@ A mod is a plugin whose `hooks/hooks.json` names a hooks module under `modules`;
 - **Worked examples** — `keep-awake-linux` (a child process, timers, and a pane a timer refreshes), `worktree-flow` (a `tool.call` guard), `tasks` (a command, a pane, and a `$.state` contract).
 - **Layout** — `hooks/hooks.json` holds `{ "modules": ["./register.ts"] }`, `.tsx` when the module draws. Tests go in `plugins/<plugin>/tests/*.test.ts`, where `claude plugin test` reads them ([TESTING.md](TESTING.md)). A module that keeps `$.state` values declares them in `types/index.d.ts`, named in `plugin.json` as `"types"`.
 - **One code path** — a behaviour moves to the module whole: delete the settings hook and its `bin/` script in the same change.
-- **Validate early** — run `claude plugin validate plugins/<plugin>` after every edit. It refuses an event name that is not a string literal, a `$` call not written in full (`$.ui.status(...)`, never `const ui = $.ui`), and `$` passed anywhere but a top-level function of the same file.
+- **Validate early** — run `claude plugin validate --strict plugins/<plugin>` after every edit; from Claude Code 2.1.323, `--strict` makes a type error in the module fail, as it does in CI. It refuses an event name that is not a string literal, a `$` call not written in full (`$.ui.status(...)`, never `const ui = $.ui`), and `$` passed anywhere but a top-level function of the same file.
 - **Footprint** — a mod runs unsandboxed, so reach only the `$` namespaces the feature needs; the `calls:` line `claude plugin validate` prints is the footprint a user audits before installing.
 - **Where nothing draws** — panes and the status line show in the terminal and the desktop app only. Do not settle it at `session.start`: the desktop app joins after it, with a `session.attach` event, and can leave. Read `$.session.surfaces()` when the feature runs: `tasks` does at each `/tasks-board` and answers as text where neither is attached.
 - **Command names** — a name registered with `$.command.register` is global. Lead it with the plugin's domain word (`tasks-board`); `/tasks` is Claude Code's own.

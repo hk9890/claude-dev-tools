@@ -227,8 +227,8 @@ function inSessionRepo(dir: string | undefined, root: string | undefined, home: 
 // Where the guard fails before the call runs, as where the repository or HOME cannot be read, a
 // command that may add a worktree is denied.
 export const register: Register = on => {
-  on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
-    const dirs = persistentAdds(e.command)
+  on('tool.call', { tool: ['Bash', 'Monitor'] }, async ($, e, next) => {
+    const dirs = persistentAdds(e.command ?? '')
     const [repo, home] = dirs.length > 0 ? await Promise.all([$.session.repo(), $.env.get('HOME')]) : []
 
     if (dirs.some(dir => inSessionRepo(dir, repo?.root, home))) {
@@ -238,5 +238,5 @@ export const register: Register = on => {
     }
 
     return next(e)
-  }).catch(($, e, next) => (next.called || !/worktree\s+add/.test(e.command) ? next(e) : { deny: DENY_REASON }))
+  }).catch(($, e, next) => (next.called || !/worktree\s+add/.test(e.command ?? '') ? next(e) : { deny: DENY_REASON }))
 }
