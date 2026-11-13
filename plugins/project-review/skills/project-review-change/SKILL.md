@@ -57,7 +57,7 @@ subject's commits. With `--fix`, step 5 then applies the fixes it settled.
    only for a subject checked out here: for any other, run without `--fix` and say so
    now, with the reason.
 
-   A subject whose tree (the working tree, else `<head>`) has neither `AGENTS.md` nor
+   A subject whose tree (the working tree for a subject checked out here, else `<head>`) has neither `AGENTS.md` nor
    `CLAUDE.md`, or no document they route to, has no standard to measure against: say so
    and stop.
 
