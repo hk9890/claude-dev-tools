@@ -50,7 +50,7 @@ async function keepAwake($: EngineInterface) {
 
   // Whatever ends this call ends its hold, so the next activity can start one.
   try {
-    const why = `Claude session ${await $.session.id()}`
+    const why = `Claude session ${await $.session.id().catch(() => 'unknown')}`
     noAskPassword ??= await noAskPasswordFlag($)
     let hasStarted = false
     startup = $.clock.after(STARTUP_MS, () => {
@@ -95,7 +95,7 @@ async function keepAwake($: EngineInterface) {
       }
     }
   } catch (error) {
-    $.ui.log(`inhibitor not started: ${String(error)}`, { to: 'debug' })
+    $.ui.log(`keep-awake hold failed: ${String(error)}`, { to: 'debug' })
   } finally {
     if (hold === mine) {
       hold = undefined
@@ -105,10 +105,14 @@ async function keepAwake($: EngineInterface) {
   }
 }
 
-// Undefined where the help did not run, so the next start asks again.
+// Undefined where the help did not run or failed, so the next start asks again.
 async function noAskPasswordFlag($: EngineInterface) {
   try {
     const help = await $.process.run(['systemd-inhibit', '--help'])
+
+    if (help.exitCode !== 0) {
+      return undefined
+    }
 
     return help.stdout.includes('--no-ask-password') ? ['--no-ask-password'] : []
   } catch {
@@ -357,13 +361,8 @@ export const register: Register = (on, options) => {
     return next(e)
   })
 
-  // A failure to block sleep never holds up the tool call.
   on('tool.call', ($, e, next) => {
     blockSleep($, idleMs)
-
-    return next(e)
-  }).catch(($, e, next) => {
-    $.ui.log(`tool.call hook failed: ${next.error.message ?? next.error.kind}`, { to: 'debug' })
 
     return next(e)
   })

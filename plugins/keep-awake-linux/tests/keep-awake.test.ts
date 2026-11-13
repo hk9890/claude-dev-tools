@@ -10,8 +10,12 @@ const TURN_END = { answer: '', durationMs: 1, isAborted: false, reason: 'answer'
 // child as its own exit would; a `systemd-inhibit` that cannot start is `host(on, { canStart: false })`,
 // one older than v257, which knows no --no-ask-password, is `host(on, { knowsNoAskPassword: false })`,
 // a session id that fails once is `host(on, { sessionIdFailures: 1 })`, a `systemd-inhibit --help`
-// that fails once is `host(on, { helpFailures: 1 })`.
-function host(on: On, { canStart = true, knowsNoAskPassword = true, sessionIdFailures = 0, helpFailures = 0 } = {}) {
+// that fails once is `host(on, { helpFailures: 1 })`, one that exits non-zero once is
+// `host(on, { helpCrashes: 1 })`.
+function host(
+  on: On,
+  { canStart = true, knowsNoAskPassword = true, sessionIdFailures = 0, helpFailures = 0, helpCrashes = 0 } = {},
+) {
   const seen = {
     started: [] as (readonly string[])[],
     ended: 0,
@@ -24,6 +28,11 @@ function host(on: On, { canStart = true, knowsNoAskPassword = true, sessionIdFai
     if (helpFailures > 0) {
       helpFailures -= 1
       throw new Error('fork failed')
+    }
+
+    if (helpCrashes > 0) {
+      helpCrashes -= 1
+      return ran([])
     }
 
     return ran(knowsNoAskPassword ? ['     --no-ask-password    Do not attempt interactive authorization'] : ['  -h --help'])
@@ -83,36 +92,36 @@ test('the first turn starts one inhibitor', async ($, on) => {
   expect(seen.started[0]?.slice(-4)).toEqual(['--mode=block', '--no-ask-password', 'sleep', '1800'])
 })
 
-test('a session id that fails starts no inhibitor, and the next activity starts one', async ($, on) => {
+test('a session id that fails still starts an inhibitor, labelled unknown', async ($, on) => {
   const clock = mock.clock(on)
   const seen = host(on, { sessionIdFailures: 1 })
 
   await $.turn.start({ text: 'go', turnId: 't1' })
   await clock.settle()
 
-  expect(seen.started).toHaveLength(0)
-  expect(seen.logged.some(line => line.startsWith('inhibitor not started'))).toBe(true)
-
-  await $.turn.complete({ ...TURN_END, turnId: 't1' })
-  await clock.settle()
-
   expect(seen.started).toHaveLength(1)
+  expect(seen.started[0]).toContain('--why=Claude session unknown')
 })
 
-test('a --help that fails once is asked again at the next start', async ($, on) => {
-  const clock = mock.clock(on)
-  const seen = host(on, { helpFailures: 1 })
+for (const [what, failure] of [
+  ['fails', { helpFailures: 1 }],
+  ['exits non-zero', { helpCrashes: 1 }],
+] as const) {
+  test(`a --help that ${what} once is asked again at the next start`, async ($, on) => {
+    const clock = mock.clock(on)
+    const seen = host(on, failure)
 
-  await $.turn.start({ text: 'go', turnId: 't1' })
-  await $.turn.complete({ ...TURN_END, turnId: 't1' })
-  await clock.advance(IDLE_MS)
-  await $.turn.start({ text: 'again', turnId: 't2' })
-  await clock.settle()
+    await $.turn.start({ text: 'go', turnId: 't1' })
+    await $.turn.complete({ ...TURN_END, turnId: 't1' })
+    await clock.advance(IDLE_MS)
+    await $.turn.start({ text: 'again', turnId: 't2' })
+    await clock.settle()
 
-  expect(seen.started).toHaveLength(2)
-  expect(seen.started[0]).not.toContain('--no-ask-password')
-  expect(seen.started[1]).toContain('--no-ask-password')
-})
+    expect(seen.started).toHaveLength(2)
+    expect(seen.started[0]).not.toContain('--no-ask-password')
+    expect(seen.started[1]).toContain('--no-ask-password')
+  })
+}
 
 test('a systemd-inhibit older than v257 gets no --no-ask-password', async ($, on) => {
   const clock = mock.clock(on)

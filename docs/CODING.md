@@ -12,7 +12,7 @@ What a change to this plugin marketplace needs in order to work.
 
 ## Renaming a plugin
 
-The new name obeys step 1 of [Adding a new plugin](#adding-a-new-plugin). Add the old-to-new entry to the top-level `renames` map in `.claude-plugin/marketplace.json`. Claude Code follows it when an installed name is no longer found and migrates the user's `enabledPlugins`; without it every existing install loses the plugin, and no gate catches the omission. Rename every `<old-name>:<skill>` reference and every `dependencies` entry that names the plugin: `mise run check-consistency` checks only references to plugins that exist, and nothing checks `dependencies`. The release notes carry the rename ([RELEASING.md](RELEASING.md#release-notes)).
+The new name obeys step 1 of [Adding a new plugin](#adding-a-new-plugin). Add the old-to-new entry to the top-level `renames` map in `.claude-plugin/marketplace.json`. Claude Code follows it when an installed name is no longer found and migrates the user's `enabledPlugins`; without it every existing install loses the plugin, and no gate catches the omission. Rename every `<old-name>:<skill>` reference and every `dependencies` entry that names the plugin: `mise run check-consistency` checks only references to plugins that exist, and nothing checks `dependencies`. Re-key its `MONOGRAMS` entry in `scripts/generate-plugin-icons.py` and run the generator; `test-plugin-icons.sh` fails on a name the map lacks. The release notes carry the rename ([RELEASING.md](RELEASING.md#release-notes)).
 
 ## Adding a canonical doc
 
