@@ -441,6 +441,11 @@ with tempfile.TemporaryDirectory() as tmp:
         "docs/CODING.md": "rules\n",
         "plugins/demo/skills/skill/SKILL.md": "---\n---\n",
         "plugins/demo/references/r.md": "ref\n",
+        "plugins/demo/references/flow.js": "export const meta = {\n  name: 'demo-flow',\n  description: 'Runs.',\n}\n",
+        "plugins/demo/workflows/root.js": "export const meta = {\n  description: 'Listed.',\n  name: \"demo-root\",\n}\n",
+        # A workflow that shares a skill's name: the skill keeps its entry and its loads.
+        "plugins/demo/references/same.js": "export const meta = {\n  name: 'skill',\n}\n",
+        "plugins/demo/skills/skill/workflows/inner.js": "export const meta = {\n  name: 'inner',\n}\n",
         ".claude-plugin/marketplace.json": json.dumps({"name": "market", "metadata": {"version": "9.9.9"}}),
     }.items():
         Path(tmp, path).parent.mkdir(parents=True, exist_ok=True)
@@ -451,7 +456,7 @@ with tempfile.TemporaryDirectory() as tmp:
 
     checkout, install = "/w/repo", "/c/.claude/plugins/cache/market/demo/1.0.0"
     agents_md = "# Repo title\n\nRoutes.\n"
-    listing = "- demo:skill: Does a thing.\n- other:x: Foreign.\n- demo:idle: Idle."
+    listing = "- demo:skill: Does a thing.\n- demo:demo-flow: Runs.\n- demo:demo-root: Listed.\n- demo:inner: Inner.\n- other:x: Foreign.\n- demo:idle: Idle."
 
     def attachment(kind, **fields):
         return {"type": "attachment", "timestamp": "2026-01-01T00:00:00.000Z", "attachment": {"type": kind, **fields}}
@@ -552,9 +557,10 @@ with tempfile.TemporaryDirectory() as tmp:
     check("pick with the context scan exits 0", 0, out.returncode)
     files = {entry["file"]: entry for entry in context.get("files", [])}
     check("every session of the window is scanned, plugin use or none, subagents included", (8, 18), (context.get("contexts"), context.get("api_calls")))
-    check("a listing entry of this marketplace counts, a foreign one does not",
+    check("a listing entry of this marketplace counts, a workflow's under its file, a foreign one not at all",
           {"plugins/demo/skills/skill/SKILL.md": len("- demo:skill: Does a thing.\n"), "plugins/demo/skills/idle/SKILL.md": len("- demo:idle: Idle."),
-           "plugins/demo/agents/reviewer.md": len("- demo:reviewer: Reviews.")},
+           "plugins/demo/references/flow.js": len("- demo:demo-flow: Runs.\n"), "plugins/demo/workflows/root.js": len("- demo:demo-root: Listed.\n"),
+           "plugins/demo/skills/inner/SKILL.md": len("- demo:inner: Inner.\n"), "plugins/demo/agents/reviewer.md": len("- demo:reviewer: Reviews.")},
           {file: entry["channels"]["listing"]["chars"] for file, entry in files.items() if "listing" in entry["channels"]})
     check("a text counts once for each API call after it, up to the next compaction", 6 * 28, files["plugins/demo/skills/skill/SKILL.md"]["channels"]["listing"]["char_reads"])
     check("the skill body and its copy after a compaction are channels of their own",

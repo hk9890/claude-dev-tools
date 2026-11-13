@@ -1,5 +1,5 @@
 'use strict';
-// test-triage.js — unit tests for plugins/project-auto-work/workflows/triage.js.
+// test-triage.js — unit tests for plugins/project-auto-work/references/triage.js.
 //
 // Loads the Workflow script the way test-test-tests.js does (strip `export`, run the body
 // in an async wrapper) and drives its orchestration with stub agent/pipeline/parallel
@@ -20,7 +20,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-const SCRIPT = path.resolve(__dirname, '../../../plugins/project-auto-work/workflows/triage.js');
+const SCRIPT = path.resolve(__dirname, '../../../plugins/project-auto-work/references/triage.js');
 
 async function load(globals = {}) {
   const src = fs.readFileSync(SCRIPT, 'utf8').replace(/^export const meta/m, 'const meta');
