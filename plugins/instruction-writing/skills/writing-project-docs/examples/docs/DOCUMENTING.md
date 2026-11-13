@@ -16,8 +16,6 @@ file records only the local delta, and wins where the two conflict.
 
 - `api/openapi.yaml` is the API reference and the only home for an endpoint, a field, or a status
   code. Every doc links to it; [REVIEWING.md](REVIEWING.md) carries the rule that keeps it current.
-- `docs/adr/` holds one numbered file per accepted architecture decision, never edited after
-  acceptance. Supersede one by adding a `Superseded by ADR-nnn` line to it and writing the new ADR.
 
 ## Decisions
 

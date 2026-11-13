@@ -6,7 +6,10 @@
 # (manifest.py's canonical lists, history.py's use-case vocabulary). Nothing in either
 # plugin can import the other, so a new canonical doc registered in one and forgotten in
 # the other classifies as non-standard at review time and its example never gets written.
-# These tests pin the halves together.
+# These tests pin the halves together. A topic is a file (`OVERVIEW.md`) or a tree
+# (`decisions/`, trailing slash) whose records are the files in it: a tree's example is a
+# folder that holds at least one numbered record, and it has no use case: its route fires on
+# edits to the paths its records govern, which no history label isolates.
 #
 # project-exec-init's earned-topic table is deliberately NOT pinned here: whether a repo
 # has earned a topic doc is a judgement, and a row asserting one exists would only restate
@@ -48,12 +51,13 @@ print(' '.join(m.CANONICAL_DOCS))
 
 [[ -n "$DOCS" ]] || { printf 'FAIL: CANONICAL_DOCS is empty\n' >&2; exit 1; }
 
-# 1. The standard's topic-set code block lists exactly the same names, in the same order.
+# 1. The standard's topic-set code block lists exactly the same names, in the same order,
+#    the tree included.
 SETUP_LIST=$(python3 -c "
 import re
 s = open('$SETUP_MD', encoding='utf-8').read()
 block = re.search(r'## Canonical topic set\s*\n+\`\`\`text\n(.*?)\`\`\`', s, re.S)
-print(' '.join(re.findall(r'^\s+(\S+\.md)\s*\$', block.group(1), re.M)) if block else '')
+print(' '.join(re.findall(r'^\s+(\S+(?:\.md|/))\s*\$', block.group(1), re.M)) if block else '')
 ")
 assert_eq "topic set: project-setup.md lists the same docs as manifest.py" "$DOCS" "$SETUP_LIST"
 
@@ -69,7 +73,10 @@ print(','.join(missing) if missing else 'complete')
 ")
   assert_eq "contract: docs/$name has Audience, Inside and Not inside" "complete" "$CONTRACT"
 
-  if [[ -f "$EXAMPLES/$name" ]]; then ok "example: examples/docs/$name exists"
+  if [[ "$name" == */ ]]; then
+    if compgen -G "$EXAMPLES/${name}[0-9][0-9][0-9][0-9]-*.md" >/dev/null; then ok "example: examples/docs/$name holds a record"
+    else fail "example: examples/docs/$name holds no NNNN-slug.md record — every canonical tree carries a worked example"; fi
+  elif [[ -f "$EXAMPLES/$name" ]]; then ok "example: examples/docs/$name exists"
   else fail "example: examples/docs/$name is missing — every canonical doc carries a worked example"; fi
 done
 
@@ -95,17 +102,17 @@ print('complete' if c.get('inside') and c.get('not_inside') else 'missing')
   assert_eq "personal file: project-setup.md has an Inside and Not inside block for $name" "complete" "$CONTRACT"
 done
 
-# 3. Every canonical doc is the target of exactly one review use case. The reviewer spawns
-#    one read-review agent per use case, so a doc missing here is audited as a bare file
-#    with no idea what work it has to carry.
+# 3. Every canonical topic file is the target of exactly one review use case, and a tree is
+#    the target of none: its route fires on edits to the paths its records govern, which no
+#    history label isolates.
 HISTORY_TARGETS=$(python3 -c "
 import importlib.util
 spec = importlib.util.spec_from_file_location('h', '$HISTORY')
 h = importlib.util.module_from_spec(spec); spec.loader.exec_module(h)
 print(' '.join(sorted(v.split('/')[-1] for v in h.USE_CASE_DOCS.values())))
 ")
-EXPECTED_TARGETS=$(printf '%s\n' "$DOCS" | tr ' ' '\n' | sort | tr '\n' ' ' | sed 's/ $//')
-assert_eq "use cases: history.py covers every canonical doc exactly once" "$EXPECTED_TARGETS" "$HISTORY_TARGETS"
+EXPECTED_TARGETS=$(printf '%s\n' "$DOCS" | tr ' ' '\n' | grep -v '/$' | LC_ALL=C sort | tr '\n' ' ' | sed 's/ $//')
+assert_eq "use cases: history.py covers every canonical topic file exactly once, and no tree" "$EXPECTED_TARGETS" "$HISTORY_TARGETS"
 
 printf '\nResults: %d passed, %d failed\n' "$PASS" "$FAIL"
 [[ "$FAIL" -eq 0 ]] || exit 1

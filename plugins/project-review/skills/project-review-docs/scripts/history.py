@@ -41,9 +41,9 @@ import subprocess
 import sys
 
 # ---------------------------------------------------------------------------
-# Use case -> the doc AGENTS.md routes it to. Mirrors the canonical topic set in
-# the authoring standard's project-setup.md; these keys are also the label
-# vocabulary handed to the classifier, plus "none".
+# Use case -> the doc AGENTS.md routes it to. Mirrors the canonical topic files in
+# the authoring standard's project-setup.md (the docs/decisions/ tree takes no use
+# case); these keys are also the label vocabulary handed to the classifier, plus "none".
 # ---------------------------------------------------------------------------
 
 USE_CASE_DOCS = {

@@ -11,7 +11,8 @@ workflow reads this JSON and never re-derives a mechanical fact from it.
 What is a *fact* here (and therefore lives in this script, never in an agent):
 
   - which Markdown files exist (root + docs/ recursively)
-  - which canonical/standard files are present or missing
+  - which canonical/standard files are present or missing, and which are decision
+    records (docs/decisions/NNNN-*.md)
   - per-file metrics: line, byte, word, and non-heading-line counts
   - per-file link/reference resolution (file exists, anchor resolves) — a link to
     an existing directory with no anchor resolves OK (valid GitHub navigation)
@@ -53,12 +54,17 @@ import sys
 
 CANONICAL_ROOT = ["README.md", "AGENTS.md", "CLAUDE.md"]  # required at repo root
 OPTIONAL_CANONICAL_ROOT = ["CONTRIBUTING.md"]             # optional at repo root
-# Canonical topic docs under docs/. ALL OPTIONAL: create a doc only when there is
-# real local guidance; none is ever reported missing. The names are canonical —
-# use them if you document the topic — but presence is never required.
+# The one canonical tree: docs/decisions/NNNN-slug.md, one file per decision in force.
+# Its contract is keyed by the tree name, as project-setup.md heads its block.
+DECISIONS_TREE = "decisions/"
+DECISION_FILE_RE = re.compile("^" + re.escape("docs/" + DECISIONS_TREE) + r"[0-9]{4}-[^/]+\.md$")
+# Canonical topics under docs/, in topic-set order: the topic files, then the tree.
+# ALL OPTIONAL: create one only when there is real local guidance; none is ever
+# reported missing. The names are canonical — use them if you document the topic —
+# but presence is never required.
 CANONICAL_DOCS = [
     "OVERVIEW.md", "CODING.md", "DOCUMENTING.md", "TESTING.md", "RELEASING.md",
-    "MONITORING.md", "CHANGE-WORKFLOW.md", "REVIEWING.md", "RUNNING.md",
+    "MONITORING.md", "CHANGE-WORKFLOW.md", "REVIEWING.md", "RUNNING.md", DECISIONS_TREE,
 ]
 PERSONAL_LOCAL = ["CLAUDE.local.md"]
 # Personal files under a name Claude Code never loads, mapped to the name it does load.
@@ -113,7 +119,7 @@ def parse_ownership(setup_path):
     cur_name = None
     cur = {}
 
-    heading_re = re.compile(r"^###\s+`([^`]+\.md)`")
+    heading_re = re.compile(r"^###\s+`([^`]+\.md|[^`]+/)`")
     field_re = re.compile(r"^-\s+\*\*(Audience|Inside|Not inside)\*\*:\s*(.*)$")
 
     def flush():
@@ -133,7 +139,9 @@ def parse_ownership(setup_path):
             flush()
             # Ownership blocks head docs with a path (`docs/CODING.md`) or a bare
             # name (`README.md`); key by basename so lookups by canonical name match.
-            cur_name = os.path.basename(m.group(1))
+            # A tree (`docs/decisions/`) keys by its last segment and the slash.
+            head = m.group(1)
+            cur_name = os.path.basename(head.rstrip("/")) + ("/" if head.endswith("/") else "")
             cur = {}
             continue
         fm = field_re.match(ln)
@@ -188,7 +196,8 @@ def classify(rel_path):
     """Return (classification, canonical_name_or_None)."""
     name = os.path.basename(rel_path)
     at_root = (rel_path == name)
-    in_docs = rel_path.startswith("docs" + os.sep) or rel_path.startswith("docs/")
+    posix = rel_path.replace("\\", "/")
+    in_docs = posix.startswith("docs/")
 
     if at_root and name in CANONICAL_ROOT:
         return "canonical-root", name
@@ -201,9 +210,11 @@ def classify(rel_path):
     if at_root and name in ROOT_META_IGNORE:
         return "meta", None
     # docs/<NAME> directly under docs/ — a canonical topic doc (all optional)
-    depth = rel_path.replace("\\", "/").count("/")
+    depth = posix.count("/")
     if in_docs and depth == 1 and name in CANONICAL_DOCS:
         return "canonical", name
+    if DECISION_FILE_RE.match(posix):
+        return "decision", DECISIONS_TREE
     return "non-standard", None
 
 
@@ -238,11 +249,28 @@ def file_links(vr, repo_root, rel_path):
         })
         if ok and target_rel.endswith(".md"):
             resolved_targets.append(target_rel)
+        elif ok and os.path.isdir(target_abs):
+            resolved_targets.extend(folder_docs(target_rel, target_abs))
     return records, resolved_targets
 
 
+def folder_docs(target_rel, target_abs):
+    """The docs a folder link stands for: a link to the decisions tree reaches its
+    records, since the tree has no index. Any other folder link reaches nothing."""
+    posix = target_rel.replace("\\", "/")
+    if posix != "docs/" + DECISIONS_TREE.rstrip("/"):
+        return []
+    try:
+        names = sorted(os.listdir(target_abs))
+    except OSError:
+        return []
+    return [os.path.join(target_rel, n) for n in names
+            if DECISION_FILE_RE.match(posix + "/" + n) and os.path.isfile(os.path.join(target_abs, n))]
+
+
 def compute_reachability(link_map, repo_root):
-    """BFS from AGENTS.md over resolved .md links. Returns set of reachable rel paths.
+    """BFS from AGENTS.md over resolved .md links, plus the docs a folder link stands
+    for (folder_docs). Returns set of reachable rel paths.
 
     CLAUDE.md -> @AGENTS.md is the root import; AGENTS.md is the routing surface.
     A doc is reachable if AGENTS.md links it, directly or through another reachable doc.
@@ -369,7 +397,9 @@ def build(repo_root, setup_md=None):
             "hollow": not personal and bool(m and m["non_heading_lines"] == 0),
             "links": links,
             "unresolved_links": [x for x in links if not x["resolved"]],
-            "contract": ownership.get(canon) if canon else None,
+            # Every decision record shares one contract: the manifest carries it once,
+            # as decision_contract, so a tree of many records stays small under --brief.
+            "contract": ownership.get(canon) if canon and cls != "decision" else None,
         }
         if canon:
             present_canonical.add(canon)
@@ -405,7 +435,7 @@ def build(repo_root, setup_md=None):
 
     # Location violations: canonical docs/ file found at root, or root file under docs/
     location_violations = []
-    for n in CANONICAL_DOCS:
+    for n in (n for n in CANONICAL_DOCS if n.endswith(".md")):
         if os.path.isfile(os.path.join(repo_root, n)):
             location_violations.append({"file": n, "found_at": n, "expected_at": f"docs/{n}"})
     for n in CANONICAL_ROOT + OPTIONAL_CANONICAL_ROOT:
@@ -441,6 +471,7 @@ def build(repo_root, setup_md=None):
 
     return {
         "repo_root": os.path.abspath(repo_root),
+        "decision_contract": ownership.get(DECISIONS_TREE),
         "summary": {
             "total_md": len(files),
             "canonical_present": len(present_canonical & set(required)),

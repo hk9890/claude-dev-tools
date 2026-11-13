@@ -239,6 +239,43 @@ test_contract() {
   rm -rf "$dir"
 }
 
+# 9b. a decision record carries the tree's contract; a folder link from AGENTS.md reaches
+#     every record, and an unrouted record is an orphan. A file in the tree without the
+#     NNNN- prefix is an ordinary non-standard doc.
+test_decision_records() {
+  local dir; dir=$(make_fixture); mkdir -p "$dir/docs/decisions"
+  printf '# 0001: One store\n\nTransactions span rows.\n' > "$dir/docs/decisions/0001-one-store.md"
+  printf '# ADR-0002\n\nAnother format.\n' > "$dir/docs/decisions/ADR-0002-other.md"
+  local out; out=$("$SCRIPT" "$dir" --setup-md="$SETUP_MD")
+  assert_eq "decision: docs/decisions/0001-one-store.md = decision" "decision" \
+    "$(json_val "$out" "[f['classification'] for f in d['files'] if f['path']=='docs/decisions/0001-one-store.md'][0]")"
+  assert_contains "decision: the manifest carries the docs/decisions/ contract once" "one file per decision in force" \
+    "$(json_val "$out" "(d.get('decision_contract') or {}).get('inside','')")"
+  assert_eq "decision: a record carries no copy of it" "None" \
+    "$(json_val "$out" "[f['contract'] for f in d['files'] if f['path']=='docs/decisions/0001-one-store.md'][0]")"
+  assert_eq "decision: the tree counts once among the present canonical topics" "5" \
+    "$(json_val "$out" "d['summary']['optional_canonical_present']")"
+  assert_eq "decision: an unnumbered file in the tree = non-standard" "non-standard" \
+    "$(json_val "$out" "[f['classification'] for f in d['files'] if f['path']=='docs/decisions/ADR-0002-other.md'][0]")"
+  assert_contains "decision: a record with no route to its folder is an orphan" "docs/decisions/0001-one-store.md" \
+    "$(json_val "$out" "d['orphans']")"
+  printf '\n### Decisions\n\nMUST read [docs/decisions/](docs/decisions/) before a change.\n' >> "$dir/AGENTS.md"
+  out=$("$SCRIPT" "$dir")
+  assert_eq "decision: a folder link from AGENTS.md reaches every record in it" "[]" \
+    "$(json_val "$out" "[p for p in d['orphans'] if p.startswith('docs/decisions/0')]")"
+  # Only the decisions tree stands for its files: a link to any other folder reaches nothing.
+  printf '\nSee [the docs](docs/).\n' >> "$dir/AGENTS.md"
+  out=$("$SCRIPT" "$dir")
+  assert_contains "decision: a link to another folder leaves its docs orphaned" "docs/NOTES.md" \
+    "$(json_val "$out" "d['orphans']")"
+  # The tree's route reaches its records only: an index in the tree stays an orphan.
+  printf '# Index\n\nA list.\n' > "$dir/docs/decisions/README.md"
+  out=$("$SCRIPT" "$dir")
+  assert_contains "decision: an index in the tree stays an orphan" "docs/decisions/README.md" \
+    "$(json_val "$out" "d['orphans']")"
+  rm -rf "$dir"
+}
+
 # 10. CLAUDE.md invariant
 test_claude_ok() {
   local dir; dir=$(make_fixture)
@@ -328,6 +365,7 @@ test_dead_link
 test_dir_link_ok
 test_reachability
 test_contract
+test_decision_records
 test_claude_ok
 test_claude_bad
 test_claude_symlink
