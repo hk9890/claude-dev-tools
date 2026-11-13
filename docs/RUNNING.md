@@ -21,6 +21,7 @@ An agent drives the plugins with the first form — `-p` writes the reply to std
   - `tasks` — `claude -p "/tasks-board" --plugin-dir plugins/tasks`.
   - `worktree-flow` — ask for `git worktree add ../x` and read the refusal, then for `git -C <another repository> worktree add <dir> -b <branch>` and see it run.
   - `revier` — ask for `revier agent focus no-such-project` and read the refusal; the command moves nothing where the guard fails.
+  - `werft` — ask for "Get a VM and run uname -a in it. Keep it running." with `--permission-mode default` and `--output-format stream-json --verbose`. The result event lists no `permission_denials`; after the exit the debug file has `$.process.run (werft): sh with`, and `werft --json leases` lists no lease whose owner is `claude-<session id>`.
   - A pane or a status line shows in an interactive terminal alone. Start one with `tmux new-session -d -s mod -x 180 -y 50 "claude --plugin-dir plugins/<plugin>"`, type with `tmux send-keys -t mod "/tasks-board" Enter`, and read the screen with `tmux capture-pane -t mod -p`.
 
 To **reproduce a reported bug**, drive the exact path from the report; where it came from a real session, the transcripts in [MONITORING.md](MONITORING.md#data-source) help recover the input that triggered it. To **verify a change**, re-drive that path afterwards, and for structural changes also run the checks in [TESTING.md](TESTING.md).
