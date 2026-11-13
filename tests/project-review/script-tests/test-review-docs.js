@@ -524,15 +524,18 @@ async function main() {
     manifest: {
       ...manifest,
       files: [...manifest.files,
-        { path: 'docs/decisions/0001-a.md', classification: 'decision', metrics, contract: { audience: 'a', inside: 'one file per decision in force', not_inside: 'n' } },
-        { path: 'docs/decisions/0002-b.md', classification: 'decision', metrics, contract: { audience: 'a', inside: 'one file per decision in force', not_inside: 'n' } }],
+        { path: 'docs/decisions/0001-a.md', classification: 'decision', metrics, contract: null },
+        { path: 'docs/decisions/0002-b.md', classification: 'decision', metrics, contract: null }],
+      decision_contract: { audience: 'a', inside: 'one file per decision in force', not_inside: 'n' },
     },
   });
   const treeReview = tree.prompts.filter((p, i) => tree.labels[i].startsWith('review-')).join('');
   eq('read-review: a batch states the decision-record contract once, not per record',
     1, treeReview.split('one file per decision in force').length - 1);
   eq('read-review: each record points at that contract',
-    2, treeReview.split('Decision record: judge it against').length - 1);
+    2, treeReview.split('Tree record: judge it against').length - 1);
+  truthy('read-review: a record in another format is sent out of the tree, not cut down',
+    treeReview.includes('is misplaced, not a record to cut down'));
   truthy('history: the judge is told AGENTS.md is never Read, so its absence proves nothing',
     judgePrompt.includes('AGENTS.md is always in an agent') && judgePrompt.includes('never Read'));
   truthy('history: a well-edged obligation route that is skipped accuses the agent, not the doc',

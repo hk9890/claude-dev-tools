@@ -455,10 +455,10 @@ if (typeof agent === 'function') {
         `  An edgeless trigger is an Obligation finding even when the route is a correctly worded MUST: a diligent agent cannot obey it. Severity major. The fix names an action with a detectable first instant — e.g. replace "before searching this repository" with "before your first grep, rg, or Glob in this repo" — and replaces the existing trigger rather than being added beside it.\n` +
         contractLines(f)
     }
-    if (f.classification === 'decision') return head + `  Decision record: judge it against the DECISION RECORDS contract above.\n`
+    if (f.classification === 'decision') return head + `  Tree record: judge it against the DOCS/DECISIONS/ TREE contract above.\n`
     if (f.contract) return head + contractLines(f)
     return head +
-      `  NON-STANDARD doc — not one of the canonical files, so it has no ownership contract. FILED CORRECTLY? If its content belongs to a canonical topic (OVERVIEW / CODING / DOCUMENTING / TESTING / RELEASING / MONITORING / CHANGE-WORKFLOW / RUNNING / REVIEWING / DECISIONS / README / CONTRIBUTING), that is a placement finding: recommend RENAME to docs/<TOPIC>.md (for DECISIONS, the placement rules above) when that canonical slot is empty (missing canonical: ${JSON.stringify(manifest.missing_canonical)}), or LINK it from the canonical doc when the slot is filled. Content of no canonical topic is legitimately project-specific. Also flag it if it is hollow (a stub) or duplicates AGENTS.md routing. Specs and design docs are read as authoritative, so one that contradicts a canonical doc you read is a blocker.\n`
+      `  NON-STANDARD doc — not one of the canonical files, so it has no ownership contract. FILED CORRECTLY? If its content belongs to a canonical topic (OVERVIEW / CODING / DOCUMENTING / TESTING / RELEASING / MONITORING / CHANGE-WORKFLOW / RUNNING / REVIEWING / DECISIONS / README / CONTRIBUTING), that is a placement finding: recommend RENAME to docs/<TOPIC>.md when that canonical slot is empty (missing canonical: ${JSON.stringify(manifest.missing_canonical)}), or LINK it from the canonical doc when the slot is filled; for DECISIONS, the DECISION RECORD PLACEMENT rules above replace both. Content of no canonical topic is legitimately project-specific. Also flag it if it is hollow (a stub) or duplicates AGENTS.md routing. Specs and design docs are read as authoritative, so one that contradicts a canonical doc you read is a blocker.\n`
   }
 
   // Where a decision record not in the tree's shape belongs. Stated once per batch that
@@ -471,10 +471,11 @@ if (typeof agent === 'function') {
     : ''
 
   // Every decision record shares one contract, so a batch states it once, not per record.
-  const decisionContract = (batch) => {
-    const record = batch.find(t => t.file.classification === 'decision')
-    return record ? `\nDECISION RECORDS — every file marked "Decision record" below is one record of the docs/decisions/ tree.\n` + contractLines(record.file) : ''
-  }
+  const decisionContract = (batch) => batch.some(t => t.file.classification === 'decision')
+    ? `\nDOCS/DECISIONS/ TREE — every file marked "Tree record" below is one record of the docs/decisions/ tree. ` +
+      `A record in another format (a MADR or Nygard ADR with status, date, and sections) is misplaced, not a record to cut down: recommend moving its folder out of docs/decisions/ and registering it in docs/DOCUMENTING.md.\n` +
+      contractLines({ contract: manifest.decision_contract })
+    : ''
 
   const batchPrompt = (batch) => {
     const readList = [

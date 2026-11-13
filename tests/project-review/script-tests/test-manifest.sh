@@ -249,8 +249,10 @@ test_decision_records() {
   local out; out=$("$SCRIPT" "$dir" --setup-md="$SETUP_MD")
   assert_eq "decision: docs/decisions/0001-one-store.md = decision" "decision" \
     "$(json_val "$out" "[f['classification'] for f in d['files'] if f['path']=='docs/decisions/0001-one-store.md'][0]")"
-  assert_contains "decision: the record carries the docs/decisions/ contract" "one file per decision in force" \
-    "$(json_val "$out" "([f['contract'] for f in d['files'] if f['path']=='docs/decisions/0001-one-store.md'][0] or {}).get('inside','')")"
+  assert_contains "decision: the manifest carries the docs/decisions/ contract once" "one file per decision in force" \
+    "$(json_val "$out" "(d.get('decision_contract') or {}).get('inside','')")"
+  assert_eq "decision: a record carries no copy of it" "None" \
+    "$(json_val "$out" "[f['contract'] for f in d['files'] if f['path']=='docs/decisions/0001-one-store.md'][0]")"
   assert_eq "decision: the tree counts once among the present canonical topics" "5" \
     "$(json_val "$out" "d['summary']['optional_canonical_present']")"
   assert_eq "decision: an unnumbered file in the tree = non-standard" "non-standard" \
@@ -261,8 +263,6 @@ test_decision_records() {
   out=$("$SCRIPT" "$dir")
   assert_eq "decision: a folder link from AGENTS.md reaches every record in it" "[]" \
     "$(json_val "$out" "[p for p in d['orphans'] if p.startswith('docs/decisions/0')]")"
-  assert_contains "decision: a folder route keeps its trailing slash" "docs/decisions/" \
-    "$(json_val "$out" "[r['target'] for r in d['agents_routes'] if r['target'].startswith('docs/decisions')]")"
   # Only the decisions tree stands for its files: a link to any other folder reaches nothing.
   printf '\nSee [the docs](docs/).\n' >> "$dir/AGENTS.md"
   out=$("$SCRIPT" "$dir")
@@ -273,13 +273,6 @@ test_decision_records() {
   out=$("$SCRIPT" "$dir")
   assert_contains "decision: an index in the tree stays an orphan" "docs/decisions/README.md" \
     "$(json_val "$out" "d['orphans']")"
-  # DOCUMENTING.md registers a doc tree by linking its folder: that reaches its docs.
-  mkdir -p "$dir/docs/adr"
-  printf '# ADR 1\n\nOld format.\n' > "$dir/docs/adr/0001-old.md"
-  printf '\nDecision records live in [docs/adr/](adr/).\n' >> "$dir/docs/DOCUMENTING.md"
-  out=$("$SCRIPT" "$dir")
-  assert_eq "decision: a folder DOCUMENTING.md registers reaches its docs" "[]" \
-    "$(json_val "$out" "[p for p in d['orphans'] if p.startswith('docs/adr/')]")"
   rm -rf "$dir"
 }
 

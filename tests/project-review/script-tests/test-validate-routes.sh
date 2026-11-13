@@ -408,6 +408,20 @@ test_plugins_directory_link_resolves() {
   rm -rf "$dir"
 }
 
+# 27. The decisions route links its folder, so a link to docs/decisions/ resolves in a
+#     steering doc; a link to any other folder there stays a failure.
+test_decisions_tree_link_resolves() {
+  local dir; dir=$(tmpdir)
+  touch "$dir/CLAUDE.md"
+  mkdir -p "$dir/docs/decisions" "$dir/docs/other"
+  printf '# 0001: A\n\nWhy.\n' > "$dir/docs/decisions/0001-a.md"
+  printf '# Routing\n\nMUST read the records in [docs/decisions/](docs/decisions/) first.\n' > "$dir/AGENTS.md"
+  assert_exit "decisions-tree-link: a route to docs/decisions/ resolves" 0 python3 "$SCRIPT" "$dir"
+  printf '\nSee [other](docs/other/).\n' >> "$dir/AGENTS.md"
+  assert_exit "decisions-tree-link: a link to another folder still fails" 1 python3 "$SCRIPT" "$dir"
+  rm -rf "$dir"
+}
+
 # ── run all tests ─────────────────────────────────────────────────────────────
 
 test_no_args
@@ -436,6 +450,7 @@ test_directory_link_in_steering_fails
 test_directory_link_with_anchor_fails
 test_include_plugins
 test_plugins_directory_link_resolves
+test_decisions_tree_link_resolves
 
 printf '\n'
 printf 'Results: %d passed, %d failed\n' "$PASS" "$FAIL"

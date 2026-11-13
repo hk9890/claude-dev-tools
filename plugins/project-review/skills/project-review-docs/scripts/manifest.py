@@ -57,7 +57,7 @@ OPTIONAL_CANONICAL_ROOT = ["CONTRIBUTING.md"]             # optional at repo roo
 # The one canonical tree: docs/decisions/NNNN-slug.md, one file per decision in force.
 # Its contract is keyed by the tree name, as project-setup.md heads its block.
 DECISIONS_TREE = "decisions/"
-DECISION_FILE_RE = re.compile(r"^docs/decisions/[0-9]{4}-[^/]+\.md$")
+DECISION_FILE_RE = re.compile("^" + re.escape("docs/" + DECISIONS_TREE) + r"[0-9]{4}-[^/]+\.md$")
 # Canonical topics under docs/, in topic-set order: the topic files, then the tree.
 # ALL OPTIONAL: create one only when there is real local guidance; none is ever
 # reported missing. The names are canonical — use them if you document the topic —
@@ -250,28 +250,22 @@ def file_links(vr, repo_root, rel_path):
         if ok and target_rel.endswith(".md"):
             resolved_targets.append(target_rel)
         elif ok and os.path.isdir(target_abs):
-            resolved_targets.extend(folder_docs(rel_path, target_rel, target_abs))
+            resolved_targets.extend(folder_docs(target_rel, target_abs))
     return records, resolved_targets
 
 
-def folder_docs(rel_path, target_rel, target_abs):
-    """The docs a folder link stands for. A link to the decisions tree reaches its
-    records, since the tree has no index. A link from docs/DOCUMENTING.md registers a
-    doc tree, and reaches every doc directly inside it. Any other folder link reaches
-    nothing."""
+def folder_docs(target_rel, target_abs):
+    """The docs a folder link stands for: a link to the decisions tree reaches its
+    records, since the tree has no index. Any other folder link reaches nothing."""
     posix = target_rel.replace("\\", "/")
-    if posix == "docs/" + DECISIONS_TREE.rstrip("/"):
-        wanted = lambda n: bool(DECISION_FILE_RE.match(posix + "/" + n))
-    elif rel_path.replace("\\", "/") == "docs/DOCUMENTING.md":
-        wanted = lambda n: n.endswith(".md")
-    else:
+    if posix != "docs/" + DECISIONS_TREE.rstrip("/"):
         return []
     try:
         names = sorted(os.listdir(target_abs))
     except OSError:
         return []
     return [os.path.join(target_rel, n) for n in names
-            if wanted(n) and os.path.isfile(os.path.join(target_abs, n))]
+            if DECISION_FILE_RE.match(posix + "/" + n) and os.path.isfile(os.path.join(target_abs, n))]
 
 
 def compute_reachability(link_map, repo_root):
@@ -313,11 +307,9 @@ def agents_routes(vr, repo_root):
         ok, reason = vr.resolve_reference(ref, repo_root, allow_dir_links=True)
         target_abs = os.path.normpath(os.path.join(os.path.dirname(abs_path), ref["raw_path"]))
         idx = ref["line"] - 1
-        target = os.path.relpath(target_abs, repo_root)
         routes.append({
             "line": ref["line"],
-            # A folder target keeps its trailing slash, as the use cases name a tree.
-            "target": target + "/" if os.path.isdir(target_abs) else target,
+            "target": os.path.relpath(target_abs, repo_root),
             "kind": ref["kind"],
             "resolved": ok,
             # The route's own wording. A fact (it is just the line), but the one the
@@ -405,7 +397,9 @@ def build(repo_root, setup_md=None):
             "hollow": not personal and bool(m and m["non_heading_lines"] == 0),
             "links": links,
             "unresolved_links": [x for x in links if not x["resolved"]],
-            "contract": ownership.get(canon) if canon else None,
+            # Every decision record shares one contract: the manifest carries it once,
+            # as decision_contract, so a tree of many records stays small under --brief.
+            "contract": ownership.get(canon) if canon and cls != "decision" else None,
         }
         if canon:
             present_canonical.add(canon)
@@ -477,6 +471,7 @@ def build(repo_root, setup_md=None):
 
     return {
         "repo_root": os.path.abspath(repo_root),
+        "decision_contract": ownership.get(DECISIONS_TREE),
         "summary": {
             "total_md": len(files),
             "canonical_present": len(present_canonical & set(required)),

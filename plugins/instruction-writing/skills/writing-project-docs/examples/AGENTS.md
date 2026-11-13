@@ -22,7 +22,7 @@ Every route below is **mandatory, not advisory**. Load the document BEFORE the f
 
 ### Research, planning, analysis
 
-**MUST read [docs/OVERVIEW.md](docs/OVERVIEW.md) before searching this repository.** It is the map — package layout, the storage boundary, and the expressions that locate things fast. Go there first instead of grepping blind.
+**MUST read [docs/OVERVIEW.md](docs/OVERVIEW.md) before searching this repository.** It is the map — package layout, where each layer lives, and the expressions that locate things fast. Go there first instead of grepping blind.
 
 ### Testing and verification
 

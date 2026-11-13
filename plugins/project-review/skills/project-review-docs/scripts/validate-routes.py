@@ -349,13 +349,16 @@ def validate(repo_root, include_docs=False, include_plugins=False):
         refs = extract_references(filepath, content)
         all_refs.extend(refs)
 
-    # Directory links resolve OK only inside plugins/** (the original verify.sh behavior);
-    # steering docs (CLAUDE.md/AGENTS.md) and docs/ stay strict.
+    # Directory links resolve OK only inside plugins/** (the original verify.sh behavior),
+    # and to the docs/decisions/ tree, whose route links the folder; steering docs
+    # (CLAUDE.md/AGENTS.md) and docs/ stay strict otherwise.
     plugins_root = os.path.join(os.path.abspath(repo_root), "plugins") + os.sep
+    decisions_tree = os.path.join(os.path.abspath(repo_root), "docs", "decisions")
 
     unresolved = []
     for ref in all_refs:
-        allow_dir = os.path.abspath(ref["source_file"]).startswith(plugins_root)
+        target = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(ref["source_file"])), ref["raw_path"]))
+        allow_dir = os.path.abspath(ref["source_file"]).startswith(plugins_root) or target == decisions_tree
         ok, reason = resolve_reference(ref, repo_root, allow_dir_links=allow_dir)
         if not ok:
             unresolved.append({
