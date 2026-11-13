@@ -33,7 +33,7 @@ docs/
   decisions/
 ```
 
-- `docs/decisions/` is the one canonical tree: one file per decision in force, optional like every topic doc (its block below).
+- `docs/decisions/` is the one canonical tree (its block below).
 - If a reusable skill fully covers a topic with no local delta, route to that skill from `AGENTS.md` and write no topic doc for it.
 - A doc whose **content** is a canonical topic but sits under a **non-canonical name** (anywhere under `docs/` or at the repo root) is a defect: rename it to the canonical name when that slot is empty, or link it from the canonical doc when the slot is filled. Content-driven — the review never invents a doc for an absent topic.
 
@@ -174,6 +174,6 @@ Content outside a file's boundary is a defect even when every statement in it is
 |---|---|
 | `CLAUDE.md`, `AGENTS.md`, `README.md`, `CONTRIBUTING.md` | project root |
 | Topic docs | `docs/` |
-| Decision records | `docs/decisions/NNNN-slug.md` |
+| Decision records | `docs/decisions/` |
 
 - Every route in `AGENTS.md` must point to a real file or installed skill; flag stale routes left behind after merges or deletions.
