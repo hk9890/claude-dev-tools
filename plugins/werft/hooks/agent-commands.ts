@@ -7,8 +7,8 @@ type Token = { word: string } | { quoted: string } | { pipe: true }
 
 // What a command needs before it may run: the lease it names must be live with this ssh_config, as
 // `werft --json leases` reports it; each path it reads on this host must land in the project, the
-// links on the way resolved; and under the tree it copies whole, each link must land there too.
-export type AgentCommand = { lease?: { id: string; config: string }; reads?: string[]; copiesTree?: string }
+// links on the way resolved; and where it copies the first of them whole, each link under it too.
+export type AgentCommand = { lease?: { id: string; config: string }; reads?: string[]; isRecursive?: boolean }
 
 // A word holds no character the shell gives a meaning to; a quoted string runs in the VM alone.
 const WORD = /^[A-Za-z0-9_./:=@%+,-]+$/
@@ -110,7 +110,7 @@ function scpInto(list: Token[]): AgentCommand | undefined {
   }
 
   // scp follows each link it meets, also inside a tree it copies with -r.
-  return { lease: { id, config }, reads: [from], copiesTree: wordOf(list[3]) === '-r' ? from : undefined }
+  return { lease: { id, config }, reads: [from], isRecursive: wordOf(list[3]) === '-r' }
 }
 
 // tar -C <dir> -cf - <path> | ssh ... : a read of the working tree into the lease.
@@ -124,8 +124,11 @@ function tarInto(list: Token[]): AgentCommand | undefined {
 
   const into = ssh(list.slice(pipe + 1))
 
-  // tar follows the links in `-C` and in its operand's path, and stores each link under it as a link.
-  return into && { ...into, reads: [dir, `${dir}/${path}`] }
+  // tar follows a link in `-C` and in the directories on its operand's path; the operand itself, and
+  // each link under it, it stores as a link.
+  const operand = `${dir}/${path}`.replace(/\/+$/, '')
+
+  return into && { ...into, reads: [dir, operand.slice(0, operand.lastIndexOf('/'))] }
 }
 
 export function agentCommand(command: string): AgentCommand | undefined {

@@ -153,14 +153,26 @@ const FILES: Record<string, string> = {
   '/p/hidden/deep/via': '->/p/linkdir',
   '/p/dangling': '->/nowhere',
   '/p/big': 'dir',
+  '/p/full': 'dir',
+  '/p/sub': 'dir',
+  '/p/sub/notes.txt': '->/home/u/.ssh/id_ed25519',
+  '/p/notes.txt': 'file',
+  '/q': 'dir',
+  '/q/file': 'file',
   '/home/u/.ssh': 'dir',
   '/home/u/.ssh/id_ed25519': 'file',
 }
-const BIG = Array.from({ length: 10_001 }, (_, n) => ({ name: `f${n}`, kind: 'file' as const, size: 0, mtimeMs: 0, isLink: false }))
+const files = (length: number) => Array.from({ length }, (_, n) => ({ name: `f${n}`, kind: 'file' as const, size: 0, mtimeMs: 0, isLink: false }))
+// One entry past the tree limit, and the limit itself.
+const LISTED: Record<string, ReturnType<typeof files>> = { '/p/big': files(10_001), '/p/full': files(10_000) }
 
 // Where a path lands as realpath(1) resolves it, or undefined where it leads nowhere.
 function realPath(path: string): string | undefined {
-  const parts = (path.startsWith('/') ? path : `/p/${path}`).split('/').filter(part => part && part !== '.')
+  if (!path.startsWith('/')) {
+    throw new Error(`the engine resolves a relative path against its own directory: ${path}`)
+  }
+
+  const parts = path.split('/').filter(part => part && part !== '.')
   let at = ''
 
   for (const [n, part] of parts.entries()) {
@@ -180,8 +192,9 @@ function realPath(path: string): string | undefined {
 }
 
 // Stands for the engine and the host: `verdict` on every call, `werft --json leases` lists the one
-// live lease ab12cd with the ssh_config C, and the files are FILES.
-function engine(on: On, verdict: ToolCheckResult) {
+// live lease ab12cd with the ssh_config C, the files are FILES, the project is /p, and the session
+// runs in `cwd`.
+function engine(on: On, verdict: ToolCheckResult, cwd = '/p') {
   on('tool.check', () => verdict)
   on('process.run', ($, e) => {
     expect(e.argv).toEqual(['werft', '--json', 'leases'])
@@ -189,24 +202,28 @@ function engine(on: On, verdict: ToolCheckResult) {
     return ran(0, JSON.stringify([{ id: 'ab12cd', owner: 'claude-s1', ssh_config: C }]))
   })
   on('session.root', () => ({ value: '/p' }))
-  on('session.cwd', () => ({ value: '/p' }))
+  on('session.cwd', () => ({ value: cwd }))
   on('fs.stat', ($, e) => {
+    const own = FILES[e.path]
     const real = realPath(e.path)
-    const own = FILES[e.path.startsWith('/') ? e.path : `/p/${e.path}`]
+    const isLink = own?.startsWith('->') ?? false
 
+    // A link that leads nowhere stats as the link, with no realPath; a missing path rejects.
     if (real === undefined) {
-      return { deny: `ENOENT: ${e.path}` }
+      return isLink ? { value: { kind: 'other' as const, size: 0, mtimeMs: 0, isLink } } : { deny: `ENOENT: ${e.path}` }
     }
 
     const kind = FILES[real] as 'file' | 'dir'
 
-    return { value: { kind, size: 0, mtimeMs: 0, isLink: own?.startsWith('->') ?? false, ...(e.resolve && { realPath: real }) } }
+    return { value: { kind, size: 0, mtimeMs: 0, isLink, ...(e.resolve && { realPath: real }) } }
   })
   on('fs.list', ($, e) => {
     expect(FILES[e.path]).toBe('dir')
 
-    if (e.path === '/p/big') {
-      return { value: BIG }
+    const listed = LISTED[e.path]
+
+    if (listed) {
+      return { value: listed }
     }
 
     const children = Object.entries(FILES).filter(([path]) => path.slice(0, path.lastIndexOf('/')) === e.path)
@@ -289,6 +306,9 @@ const ALLOWED = [
   `scp -F ${C} -r inlink ab12cd:src`,
   `scp -F ${C} -r loop ab12cd:loop`,
   `tar -C . -cf - leaky | ssh -F ${C} ab12cd 'tar -xf -'`,
+  `tar -C . -cf - key | ssh -F ${C} ab12cd 'tar -xf -'`,
+  `tar -C . -cf - linkdir/ | ssh -F ${C} ab12cd 'tar -xf -'`,
+  `scp -F ${C} -r full ab12cd:full`,
 ]
 
 // Each one runs on this host outside the guide's forms, so its question stands.
@@ -351,8 +371,9 @@ const ASKED = [
   `scp -F ${C} dangling ab12cd:k`,
   `scp -F ${C} missing ab12cd:k`,
   `tar -C linkdir -cf - . | ssh -F ${C} ab12cd 'cat'`,
-  `tar -C . -cf - linkdir/ | ssh -F ${C} ab12cd 'cat'`,
-  `tar -C . -cf - key | ssh -F ${C} ab12cd 'cat'`,
+  `tar -C . -cf - linkdir/. | ssh -F ${C} ab12cd 'cat'`,
+  `tar -C . -cf - linkdir/id_ed25519 | ssh -F ${C} ab12cd 'cat'`,
+  `scp -F ${C} -r dangling ab12cd:k`,
 ]
 
 for (const command of ALLOWED) {
@@ -374,6 +395,23 @@ for (const command of ASKED) {
     expect(verdict.decision).toBe('ask')
   })
 }
+
+// The shell reads a relative path from the directory the session runs in, which a cd moves.
+test('after a cd, an upload reads from the new directory', async ($, on) => {
+  engine(on, ASK, '/p/sub')
+
+  const verdict = await $.tool.check({ tool: 'Bash', input: { command: `scp -F ${C} notes.txt ab12cd:k` } })
+
+  expect(verdict.decision).toBe('ask')
+})
+
+test('an upload from a working directory outside the project runs', async ($, on) => {
+  engine(on, ASK, '/q')
+
+  const verdict = await $.tool.check({ tool: 'Bash', input: { command: `scp -F ${C} file ab12cd:k` } })
+
+  expect(verdict.decision).toBe('allow')
+})
 
 test('a deny rule on a werft command stands', async ($, on) => {
   engine(on, { decision: 'deny' })

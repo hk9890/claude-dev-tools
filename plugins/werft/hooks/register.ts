@@ -15,42 +15,37 @@ const isModeAsk = (verdict: ToolCheckResult) => verdict.decision === 'ask' && !v
 // More entries than a tree an agent copies into a lease holds; past it the copy keeps its question.
 const TREE_LIMIT = 10_000
 
+type Landing = { kind: FsStat['kind']; realPath: string }
+
 // What a path leads to and where it lands, every link resolved; undefined where it leads nowhere.
-const resolved = ($: EngineInterface, path: string): Promise<FsStat | undefined> =>
+const resolved = ($: EngineInterface, path: string): Promise<Landing | undefined> =>
   $.fs.stat(path, { resolve: true }).then(
-    (stat: FsStat) => (stat.realPath === undefined ? undefined : stat),
+    ({ kind, realPath }: FsStat) => (realPath === undefined ? undefined : { kind, realPath }),
     () => undefined,
   )
 
-// Whether each path the command reads on this host lands in the project, and, under a tree it copies
-// whole, each link too: a link in the working tree may lead to a file anywhere on this host.
+// Whether each path the command reads on this host lands in the project or the directory the
+// session runs in, and, under a tree it copies whole, each link too: a link in the working tree may
+// lead to a file anywhere on this host.
 async function readsOnlyTheProject($: EngineInterface, command: AgentCommand): Promise<boolean> {
   if (!command.reads) {
     return true
   }
 
-  const root = (await resolved($, await $.session.root()))?.realPath
   // The shell resolves the command's relative paths against the directory the session runs in.
-  const cwd = await $.session.cwd()
+  const [root, cwd] = await Promise.all([$.session.root(), $.session.cwd()])
+  const edges = (await Promise.all([resolved($, root), resolved($, cwd)])).flatMap(edge => (edge ? [edge.realPath] : []))
+  const isInside = (landing: Landing | undefined) =>
+    landing !== undefined && edges.some(edge => landing.realPath === edge || landing.realPath.startsWith(`${edge}/`))
 
-  if (root === undefined) {
+  const landings = await Promise.all(command.reads.map(path => resolved($, `${cwd}/${path}`)))
+
+  if (!landings.every(isInside)) {
     return false
   }
 
-  const isInside = (stat: FsStat | undefined) => stat?.realPath === root || Boolean(stat?.realPath?.startsWith(`${root}/`))
-
-  for (const path of command.reads) {
-    if (!isInside(await resolved($, `${cwd}/${path}`))) {
-      return false
-    }
-  }
-
-  if (command.copiesTree === undefined) {
-    return true
-  }
-
-  const top = await resolved($, `${cwd}/${command.copiesTree}`)
-  const pending = top?.kind === 'dir' && top.realPath ? [top.realPath] : []
+  const top = landings[0]
+  const pending = command.isRecursive && top?.kind === 'dir' ? [top.realPath] : []
   const walked = new Set<string>()
   let entries = 0
 
@@ -60,30 +55,23 @@ async function readsOnlyTheProject($: EngineInterface, command: AgentCommand): P
     }
 
     walked.add(dir)
+    const listed = await $.fs.list(dir)
+    entries += listed.length
 
-    for (const entry of await $.fs.list(dir)) {
-      entries += 1
-
-      if (entries > TREE_LIMIT) {
-        return false
-      }
-
-      const path = `${dir}/${entry.name}`
-
-      if (entry.isLink) {
-        const target = await resolved($, path)
-
-        if (!isInside(target)) {
-          return false
-        }
-
-        if (target?.kind === 'dir' && target.realPath) {
-          pending.push(target.realPath)
-        }
-      } else if (entry.kind === 'dir') {
-        pending.push(path)
-      }
+    if (entries > TREE_LIMIT) {
+      return false
     }
+
+    const links = await Promise.all(listed.filter(entry => entry.isLink).map(entry => resolved($, `${dir}/${entry.name}`)))
+
+    if (!links.every(isInside)) {
+      return false
+    }
+
+    pending.push(
+      ...listed.filter(entry => !entry.isLink && entry.kind === 'dir').map(entry => `${dir}/${entry.name}`),
+      ...links.flatMap(link => (link?.kind === 'dir' ? [link.realPath] : [])),
+    )
   }
 
   return true
