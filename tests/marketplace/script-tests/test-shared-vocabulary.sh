@@ -184,11 +184,11 @@ if [[ -f "$MERGE" ]]; then
       fail "issues: worktree-merge lost \"${phrase}\""
     fi
   done
-  for phrase in 'read `git branch --show-current` in a call of its own' '`git status --porcelain` in another' 'leave that checkout as it is' '`git fetch . <remote>/<default>:<default>`'; do
+  for phrase in 'run this as one call' 'git fetch --prune <remote> &&' 'current=$(git branch --show-current) && changes=$(git status --porcelain --untracked-files=no) &&' 'if [ "$current" = "<default>" ] && [ -z "$changes" ]; then' 'old=$(git rev-parse HEAD) && git merge --ff-only <remote>/<default> && echo "fast-forward from $old"' '`<recorded>` is the commit the `fast-forward from` line printed' 'leave that checkout as it is' 'git fetch . <remote>/<default>:<default>'; do
     if grep -Fq "$phrase" "$MERGE"; then
       ok "default branch: worktree-merge states \"${phrase}\""
     else
-      fail "default branch: worktree-merge lost \"${phrase}\" — a pull can move another session's branch"
+      fail "default branch: worktree-merge lost \"${phrase}\" — a fast-forward can move another session's checkout"
     fi
   done
 fi

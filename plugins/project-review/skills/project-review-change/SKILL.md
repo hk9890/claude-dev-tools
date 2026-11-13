@@ -30,10 +30,8 @@ applies the fixes it settled.
    own base. The diff is `git diff HEAD` for a dirty tree, plus each untracked file
    `git ls-files --others --exclude-standard` prints; `git diff <base>...<branch>` for a
    branch (`HEAD` for the current one), three dots for the merge base; `gh pr diff <n>`
-   for a pull request. Where `gh pr diff` or its `--name-only` form refuses the diff as too
-   large, take `gh pr view <n> --json baseRefName,baseRefOid,headRefOid`, run
-   `git fetch origin <baseRefName> pull/<n>/head`, and use `git diff <baseRefOid>...<headRefOid>`
-   and its `--name-only` form in their place, before the stop on a failed file-list command.
+   for a pull request. Where `gh pr diff` or its `--name-only` form refuses the pull
+   request as too large, take its head branch as the subject instead.
 
    **Prove the subject exists before you spawn anything**: the reviewer takes the diff
    itself, and an empty subject comes back as a confident review of nothing. For a branch,
