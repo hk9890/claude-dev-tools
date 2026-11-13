@@ -51,18 +51,18 @@ subject's commits. With `--fix`, step 5 then applies the fixes it settled.
    command fails, relay its error and stop; where the list is empty, say the subject
    contains no changes, and stop.
 
-   A subject is **checked out here** where it is the default subject, with or without a
-   path, or where `git rev-parse <head>` prints `git rev-parse HEAD` while
-   `git status --porcelain` prints nothing. `--fix` edits the working tree, so it holds
-   only for a subject checked out here: for any other, run without `--fix` and say so
-   now, with the reason.
+   A subject is **checked out here** where it is the default subject on a dirty tree,
+   with or without a path, or where `git rev-parse <head>` prints `git rev-parse HEAD`
+   while `git status --porcelain` prints nothing. `--fix` edits the working tree, so it
+   holds only for a subject checked out here: for any other, run without `--fix` and say
+   so now, with the reason.
 
-   A subject whose tree (the working tree for a subject checked out here, else `<head>`) has neither `AGENTS.md` nor
-   `CLAUDE.md`, or no document they route to, has no standard to measure against: say so
-   and stop.
+   A subject whose tree (the working tree for a subject checked out here, else `<head>`)
+   has neither `AGENTS.md` nor `CLAUDE.md`, or no document they route to, has no standard
+   to measure against: say so and stop.
 
    Done when you can name the subject in one sentence, list the files it touches, and say
-   whether `--fix` still holds.
+   whether it is checked out here and whether `--fix` still holds.
 
 2. **Build the two absolute paths** from `SKILL_DIR`, the **base directory for this
    skill** given when the skill loads. Both files sit at the plugin root, so the `../..`
