@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# test-triage.sh — unit tests for plugins/project-auto-work/workflows/triage.js.
+# test-triage.sh — unit tests for plugins/project-auto-work/references/triage.js.
 # Wraps test-triage.js (same directory).
 #
 # Exit codes:

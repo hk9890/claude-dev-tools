@@ -101,6 +101,7 @@ RSYNC_VANISHED = 24
 
 # An entry of the skill or agent listing Claude Code puts into each context: "- <name>: <text>".
 LISTING_ENTRY_RE = re.compile(r"^- ([^\s:]+(?::[^\s:]+)?): ", re.M)
+WORKFLOW_NAME_RE = re.compile(r"export const meta = \{\s*name: ['\"]([^'\"]+)['\"]")
 EDIT_TOOLS = ("Edit", "Write", "NotebookEdit")
 # The ways a text of this repository reaches a context, each read from a record of its own kind.
 CHANNEL_MEANINGS = {
@@ -362,6 +363,15 @@ class Repository:
         # -z keeps a non-ASCII path unquoted, whatever core.quotePath says.
         tracked = subprocess.run(["git", "-C", str(root), "ls-files", "-z"], capture_output=True, text=True, check=True).stdout
         self.top_level = {path.partition("/")[0] for path in tracked.split("\0") if path}
+        # Claude Code lists a plugin-root workflow as <plugin>:<meta name>; the file may have moved since.
+        # A workflow under a skill is never listed, and can share its skill's name.
+        self.workflows = {}
+        for path in tracked.split("\0"):
+            parts = PurePosixPath(path).parts
+            if len(parts) > 3 and parts[0] == "plugins" and parts[2] != "skills" and path.endswith(".js") and (root / path).is_file():
+                meta = WORKFLOW_NAME_RE.search((root / path).read_text(encoding="utf-8", errors="replace"))
+                if meta:
+                    self.workflows[f"{parts[1]}:{meta[1]}"] = path
 
     def root_of(self, instruction):
         path, content = instruction.get("path") or "", instruction.get("content") or ""
@@ -402,7 +412,7 @@ class Repository:
         plugin, _, rest = name.partition(":")
         if plugin not in self.plugins or not rest:
             return None
-        return f"plugins/{plugin}/skills/{rest}/SKILL.md"
+        return self.workflows.get(name) or f"plugins/{plugin}/skills/{rest}/SKILL.md"
 
 
 def listing_entries(text):

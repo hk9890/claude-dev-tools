@@ -100,7 +100,7 @@ Where `<triage-args>` has an empty `fixes` and an empty `bodies`, write `{}` to
 `<scratch>/triage/workflow.json` and use that file as `<triage-output-file>` in step 5.
 Otherwise invoke the **Workflow** tool:
 
-- `scriptPath`: `<PLUGIN>/workflows/triage.js`
+- `scriptPath`: `<PLUGIN>/references/triage.js`
 - `args`: `<triage-args>`, verbatim
 
 Its task output file is `<triage-output-file>`. Where its `result` holds `error`, relay it verbatim and still run step 5: it files nothing
