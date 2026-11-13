@@ -40,8 +40,8 @@ script deciding what counts as a claim, which is guessing.
 
 1. **Manifest** — `scripts/manifest.py` emits the deterministic facts: files, present and
    missing canonical docs, the decision records (`docs/decisions/NNNN-*.md`), line/word/byte
-   counts, link and anchor resolution, reachability from `AGENTS.md` (a link to a folder
-   reaches the docs directly inside it), the `CLAUDE.md` invariant, hollow docs, location violations, injected
+   counts, link and anchor resolution, reachability from `AGENTS.md` (a link to `docs/decisions/`
+   reaches its records), the `CLAUDE.md` invariant, hollow docs, location violations, injected
    tool-blocks, the personal files with each legacy name's move, and the route list. Scripts do facts; agents do judgment — nothing here
    judges belonging or accuracy.
 2. **Read-review** — the docs are ordered (the steering files, then the use-case docs, then
