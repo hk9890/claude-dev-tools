@@ -2,7 +2,7 @@
 name: project-review-change
 description: "Rules review of one change against the project's own written rules; --fix applies the settled fixes."
 when_to_use: "Use when the user asks whether a change obeys the project's rules. Triggers on 'rules review'. Also loaded by name when another skill needs the rules review. Not for correctness bugs or simplification (`code-review`), a review with its fixes pushed (`worktree-flow:worktree-review`), or a docs or whole-tree audit (`project-review-docs`, `project-review-codebase`)."
-argument-hint: "[--fix] [pr-number|branch|path]"
+argument-hint: "[--fix] [pr-number|[base...]branch|path]"
 ---
 
 Review of one change against **this project's own documents**: does the change do what
@@ -11,7 +11,7 @@ applies the fixes it settled.
 
 ## Run the review
 
-1. **Resolve the subject.** `$ARGUMENTS` is `[--fix] [pr-number|branch|path]`. A leading
+1. **Resolve the subject.** `$ARGUMENTS` is `[--fix] [pr-number|[base...]branch|path]`. A leading
    `--fix` turns on step 5. What is left selects the subject:
 
    | What is left | Subject |
