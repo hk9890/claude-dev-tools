@@ -1,0 +1,4 @@
+{
+  "description": "Releases the werft leases of a session when the session ends",
+  "modules": ["./register.ts"]
+}

@@ -1,6 +1,6 @@
 {
   "name": "werft",
-  "description": "Disposable test VMs through the werft CLI: one skill that makes the model take a werft lease whenever a task needs a VM or a clean machine, and follow the guide of the installed werft to lease, use and release it",
+  "description": "Disposable test VMs through the werft CLI: one skill that makes the model take a werft lease whenever a task needs a VM or a clean machine, and follow the guide of the installed werft to lease, use and release it, plus a mod that releases the leases of a session when the session ends",
   "version": "1.52.0",
   "author": {
     "name": "Hans Kohlreiter",
@@ -9,5 +9,5 @@
   "homepage": "https://github.com/hk9890/claude-dev-tools",
   "repository": "https://github.com/hk9890/claude-dev-tools",
   "license": "MIT",
-  "keywords": ["werft", "vm", "virtual-machine", "libvirt", "disposable", "testing"]
+  "keywords": ["werft", "vm", "virtual-machine", "libvirt", "disposable", "testing", "mod"]
 }

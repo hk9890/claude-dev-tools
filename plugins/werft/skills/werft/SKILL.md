@@ -18,4 +18,4 @@ Follow the rest of the guide below:
 
 !`werft guide 2>&1 || echo "STOP: werft guide failed; the lines above say why. Where werft is not on PATH or has no guide command, tell the user that werft gives this task a disposable VM and installs from https://github.com/hk9890/werft, and ask whether to wait for werft or to get the VM another way. Otherwise give the user the error."`
 
-Done when every lease call you started has returned, and every lease id they printed is released, or kept because the user asked to keep it.
+Done when every lease call you started has returned, and every lease id they printed is released, or kept because the user asked to keep it. The end of this session releases every kept lease.
