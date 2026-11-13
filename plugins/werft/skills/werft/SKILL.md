@@ -7,7 +7,7 @@ allowed-tools: Bash(werft version), Bash(werft guide), Bash(werft help*), Bash(w
 
 # werft
 
-werft hands out disposable VMs on this host. A lease is a VM on a thin overlay of a stock image: it answers SSH in about a minute, nothing done in it reaches the stock image or the host, and release destroys it. Take every VM a task needs as a werft lease, also where qemu, virt-install, a cloud image or a container could serve. Build a VM another way only where the user asks for that way by name.
+werft hands out disposable VMs on this host. Take every VM a task needs as a werft lease, also where qemu, virt-install, a cloud image or a container could serve. Build a VM another way only where the user asks for that way by name.
 
 The guide below is the output of `werft guide`, the instructions of the installed werft. Follow all of it, from the first lease to the last release:
 
