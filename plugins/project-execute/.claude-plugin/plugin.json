@@ -1,6 +1,6 @@
 {
   "name": "project-execute",
-  "description": "Thin human-triggered skills that execute a project's own defined flows — run its tests, cut a release, analyze its monitoring data, review a change, drive the running product — plus an explainer that digests how the project handles a given topic from its own docs and an initializer that writes the agent-facing docs those flows are read from; every skill is grounded in what the project itself carries and invents nothing beyond it",
+  "description": "Skills you type to run a project's own defined flows: its tests, a release, its monitoring analysis, a change review, and a drive of the running product, plus an explainer of how the project handles a topic and an initializer that writes the agent docs those flows read. Each skill uses only what the project carries.",
   "version": "1.53.0",
   "author": {
     "name": "Hans Kohlreiter",
