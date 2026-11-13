@@ -1,6 +1,6 @@
 {
   "name": "html-visualization",
-  "description": "Interactive HTML the user opens in a browser, then sends back to Claude — three command skills over a shared reference set, each rendering a different surface: question forms (html-visualize-ask), content for inline commenting (html-visualize-feedback), or static pages with an always-on footer for optional follow-up messages (html-visualize-page); a shared one-shot Node server captures the response and re-invokes Claude",
+  "description": "Interactive HTML the user opens in a browser and sends back to Claude: question forms, content to comment on inline, and static pages with a footer for follow-up messages.",
   "version": "1.52.0",
   "author": {
     "name": "Hans Kohlreiter",

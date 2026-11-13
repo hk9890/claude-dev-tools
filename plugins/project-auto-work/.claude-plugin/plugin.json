@@ -1,6 +1,6 @@
 {
   "name": "project-auto-work",
-  "description": "Unattended adversarial audits that work the project on their own and report back — test-tests, an empirical, language-independent test-suite strength audit that injects mutants, no-op edits, and delays to prove whether the tests actually detect bugs, and test-app, exploratory testing that launches the application, uses it for real, and judges what happened against the project's own user-facing docs and monitoring data; where the project has a taskmgr store, both then file what they find there, and test-tests opens a PR for each settled survivor it can prove fixed, up to three per run.",
+  "description": "Unattended audits that work the project on their own and report back: test-tests proves whether the test suite detects injected bugs, and test-app uses the running app and judges it against the project's docs and monitoring. With a taskmgr store, both file what they find, and test-tests opens a PR for each gap it can prove fixed.",
   "version": "1.52.0",
   "author": {
     "name": "Hans Kohlreiter",
