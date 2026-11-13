@@ -11,7 +11,8 @@ workflow reads this JSON and never re-derives a mechanical fact from it.
 What is a *fact* here (and therefore lives in this script, never in an agent):
 
   - which Markdown files exist (root + docs/ recursively)
-  - which canonical/standard files are present or missing
+  - which canonical/standard files are present or missing, and which are decision
+    records (docs/decisions/NNNN-*.md)
   - per-file metrics: line, byte, word, and non-heading-line counts
   - per-file link/reference resolution (file exists, anchor resolves) — a link to
     an existing directory with no anchor resolves OK (valid GitHub navigation)
@@ -60,6 +61,11 @@ CANONICAL_DOCS = [
     "OVERVIEW.md", "CODING.md", "DOCUMENTING.md", "TESTING.md", "RELEASING.md",
     "MONITORING.md", "CHANGE-WORKFLOW.md", "REVIEWING.md", "RUNNING.md",
 ]
+# The one canonical tree: docs/decisions/NNNN-slug.md, one file per decision in force.
+# AGENTS.md routes to the folder and no index links the files, so a record is never an
+# orphan. Its contract is keyed by the tree name, as project-setup.md heads its block.
+DECISIONS_TREE = "decisions/"
+DECISION_FILE_RE = re.compile(r"^docs/decisions/\d{4}-[^/]+\.md$")
 PERSONAL_LOCAL = ["CLAUDE.local.md"]
 # Personal files under a name Claude Code never loads, mapped to the name it does load.
 LEGACY_PERSONAL_LOCAL = {".claude.local.md": PERSONAL_LOCAL[0]}
@@ -113,7 +119,7 @@ def parse_ownership(setup_path):
     cur_name = None
     cur = {}
 
-    heading_re = re.compile(r"^###\s+`([^`]+\.md)`")
+    heading_re = re.compile(r"^###\s+`([^`]+\.md|[^`]+/)`")
     field_re = re.compile(r"^-\s+\*\*(Audience|Inside|Not inside)\*\*:\s*(.*)$")
 
     def flush():
@@ -133,7 +139,9 @@ def parse_ownership(setup_path):
             flush()
             # Ownership blocks head docs with a path (`docs/CODING.md`) or a bare
             # name (`README.md`); key by basename so lookups by canonical name match.
-            cur_name = os.path.basename(m.group(1))
+            # A tree (`docs/decisions/`) keys by its last segment and the slash.
+            head = m.group(1)
+            cur_name = os.path.basename(head.rstrip("/")) + ("/" if head.endswith("/") else "")
             cur = {}
             continue
         fm = field_re.match(ln)
@@ -204,6 +212,8 @@ def classify(rel_path):
     depth = rel_path.replace("\\", "/").count("/")
     if in_docs and depth == 1 and name in CANONICAL_DOCS:
         return "canonical", name
+    if DECISION_FILE_RE.match(rel_path.replace("\\", "/")):
+        return "decision", DECISIONS_TREE
     return "non-standard", None
 
 
@@ -437,7 +447,7 @@ def build(repo_root, setup_md=None):
     # docs (README/AGENTS/CLAUDE) are entry points, not routed leaves — never orphans.
     orphans = [e["path"] for e in files
                if not e["reachable_from_agents"]
-               and e["classification"] not in ("meta", "canonical-root") + PERSONAL_CLASSES]
+               and e["classification"] not in ("meta", "canonical-root", "decision") + PERSONAL_CLASSES]
 
     return {
         "repo_root": os.path.abspath(repo_root),
