@@ -11,7 +11,7 @@ internal/store/         PostgreSQL repository layer
 internal/model/         shared domain types
 migrations/             schema migrations (goose)
 api/openapi.yaml        OpenAPI spec (rendered at https://api.acme.com/widget-service/docs)
-docs/adr/               architecture decision records (e.g. 0001-use-postgresql.md)
+docs/decisions/         decisions in force, one file each (e.g. 0001-postgresql-is-the-only-state-store.md)
 docs/user/              user-facing documentation (published to https://docs.acme.com/widget-service)
 docs/runbooks/          operational runbooks for on-call
 ```
