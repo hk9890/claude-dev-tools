@@ -249,17 +249,22 @@ def file_links(vr, repo_root, rel_path):
         })
         if ok and target_rel.endswith(".md"):
             resolved_targets.append(target_rel)
-        elif ok and os.path.isdir(target_abs):
-            # A link to a folder reaches the docs directly inside it: a routed
-            # docs/decisions/ reaches every record without an index.
+        elif ok and target_rel.replace("\\", "/") == "docs/" + DECISIONS_TREE.rstrip("/"):
+            # A link to the decisions tree reaches every record in it: the tree has
+            # no index, so its route is the only link to them.
+            try:
+                names = sorted(os.listdir(target_abs))
+            except OSError:
+                names = []
             resolved_targets.extend(
-                os.path.join(target_rel, n) for n in sorted(os.listdir(target_abs))
+                os.path.join(target_rel, n) for n in names
                 if n.endswith(".md") and os.path.isfile(os.path.join(target_abs, n)))
     return records, resolved_targets
 
 
 def compute_reachability(link_map, repo_root):
-    """BFS from AGENTS.md over resolved .md links. Returns set of reachable rel paths.
+    """BFS from AGENTS.md over resolved .md links, a link to the decisions tree
+    standing for links to its records. Returns set of reachable rel paths.
 
     CLAUDE.md -> @AGENTS.md is the root import; AGENTS.md is the routing surface.
     A doc is reachable if AGENTS.md links it, directly or through another reachable doc.
@@ -296,9 +301,11 @@ def agents_routes(vr, repo_root):
         ok, reason = vr.resolve_reference(ref, repo_root, allow_dir_links=True)
         target_abs = os.path.normpath(os.path.join(os.path.dirname(abs_path), ref["raw_path"]))
         idx = ref["line"] - 1
+        target = os.path.relpath(target_abs, repo_root)
         routes.append({
             "line": ref["line"],
-            "target": os.path.relpath(target_abs, repo_root),
+            # A folder target keeps its trailing slash, as the use cases name a tree.
+            "target": target + "/" if os.path.isdir(target_abs) else target,
             "kind": ref["kind"],
             "resolved": ok,
             # The route's own wording. A fact (it is just the line), but the one the

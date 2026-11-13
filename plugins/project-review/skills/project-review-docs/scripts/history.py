@@ -60,11 +60,20 @@ USE_CASE_DOCS = {
 }
 
 
+RECORD_NAME_RE = re.compile(r"^[0-9]{4}-[^/]+\.md$")
+
+
 def opens_doc(path, doc):
-    """A Read of the doc, or for a tree (`docs/decisions/`) of a file directly inside it."""
+    """A Read of the doc, or for a tree (`docs/decisions/`) of a record directly inside it."""
     if doc.endswith("/"):
-        return os.path.dirname(path).endswith("/" + doc.rstrip("/"))
+        return (os.path.dirname(path).endswith("/" + doc.rstrip("/"))
+                and bool(RECORD_NAME_RE.match(os.path.basename(path))))
     return path.endswith(doc)
+
+
+def names_tree(text, doc):
+    """Whether text names the tree `doc` (`docs/decisions/`), with or without its slash."""
+    return re.search(re.escape(doc.rstrip("/")) + r"(?![\w.-])", text) is not None
 
 # Harness-generated blocks inside a user record. They are scaffolding, not the
 # user's prose, and feeding them to the classifier would drown the actual request.
@@ -351,7 +360,10 @@ def route_for(content, doc):
     """The AGENTS.md line(s) routing to `doc`. '' when there is no route, None if no file."""
     if content is None:
         return None
-    hits = [ln.strip() for ln in content.splitlines() if doc in ln]
+    if doc.endswith("/"):
+        hits = [ln.strip() for ln in content.splitlines() if names_tree(ln, doc)]
+    else:
+        hits = [ln.strip() for ln in content.splitlines() if doc in ln]
     return "\n".join(hits)
 
 
@@ -399,6 +411,10 @@ def segment_projection(path, start_turn, end_turn, doc):
                     {"turn": i, "path": target})
             elif name in WRITE_TOOLS:
                 writes.append({"turn": i, "path": target})
+            elif name == "Bash" and doc.endswith("/") and names_tree(target, doc):
+                # Listing the tree, or taking the next number from its git log, is how
+                # an agent finds the records: it opens the tree, it is not the work.
+                doc_reads.append({"turn": i, "path": target[:200]})
             elif name == "Bash":
                 commands.append({"turn": i, "cmd": target[:200]})
     # The first action of this kind — the moment the route was supposed to have

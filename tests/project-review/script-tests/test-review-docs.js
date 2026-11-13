@@ -521,7 +521,13 @@ async function main() {
   const treeRoute = '**MUST read the records in [docs/decisions/](docs/decisions/) that bear on the change before editing `src/store/`.**';
   const tree = await runAudit({
     level: 'ultra',
-    manifest: { ...manifest, agents_routes: [...manifest.agents_routes, { kind: 'file', target: 'docs/decisions', text: treeRoute }] },
+    manifest: {
+      ...manifest,
+      files: [...manifest.files,
+        { path: 'docs/decisions/0001-a.md', classification: 'decision', metrics, contract: { audience: 'a', inside: 'one file per decision in force', not_inside: 'n' } },
+        { path: 'docs/decisions/0002-b.md', classification: 'decision', metrics, contract: { audience: 'a', inside: 'one file per decision in force', not_inside: 'n' } }],
+      agents_routes: [...manifest.agents_routes, { kind: 'file', target: 'docs/decisions/', text: treeRoute }],
+    },
     evidence: {
       ...evidence,
       evidence_files: { ...evidence.evidence_files, deciding: '/tmp/sc/history/evidence-deciding.json' },
@@ -532,6 +538,11 @@ async function main() {
   truthy('history: the tree use case is judged', treeJudge.includes('use_case "deciding"'));
   truthy('history: the judge gets the folder route\'s wording',
     treeJudge.includes('that bear on the change') && !treeJudge.includes('no route to this doc found'));
+  const treeReview = tree.prompts.filter((p, i) => tree.labels[i].startsWith('review-')).join('');
+  eq('read-review: a batch states the decision-record contract once, not per record',
+    1, treeReview.split('one file per decision in force').length - 1);
+  eq('read-review: each record points at that contract',
+    2, treeReview.split('Decision record: judge it against').length - 1);
   truthy('history: the judge is told AGENTS.md is never Read, so its absence proves nothing',
     judgePrompt.includes('AGENTS.md is always in an agent') && judgePrompt.includes('never Read'));
   truthy('history: a well-edged obligation route that is skipped accuses the agent, not the doc',

@@ -201,6 +201,27 @@ assert_eq "evidence: an absent doc is skipped, not reported as a gap" "True" \
 assert_eq "evidence: an absent tree is skipped, not reported as a gap" "True" \
   "$(json_val "d['coverage']['deciding'].get('doc_missing', False)" <<< "$E4")"
 
+# How a tree is opened and routed: only a record (NNNN-slug.md) counts as a Read of the
+# tree, a command that lists the tree finds its records rather than doing the work, and
+# a route that links the folder without its trailing slash is still its route.
+TREE=$(python3 -c "
+import importlib.util, json
+spec = importlib.util.spec_from_file_location('h', '$SCRIPT')
+h = importlib.util.module_from_spec(spec); spec.loader.exec_module(h)
+d = 'docs/decisions/'
+print(json.dumps({
+  'record': h.opens_doc('/r/docs/decisions/0001-a.md', d),
+  'index': h.opens_doc('/r/docs/decisions/README.md', d),
+  'ls': h.names_tree('ls docs/decisions', d),
+  'other': h.names_tree('ls docs/decisions-old', d),
+  'slashless': h.route_for('**MUST read [the records](docs/decisions) first.**', d) != '',
+}))")
+assert_eq "tree: a Read of a record opens the tree" "True" "$(json_val "d['record']" <<< "$TREE")"
+assert_eq "tree: a Read of an index does not" "False" "$(json_val "d['index']" <<< "$TREE")"
+assert_eq "tree: a command that lists the tree names it" "True" "$(json_val "d['ls']" <<< "$TREE")"
+assert_eq "tree: a sibling folder with a longer name does not" "False" "$(json_val "d['other']" <<< "$TREE")"
+assert_eq "tree: a route without the trailing slash is found" "True" "$(json_val "d['slashless']" <<< "$TREE")"
+
 # A repo nobody has opened in Claude Code: an empty answer, exit 0, no crash.
 EMPTY=$(mktemp -d)
 P2=$(python3 "$SCRIPT" prompts "$REPO" --out "$EMPTY/out" --projects-dir "$EMPTY/none" 2>&1)

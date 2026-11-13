@@ -261,6 +261,13 @@ test_decision_records() {
   out=$("$SCRIPT" "$dir")
   assert_eq "decision: a folder link from AGENTS.md reaches every file in it" "[]" \
     "$(json_val "$out" "[p for p in d['orphans'] if p.startswith('docs/decisions/')]")"
+  assert_contains "decision: a folder route keeps its trailing slash" "docs/decisions/" \
+    "$(json_val "$out" "[r['target'] for r in d['agents_routes'] if r['target'].startswith('docs/decisions')]")"
+  # Only the decisions tree stands for its files: a link to any other folder reaches nothing.
+  printf '\nSee [the docs](docs/).\n' >> "$dir/AGENTS.md"
+  out=$("$SCRIPT" "$dir")
+  assert_contains "decision: a link to another folder leaves its docs orphaned" "docs/NOTES.md" \
+    "$(json_val "$out" "d['orphans']")"
   rm -rf "$dir"
 }
 
