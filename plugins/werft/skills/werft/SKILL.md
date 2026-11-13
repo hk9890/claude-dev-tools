@@ -13,7 +13,7 @@ In this session, three points of the guide take a fixed form:
 
 - `--owner claude-${CLAUDE_SESSION_ID}` on every lease.
 - A Bash call runs 10 minutes at most, less than the guide gives a lease call: run `werft --json lease` with `run_in_background` and wait for its notification.
-- Each werft, ssh, scp and tar command is one Bash call of its own, written as the guide writes it, with the ssh_config path in full. Only that form runs without a permission prompt: a command joined to another, piped into a filter, or held in a shell variable asks for permission.
+- Each werft and ssh command, scp copy and tar pipe into a lease is one Bash call of its own, written as the guide writes it: the ssh_config path in full as the lease printed it, the remote command in one single-quoted string, and paths on this host relative to the working directory. Only that form runs without a permission prompt. A copy out of the lease asks for permission, and so does a command joined to another, piped into a filter or held in a shell variable.
 
 Follow the rest of the guide below:
 
