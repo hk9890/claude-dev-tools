@@ -52,7 +52,7 @@ function runnable(command: string) {
 function movesFocus(command: string) {
   const runs = runnable(command)
     .split(/\r?\n/)
-    .flatMap(line => Array.from(line.matchAll(FOCUS_MOVER), ([, run]) => run))
+    .flatMap(line => Array.from(line.matchAll(FOCUS_MOVER), ([, run = '']) => run))
 
   return runs.some(run => !CHANGES_NO_WINDOW.test(run) && !OPENS_UNFOCUSED.test(run))
 }

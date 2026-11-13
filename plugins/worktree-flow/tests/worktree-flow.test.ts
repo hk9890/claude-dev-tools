@@ -268,3 +268,51 @@ test('names the way out for another repository and for text', async ($, on) => {
   expect(answer.deny).toContain('`git -C <repo> worktree add <dir> -b <branch>` is allowed')
   expect(answer.deny).toContain('with the Write tool')
 })
+
+const WATCH = { tool: 'Monitor', description: 'watch', timeout_ms: 60_000 } as const
+
+test('denies an add run through Monitor', async ($, on) => {
+  const seen = host(on)
+
+  const answer = await $.tool.call({ ...WATCH, command: 'git worktree add ../x' })
+
+  expect(answer.deny).toContain('EnterWorktree')
+  expect(seen.ran).toEqual([])
+  expect(seen.toasts).toEqual(['use EnterWorktree, not git worktree add'])
+})
+
+test('denies an add run through Monitor where the guard fails', async ($, on) => {
+  const seen = { ran: [] as string[] }
+
+  on('ui.toast', () => ({ value: undefined }))
+  on('tool.call', ($, e) => {
+    seen.ran.push(String(e.tool))
+
+    return { result: 'ok' }
+  })
+
+  const answer = await $.tool.call({ ...WATCH, command: 'git -C /home/me/other worktree add ../x' })
+
+  expect(answer.deny).toContain('EnterWorktree')
+  expect(seen.ran).toEqual([])
+})
+
+test('allows a Monitor command that adds no worktree', async ($, on) => {
+  const seen = host(on)
+
+  const answer = await $.tool.call({ ...WATCH, command: 'tail -f build.log' })
+
+  expect(answer.deny).toBeUndefined()
+  expect(seen.ran).toEqual(['Monitor'])
+  expect(seen.toasts).toEqual([])
+})
+
+test('allows a Monitor that watches a socket and runs no command', async ($, on) => {
+  const seen = host(on)
+
+  const answer = await $.tool.call({ ...WATCH, ws: { url: 'wss://example.test/events' } })
+
+  expect(answer.deny).toBeUndefined()
+  expect(seen.ran).toEqual(['Monitor'])
+  expect(seen.toasts).toEqual([])
+})

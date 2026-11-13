@@ -53,6 +53,9 @@ when the skill loads. It is absolute and install-correct — build every path fr
    between commands, so a value you only assign is gone by the time step 3 needs it.
    `<scratch>` in steps 3-6 is that printed absolute path, and the printed commit is
    `<audited-head>`: the triage opens a fix only against the commit the audit measured.
+   The dir stays under `/tmp`, not the session scratchpad: the audited suite runs in
+   worktrees under it, and the long scratchpad path pushes a socket the suite binds there
+   past the 108-byte limit, which sends the audit into live-tree mode.
 
    ```bash
    command -v python3 >/dev/null || { echo "python3 missing — stop and tell the user"; return 1 2>/dev/null || exit 1; }

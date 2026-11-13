@@ -54,8 +54,12 @@ docs inline. The workflow returns a structured report; relay it.
    ls "<STANDARD_DIR>/references/project-doc-guidelines.md" "<STANDARD_DIR>/references/project-setup.md" "<STANDARD_DIR>/../../references/writing-hygiene.md"
    ```
    ```bash
-   mktemp -d /tmp/docreview-XXXXXX
+   mktemp -d "<session-tmp>/docreview-XXXXXX"
    ```
+
+   `<session-tmp>` is your scratchpad directory, or `${TMPDIR:-/tmp}` where the session has none: under
+   `permissions.blockWritesOutsideWorkingDirectories` the history agent's Write calls cannot
+   reach `/tmp`.
 
    Substitute the step-2 `STANDARD_DIR` value literally — the workflow derives the same three
    paths from it and hands them to agents that never load the skill, so a path that does not

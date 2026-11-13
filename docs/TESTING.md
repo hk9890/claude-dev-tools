@@ -14,7 +14,7 @@ How to run this marketplace's automated suites and validators.
 | `mise run lint` | ShellCheck `--severity=warning` over every tracked shell script (`scripts/list-shell-scripts.sh`) |
 | `mise run pick-sessions -- <subcommand>` | Session review picker, with `SESSION_REVIEW_DIR` from `mise.local.toml` — the review procedure in [MONITORING.md](MONITORING.md#run-a-review) |
 
-`bash`, `perl`, `python3`, `node`, `jq`, `rsync`, and `shellcheck` must already be on PATH: `.mise.toml` declares no `[tools]`, so mise runs the tasks but installs none of them. Absent `node`, the node-backed suites fail rather than skip. The mod suite alone needs `claude` too ([Suites that skip](#suites-that-skip)).
+`bash`, `perl`, `python3`, `node`, `jq`, `rsync`, and `shellcheck` must already be on PATH: `.mise.toml` declares no `[tools]`, so mise runs the tasks but installs none of them. Absent `node`, the node-backed suites fail rather than skip. The plugin suite alone needs `claude` too ([Suites that skip](#suites-that-skip)).
 
 ## Script tests — `tests/run-all.sh`
 
@@ -38,18 +38,18 @@ A suite is a `test-*.sh` under `tests/<plugin>/script-tests/` or `tests/marketpl
 Two skip rather than fail where their prerequisite is absent:
 
 - `tests/html-visualization/script-tests/test-browser.sh` — needs Playwright in the npm `_npx` cache: `npx playwright --version` populates it, then `npx playwright install chromium`. `REQUIRE_BROWSER=1` makes it fail instead.
-- `tests/marketplace/script-tests/test-mods.sh` — needs `claude` 2.1.287 or later on PATH. `REQUIRE_CLAUDE=1` makes it fail instead, and the CI `test` job sets it.
+- `tests/marketplace/script-tests/test-claude-plugin.sh` — needs `claude` 2.1.323 or later on PATH, the first release whose `validate --strict` type-checks a hooks module. `REQUIRE_CLAUDE=1` makes it fail instead, and the CI `test` job sets it.
 
 ## Mod tests — `claude plugin test`
 
 A mod's tests live inside the plugin, at `plugins/<plugin>/tests/*.test.ts`, and run against the engine with no session, sign-in or network:
 
 ```bash
-claude plugin validate plugins/<plugin>   # manifest + the static analysis Claude Code applies at load
-claude plugin test plugins/<plugin>       # the plugin's tests
+claude plugin validate --strict plugins/<plugin>   # manifest, load-time static analysis, a type check of the hooks module (2.1.323+); fails on a warning, a plugin directory one excepted
+claude plugin test plugins/<plugin>                # the plugin's tests
 ```
 
-`test-mods.sh` (above) runs both for every plugin whose `hooks/hooks.json` has a `modules` key, so `mise run test` covers them.
+`test-claude-plugin.sh` (above) runs the validation for every plugin and the repo root's `marketplace.json`, and the tests for every plugin whose `hooks/hooks.json` has a `modules` key, so `mise run test` covers them.
 
 ### Writing a mod test
 
@@ -76,7 +76,7 @@ The manifest is informational — check its summary line for a false `claude_md_
 
 | Job | What it checks | Locally |
 |---|---|---|
-| `test` | Full script-test suite, the mod suite included: the job installs the Claude Code version pinned in `ci.yml` | `mise run test` |
+| `test` | Full script-test suite, the plugin suite included: the job installs the latest Claude Code, so a new release can fail it with no change here; the suite log names the version | `mise run test` |
 | `consistency` | Cross-references, version mirrors, marketplace | `mise run check-consistency` |
 | `manifests` | JSON well-formedness of every plugin and marketplace manifest | `for f in .claude-plugin/marketplace.json plugins/*/.claude-plugin/plugin.json; do jq empty "$f"; done` |
 | `shellcheck` | ShellCheck over every tracked shell script | `mise run lint` |
