@@ -23,15 +23,17 @@ applies the fixes it settled.
 
    A pull request needs `gh`: where `command -v gh` prints nothing, say so and ask for a
    branch. Take `gh pr view <n> --json baseRefOid,headRefOid` and run
-   `git fetch origin <baseRefOid> pull/<n>/head`: `<base>` is `<baseRefOid>`, `<head>` is
-   `<headRefOid>`.
+   `git fetch <url> <baseRefOid> pull/<n>/head`, with `<url>` what
+   `gh repo view --json url -q .url` prints, the repository gh read the pull request from:
+   `<base>` is `<baseRefOid>`, `<head>` is `<headRefOid>`.
 
-   A branch, the current one included, is `<head>`. Its base is the one the argument
-   names; else the base of its pull request, where `gh pr view <branch> --json baseRefName`
-   prints one; else the remote's default branch, the name after `refs/heads/` in
-   `git ls-remote --symref origin HEAD`. For a base not named in the argument, run
-   `git fetch origin <base branch>` and take `origin/<base branch>` as `<base>`: the local
-   ref can lag the remote. Where no base comes out, ask which branch is the base.
+   A branch, the current one included, is `<head>`, and `<remote>` is the remote of its
+   upstream, else `origin`. Its base branch is the one the argument names; else the base of
+   its pull request, where `gh pr view <branch> --json baseRefName` prints one; else the
+   remote's default branch, the name after `refs/heads/` in
+   `git ls-remote --symref <remote> HEAD`. Run `git fetch <remote> <base branch>` and take
+   `<remote>/<base branch>` as `<base>`: the local ref can lag the remote. Where no base
+   comes out, ask which branch is the base.
 
    The diff is `git diff HEAD` for a dirty tree, plus each untracked file
    `git ls-files --others --exclude-standard` prints; else `git diff <base>...<head>`,
