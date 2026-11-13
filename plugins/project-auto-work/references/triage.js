@@ -1,7 +1,6 @@
 export const meta = {
   name: 'auto-work-triage',
   description: 'Act on a planned project-auto-work audit: fix settled survivors as PRs, match the items no key matched to earlier items, write the taskmgr bodies for the rest',
-  whenToUse: 'Launched by the test-tests and test-app skills after bin/triage-plan.py. Opens a PR for each planned fix, matches the items no key matched to earlier filed items, and writes one taskmgr body per item left to file; bin/triage-file.py files them.',
   phases: [
     { title: 'Fix', detail: 'one agent per planned fix: worktree, test, proving check, PR' },
     { title: 'Match', detail: 'one agent: match the items no key matched to earlier items by meaning' },

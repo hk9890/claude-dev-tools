@@ -101,7 +101,7 @@ RSYNC_VANISHED = 24
 
 # An entry of the skill or agent listing Claude Code puts into each context: "- <name>: <text>".
 LISTING_ENTRY_RE = re.compile(r"^- ([^\s:]+(?::[^\s:]+)?): ", re.M)
-WORKFLOW_NAME_RE = re.compile(r"export const meta = \{\s*name: ['\"]([^'\"]+)['\"]")
+WORKFLOW_NAME_RE = re.compile(r"export const meta = \{[^}]*?\bname:\s*(['\"`])([^'\"`]+)\1")
 EDIT_TOOLS = ("Edit", "Write", "NotebookEdit")
 # The ways a text of this repository reaches a context, each read from a record of its own kind.
 CHANNEL_MEANINGS = {
@@ -361,17 +361,19 @@ class Repository:
         self.agents_title = agents.read_text(encoding="utf-8").partition("\n")[0] if agents.is_file() else None
         # A checkout also holds files git ignores, scratch folders among them: they are no part of it.
         # -z keeps a non-ASCII path unquoted, whatever core.quotePath says.
-        tracked = subprocess.run(["git", "-C", str(root), "ls-files", "-z"], capture_output=True, text=True, check=True).stdout
-        self.top_level = {path.partition("/")[0] for path in tracked.split("\0") if path}
-        # Claude Code lists a plugin-root workflow as <plugin>:<meta name>; the file may have moved since.
-        # A workflow under a skill is never listed, and can share its skill's name.
+        self.files = {path for path in subprocess.run(
+            ["git", "-C", str(root), "ls-files", "-z"], capture_output=True, text=True, check=True
+        ).stdout.split("\0") if path}
+        self.top_level = {path.partition("/")[0] for path in self.files}
+        # Claude Code lists each workflow of a plugin-root workflows/ as <plugin>:<meta name>. A shared
+        # workflow that a skill launches by path sits in references/, where an older version listed it.
         self.workflows = {}
-        for path in tracked.split("\0"):
+        for path in self.files:
             parts = PurePosixPath(path).parts
-            if len(parts) > 3 and parts[0] == "plugins" and parts[2] != "skills" and path.endswith(".js") and (root / path).is_file():
+            if len(parts) == 4 and parts[0] == "plugins" and parts[2] in ("workflows", "references") and path.endswith(".js"):
                 meta = WORKFLOW_NAME_RE.search((root / path).read_text(encoding="utf-8", errors="replace"))
                 if meta:
-                    self.workflows[f"{parts[1]}:{meta[1]}"] = path
+                    self.workflows[f"{parts[1]}:{meta[2]}"] = path
 
     def root_of(self, instruction):
         path, content = instruction.get("path") or "", instruction.get("content") or ""
@@ -412,7 +414,9 @@ class Repository:
         plugin, _, rest = name.partition(":")
         if plugin not in self.plugins or not rest:
             return None
-        return self.workflows.get(name) or f"plugins/{plugin}/skills/{rest}/SKILL.md"
+        skill = f"plugins/{plugin}/skills/{rest}/SKILL.md"
+        # A skill of an older version may be gone from this checkout: its name still names it.
+        return skill if skill in self.files else self.workflows.get(name, skill)
 
 
 def listing_entries(text):
