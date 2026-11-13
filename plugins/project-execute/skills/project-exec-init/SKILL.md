@@ -19,7 +19,7 @@ Call the Skill tool with `instruction-writing:writing-project-docs`, even where 
 
 Read what the project already carries and record two lists.
 
-**Present** — which of `README.md`, `AGENTS.md`, `CLAUDE.md` exist, and every file under `docs/`. Read each one against its *Inside* / *Not inside* contract in the standard and note what breaches it for step 4.
+**Present** — which of `README.md`, `AGENTS.md`, `CLAUDE.md` exist, and every file under `docs/`. Read each one against its *Inside* / *Not inside* contract in the standard and note what breaches it for step 4. Also note whether `docs/decisions/` holds a record, and any folder of decision records in another format (a MADR or Nygard ADR folder, say): steps 3 and 4 read that note, and the files of that other-format folder take part in no contract check.
 
 **Earned** — which canonical topics the repo has real local guidance for. A topic is *earned* only where the repo holds the evidence below; a topic doc for anything else would be hollow, which the standard rules out.
 
@@ -34,6 +34,7 @@ Read what the project already carries and record two lists.
 | `REVIEWING.md` | a review rule or a source-wide convention — comments, naming, error handling — where no tool checks it and a generic reviewer could not guess it |
 | `RUNNING.md` | an entrypoint a human starts by hand — CLI, server, app |
 | `MONITORING.md` | logs, metrics, traces, or usage data the project produces and someone reads |
+| `decisions/` | a decision the repo states together with its reason — in a code comment or a `git log` message body, or a PR description where `gh` is installed — that meets the standard's `docs/decisions/` contract |
 
 Keep the evidence you found for each earned topic. It is the material step 3 writes from, and the reason step 4 gives for every topic left out.
 
@@ -41,6 +42,7 @@ Keep the evidence you found for each earned topic. It is the material step 3 wri
 
 - `README.md`, `AGENTS.md`, `CLAUDE.md` — always, when absent. They are the required set.
 - `docs/<TOPIC>.md` — only for an earned topic that has no file yet.
+- `docs/decisions/NNNN-slug.md` — one per decision the evidence states, only where step 2 found no record in `docs/decisions/` and no folder of records in another format, numbered by the standard's lifecycle rule.
 
 **Ground every line in this repo.** Where the repo settles a question, write what it settles; where it does not, drop the point.
 
@@ -50,5 +52,6 @@ A new `AGENTS.md` routes the whole set — the docs you just wrote and the ones 
 
 - Every file created, one line each on what it carries.
 - Every topic left out, naming the evidence that was absent.
-- Every new topic doc an existing `AGENTS.md` does not route, with the `MUST read` route line to add.
+- Every decision the evidence earned that step 3 did not write, with the reason: records already in `docs/decisions/`, or the home of records in another format it found.
+- Every new topic doc or `docs/decisions/` folder an existing `AGENTS.md` does not route, with the `MUST read` route line to add.
 - Every existing file whose content breaches its contract in the standard — the file and what is off about it. These were left untouched: say so, and tell the user to run `/project-review:project-review-docs` for the full audit — a separate plugin, so mention it may need installing — and name `instruction-writing:writing-project-docs` for the fix.

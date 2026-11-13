@@ -16,9 +16,13 @@ Every route below is **mandatory, not advisory**. Load the document BEFORE the f
 
 **MUST read [docs/DOCUMENTING.md](docs/DOCUMENTING.md) before creating or editing ANY Markdown file under `docs/`, or `AGENTS.md`, `README.md`, or `CONTRIBUTING.md`.** It owns the doc gates, the citation convention, and what this service has decided not to document.
 
+### Changing a decided design
+
+**MUST read the records in [docs/decisions/](docs/decisions/) that bear on the change before editing `internal/store/`, `internal/api/`, `migrations/`, or `api/openapi.yaml`.** Each holds a decision in force, and a change against one is the user's call — name the record and ask.
+
 ### Research, planning, analysis
 
-**MUST read [docs/OVERVIEW.md](docs/OVERVIEW.md) before searching this repository.** It is the map — package layout, the storage boundary, and the expressions that locate things fast. Go there first instead of grepping blind.
+**MUST read [docs/OVERVIEW.md](docs/OVERVIEW.md) before searching this repository.** It is the map — package layout, where each layer lives, and the expressions that locate things fast. Go there first instead of grepping blind.
 
 ### Testing and verification
 

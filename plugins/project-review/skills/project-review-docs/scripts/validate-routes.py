@@ -259,9 +259,10 @@ def extract_references(filepath, content):
 def resolve_reference(ref, repo_root, allow_dir_links=False):
     """Attempt to resolve a reference dict.
 
-    When allow_dir_links is True, a link to an existing directory (no anchor) resolves
-    OK (a valid GitHub navigation target). It defaults to False so the steering-doc/docs
-    scan stays strict; validate() enables it only for refs sourced from plugins/.
+    A link to an existing directory (no anchor) resolves OK (a valid GitHub navigation
+    target) when allow_dir_links is True — validate() sets it for refs sourced from
+    plugins/. Elsewhere only the docs/decisions/ route may link a folder, written with
+    its trailing slash and never as an @-import.
 
     Returns (resolved: bool, reason: str).
     """
@@ -275,11 +276,13 @@ def resolve_reference(ref, repo_root, allow_dir_links=False):
 
     if not os.path.isfile(target_path):
         # A link to an existing directory (no anchor) is a valid navigation target on
-        # GitHub (it renders the directory listing). Allowed ONLY when the caller opts in
-        # — the plugins/ scan does (see validate()); the steering-doc/docs scan stays
-        # strict so a file link typo'd as a bare directory name is still flagged. The rule
-        # lives here, in the single resolver, rather than being re-implemented per caller.
-        if allow_dir_links and anchor is None and os.path.isdir(target_path):
+        # GitHub (it renders the directory listing). Outside plugins/ only the decisions
+        # tree's route may link a folder, so a file link typo'd as a bare directory name is
+        # still flagged. The rule lives here, in the single resolver, rather than being
+        # re-implemented per caller.
+        tree_route = (raw_path.endswith("/") and ref["kind"] != "at-import"
+                      and target_path == os.path.join(os.path.abspath(repo_root), "docs", "decisions"))
+        if (allow_dir_links or tree_route) and anchor is None and os.path.isdir(target_path):
             return True, "ok (directory target)"
         return False, f"file not found: {target_path}"
 
@@ -349,8 +352,8 @@ def validate(repo_root, include_docs=False, include_plugins=False):
         refs = extract_references(filepath, content)
         all_refs.extend(refs)
 
-    # Directory links resolve OK only inside plugins/** (the original verify.sh behavior);
-    # steering docs (CLAUDE.md/AGENTS.md) and docs/ stay strict.
+    # Directory links resolve OK inside plugins/** (the original verify.sh behavior);
+    # steering docs (CLAUDE.md/AGENTS.md) and docs/ need the trailing slash.
     plugins_root = os.path.join(os.path.abspath(repo_root), "plugins") + os.sep
 
     unresolved = []

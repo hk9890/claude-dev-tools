@@ -30,8 +30,10 @@ docs/
   CHANGE-WORKFLOW.md
   REVIEWING.md
   RUNNING.md
+  decisions/
 ```
 
+- `docs/decisions/` is the one canonical tree (its block below).
 - If a reusable skill fully covers a topic with no local delta, route to that skill from `AGENTS.md` and write no topic doc for it.
 - A doc whose **content** is a canonical topic but sits under a **non-canonical name** (anywhere under `docs/` or at the repo root) is a defect: rename it to the canonical name when that slot is empty, or link it from the canonical doc when the slot is filled. Content-driven — the review never invents a doc for an absent topic.
 
@@ -108,6 +110,16 @@ Content outside a file's boundary is a defect even when every statement in it is
 - **Recorded decisions**: prose, in whatever shape the project keeps them. `project-review:project-review-docs` reads them and leaves out a gap a decision settles; a decision never makes a false claim acceptable.
 - Example: [../examples/docs/DOCUMENTING.md](../examples/docs/DOCUMENTING.md)
 
+### `docs/decisions/`
+
+- **Audience**: AI agents and people, before a change to what a decision governs.
+- **Inside**: one file per decision in force, `NNNN-slug.md`: the heading `# NNNN: <the decision as a sentence, in domain words>`, then at most 8 lines — the force or constraint that decides it, `Rejected: <option>, because <reason>.` for an option that would come back, and `Replaces NNNN: <why the old decision failed>.` where it replaces one. Each file reads on its own, without a jump to another record. A decision earns a file when it is hard to reverse, surprising without context, and the result of a real trade-off — all three. An explicit "no" that would otherwise be proposed again earns one too.
+- **Not inside**: a status or a date (the merged PR is the acceptance, and git holds the date); what the code or config already states — names, values, schemas (*Cache*); open questions and proposals (→ the tracker or an open PR); history (→ git); an index file (the file names are the index); decisions about what the project documents (→`docs/DOCUMENTING.md`).
+- **Lifecycle**: a file in the folder is in force, and the folder starts with its first record. A correction is an edit; a changed decision is a new file — delete the old one, write `Replaces NNNN`, and repoint every citation in the same change. A number is never reused: take the next above both the highest git has seen in a full clone (`git log --all -m --no-renames --diff-filter=A --name-only --format= -- ':/docs/decisions/' | grep -E '^docs/decisions/[0-9]{4}-' | sort | tail -1`) and the highest in the folder, and check it again before the merge, since two branches can take the same one. A record that governs a path the `AGENTS.md` route does not name adds that path to the route in the same change.
+- **Route**: `MUST read the records in [docs/decisions/](docs/decisions/) that bear on the change before editing <the paths they govern>` — a link with the trailing slash, the one folder link the route check accepts — with the reason line that a change against a record is the user's call.
+- **Precedence**: records in another format live in a folder outside `docs/decisions/` — an existing `docs/adr/`, say — that `docs/DOCUMENTING.md` registers; for that folder, the local rule wins.
+- Example: [../examples/docs/decisions/](../examples/docs/decisions/)
+
 ### `docs/TESTING.md`
 
 - **Audience**: AI agents, before they commit and whenever they write a test.
@@ -161,4 +173,4 @@ Content outside a file's boundary is a defect even when every statement in it is
 | `CLAUDE.md`, `AGENTS.md`, `README.md`, `CONTRIBUTING.md` | project root |
 | Topic docs | `docs/` |
 
-- Every route in `AGENTS.md` must point to a real file or installed skill; flag stale routes left behind after merges or deletions.
+- Every route in `AGENTS.md` must point to a real file, the `docs/decisions/` folder, or an installed skill; flag stale routes left behind after merges or deletions.

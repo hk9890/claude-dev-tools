@@ -159,7 +159,8 @@ function parseManifest(text) {
 // optional and never reports one missing, so an absent doc is a choice rather than a gap.
 // Everything else is still reviewed, just not as a use case — README and CONTRIBUTING
 // serve humans rather than working agents, AGENTS.md is the router rather than any
-// route's destination, and a non-standard doc is judged for placement.
+// route's destination, and a non-standard doc is judged for placement. The decisions tree
+// has no use case: each record is reviewed on its own against the tree's contract.
 function splitReviewTargets(manifestFiles) {
   const files = (manifestFiles || []).filter(f =>
     f && f.classification !== 'meta' &&
@@ -406,7 +407,7 @@ if (typeof agent === 'function') {
 
   // The project's own doc conventions, and the decisions it has already taken about what
   // it documents and what it leaves out. Most repos have no such file, and then no agent
-  // is told anything about decisions.
+  // is told any of those doc decisions.
   const hasDocumenting = (manifest.files || []).some(f => f && f.path === 'docs/DOCUMENTING.md')
   const documentingFile = repoRoot + '/docs/DOCUMENTING.md'
 
@@ -454,10 +455,27 @@ if (typeof agent === 'function') {
         `  An edgeless trigger is an Obligation finding even when the route is a correctly worded MUST: a diligent agent cannot obey it. Severity major. The fix names an action with a detectable first instant — e.g. replace "before searching this repository" with "before your first grep, rg, or Glob in this repo" — and replaces the existing trigger rather than being added beside it.\n` +
         contractLines(f)
     }
+    if (f.classification === 'decision') return head + `  Tree record: judge it against the DOCS/DECISIONS/ TREE contract above.\n`
     if (f.contract) return head + contractLines(f)
     return head +
-      `  NON-STANDARD doc — not one of the canonical files, so it has no ownership contract. FILED CORRECTLY? If its content belongs to a canonical topic (OVERVIEW / CODING / DOCUMENTING / TESTING / RELEASING / MONITORING / CHANGE-WORKFLOW / RUNNING / REVIEWING / README / CONTRIBUTING), that is a placement finding: recommend RENAME to docs/<TOPIC>.md when that canonical slot is empty (missing canonical: ${JSON.stringify(manifest.missing_canonical)}), or LINK it from the canonical doc when the slot is filled. Content of no canonical topic is legitimately project-specific. Also flag it if it is hollow (a stub) or duplicates AGENTS.md routing. Specs and design docs are read as authoritative, so one that contradicts a canonical doc you read is a blocker.\n`
+      `  NON-STANDARD doc — not one of the canonical files, so it has no ownership contract. FILED CORRECTLY? If its content belongs to a canonical topic (OVERVIEW / CODING / DOCUMENTING / TESTING / RELEASING / MONITORING / CHANGE-WORKFLOW / RUNNING / REVIEWING / DECISIONS / README / CONTRIBUTING), that is a placement finding: recommend RENAME to docs/<TOPIC>.md when that canonical slot is empty (missing canonical: ${JSON.stringify(manifest.missing_canonical)}), or LINK it from the canonical doc when the slot is filled; for DECISIONS, the DECISION RECORD PLACEMENT rules above replace both. Content of no canonical topic is legitimately project-specific. Also flag it if it is hollow (a stub) or duplicates AGENTS.md routing. Specs and design docs are read as authoritative, so one that contradicts a canonical doc you read is a blocker.\n`
   }
+
+  // Where a decision record not in the tree's shape belongs. Stated once per batch that
+  // holds a non-standard doc or a tree record, since it reads the same for each.
+  const decisionPlacement = (batch) => batch.some(t => ['non-standard', 'decision'].includes(t.file.classification))
+    ? `\nDECISION RECORD PLACEMENT — for a NON-STANDARD doc or a Tree record below that holds decisions:\n` +
+      `  - A NON-STANDARD doc holding records in the tree's shape (one decision each, at most 8 lines under its heading, no status or date) belongs in docs/decisions/NNNN-slug.md where that tree exists: recommend that move.\n` +
+      `  - Records in another format (a MADR or Nygard ADR, say) live in a folder outside docs/decisions/ that docs/DOCUMENTING.md registers. One inside docs/decisions/ is misplaced even where docs/DOCUMENTING.md names that folder: recommend moving it out and registering its new folder. One outside whose folder is not registered: recommend registering it. One outside whose folder docs/DOCUMENTING.md registers is filed correctly.\n` +
+      `  - An index in docs/decisions/ (README.md, say) breaches the tree's contract, since the file names are the index: recommend deleting it.\n`
+    : ''
+
+  // Every decision record shares one contract, so a batch states it once, not per record.
+  const decisionContract = (batch) => batch.some(t => t.file.classification === 'decision')
+    ? `\nDOCS/DECISIONS/ TREE — every file marked "Tree record" below is one record of the docs/decisions/ tree. ` +
+      `A record in another format (a MADR or Nygard ADR with status, date, and sections) is misplaced, not a record to cut down: the DECISION RECORD PLACEMENT rules decide its fix.\n` +
+      contractLines({ contract: manifest.decision_contract })
+    : ''
 
   const batchPrompt = (batch) => {
     const readList = [
@@ -487,6 +505,8 @@ if (typeof agent === 'function') {
       // has read so far.
       `ACCURACY FROM THE TEXT — you do not open the code, so you cannot confirm that a command, path, or flag still exists, and you do not raise a finding that only says a claim is unverified. Raise an accuracy finding on what the files show: two docs that contradict each other, a doc that contradicts itself, a procedure whose steps cannot all be true, an unresolved link listed below.\n\n` +
       `FOR EVERY FILE — for each unit of content (claim, command, path, table, section) ask whether it BELONGS HERE. Content that matches the file's Not-inside boundary is a belonging finding even when accurate (the Ownership rule); its fix routes the content to the owning file, never "keep it as a subsection here". In a file written for agents, also ask whether the unit fails the hygiene Cache rule — most often a description of what the code already declares: what a function does, what a log line means, where a file is written. Raise it as a form finding whose fix moves it to that code's doc comment or cuts it; this fix also replaces a belonging fix on the same unit, because a cache moved to another doc is still a cache. Then judge the file as a whole against the Economy rule, from the rules file rather than memory, and raise what fails it as a form finding naming the spans you would cut.\n` +
+      decisionContract(batch) +
+      decisionPlacement(batch) +
       batch.map((t, i) => fileSection(t, i + 1)).join('') +
       `\nReturn files_reviewed listing the repo-relative path of every file above that you read and judged, and findings, each naming its file. Quote the offending lines as evidence. A clean file gets no findings — do not invent problems.`
   }
