@@ -42,7 +42,7 @@ Keep the evidence you found for each earned topic. It is the material step 3 wri
 
 - `README.md`, `AGENTS.md`, `CLAUDE.md` — always, when absent. They are the required set.
 - `docs/<TOPIC>.md` — only for an earned topic that has no file yet.
-- `docs/decisions/NNNN-slug.md` — one per decision the evidence states, only while `docs/decisions/` holds no record, numbered by the standard's lifecycle rule.
+- `docs/decisions/NNNN-slug.md` — one per decision the evidence states, only while `docs/decisions/` holds no record and the repo keeps no decision records in another format, numbered by the standard's lifecycle rule.
 
 **Ground every line in this repo.** Where the repo settles a question, write what it settles; where it does not, drop the point.
 

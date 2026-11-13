@@ -21,7 +21,7 @@ Register a new canonical topic doc in three plugins; each keeps its own copy, as
 2. `project-review`, under `plugins/project-review/skills/project-review-docs/`: the name in `CANONICAL_DOCS` in `scripts/manifest.py`, in topic-set order, one use case in `USE_CASE_DOCS` in `scripts/history.py` and in `USE_CASES` in `workflows/review-docs.js`, and the name in the canonical-topic list of the NON-STANDARD prompt in `workflows/review-docs.js`.
 3. `project-execute`: a row in the earned-topic table of `plugins/project-execute/skills/project-exec-init/SKILL.md`. Without it `/project-exec-init` never writes the doc.
 
-A canonical tree (`decisions/`) takes the same steps under its name with the trailing slash: its example is a folder holding at least one `NNNN-slug.md` record, and `manifest.py` also needs the pattern that classifies its records (`DECISION_FILE_RE`). history.py counts a Read of any record directly inside the tree as opening it, and the tree's use case serves the history stage only: read-review judges each record on its own against the tree's contract.
+A canonical tree (`decisions/`) takes the same steps under its name with the trailing slash: its example is a folder holding at least one `NNNN-slug.md` record, and `manifest.py` also needs the pattern that classifies its records (`DECISION_FILE_RE`). The tree's use case serves the history stage only: read-review judges each record on its own against the tree's contract.
 
 `tests/marketplace/script-tests/test-canonical-docs.sh` pins the topic set, the ownership blocks, the examples and `USE_CASE_DOCS` to `CANONICAL_DOCS`; `tests/project-review/script-tests/test-history.sh` pins `USE_CASES` to `USE_CASE_DOCS`. No test checks the example route, the NON-STANDARD prompt list or the exec-init row.
 
