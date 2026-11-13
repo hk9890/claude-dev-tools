@@ -1,7 +1,7 @@
 {
   "name": "werft",
   "description": "Disposable test VMs through the werft CLI: one skill that makes the model take a werft lease whenever a task needs a VM or a clean machine, and follow the guide of the installed werft to lease, use and release it, plus a mod that lets the skill and the guide's werft commands and its ssh, scp and tar calls into a lease run without a permission prompt and releases the leases of a session when the session ends",
-  "version": "1.52.0",
+  "version": "1.53.0",
   "author": {
     "name": "Hans Kohlreiter",
     "email": "hans.kohlreiter@gmail.com"
