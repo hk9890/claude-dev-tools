@@ -46,29 +46,43 @@ async function keepAwake($: EngineInterface) {
 
   const mine = {}
   hold = mine
-  const why = `Claude session ${await $.session.id()}`
-  noAskPassword ??= await noAskPasswordFlag($)
+  let why: string
+
+  try {
+    why = `Claude session ${await $.session.id()}`
+    noAskPassword ??= await noAskPasswordFlag($)
+  } catch (error) {
+    // A hold kept here would stop every later activity from starting one.
+    if (hold === mine) {
+      hold = undefined
+    }
+
+    $.ui.log(`inhibitor not started: ${String(error)}`, { to: 'debug' })
+
+    return
+  }
+
   let hasStarted = false
   const startup = $.clock.after(STARTUP_MS, () => {
     hasStarted = true
   })
 
   while (hold === mine) {
-    const child = $.process.spawn({
-      argv: [
-        'systemd-inhibit',
-        '--what=idle:sleep',
-        WHO,
-        `--why=${why}`,
-        '--mode=block',
-        ...noAskPassword,
-        'sleep',
-        String(LEASE_SECONDS),
-      ],
-    })
-    inhibitor = child
-
     try {
+      const child = $.process.spawn({
+        argv: [
+          'systemd-inhibit',
+          '--what=idle:sleep',
+          WHO,
+          `--why=${why}`,
+          '--mode=block',
+          ...noAskPassword,
+          'sleep',
+          String(LEASE_SECONDS),
+        ],
+      })
+      inhibitor = child
+
       for await (const _ of child) {
         // systemd-inhibit writes nothing; the loop is the child's life
       }
@@ -287,7 +301,7 @@ export const register: Register = (on, options) => {
     const { headline, detail } = info(loaded)
 
     return { text: `${headline}. ${detail}` }
-  })
+  }).catch(($, e, next) => ({ text: `/${PANEL} failed: ${next.error.message ?? next.error.kind}` }))
 
   on('ui.render', { component: 'Pane', requestId: PANEL }, async ($, e, next) => {
     const shown = await read($, inhibitors)
@@ -345,11 +359,12 @@ export const register: Register = (on, options) => {
     return next(e)
   })
 
+  // A failure to block sleep never holds up the tool call.
   on('tool.call', ($, e, next) => {
     blockSleep($, idleMs)
 
     return next(e)
-  })
+  }).catch(($, e, next) => next(e))
 
   on('turn.complete', ($, e, next) => {
     blockSleep($, idleMs)

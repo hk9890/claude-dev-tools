@@ -8,8 +8,9 @@ const TURN_END = { answer: '', durationMs: 1, isAborted: false, reason: 'answer'
 
 // Stands for the host: records each inhibitor started and each one ended. `exit` ends the running
 // child as its own exit would; a `systemd-inhibit` that cannot start is `host(on, { canStart: false })`,
-// one older than v257, which knows no --no-ask-password, is `host(on, { knowsNoAskPassword: false })`.
-function host(on: On, { canStart = true, knowsNoAskPassword = true } = {}) {
+// one older than v257, which knows no --no-ask-password, is `host(on, { knowsNoAskPassword: false })`,
+// a session id that fails once is `host(on, { sessionIdFailures: 1 })`.
+function host(on: On, { canStart = true, knowsNoAskPassword = true, sessionIdFailures = 0 } = {}) {
   const seen = {
     started: [] as (readonly string[])[],
     ended: 0,
@@ -46,7 +47,14 @@ function host(on: On, { canStart = true, knowsNoAskPassword = true } = {}) {
 
     return { value: undefined }
   })
-  on('session.id', () => ({ value: 's1' }))
+  on('session.id', () => {
+    if (sessionIdFailures > 0) {
+      sessionIdFailures -= 1
+      throw new Error('no session id')
+    }
+
+    return { value: 's1' }
+  })
   on('turn.start', ($, e) => ({ turnId: e.turnId }))
   on('turn.complete', () => ({ text: '' }))
   on('session.end', ($, e) => ({ sessionId: e.sessionId }))
@@ -65,6 +73,22 @@ test('the first turn starts one inhibitor', async ($, on) => {
   expect(seen.started).toHaveLength(1)
   expect(seen.started[0]?.slice(0, 3)).toEqual(['systemd-inhibit', '--what=idle:sleep', '--who=claude-keep-awake'])
   expect(seen.started[0]?.slice(-4)).toEqual(['--mode=block', '--no-ask-password', 'sleep', '1800'])
+})
+
+test('a session id that fails starts no inhibitor, and the next activity starts one', async ($, on) => {
+  const clock = mock.clock(on)
+  const seen = host(on, { sessionIdFailures: 1 })
+
+  await $.turn.start({ text: 'go', turnId: 't1' })
+  await clock.settle()
+
+  expect(seen.started).toHaveLength(0)
+  expect(seen.logged.some(line => line.startsWith('inhibitor not started'))).toBe(true)
+
+  await $.turn.complete({ ...TURN_END, turnId: 't1' })
+  await clock.settle()
+
+  expect(seen.started).toHaveLength(1)
 })
 
 test('a systemd-inhibit older than v257 gets no --no-ask-password', async ($, on) => {
