@@ -18,36 +18,43 @@ applies the fixes it settled.
    |---|---|
    | no argument | the **default subject**: the uncommitted changes where `git status --porcelain` prints a line, otherwise the current branch against its base |
    | a number, with or without `#` | that pull request |
-   | a branch name | that branch against its base |
+   | a branch name, or `<base>...<branch>` | that branch against its base |
    | a path | the default subject, confined to that path |
 
    A pull request needs `gh`: where `command -v gh` prints nothing, say so and ask for a
-   branch.
+   branch. Take `gh pr view <n> --json baseRefOid,headRefOid` and run
+   `git fetch origin <baseRefOid> pull/<n>/head`: `<base>` is `<baseRefOid>`, `<head>` is
+   `<headRefOid>`.
 
-   A branch, the current one included, needs a base: `git rev-parse --abbrev-ref
-   origin/HEAD`. Where that command fails, ask which branch is the base; it still prints
-   `origin/HEAD` then, so read its exit status, not its output. A pull request carries its
-   own base. The diff is `git diff HEAD` for a dirty tree, plus each untracked file
-   `git ls-files --others --exclude-standard` prints; `git diff <base>...<branch>` for a
-   branch (`HEAD` for the current one), three dots for the merge base; `gh pr diff <n>`
-   for a pull request.
+   A branch, the current one included, is `<head>`. Its base is the one the argument
+   names; else the base of its pull request, where `gh pr view <branch> --json baseRefName`
+   prints one; else the remote's default branch, the name after `refs/heads/` in
+   `git ls-remote --symref origin HEAD`. For a base not named in the argument, run
+   `git fetch origin <base branch>` and take `origin/<base branch>` as `<base>`: the local
+   ref can lag the remote. Where no base comes out, ask which branch is the base.
+
+   The diff is `git diff HEAD` for a dirty tree, plus each untracked file
+   `git ls-files --others --exclude-standard` prints; else `git diff <base>...<head>`,
+   three dots for the merge base.
 
    **Prove the subject exists before you spawn anything**: the reviewer takes the diff
-   itself, and an empty subject comes back as a confident review of nothing. For a branch,
-   `<base>` and `<branch>` must each resolve (`git rev-parse --verify --quiet <base>`, and
-   the same for `<branch>`): where one does not, name it, ask which branch was meant, and
-   stop. The file list is what `git diff --name-only HEAD` (a dirty tree),
-   `git diff --name-only <base>...<branch>` or `gh pr diff <n> --name-only` prints, plus
-   the untracked files of a dirty tree. For a path, end every `git status`, `git diff` and
-   `git ls-files` command of this step, the dirty-tree test included, with `-- <path>`.
-   Where a file-list command fails, relay its error and stop; where the list is empty,
-   say the subject contains no changes, and stop.
+   itself, and an empty subject comes back as a confident review of nothing. Outside a
+   dirty tree, `<base>` and `<head>` must each resolve (`git rev-parse --verify --quiet <base>`, and
+   the same for `<head>`): where one does not, name it, ask which branch was meant, and
+   stop. The file list is what `git diff --name-only HEAD` (a dirty tree) or
+   `git diff --name-only <base>...<head>` prints, plus the untracked files of a dirty
+   tree. For a path, end every `git status`, `git diff` and `git ls-files` command of this
+   step, the dirty-tree test included, with `-- <path>`. Where a fetch or a file-list
+   command fails, relay its error and stop; where the list is empty, say the subject
+   contains no changes, and stop.
 
-   `--fix` edits the working tree, so it holds only for a subject checked out here: the
-   default subject, with or without a path, or a pull request or branch whose head commit
-   (`gh pr view <n> --json headRefOid` for a pull request) is `git rev-parse HEAD` while
-   `git status --porcelain` prints nothing. For any other subject, run without `--fix` and
-   say so now, with the reason.
+   A subject is **checked out here** where it is the default subject, with or without a
+   path, or where `git rev-parse <head>` prints `git rev-parse HEAD` while
+   `git status --porcelain` prints nothing. Its files are read from the working tree; the
+   files of any other subject, the project's documents included, as
+   `git show <head>:<path>`. `--fix` edits the working tree, so it holds only for a
+   subject checked out here: for any other, run without `--fix` and say so now, with the
+   reason.
 
    A repository with neither `AGENTS.md` nor `CLAUDE.md`, or with no document they route
    to, has no standard to measure against: say so and stop.
@@ -79,7 +86,8 @@ applies the fixes it settled.
    >
    > The subject is `<the step-1 subject in one sentence>`. Its files: `<the list>`. Take
    > the diff yourself with `<the step-1 diff command>` and read the changed files in full
-   > — a diff hunk alone hides what a rule binds.
+   > — a diff hunk alone hides what a rule binds. Read every file, the project's documents
+   > included, `<from the working tree | as git show <head>:<path>>`.
    >
    > Verdict labels: `clean`, `minor issues`, `significant issues`, `broken`. `clean`
    > requires a genuine attempt to find a broken rule, not the absence of one.
