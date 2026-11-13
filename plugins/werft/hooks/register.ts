@@ -34,7 +34,7 @@ export const register: Register = on => {
 
     if (found.lease) {
       const { id, config } = found.lease
-      const listed = await $.process.run(['werft', '--json', 'leases'], { cwd: '/' })
+      const listed = await $.process.run(['werft', '--json', 'leases'], { cwd: '/', timeoutMs: 10_000 })
       const leases = listed.exitCode === 0 ? (JSON.parse(listed.stdout) as Lease[]) : []
 
       if (!leases.some(lease => lease.id === id && lease.ssh_config === config)) {
