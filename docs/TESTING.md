@@ -38,18 +38,18 @@ A suite is a `test-*.sh` under `tests/<plugin>/script-tests/` or `tests/marketpl
 Two skip rather than fail where their prerequisite is absent:
 
 - `tests/html-visualization/script-tests/test-browser.sh` — needs Playwright in the npm `_npx` cache: `npx playwright --version` populates it, then `npx playwright install chromium`. `REQUIRE_BROWSER=1` makes it fail instead.
-- `tests/marketplace/script-tests/test-mods.sh` — needs `claude` 2.1.287 or later on PATH. `REQUIRE_CLAUDE=1` makes it fail instead, and the CI `test` job sets it.
+- `tests/marketplace/script-tests/test-claude-plugin.sh` — needs `claude` 2.1.287 or later on PATH. `REQUIRE_CLAUDE=1` makes it fail instead, and the CI `test` job sets it.
 
 ## Mod tests — `claude plugin test`
 
 A mod's tests live inside the plugin, at `plugins/<plugin>/tests/*.test.ts`, and run against the engine with no session, sign-in or network:
 
 ```bash
-claude plugin validate plugins/<plugin>   # manifest + the static analysis Claude Code applies at load
-claude plugin test plugins/<plugin>       # the plugin's tests
+claude plugin validate --strict plugins/<plugin>   # manifest, load-time static analysis, a type check of the hooks module; fails on a warning
+claude plugin test plugins/<plugin>                # the plugin's tests
 ```
 
-`test-mods.sh` (above) runs both for every plugin whose `hooks/hooks.json` has a `modules` key, so `mise run test` covers them.
+`test-claude-plugin.sh` (above) runs the validation for every plugin and the repo root's `marketplace.json`, and the tests for every plugin whose `hooks/hooks.json` has a `modules` key, so `mise run test` covers them.
 
 ### Writing a mod test
 

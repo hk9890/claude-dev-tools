@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# test-mods.sh — validate and test every plugin that ships a mod.
+# test-claude-plugin.sh — validate every plugin and the marketplace, and test every mod.
 #
-# A mod is a plugin whose hooks/hooks.json names a hooks module under `modules`. For each one
-# this runs `claude plugin validate` (the manifest and the static analysis Claude Code applies
-# at load) and `claude plugin test` (the plugin's own tests/*.test.ts, against the engine, with
-# no session, sign-in or network).
+# `claude plugin validate --strict` reads each manifest and its components as Claude Code will at
+# load, type-checks a mod's hooks module, and fails on any warning. A mod is a plugin whose
+# hooks/hooks.json names a hooks module under `modules`; for each one `claude plugin test` runs
+# the plugin's own tests/*.test.ts against the engine, with no session, sign-in or network.
 #
 # Exit codes:
-#   0  — every mod validated and its tests passed
+#   0  — every validation and every mod test passed
 #   1  — a validation or a test failed
 #   77 — skipped: `claude` is absent or older than the first release with mods.
 #        REQUIRE_CLAUDE=1 turns the skip into a failure.
@@ -29,6 +29,7 @@ command -v claude >/dev/null 2>&1 || skip "claude is not on PATH"
 version="$(claude --version 2>/dev/null | awk '{print $1}')"
 [[ "$(printf '%s\n%s\n' "$MIN_VERSION" "$version" | sort -V | head -n1)" == "$MIN_VERSION" ]] \
   || skip "claude $version is older than $MIN_VERSION, the first release with mods"
+echo "claude $version"
 
 MODS=()
 for hooks_json in "$REPO_ROOT"/plugins/*/hooks/hooks.json; do
@@ -38,15 +39,20 @@ done
 
 failures=0
 
-for mod in "${MODS[@]}"; do
-  if out="$(claude plugin validate "$mod" 2>&1)"; then
-    echo "PASS: validate ${mod#"$REPO_ROOT"/}"
+for target in "$REPO_ROOT" "$REPO_ROOT"/plugins/*/; do
+  target="${target%/}"
+  name="${target#"$REPO_ROOT"}"
+  name="${name#/}"
+  if out="$(claude plugin validate --strict "$target" 2>&1)"; then
+    echo "PASS: validate ${name:-marketplace}"
   else
-    echo "FAIL: validate ${mod#"$REPO_ROOT"/}"
+    echo "FAIL: validate ${name:-marketplace}"
     printf '%s\n' "$out"
     failures=$((failures + 1))
   fi
+done
 
+for mod in "${MODS[@]}"; do
   if out="$(claude plugin test "$mod" 2>&1)"; then
     echo "PASS: test ${mod#"$REPO_ROOT"/} ($(printf '%s\n' "$out" | grep -E '^ *[0-9]+ pass$' | xargs))"
   else
