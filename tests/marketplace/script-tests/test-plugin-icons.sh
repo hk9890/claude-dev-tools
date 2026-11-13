@@ -41,5 +41,5 @@ while IFS= read -r source; do
   fi
 done < <(jq -r '.plugins[].source' "$REPO_ROOT/.claude-plugin/marketplace.json")
 
-echo "Passed: $PASS  Failed: $FAIL"
+printf 'Results: %d passed, %d failed\n' "$PASS" "$FAIL"
 [[ "$FAIL" -eq 0 ]]
