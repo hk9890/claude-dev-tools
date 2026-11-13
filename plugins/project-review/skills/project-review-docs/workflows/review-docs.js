@@ -36,6 +36,7 @@ const USE_CASES = {
   'reviewing': { doc: 'docs/REVIEWING.md', work: 'review a PR or a diff' },
   'releasing': { doc: 'docs/RELEASING.md', work: 'cut a release' },
   'monitoring': { doc: 'docs/MONITORING.md', work: 'read logs, traces, or usage data' },
+  'deciding': { doc: 'docs/decisions/', work: 'record a design decision, or change a design choice the project has already decided' },
 }
 
 // What each level buys. Every agent turn re-sends the agent's whole context, so an agent
@@ -159,7 +160,9 @@ function parseManifest(text) {
 // optional and never reports one missing, so an absent doc is a choice rather than a gap.
 // Everything else is still reviewed, just not as a use case — README and CONTRIBUTING
 // serve humans rather than working agents, AGENTS.md is the router rather than any
-// route's destination, and a non-standard doc is judged for placement.
+// route's destination, and a non-standard doc is judged for placement. The decisions tree
+// has no seat: each record is reviewed on its own against the tree's contract, and its use
+// case serves the history stage only.
 function splitReviewTargets(manifestFiles) {
   const files = (manifestFiles || []).filter(f =>
     f && f.classification !== 'meta' &&
@@ -402,7 +405,11 @@ if (typeof agent === 'function') {
   for (const r of (manifest.agents_routes || [])) {
     if (r && r.target && !routeText[r.target]) routeText[r.target] = r.text || ''
   }
-  const quotedRoute = (doc) => routeText[doc] ? JSON.stringify(routeText[doc]) : '(no route to this doc found in AGENTS.md)'
+  // The manifest keys a folder route without its trailing slash (`docs/decisions`).
+  const quotedRoute = (doc) => {
+    const text = routeText[doc.replace(/\/$/, '')]
+    return text ? JSON.stringify(text) : '(no route to this doc found in AGENTS.md)'
+  }
 
   // The project's own doc conventions, and the decisions it has already taken about what
   // it documents and what it leaves out. Most repos have no such file, and then no agent
@@ -456,7 +463,7 @@ if (typeof agent === 'function') {
     }
     if (f.contract) return head + contractLines(f)
     return head +
-      `  NON-STANDARD doc — not one of the canonical files, so it has no ownership contract. FILED CORRECTLY? If its content belongs to a canonical topic (OVERVIEW / CODING / DOCUMENTING / TESTING / RELEASING / MONITORING / CHANGE-WORKFLOW / RUNNING / REVIEWING / README / CONTRIBUTING), that is a placement finding: recommend RENAME to docs/<TOPIC>.md when that canonical slot is empty (missing canonical: ${JSON.stringify(manifest.missing_canonical)}), or LINK it from the canonical doc when the slot is filled. Content of no canonical topic is legitimately project-specific. Also flag it if it is hollow (a stub) or duplicates AGENTS.md routing. Specs and design docs are read as authoritative, so one that contradicts a canonical doc you read is a blocker.\n`
+      `  NON-STANDARD doc — not one of the canonical files, so it has no ownership contract. FILED CORRECTLY? If its content belongs to a canonical topic (OVERVIEW / CODING / DOCUMENTING / TESTING / RELEASING / MONITORING / CHANGE-WORKFLOW / RUNNING / REVIEWING / DECISIONS / README / CONTRIBUTING), that is a placement finding: recommend RENAME to docs/<TOPIC>.md when that canonical slot is empty (missing canonical: ${JSON.stringify(manifest.missing_canonical)}), or LINK it from the canonical doc when the slot is filled. A decision record belongs in docs/decisions/NNNN-slug.md, one decision per file: recommend that move for a record kept elsewhere (docs/adr/, say), unless docs/DOCUMENTING.md registers that folder as the project's home for records in another format — then it is filed correctly. A file in docs/decisions/ without the NNNN- prefix breaches that tree's contract: recommend deleting an index (README.md, say), since the file names are the index, and renaming a record to NNNN-slug.md. Content of no canonical topic is legitimately project-specific. Also flag it if it is hollow (a stub) or duplicates AGENTS.md routing. Specs and design docs are read as authoritative, so one that contradicts a canonical doc you read is a blocker.\n`
   }
 
   const batchPrompt = (batch) => {

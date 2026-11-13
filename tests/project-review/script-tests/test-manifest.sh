@@ -251,6 +251,8 @@ test_decision_records() {
     "$(json_val "$out" "[f['classification'] for f in d['files'] if f['path']=='docs/decisions/0001-one-store.md'][0]")"
   assert_contains "decision: the record carries the docs/decisions/ contract" "one file per decision in force" \
     "$(json_val "$out" "([f['contract'] for f in d['files'] if f['path']=='docs/decisions/0001-one-store.md'][0] or {}).get('inside','')")"
+  assert_eq "decision: the tree counts once among the present canonical topics" "5" \
+    "$(json_val "$out" "d['summary']['optional_canonical_present']")"
   assert_eq "decision: an unnumbered file in the tree = non-standard" "non-standard" \
     "$(json_val "$out" "[f['classification'] for f in d['files'] if f['path']=='docs/decisions/ADR-0002-other.md'][0]")"
   assert_contains "decision: a record with no route to its folder is an orphan" "docs/decisions/0001-one-store.md" \

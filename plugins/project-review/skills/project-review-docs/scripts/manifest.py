@@ -54,17 +54,18 @@ import sys
 
 CANONICAL_ROOT = ["README.md", "AGENTS.md", "CLAUDE.md"]  # required at repo root
 OPTIONAL_CANONICAL_ROOT = ["CONTRIBUTING.md"]             # optional at repo root
-# Canonical topic docs under docs/. ALL OPTIONAL: create a doc only when there is
-# real local guidance; none is ever reported missing. The names are canonical —
-# use them if you document the topic — but presence is never required.
-CANONICAL_DOCS = [
-    "OVERVIEW.md", "CODING.md", "DOCUMENTING.md", "TESTING.md", "RELEASING.md",
-    "MONITORING.md", "CHANGE-WORKFLOW.md", "REVIEWING.md", "RUNNING.md",
-]
 # The one canonical tree: docs/decisions/NNNN-slug.md, one file per decision in force.
 # Its contract is keyed by the tree name, as project-setup.md heads its block.
 DECISIONS_TREE = "decisions/"
 DECISION_FILE_RE = re.compile(r"^docs/decisions/[0-9]{4}-[^/]+\.md$")
+# Canonical topics under docs/, in topic-set order: the topic files, then the tree.
+# ALL OPTIONAL: create one only when there is real local guidance; none is ever
+# reported missing. The names are canonical — use them if you document the topic —
+# but presence is never required.
+CANONICAL_DOCS = [
+    "OVERVIEW.md", "CODING.md", "DOCUMENTING.md", "TESTING.md", "RELEASING.md",
+    "MONITORING.md", "CHANGE-WORKFLOW.md", "REVIEWING.md", "RUNNING.md", DECISIONS_TREE,
+]
 PERSONAL_LOCAL = ["CLAUDE.local.md"]
 # Personal files under a name Claude Code never loads, mapped to the name it does load.
 LEGACY_PERSONAL_LOCAL = {".claude.local.md": PERSONAL_LOCAL[0]}
@@ -421,7 +422,7 @@ def build(repo_root, setup_md=None):
 
     # Location violations: canonical docs/ file found at root, or root file under docs/
     location_violations = []
-    for n in CANONICAL_DOCS:
+    for n in (n for n in CANONICAL_DOCS if n.endswith(".md")):
         if os.path.isfile(os.path.join(repo_root, n)):
             location_violations.append({"file": n, "found_at": n, "expected_at": f"docs/{n}"})
     for n in CANONICAL_ROOT + OPTIONAL_CANONICAL_ROOT:

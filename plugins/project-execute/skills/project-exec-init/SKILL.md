@@ -34,6 +34,7 @@ Read what the project already carries and record two lists.
 | `REVIEWING.md` | a review rule or a source-wide convention — comments, naming, error handling — where no tool checks it and a generic reviewer could not guess it |
 | `RUNNING.md` | an entrypoint a human starts by hand — CLI, server, app |
 | `MONITORING.md` | logs, metrics, traces, or usage data the project produces and someone reads |
+| `decisions/` | a decision the repo states together with its reason — a code comment, a commit or PR message, an existing doc — that is hard to reverse, surprising without context, and the result of a real trade-off. A decision whose reason the repo never states is not evidence. Records kept in another format (`docs/adr/`, say) earn a `DOCUMENTING.md` entry that registers them instead |
 
 Keep the evidence you found for each earned topic. It is the material step 3 writes from, and the reason step 4 gives for every topic left out.
 
@@ -41,6 +42,7 @@ Keep the evidence you found for each earned topic. It is the material step 3 wri
 
 - `README.md`, `AGENTS.md`, `CLAUDE.md` — always, when absent. They are the required set.
 - `docs/<TOPIC>.md` — only for an earned topic that has no file yet.
+- `docs/decisions/NNNN-slug.md` — one per decision the evidence states, only while `docs/decisions/` holds no record.
 
 **Ground every line in this repo.** Where the repo settles a question, write what it settles; where it does not, drop the point.
 
@@ -50,5 +52,5 @@ A new `AGENTS.md` routes the whole set — the docs you just wrote and the ones 
 
 - Every file created, one line each on what it carries.
 - Every topic left out, naming the evidence that was absent.
-- Every new topic doc an existing `AGENTS.md` does not route, with the `MUST read` route line to add.
+- Every new topic doc or `docs/decisions/` folder an existing `AGENTS.md` does not route, with the `MUST read` route line to add.
 - Every existing file whose content breaches its contract in the standard — the file and what is off about it. These were left untouched: say so, and tell the user to run `/project-review:project-review-docs` for the full audit — a separate plugin, so mention it may need installing — and name `instruction-writing:writing-project-docs` for the fix.

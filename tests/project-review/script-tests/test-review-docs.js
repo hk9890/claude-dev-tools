@@ -231,8 +231,16 @@ async function main() {
     0, splitReviewTargets([{ path: 'README.md', classification: 'canonical' }]).useCases.length);
   eq('splitReviewTargets: an empty manifest is tolerated',
     { useCases: [], residual: [] }, splitReviewTargets([]));
-  eq('splitReviewTargets: every use case maps to a docs/ topic file',
-    [], Object.keys(USE_CASES).filter((u) => !/^docs\/[A-Z-]+\.md$/.test(USE_CASES[u].doc)));
+  eq('splitReviewTargets: every use case maps to a docs/ topic file or tree',
+    [], Object.keys(USE_CASES).filter((u) => !/^docs\/([A-Z-]+\.md|[a-z-]+\/)$/.test(USE_CASES[u].doc)));
+  // The decisions tree has no read-review seat: each record is reviewed on its own,
+  // against the tree's contract, and the use case serves the history stage only.
+  const withRecord = splitReviewTargets([
+    { path: 'docs/decisions/0001-a.md', classification: 'decision', contract: { inside: 'i' } },
+  ]);
+  eq('splitReviewTargets: a decision record is no use case', [], withRecord.useCases.map((u) => u.useCase));
+  eq('splitReviewTargets: a decision record is reviewed on its own',
+    ['docs/decisions/0001-a.md'], withRecord.residual.map((f) => f.path));
 
   // ── orderTargets ─────────────────────────────────────────────────────────────
   const ordered = orderTargets([
@@ -434,6 +442,9 @@ async function main() {
     reviewPrompts[0].includes('before ANY git operation') && reviewPrompts[0].includes('before searching this repository'));
   truthy('read-review: the non-standard doc is judged for placement',
     reviewPrompts[0].includes('NON-STANDARD doc'));
+  truthy('read-review: a misplaced decision record is judged for placement, with the registered home exempt',
+    reviewPrompts[0].includes('docs/decisions/NNNN-slug.md') &&
+    reviewPrompts[0].includes('unless docs/DOCUMENTING.md registers that folder'));
   eq('read-review: findings reach raw', 1, deep.ret.raw.read_findings.length);
   eq('read-review: the batches are reported', [['AGENTS.md', 'docs/CODING.md', 'docs/A.md']], deep.ret.raw.review_batches);
   eq('read-review: a complete run reports no unreviewed file', [], deep.ret.raw.not_reviewed);
@@ -504,6 +515,23 @@ async function main() {
     judgePrompt.includes('use_case "coding"') && !judgePrompt.includes('use_case "testing"'));
   eq('history: verdicts reach raw', 4, deep.ret && deep.ret.raw.history[0].segments_judged);
   eq('history: coverage reaches raw', 4, deep.ret && deep.ret.raw.history_coverage.coding.valid);
+
+  // The manifest keys a folder route without its trailing slash, and the use case names
+  // the tree with it: the judge must still get the route's wording, not "no route".
+  const treeRoute = '**MUST read the records in [docs/decisions/](docs/decisions/) that bear on the change before editing `src/store/`.**';
+  const tree = await runAudit({
+    level: 'ultra',
+    manifest: { ...manifest, agents_routes: [...manifest.agents_routes, { kind: 'file', target: 'docs/decisions', text: treeRoute }] },
+    evidence: {
+      ...evidence,
+      evidence_files: { ...evidence.evidence_files, deciding: '/tmp/sc/history/evidence-deciding.json' },
+      coverage: { ...evidence.coverage, deciding: { labelled: 4, valid: 4, examined: 4, excluded_route_changed: 0 } },
+    },
+  });
+  const treeJudge = tree.prompts[tree.labels.indexOf('history:judge')];
+  truthy('history: the tree use case is judged', treeJudge.includes('use_case "deciding"'));
+  truthy('history: the judge gets the folder route\'s wording',
+    treeJudge.includes('that bear on the change') && !treeJudge.includes('no route to this doc found'));
   truthy('history: the judge is told AGENTS.md is never Read, so its absence proves nothing',
     judgePrompt.includes('AGENTS.md is always in an agent') && judgePrompt.includes('never Read'));
   truthy('history: a well-edged obligation route that is skipped accuses the agent, not the doc',
