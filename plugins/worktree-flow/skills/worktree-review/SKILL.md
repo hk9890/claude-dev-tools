@@ -1,7 +1,7 @@
 ---
 name: worktree-review
 description: "Review a PR and push the fixes: the project's rules review, then the code review."
-when_to_use: "Triggers on 'review the PR and push the fixes'. Also loaded by name at the review step of a change workflow. Not for a review without a push (`code-review`), nor for the rules review alone (`project-review:project-review-change`)."
+when_to_use: "Use when a PR is ready for review and its fixes should land on its branch. Triggers on 'review the PR and push the fixes'. Also loaded by name at the review step of a change workflow. Not for a review without a push (`code-review`), nor for the rules review alone (`project-review:project-review-change`)."
 argument-hint: "[pr-number]"
 ---
 

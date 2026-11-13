@@ -149,6 +149,7 @@ with no `error` means the abort-report or synthesis agent died: say so, and rela
 
 Reading-based judgment about tests — whether a mock hides the failure path nobody tests,
 whether an expensive test covers a risk a fast one cannot, whether the test code is
-maintainable → `project-review:project-review-codebase`, which reviews test code across
-its consistency, structure and architecture dimensions. Any test beyond one that kills a
+maintainable → `/project-review:project-review-codebase` (needs the separate
+`project-review` plugin), which reviews test code across its consistency, structure and
+architecture dimensions. Any test beyond one that kills a
 settled survivor → filed in taskmgr by the triage, for the user to do.
