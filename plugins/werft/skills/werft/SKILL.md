@@ -1,7 +1,7 @@
 ---
 name: werft
 description: "Disposable test VMs from stock images on this machine."
-when_to_use: "Use when a task needs a VM or a clean machine, to install, run or test something in it. Triggers on 'get a VM', 'test this in a VM', 'a clean machine', 'a disposable VM', 'try the install on a fresh Ubuntu'. Not for the user's build VMs."
+when_to_use: "Use when a task needs a VM or a clean machine, to install, run or test something in it. Triggers on 'get a VM', 'test this in a VM', 'a clean machine', 'a disposable VM', 'try the install on a fresh Ubuntu'."
 allowed-tools: Bash(werft guide*), Bash(werft help*), Bash(werft --json images), Bash(werft --json lease *), Bash(werft --json leases), Bash(werft --json extend *), Bash(werft --json release *), Bash(werft release *), Bash(werft --json reap)
 ---
 
@@ -12,7 +12,7 @@ Take every VM a task needs as a werft lease, in place of a VM built by hand with
 In this session, two points of the guide take a fixed form:
 
 - `--owner claude-${CLAUDE_SESSION_ID}` on every lease.
-- The Bash tool stops a call at 10 minutes, less than the guide gives a lease: run `werft --json lease` with `run_in_background` and wait for its notification.
+- A Bash call runs 10 minutes at most, less than the guide gives a lease call: run `werft --json lease` with `run_in_background` and wait for its notification.
 
 Follow the rest of the guide below:
 
