@@ -43,12 +43,12 @@ Done when the worktree is gone, and each of the user's files is copied or droppe
 
 ## 4. Update the default branch
 
-Below, `<default>` is the PR's base branch and `<remote>` its remote. Another session can have switched the main checkout or left changes in it. In the main checkout, run this as one call, so the shell chooses between a fast-forward of that checkout and a move of `<default>` alone:
+Below, `<default>` is the PR's base branch and `<remote>` its remote. Another session can have switched the main checkout or left changes in it. In the main checkout, run this as one call; on `<default>` with changes, git refuses the move:
 
 ```bash
 git fetch --prune <remote> &&
-branch=$(git branch --show-current) && changes=$(git status --porcelain) &&
-if [ "$branch" = "<default>" ] && [ -z "$changes" ]; then
+current=$(git branch --show-current) && changes=$(git status --porcelain --untracked-files=no) &&
+if [ "$current" = "<default>" ] && [ -z "$changes" ]; then
   old=$(git rev-parse HEAD) && git merge --ff-only <remote>/<default> && echo "fast-forward from $old"
 else
   echo "leave that checkout as it is" && git fetch . <remote>/<default>:<default>
