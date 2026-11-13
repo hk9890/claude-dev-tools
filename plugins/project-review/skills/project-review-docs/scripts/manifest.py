@@ -62,10 +62,9 @@ CANONICAL_DOCS = [
     "MONITORING.md", "CHANGE-WORKFLOW.md", "REVIEWING.md", "RUNNING.md",
 ]
 # The one canonical tree: docs/decisions/NNNN-slug.md, one file per decision in force.
-# AGENTS.md routes to the folder and no index links the files, so a record is never an
-# orphan. Its contract is keyed by the tree name, as project-setup.md heads its block.
+# Its contract is keyed by the tree name, as project-setup.md heads its block.
 DECISIONS_TREE = "decisions/"
-DECISION_FILE_RE = re.compile(r"^docs/decisions/\d{4}-[^/]+\.md$")
+DECISION_FILE_RE = re.compile(r"^docs/decisions/[0-9]{4}-[^/]+\.md$")
 PERSONAL_LOCAL = ["CLAUDE.local.md"]
 # Personal files under a name Claude Code never loads, mapped to the name it does load.
 LEGACY_PERSONAL_LOCAL = {".claude.local.md": PERSONAL_LOCAL[0]}
@@ -196,7 +195,8 @@ def classify(rel_path):
     """Return (classification, canonical_name_or_None)."""
     name = os.path.basename(rel_path)
     at_root = (rel_path == name)
-    in_docs = rel_path.startswith("docs" + os.sep) or rel_path.startswith("docs/")
+    posix = rel_path.replace("\\", "/")
+    in_docs = posix.startswith("docs/")
 
     if at_root and name in CANONICAL_ROOT:
         return "canonical-root", name
@@ -209,10 +209,10 @@ def classify(rel_path):
     if at_root and name in ROOT_META_IGNORE:
         return "meta", None
     # docs/<NAME> directly under docs/ — a canonical topic doc (all optional)
-    depth = rel_path.replace("\\", "/").count("/")
+    depth = posix.count("/")
     if in_docs and depth == 1 and name in CANONICAL_DOCS:
         return "canonical", name
-    if DECISION_FILE_RE.match(rel_path.replace("\\", "/")):
+    if DECISION_FILE_RE.match(posix):
         return "decision", DECISIONS_TREE
     return "non-standard", None
 
@@ -248,6 +248,12 @@ def file_links(vr, repo_root, rel_path):
         })
         if ok and target_rel.endswith(".md"):
             resolved_targets.append(target_rel)
+        elif ok and os.path.isdir(target_abs):
+            # A link to a folder reaches the docs directly inside it: a routed
+            # docs/decisions/ reaches every record without an index.
+            resolved_targets.extend(
+                os.path.join(target_rel, n) for n in sorted(os.listdir(target_abs))
+                if n.endswith(".md") and os.path.isfile(os.path.join(target_abs, n)))
     return records, resolved_targets
 
 
@@ -447,7 +453,7 @@ def build(repo_root, setup_md=None):
     # docs (README/AGENTS/CLAUDE) are entry points, not routed leaves — never orphans.
     orphans = [e["path"] for e in files
                if not e["reachable_from_agents"]
-               and e["classification"] not in ("meta", "canonical-root", "decision") + PERSONAL_CLASSES]
+               and e["classification"] not in ("meta", "canonical-root") + PERSONAL_CLASSES]
 
     return {
         "repo_root": os.path.abspath(repo_root),

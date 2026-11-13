@@ -239,21 +239,26 @@ test_contract() {
   rm -rf "$dir"
 }
 
-# 9b. a decision record carries the tree's contract and is never an orphan; a file in the
-#     tree without the NNNN- prefix is an ordinary non-standard doc.
+# 9b. a decision record carries the tree's contract; a folder link from AGENTS.md reaches
+#     every record, and an unrouted record is an orphan. A file in the tree without the
+#     NNNN- prefix is an ordinary non-standard doc.
 test_decision_records() {
   local dir; dir=$(make_fixture); mkdir -p "$dir/docs/decisions"
   printf '# 0001: One store\n\nTransactions span rows.\n' > "$dir/docs/decisions/0001-one-store.md"
-  printf '# Index\n\nA list.\n' > "$dir/docs/decisions/README.md"
+  printf '# ADR-0002\n\nAnother format.\n' > "$dir/docs/decisions/ADR-0002-other.md"
   local out; out=$("$SCRIPT" "$dir" --setup-md="$SETUP_MD")
   assert_eq "decision: docs/decisions/0001-one-store.md = decision" "decision" \
     "$(json_val "$out" "[f['classification'] for f in d['files'] if f['path']=='docs/decisions/0001-one-store.md'][0]")"
-  assert_contains "decision: the record carries the tree's contract" "decision" \
+  assert_contains "decision: the record carries the docs/decisions/ contract" "one file per decision in force" \
     "$(json_val "$out" "([f['contract'] for f in d['files'] if f['path']=='docs/decisions/0001-one-store.md'][0] or {}).get('inside','')")"
-  assert_eq "decision: a record is never an orphan" "[]" \
-    "$(json_val "$out" "[p for p in d['orphans'] if p.endswith('0001-one-store.md')]")"
   assert_eq "decision: an unnumbered file in the tree = non-standard" "non-standard" \
-    "$(json_val "$out" "[f['classification'] for f in d['files'] if f['path']=='docs/decisions/README.md'][0]")"
+    "$(json_val "$out" "[f['classification'] for f in d['files'] if f['path']=='docs/decisions/ADR-0002-other.md'][0]")"
+  assert_contains "decision: a record with no route to its folder is an orphan" "docs/decisions/0001-one-store.md" \
+    "$(json_val "$out" "d['orphans']")"
+  printf '\n### Decisions\n\nMUST read [docs/decisions/](docs/decisions/) before a change.\n' >> "$dir/AGENTS.md"
+  out=$("$SCRIPT" "$dir")
+  assert_eq "decision: a folder link from AGENTS.md reaches every file in it" "[]" \
+    "$(json_val "$out" "[p for p in d['orphans'] if p.startswith('docs/decisions/')]")"
   rm -rf "$dir"
 }
 

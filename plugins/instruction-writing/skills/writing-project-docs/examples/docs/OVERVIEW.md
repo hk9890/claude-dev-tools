@@ -11,17 +11,14 @@ internal/store/         PostgreSQL repository layer
 internal/model/         shared domain types
 migrations/             schema migrations (goose)
 api/openapi.yaml        OpenAPI spec (rendered at https://api.acme.com/widget-service/docs)
-docs/decisions/         decisions in force, one file each (e.g. 0001-postgresql-is-the-only-state-store.md)
 docs/user/              user-facing documentation (published to https://docs.acme.com/widget-service)
 docs/runbooks/          operational runbooks for on-call
 ```
 
 ## Key concepts
 
-- Widgets are identified by UUID; IDs are assigned on creation and never change.
 - All mutations run inside a transaction; partial writes are not possible.
 - Schema migrations run automatically at startup via `store.Migrate()`.
-- The service is stateless — all state lives in PostgreSQL.
 
 ## Finding things
 

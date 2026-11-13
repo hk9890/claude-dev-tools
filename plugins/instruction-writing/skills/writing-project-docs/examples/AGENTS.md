@@ -18,7 +18,7 @@ Every route below is **mandatory, not advisory**. Load the document BEFORE the f
 
 ### Changing a decided design
 
-**MUST search [docs/decisions/](docs/decisions/) before editing `internal/store/`, `migrations/`, or `api/openapi.yaml`, or planning a change to them.** Each file is one decision in force. A change that contradicts one names it — "Contradicts 0004, because …" — and waits for the user.
+**MUST read the records in [docs/decisions/](docs/decisions/) that bear on the change before editing `internal/store/`, `migrations/`, or `api/openapi.yaml`.** Each holds a decision in force, and a change against one is the user's call — name the record and ask.
 
 ### Research, planning, analysis
 

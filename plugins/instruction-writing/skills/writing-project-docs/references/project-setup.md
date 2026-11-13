@@ -112,14 +112,12 @@ Content outside a file's boundary is a defect even when every statement in it is
 
 ### `docs/decisions/`
 
-- **Audience**: AI agents and people, before a change or a plan that alters what a decision governs.
-- **Inside**: one file per decision in force. A decision earns a file when it is hard to reverse, surprising without context, and the result of a real trade-off — all three. An explicit "no" that would otherwise be proposed again earns one too.
-- **Not inside**: what the code or config already states — names, values, schemas (*Cache*); open questions and proposals (→ the tracker or an open PR); history (→ git); decisions about what the project documents (→`docs/DOCUMENTING.md`).
-- **Shape**: the file `NNNN-slug.md` starts `# NNNN: <the decision as a sentence, in domain words>`, then at most 8 lines: the force or constraint that decides it; `Rejected: <option>, because <reason>.` for an option that would come back; `Replaces NNNN: <why the old decision failed>.` where it replaces one. No status and no date: the merged PR is the acceptance, and git holds the date. Each file reads on its own, without a jump to another record.
-- **Lifecycle**: a file in the folder is in force. A correction is an edit; a changed decision is a new file — delete the old one, write `Replaces NNNN`, and repoint every citation in the same change. A number is never reused: take the next above the highest git has seen (`git log --all --diff-filter=A --name-only --format= -- docs/decisions/ | sort | tail -1`), and check it again before the merge, since two branches can take the same one.
-- **No index file**: the file names are the index. The folder starts with its first record.
-- **Route**: `AGENTS.md` routes to the folder before a change to the paths its decisions govern, and states the conflict rule: a change that contradicts a record names it — "Contradicts NNNN, because …" — and waits for the user.
-- **Precedence**: a project that keeps its decision records in another folder or format registers that home in `docs/DOCUMENTING.md`, and the local rule wins.
+- **Audience**: AI agents and people, before a change to what a decision governs.
+- **Inside**: one file per decision in force, `NNNN-slug.md`: the heading `# NNNN: <the decision as a sentence, in domain words>`, then at most 8 lines — the force or constraint that decides it, `Rejected: <option>, because <reason>.` for an option that would come back, and `Replaces NNNN: <why the old decision failed>.` where it replaces one. Each file reads on its own, without a jump to another record. A decision earns a file when it is hard to reverse, surprising without context, and the result of a real trade-off — all three. An explicit "no" that would otherwise be proposed again earns one too.
+- **Not inside**: a status or a date (the merged PR is the acceptance, and git holds the date); what the code or config already states — names, values, schemas (*Cache*); open questions and proposals (→ the tracker or an open PR); history (→ git); an index file (the file names are the index); decisions about what the project documents (→`docs/DOCUMENTING.md`).
+- **Lifecycle**: a file in the folder is in force, and the folder starts with its first record. A correction is an edit; a changed decision is a new file — delete the old one, write `Replaces NNNN`, and repoint every citation in the same change. A number is never reused: take the next above the highest git has seen (`git log --all --diff-filter=A --name-only --format= -- docs/decisions/ | grep -E '/[0-9]{4}-' | sort | tail -1`), and check it again before the merge, since two branches can take the same one.
+- **Route**: `MUST read the records in docs/decisions/ that bear on the change before editing <the paths they govern>`, with the reason line that a change against a record is the user's call.
+- **Precedence**: records in another format live outside `docs/decisions/` — an existing `docs/adr/`, say — and `docs/DOCUMENTING.md` registers that home; the local rule wins.
 - Example: [../examples/docs/decisions/](../examples/docs/decisions/)
 
 ### `docs/TESTING.md`
