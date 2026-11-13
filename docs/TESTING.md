@@ -76,7 +76,7 @@ The manifest is informational — check its summary line for a false `claude_md_
 
 | Job | What it checks | Locally |
 |---|---|---|
-| `test` | Full script-test suite, the mod suite included: the job installs the Claude Code version pinned in `ci.yml` | `mise run test` |
+| `test` | Full script-test suite, the plugin suite included: the job installs the latest Claude Code, so a new release can fail it with no change here; the suite log names the version | `mise run test` |
 | `consistency` | Cross-references, version mirrors, marketplace | `mise run check-consistency` |
 | `manifests` | JSON well-formedness of every plugin and marketplace manifest | `for f in .claude-plugin/marketplace.json plugins/*/.claude-plugin/plugin.json; do jq empty "$f"; done` |
 | `shellcheck` | ShellCheck over every tracked shell script | `mise run lint` |
