@@ -8,7 +8,8 @@
 # the other classifies as non-standard at review time and its example never gets written.
 # These tests pin the halves together. A topic is a file (`OVERVIEW.md`) or a tree
 # (`decisions/`, trailing slash) whose records are the files in it: a tree's example is a
-# folder that holds at least one numbered record.
+# folder that holds at least one numbered record, and it has no use case: its route fires on
+# edits to the paths its records govern, which no history label isolates.
 #
 # project-exec-init's earned-topic table is deliberately NOT pinned here: whether a repo
 # has earned a topic doc is a judgement, and a row asserting one exists would only restate
@@ -108,9 +109,9 @@ HISTORY_TARGETS=$(python3 -c "
 import importlib.util
 spec = importlib.util.spec_from_file_location('h', '$HISTORY')
 h = importlib.util.module_from_spec(spec); spec.loader.exec_module(h)
-print(' '.join(sorted(v.removeprefix('docs/') for v in h.USE_CASE_DOCS.values())))
+print(' '.join(sorted(v.split('/')[-1] for v in h.USE_CASE_DOCS.values())))
 ")
-EXPECTED_TARGETS=$(printf '%s\n' "$DOCS" | tr ' ' '\n' | LC_ALL=C sort | tr '\n' ' ' | sed 's/ $//')
+EXPECTED_TARGETS=$(printf '%s\n' "$DOCS" | tr ' ' '\n' | grep -v '/$' | LC_ALL=C sort | tr '\n' ' ' | sed 's/ $//')
 assert_eq "use cases: history.py covers every canonical doc exactly once" "$EXPECTED_TARGETS" "$HISTORY_TARGETS"
 
 printf '\nResults: %d passed, %d failed\n' "$PASS" "$FAIL"

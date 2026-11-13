@@ -50,8 +50,6 @@ git -C "$REPO" config user.email t@t.t
 git -C "$REPO" config user.name t
 printf '# Coding\n\nRules go here.\nMore rules.\n' > "$REPO/docs/CODING.md"
 printf '# Testing\n\nRun the suite.\n' > "$REPO/docs/TESTING.md"
-mkdir -p "$REPO/docs/decisions"
-printf '# 0001: One store\n\nTransactions span rows.\n' > "$REPO/docs/decisions/0001-one-store.md"
 # The route is what the filter compares, so the fixture needs a real AGENTS.md.
 cat > "$REPO/AGENTS.md" <<'EOF'
 # AGENTS.md — fixture routing
@@ -59,8 +57,6 @@ cat > "$REPO/AGENTS.md" <<'EOF'
 **MUST read [docs/CODING.md](docs/CODING.md) before creating or editing ANY file under `src/`.**
 
 **MUST read [docs/TESTING.md](docs/TESTING.md) before writing a test.**
-
-**MUST read the records in [docs/decisions/](docs/decisions/) that bear on the change before editing `src/store/`.**
 EOF
 git -C "$REPO" add -A >/dev/null 2>&1
 # Date the first commit BEFORE the fixture session below. A doc created after a session
@@ -104,15 +100,6 @@ assert_contains "prompts: the label vocabulary travels with the batch" '"coding"
 # the script has started guessing and the classifier is no longer the only labeller.
 assert_missing  "prompts: the extractor assigns no use case of its own" '"use_case"' "$BATCH"
 
-# A second session, written after the prompts checks so their counts stay at one: it reads
-# a record in the decisions tree, then writes a new one. A tree is opened by a Read of any
-# record directly inside it.
-cat > "$PROJECTS/$SLUG/sess-2.jsonl" <<EOF
-{"type":"user","sessionId":"sess-2","timestamp":"2020-02-01T00:00:00Z","message":{"content":"record that postgres is the only store"}}
-{"type":"assistant","sessionId":"sess-2","timestamp":"2020-02-01T00:00:01Z","message":{"content":[{"type":"tool_use","name":"Read","input":{"file_path":"$REPO/docs/decisions/0001-one-store.md"}}]}}
-{"type":"assistant","sessionId":"sess-2","timestamp":"2020-02-01T00:00:02Z","message":{"content":[{"type":"tool_use","name":"Write","input":{"file_path":"$REPO/docs/decisions/0002-uuids.md"}}]}}
-EOF
-
 # ---------------------------------------------------------------------------
 # evidence
 # ---------------------------------------------------------------------------
@@ -123,8 +110,7 @@ assert_eq "evidence: no labels means no segments" "0" "$(json_val "d['coverage']
 
 TURN=$(python3 -c "import json;print(json.load(open('$OUT/prompts-01.json'))['sessions'][0]['messages'][0]['turn'])")
 cat > "$OUT/labels-01.json" <<EOF
-{"sessions":[{"session_id":"sess-1","labels":[{"turn":$TURN,"use_case":"coding"}]},
- {"session_id":"sess-2","labels":[{"turn":0,"use_case":"deciding"}]}]}
+{"sessions":[{"session_id":"sess-1","labels":[{"turn":$TURN,"use_case":"coding"}]}]}
 EOF
 
 E=$(python3 "$SCRIPT" evidence "$REPO" --scratch "$OUT" --projects-dir "$PROJECTS" --per-use-case 3 2>&1)
@@ -144,11 +130,6 @@ assert_eq "evidence: the first action of that kind is located" "4" "$(seg "['act
 assert_eq "evidence: writes are counted" "1" "$(seg "['activity']['counts']['writes']")"
 assert_eq "evidence: commands are counted" "1" "$(seg "['activity']['counts']['commands']")"
 assert_eq "evidence: a stable route is recorded as such" "True" "$(seg "['route_stability']['stable']")"
-dseg() { json_val "d['use_cases'][[u['use_case'] for u in d['use_cases']].index('deciding')]['segments'][0]$1" < "$EV"; }
-assert_eq "evidence: a tree counts as present when its folder exists" "1" \
-  "$(json_val "d['coverage']['deciding']['valid']" <<< "$E")"
-assert_eq "evidence: a Read of a record in the tree opens the tree" "1" "$(dseg "['activity']['first_doc_read_turn']")"
-assert_eq "evidence: a tree's first action is located" "2" "$(dseg "['activity']['first_work_turn']")"
 
 # The stage concludes "was the doc opened", which the route drives and the doc's own
 # contents do not. Rewriting the doc must therefore NOT discard the evidence.
@@ -194,33 +175,9 @@ assert_eq "evidence: candidates are over-collected past the requested count" "6"
 
 # A use case whose doc does not exist is never reviewed and never reported missing.
 rm "$REPO/docs/TESTING.md"
-rm -r "$REPO/docs/decisions"
 E4=$(python3 "$SCRIPT" evidence "$REPO" --scratch "$OUT" --projects-dir "$PROJECTS" 2>&1)
 assert_eq "evidence: an absent doc is skipped, not reported as a gap" "True" \
   "$(json_val "d['coverage']['testing'].get('doc_missing', False)" <<< "$E4")"
-assert_eq "evidence: an absent tree is skipped, not reported as a gap" "True" \
-  "$(json_val "d['coverage']['deciding'].get('doc_missing', False)" <<< "$E4")"
-
-# How a tree is opened and routed: only a record (NNNN-slug.md) counts as a Read of the
-# tree, a command that lists the tree finds its records rather than doing the work, and
-# a route that links the folder without its trailing slash is still its route.
-TREE=$(python3 -c "
-import importlib.util, json
-spec = importlib.util.spec_from_file_location('h', '$SCRIPT')
-h = importlib.util.module_from_spec(spec); spec.loader.exec_module(h)
-d = 'docs/decisions/'
-print(json.dumps({
-  'record': h.opens_doc('/r/docs/decisions/0001-a.md', d),
-  'index': h.opens_doc('/r/docs/decisions/README.md', d),
-  'ls': h.names_tree('ls docs/decisions', d),
-  'other': h.names_tree('ls docs/decisions-old', d),
-  'slashless': h.route_for('**MUST read [the records](docs/decisions) first.**', d) != '',
-}))")
-assert_eq "tree: a Read of a record opens the tree" "True" "$(json_val "d['record']" <<< "$TREE")"
-assert_eq "tree: a Read of an index does not" "False" "$(json_val "d['index']" <<< "$TREE")"
-assert_eq "tree: a command that lists the tree names it" "True" "$(json_val "d['ls']" <<< "$TREE")"
-assert_eq "tree: a sibling folder with a longer name does not" "False" "$(json_val "d['other']" <<< "$TREE")"
-assert_eq "tree: a route without the trailing slash is found" "True" "$(json_val "d['slashless']" <<< "$TREE")"
 
 # A repo nobody has opened in Claude Code: an empty answer, exit 0, no crash.
 EMPTY=$(mktemp -d)

@@ -36,7 +36,6 @@ const USE_CASES = {
   'reviewing': { doc: 'docs/REVIEWING.md', work: 'review a PR or a diff' },
   'releasing': { doc: 'docs/RELEASING.md', work: 'cut a release' },
   'monitoring': { doc: 'docs/MONITORING.md', work: 'read logs, traces, or usage data' },
-  'deciding': { doc: 'docs/decisions/', work: 'record a new design decision in docs/decisions/, or reverse or replace one recorded there' },
 }
 
 // What each level buys. Every agent turn re-sends the agent's whole context, so an agent
@@ -161,8 +160,7 @@ function parseManifest(text) {
 // Everything else is still reviewed, just not as a use case — README and CONTRIBUTING
 // serve humans rather than working agents, AGENTS.md is the router rather than any
 // route's destination, and a non-standard doc is judged for placement. The decisions tree
-// has no seat: each record is reviewed on its own against the tree's contract, and its use
-// case serves the history stage only.
+// has no use case: each record is reviewed on its own against the tree's contract.
 function splitReviewTargets(manifestFiles) {
   const files = (manifestFiles || []).filter(f =>
     f && f.classification !== 'meta' &&
