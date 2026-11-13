@@ -43,18 +43,19 @@ Done when the worktree is gone, and each of the user's files is copied or droppe
 
 ## 4. Update the default branch
 
-Below, `<default>` is the PR's base branch and `<remote>` its remote. Another session can have switched the main checkout or left changes in it. In the main checkout, run this as one call, so the shell picks the branch:
+Below, `<default>` is the PR's base branch and `<remote>` its remote. Another session can have switched the main checkout or left changes in it. In the main checkout, run this as one call, so the shell chooses between a fast-forward of that checkout and a move of `<default>` alone:
 
 ```bash
 git fetch --prune <remote> &&
-if [ "$(git branch --show-current)" = "<default>" ] && [ -z "$(git status --porcelain)" ]; then
-  echo "pull from $(git rev-parse HEAD)" && git pull --ff-only <remote> <default>
+branch=$(git branch --show-current) && changes=$(git status --porcelain) &&
+if [ "$branch" = "<default>" ] && [ -z "$changes" ]; then
+  old=$(git rev-parse HEAD) && git merge --ff-only <remote>/<default> && echo "fast-forward from $old"
 else
   echo "leave that checkout as it is" && git fetch . <remote>/<default>:<default>
 fi
 ```
 
-`ExitWorktree` with `remove` can have deleted the PR's local branch with the worktree: delete it where `git branch --list <branch>` still prints it, with the name the worktree's branch had, which can differ from the PR's head branch (`-D` after a squash or rebase merge). Delete its remote branch where it still exists. The dependencies were installed in the removed worktree only: where the pull ran and the PR's files or `git diff --name-only <recorded> HEAD` hold a dependency manifest, lockfile or tool-version pin, run the project's install step, and nothing else of its setup, in the main checkout. `<recorded>` is the commit the `pull from` line printed.
+`ExitWorktree` with `remove` can have deleted the PR's local branch with the worktree: delete it where `git branch --list <branch>` still prints it, with the name the worktree's branch had, which can differ from the PR's head branch (`-D` after a squash or rebase merge). Delete its remote branch where it still exists. The dependencies were installed in the removed worktree only: where the fast-forward ran and the PR's files or `git diff --name-only <recorded> HEAD` hold a dependency manifest, lockfile or tool-version pin, run the project's install step, and nothing else of its setup, in the main checkout. `<recorded>` is the commit the `fast-forward from` line printed.
 
 Done when `<default>` is at `<remote>/<default>` or git refused, the merged branches are deleted, and the install ran, is not needed, or is left to the user.
 

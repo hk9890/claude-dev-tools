@@ -184,7 +184,7 @@ if [[ -f "$MERGE" ]]; then
       fail "issues: worktree-merge lost \"${phrase}\""
     fi
   done
-  for phrase in 'run this as one call, so the shell picks the branch' '[ "$(git branch --show-current)" = "<default>" ] && [ -z "$(git status --porcelain)" ]' 'leave that checkout as it is' 'git fetch . <remote>/<default>:<default>'; do
+  for phrase in 'run this as one call' 'branch=$(git branch --show-current) && changes=$(git status --porcelain) &&' 'if [ "$branch" = "<default>" ] && [ -z "$changes" ]; then' 'git merge --ff-only <remote>/<default> && echo "fast-forward from $old"' '`<recorded>` is the commit the `fast-forward from` line printed' 'leave that checkout as it is' 'git fetch . <remote>/<default>:<default>'; do
     if grep -Fq "$phrase" "$MERGE"; then
       ok "default branch: worktree-merge states \"${phrase}\""
     else
