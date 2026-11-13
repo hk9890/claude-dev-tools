@@ -408,8 +408,9 @@ test_plugins_directory_link_resolves() {
   rm -rf "$dir"
 }
 
-# 27. A folder link with the trailing slash resolves in a steering doc, as the decisions
-#     route needs; without the slash, or as an @-import, it stays a failure.
+# 27. A link to docs/decisions/ with its trailing slash resolves in a steering doc, as the
+#     decisions route needs; another folder, the tree without the slash, or an @-import of
+#     it stays a failure.
 test_decisions_tree_link_resolves() {
   local dir; dir=$(tmpdir)
   touch "$dir/CLAUDE.md"
@@ -417,8 +418,10 @@ test_decisions_tree_link_resolves() {
   printf '# 0001: A\n\nWhy.\n' > "$dir/docs/decisions/0001-a.md"
   printf '# Routing\n\nMUST read the records in [docs/decisions/](docs/decisions/) first.\n' > "$dir/AGENTS.md"
   assert_exit "decisions-tree-link: a route to docs/decisions/ resolves" 0 python3 "$SCRIPT" "$dir"
-  printf '\nSee [other](docs/other).\n' >> "$dir/AGENTS.md"
-  assert_exit "decisions-tree-link: a folder link without the slash still fails" 1 python3 "$SCRIPT" "$dir"
+  printf '\nSee [other](docs/other/).\n' >> "$dir/AGENTS.md"
+  assert_exit "decisions-tree-link: a link to another folder still fails" 1 python3 "$SCRIPT" "$dir"
+  printf '# Routing\n\nMUST read the records in [docs/decisions](docs/decisions) first.\n' > "$dir/AGENTS.md"
+  assert_exit "decisions-tree-link: the tree linked without its slash still fails" 1 python3 "$SCRIPT" "$dir"
   printf '# Routing\n\nMUST read the records in [docs/decisions/](docs/decisions/) first.\n' > "$dir/AGENTS.md"
   printf '@docs/decisions/\n' > "$dir/CLAUDE.md"
   assert_exit "decisions-tree-link: an @-import of a folder still fails" 1 python3 "$SCRIPT" "$dir"

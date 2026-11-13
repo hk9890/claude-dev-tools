@@ -18,7 +18,7 @@ Every route below is **mandatory, not advisory**. Load the document BEFORE the f
 
 ### Changing a decided design
 
-**MUST read the records in [docs/decisions/](docs/decisions/) that bear on the change before editing `internal/store/`, `migrations/`, or `api/openapi.yaml`.** Each holds a decision in force, and a change against one is the user's call — name the record and ask.
+**MUST read the records in [docs/decisions/](docs/decisions/) that bear on the change before editing `internal/store/`, `internal/api/`, `migrations/`, or `api/openapi.yaml`.** Each holds a decision in force, and a change against one is the user's call — name the record and ask.
 
 ### Research, planning, analysis
 

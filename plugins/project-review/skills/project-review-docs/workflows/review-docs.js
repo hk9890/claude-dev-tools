@@ -407,7 +407,7 @@ if (typeof agent === 'function') {
 
   // The project's own doc conventions, and the decisions it has already taken about what
   // it documents and what it leaves out. Most repos have no such file, and then no agent
-  // is told anything about decisions.
+  // is told any of those doc decisions.
   const hasDocumenting = (manifest.files || []).some(f => f && f.path === 'docs/DOCUMENTING.md')
   const documentingFile = repoRoot + '/docs/DOCUMENTING.md'
 
@@ -465,7 +465,7 @@ if (typeof agent === 'function') {
   // holds a non-standard doc or a tree record, since it reads the same for each.
   const decisionPlacement = (batch) => batch.some(t => ['non-standard', 'decision'].includes(t.file.classification))
     ? `\nDECISION RECORD PLACEMENT — for a NON-STANDARD doc or a Tree record below that holds decisions:\n` +
-      `  - A record in the tree's shape (one decision, at most 8 lines, no status or date) belongs in docs/decisions/NNNN-slug.md: recommend that move.\n` +
+      `  - A NON-STANDARD doc holding records in the tree's shape (one decision each, at most 8 lines under its heading, no status or date) belongs in docs/decisions/NNNN-slug.md where that tree exists: recommend that move.\n` +
       `  - Records in another format (a MADR or Nygard ADR, say) live in a folder outside docs/decisions/ that docs/DOCUMENTING.md registers. One inside docs/decisions/ is misplaced even where docs/DOCUMENTING.md names that folder: recommend moving it out and registering its new folder. One outside whose folder is not registered: recommend registering it. One outside whose folder docs/DOCUMENTING.md registers is filed correctly.\n` +
       `  - An index in docs/decisions/ (README.md, say) breaches the tree's contract, since the file names are the index: recommend deleting it.\n`
     : ''

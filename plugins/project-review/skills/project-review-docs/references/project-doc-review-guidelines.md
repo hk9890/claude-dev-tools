@@ -72,7 +72,7 @@ script deciding what counts as a claim, which is guessing.
    drop gap findings its recorded decisions already settle. The suppression is scoped to gaps
    by name: a false claim, a stale command, a dead link, or out-of-boundary content stays at
    full severity whatever the decisions say, and a decision that contradicts the repo is
-   itself a finding. Repos without the file are told nothing about decisions.
+   itself a finding. Repos without the file are told none of those doc decisions.
 3. **History** — the docs were used or they were not, and past sessions say which.
    `scripts/history.py` extracts the user messages of this repo's transcripts; a small model
    labels each with a use case; the script then filters, stratifies, and projects into one
@@ -92,7 +92,7 @@ Change them at the authoritative site. This table is the index, not the source.
 |---|---|
 | The six authoring rules, the doc-set failure modes | `instruction-writing:writing-project-docs`, loaded by each read-review agent |
 | Single source of truth, cache, relevance, sediment, no-ops, negation | `references/writing-hygiene.md` at the `instruction-writing` plugin root, loaded by each read-review agent; which files get the per-unit *Cache* question, and where its fix sends the unit, in `batchPrompt` in `review-docs.js` |
-| Per-file ownership contract | `project-setup.md`, parsed by `manifest.py`, injected per agent |
+| Per-file ownership contract | `project-setup.md`, parsed by `manifest.py`, injected per agent (the `docs/decisions/` contract once per batch) |
 | Severity (`blocker` / `major` / `minor`) and the escalation rule | `batchPrompt` in `review-docs.js` |
 | What a batch agent reads, and how docs are packed | `batchPrompt`, `orderTargets`, `packBatches`, and `BATCH_BYTES` in `review-docs.js` |
 | Use case → doc, and the classifier's label vocabulary | `USE_CASES` in `review-docs.js` and `USE_CASE_DOCS` in `history.py` — two copies, because workflow scripts cannot import; pinned by `test-history.sh` |
