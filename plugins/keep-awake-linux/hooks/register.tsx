@@ -46,61 +46,77 @@ async function keepAwake($: EngineInterface) {
 
   const mine = {}
   hold = mine
-  const why = `Claude session ${await $.session.id()}`
-  noAskPassword ??= await noAskPasswordFlag($)
-  let hasStarted = false
-  const startup = $.clock.after(STARTUP_MS, () => {
-    hasStarted = true
-  })
+  let startup: Timer | undefined
 
-  while (hold === mine) {
-    const child = $.process.spawn({
-      argv: [
-        'systemd-inhibit',
-        '--what=idle:sleep',
-        WHO,
-        `--why=${why}`,
-        '--mode=block',
-        ...noAskPassword,
-        'sleep',
-        String(LEASE_SECONDS),
-      ],
+  // Whatever ends this call ends its hold, so the next activity can start one.
+  try {
+    const why = `Claude session ${await $.session.id().catch(() => 'unknown')}`
+    noAskPassword ??= await noAskPasswordFlag($)
+    let hasStarted = false
+    startup = $.clock.after(STARTUP_MS, () => {
+      hasStarted = true
     })
-    inhibitor = child
 
-    try {
-      for await (const _ of child) {
-        // systemd-inhibit writes nothing; the loop is the child's life
-      }
+    while (hold === mine) {
+      try {
+        const child = $.process.spawn({
+          argv: [
+            'systemd-inhibit',
+            '--what=idle:sleep',
+            WHO,
+            `--why=${why}`,
+            '--mode=block',
+            ...(noAskPassword ?? []),
+            'sleep',
+            String(LEASE_SECONDS),
+          ],
+        })
+        inhibitor = child
 
-      const { code } = await child.result
+        for await (const _ of child) {
+          // systemd-inhibit writes nothing; the loop is the child's life
+        }
 
-      if (code !== 0) {
-        throw new Error(`systemd-inhibit exited with ${code}`)
-      }
-    } catch (error) {
-      if (hold === mine) {
-        hold = undefined
-        $.ui.log(`inhibitor lost: ${String(error)}`, { to: 'debug' })
+        const { code } = await child.result
 
-        if (!hasStarted) {
-          cannotInhibit = true
-          $.ui.toast(`sleep is not blocked: ${error instanceof Error ? error.message : String(error)}`)
+        if (code !== 0) {
+          throw new Error(`systemd-inhibit exited with ${code}`)
+        }
+      } catch (error) {
+        if (hold === mine) {
+          hold = undefined
+          $.ui.log(`inhibitor lost: ${String(error)}`, { to: 'debug' })
+
+          if (!hasStarted) {
+            cannotInhibit = true
+            $.ui.toast(`sleep is not blocked: ${error instanceof Error ? error.message : String(error)}`)
+          }
         }
       }
     }
-  }
+  } catch (error) {
+    $.ui.log(`keep-awake hold failed: ${String(error)}`, { to: 'debug' })
+  } finally {
+    if (hold === mine) {
+      hold = undefined
+    }
 
-  startup.cancel()
+    startup?.cancel()
+  }
 }
 
+// Undefined where the help did not run or failed, so the next start asks again.
 async function noAskPasswordFlag($: EngineInterface) {
   try {
     const help = await $.process.run(['systemd-inhibit', '--help'])
 
+    if (help.exitCode !== 0) {
+      return undefined
+    }
+
     return help.stdout.includes('--no-ask-password') ? ['--no-ask-password'] : []
   } catch {
-    return []
+    return undefined
   }
 }
 
@@ -287,7 +303,7 @@ export const register: Register = (on, options) => {
     const { headline, detail } = info(loaded)
 
     return { text: `${headline}. ${detail}` }
-  })
+  }).catch(($, e, next) => ({ text: `/${PANEL} failed: ${next.error.message ?? next.error.kind}` }))
 
   on('ui.render', { component: 'Pane', requestId: PANEL }, async ($, e, next) => {
     const shown = await read($, inhibitors)

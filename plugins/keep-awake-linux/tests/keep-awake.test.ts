@@ -8,8 +8,14 @@ const TURN_END = { answer: '', durationMs: 1, isAborted: false, reason: 'answer'
 
 // Stands for the host: records each inhibitor started and each one ended. `exit` ends the running
 // child as its own exit would; a `systemd-inhibit` that cannot start is `host(on, { canStart: false })`,
-// one older than v257, which knows no --no-ask-password, is `host(on, { knowsNoAskPassword: false })`.
-function host(on: On, { canStart = true, knowsNoAskPassword = true } = {}) {
+// one older than v257, which knows no --no-ask-password, is `host(on, { knowsNoAskPassword: false })`,
+// a session id that fails once is `host(on, { sessionIdFailures: 1 })`, a `systemd-inhibit --help`
+// that fails once is `host(on, { helpFailures: 1 })`, one that exits non-zero once is
+// `host(on, { helpCrashes: 1 })`.
+function host(
+  on: On,
+  { canStart = true, knowsNoAskPassword = true, sessionIdFailures = 0, helpFailures = 0, helpCrashes = 0 } = {},
+) {
   const seen = {
     started: [] as (readonly string[])[],
     ended: 0,
@@ -18,7 +24,19 @@ function host(on: On, { canStart = true, knowsNoAskPassword = true } = {}) {
     exit: (code: number) => {},
   }
 
-  on('process.run', () => ran(knowsNoAskPassword ? ['     --no-ask-password    Do not attempt interactive authorization'] : ['  -h --help']))
+  on('process.run', () => {
+    if (helpFailures > 0) {
+      helpFailures -= 1
+      throw new Error('fork failed')
+    }
+
+    if (helpCrashes > 0) {
+      helpCrashes -= 1
+      return ran([])
+    }
+
+    return ran(knowsNoAskPassword ? ['     --no-ask-password    Do not attempt interactive authorization'] : ['  -h --help'])
+  })
   on('process.spawn', async function* ($, e, next) {
     if (!canStart) {
       throw new Error('spawn systemd-inhibit ENOENT')
@@ -46,7 +64,14 @@ function host(on: On, { canStart = true, knowsNoAskPassword = true } = {}) {
 
     return { value: undefined }
   })
-  on('session.id', () => ({ value: 's1' }))
+  on('session.id', () => {
+    if (sessionIdFailures > 0) {
+      sessionIdFailures -= 1
+      throw new Error('no session id')
+    }
+
+    return { value: 's1' }
+  })
   on('turn.start', ($, e) => ({ turnId: e.turnId }))
   on('turn.complete', () => ({ text: '' }))
   on('session.end', ($, e) => ({ sessionId: e.sessionId }))
@@ -66,6 +91,37 @@ test('the first turn starts one inhibitor', async ($, on) => {
   expect(seen.started[0]?.slice(0, 3)).toEqual(['systemd-inhibit', '--what=idle:sleep', '--who=claude-keep-awake'])
   expect(seen.started[0]?.slice(-4)).toEqual(['--mode=block', '--no-ask-password', 'sleep', '1800'])
 })
+
+test('a session id that fails still starts an inhibitor, labelled unknown', async ($, on) => {
+  const clock = mock.clock(on)
+  const seen = host(on, { sessionIdFailures: 1 })
+
+  await $.turn.start({ text: 'go', turnId: 't1' })
+  await clock.settle()
+
+  expect(seen.started).toHaveLength(1)
+  expect(seen.started[0]).toContain('--why=Claude session unknown')
+})
+
+for (const [what, failure] of [
+  ['fails', { helpFailures: 1 }],
+  ['exits non-zero', { helpCrashes: 1 }],
+] as const) {
+  test(`a --help that ${what} once is asked again at the next start`, async ($, on) => {
+    const clock = mock.clock(on)
+    const seen = host(on, failure)
+
+    await $.turn.start({ text: 'go', turnId: 't1' })
+    await $.turn.complete({ ...TURN_END, turnId: 't1' })
+    await clock.advance(IDLE_MS)
+    await $.turn.start({ text: 'again', turnId: 't2' })
+    await clock.settle()
+
+    expect(seen.started).toHaveLength(2)
+    expect(seen.started[0]).not.toContain('--no-ask-password')
+    expect(seen.started[1]).toContain('--no-ask-password')
+  })
+}
 
 test('a systemd-inhibit older than v257 gets no --no-ask-password', async ($, on) => {
   const clock = mock.clock(on)
@@ -357,7 +413,12 @@ function ran(lines: string[]): { value: ProcessRunResult } {
 // Stands for the host of the panel: answers `ps` from `processes`, which a test changes in place,
 // and keeps the panes open in `seen.opened`, which a test empties as the person closing the pane.
 // A surface that seats no pane is `seen.isPlaced = false`.
-function panelHost(on: On, processes: { children: string[]; parents: string[] }, { surfaces = ['terminal'] as RenderSurface[] } = {}) {
+// Surfaces that cannot be read are `panelHost(on, processes, { surfaces: 'fail' })`.
+function panelHost(
+  on: On,
+  processes: { children: string[]; parents: string[] },
+  { surfaces = ['terminal'] as RenderSurface[] | 'fail' } = {},
+) {
   const seen = { opened: [] as string[], isPlaced: true, psRuns: 0 }
 
   on('process.run', ($, e) => {
@@ -376,7 +437,13 @@ function panelHost(on: On, processes: { children: string[]; parents: string[] },
   on('command.register', ($, e) => ({ value: { command: e.name } }))
   on('session.start', ($, e) => ({ cwd: e.cwd }))
   on('session.end', ($, e) => ({ sessionId: e.sessionId }))
-  on('session.surfaces', () => ({ value: surfaces }))
+  on('session.surfaces', () => {
+    if (surfaces === 'fail') {
+      throw new Error('no surfaces')
+    }
+
+    return { value: surfaces }
+  })
   on('session.id', () => ({ value: 's1' }))
 
   return seen
@@ -522,4 +589,14 @@ test('a headless session gets the inhibitors as text and no pane', async ($, on)
 
   expect(answer.text).toBe([...INFO.slice(0, 2), '', ...INFO.slice(2, 6), '', ...INFO.slice(6)].join('\n'))
   expect(seen.opened).toEqual([])
+})
+
+test('/keep-awake-info answers with the failure where it cannot run', async ($, on) => {
+  mock.clock(on)
+  panelHost(on, { children: CHILDREN, parents: PARENTS }, { surfaces: 'fail' })
+
+  await $.session.start(TERMINAL)
+  const answer = await $.command.run(TYPED)
+
+  expect(answer.text).toStartWith('/keep-awake-info failed:')
 })
