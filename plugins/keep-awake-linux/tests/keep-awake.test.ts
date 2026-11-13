@@ -419,7 +419,7 @@ function panelHost(
   processes: { children: string[]; parents: string[] },
   { surfaces = ['terminal'] as RenderSurface[] | 'fail' } = {},
 ) {
-  const seen = { opened: [] as string[], isPlaced: true, psRuns: 0 }
+  const seen = { opened: [] as string[], isPlaced: true, psRuns: 0, panesFailures: 0, logged: [] as string[] }
 
   on('process.run', ($, e) => {
     seen.psRuns += 1
@@ -431,9 +431,19 @@ function panelHost(
 
     return { value: seen.isPlaced ? { isPlaced: true } : { isPlaced: false, reason: 'the attached surface places no panes' } }
   })
-  on('ui.panes', () => ({
-    value: seen.opened.map(id => ({ id, title: id, isShown: true, isFocused: false, isPlaced: seen.isPlaced })),
-  }))
+  on('ui.panes', () => {
+    if (seen.panesFailures > 0) {
+      seen.panesFailures -= 1
+      throw new Error('no panes')
+    }
+
+    return { value: seen.opened.map(id => ({ id, title: id, isShown: true, isFocused: false, isPlaced: seen.isPlaced })) }
+  })
+  on('ui.log', ($, e) => {
+    seen.logged.push(e.text)
+
+    return { value: undefined }
+  })
   on('command.register', ($, e) => ({ value: { command: e.name } }))
   on('session.start', ($, e) => ({ cwd: e.cwd }))
   on('session.end', ($, e) => ({ sessionId: e.sessionId }))
@@ -515,6 +525,25 @@ test('the open pane follows the inhibitors as they change', async ($, on) => {
   await $.command.run(TYPED)
   const ui = await $.ui.mount(PANEL)
   processes.children = []
+  await clock.advance(REFRESH_MS)
+
+  expect((await ui.findAll({ type: 'Text' })).map(line => line.text)).toEqual([...HEADER, ...NO_BLOCK])
+})
+
+test('a failed pane refresh is logged, and the next one follows the inhibitors', async ($, on) => {
+  const clock = mock.clock(on)
+  const processes = { children: CHILDREN, parents: PARENTS }
+  const seen = panelHost(on, processes)
+
+  await $.session.start(TERMINAL)
+  await $.command.run(TYPED)
+  const ui = await $.ui.mount(PANEL)
+  processes.children = []
+  seen.panesFailures = 1
+  await clock.advance(REFRESH_MS)
+
+  expect(seen.logged.some(line => line.startsWith('panel refresh failed: '))).toBe(true)
+
   await clock.advance(REFRESH_MS)
 
   expect((await ui.findAll({ type: 'Text' })).map(line => line.text)).toEqual([...HEADER, ...NO_BLOCK])

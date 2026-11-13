@@ -234,7 +234,9 @@ function infoText(list: KeepAwakeInhibitor[]) {
 }
 
 function startPanelRefresh($: EngineInterface) {
-  panelRefresh ??= $.clock.every(REFRESH_MS, () => void refreshPanel($))
+  panelRefresh ??= $.clock.every(REFRESH_MS, () => {
+    refreshPanel($).catch(error => $.ui.log(`panel refresh failed: ${String(error)}`, { to: 'debug' }))
+  })
 }
 
 // The timer runs for as long as the engine lists the pane: a /clear and a reload both keep it open.
