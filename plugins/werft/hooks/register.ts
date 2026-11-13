@@ -1,6 +1,6 @@
-import type { Register, ToolCheckResult } from 'claude-code'
+import type { EngineInterface, FsStat, Register, ToolCheckResult } from 'claude-code'
 
-import { agentCommand } from './agent-commands'
+import { type AgentCommand, agentCommand } from './agent-commands'
 
 // A release takes longer than the session end allows, so one shell runs all of them, in a session
 // of its own with its output closed, and the outer `sh` returns at once.
@@ -11,6 +11,83 @@ type Lease = { id: string; owner: string; ssh_config: string }
 // The mode's own question, which the mod may answer; one from a rule, a hook or a setting of the
 // user stays theirs.
 const isModeAsk = (verdict: ToolCheckResult) => verdict.decision === 'ask' && !verdict.rule && !verdict.hook && !verdict.setting
+
+// More entries than a tree an agent copies into a lease holds; past it the copy keeps its question.
+const TREE_LIMIT = 10_000
+
+// What a path leads to and where it lands, every link resolved; undefined where it leads nowhere.
+const resolved = ($: EngineInterface, path: string): Promise<FsStat | undefined> =>
+  $.fs.stat(path, { resolve: true }).then(
+    (stat: FsStat) => (stat.realPath === undefined ? undefined : stat),
+    () => undefined,
+  )
+
+// Whether each path the command reads on this host lands in the project, and, under a tree it copies
+// whole, each link too: a link in the working tree may lead to a file anywhere on this host.
+async function readsOnlyTheProject($: EngineInterface, command: AgentCommand): Promise<boolean> {
+  if (!command.reads) {
+    return true
+  }
+
+  const root = (await resolved($, await $.session.root()))?.realPath
+  // The shell resolves the command's relative paths against the directory the session runs in.
+  const cwd = await $.session.cwd()
+
+  if (root === undefined) {
+    return false
+  }
+
+  const isInside = (stat: FsStat | undefined) => stat?.realPath === root || Boolean(stat?.realPath?.startsWith(`${root}/`))
+
+  for (const path of command.reads) {
+    if (!isInside(await resolved($, `${cwd}/${path}`))) {
+      return false
+    }
+  }
+
+  if (command.copiesTree === undefined) {
+    return true
+  }
+
+  const top = await resolved($, `${cwd}/${command.copiesTree}`)
+  const pending = top?.kind === 'dir' && top.realPath ? [top.realPath] : []
+  const walked = new Set<string>()
+  let entries = 0
+
+  for (let dir = pending.pop(); dir !== undefined; dir = pending.pop()) {
+    if (walked.has(dir)) {
+      continue
+    }
+
+    walked.add(dir)
+
+    for (const entry of await $.fs.list(dir)) {
+      entries += 1
+
+      if (entries > TREE_LIMIT) {
+        return false
+      }
+
+      const path = `${dir}/${entry.name}`
+
+      if (entry.isLink) {
+        const target = await resolved($, path)
+
+        if (!isInside(target)) {
+          return false
+        }
+
+        if (target?.kind === 'dir' && target.realPath) {
+          pending.push(target.realPath)
+        }
+      } else if (entry.kind === 'dir') {
+        pending.push(path)
+      }
+    }
+  }
+
+  return true
+}
 
 export const register: Register = on => {
   // The skill's allowed-tools make the engine ask before it loads the skill, and in the default
@@ -40,6 +117,10 @@ export const register: Register = on => {
       if (!leases.some(lease => lease.id === id && lease.ssh_config === config)) {
         return verdict
       }
+    }
+
+    if (!(await readsOnlyTheProject($, found))) {
+      return verdict
     }
 
     return { decision: 'allow' }

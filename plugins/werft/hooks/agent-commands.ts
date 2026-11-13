@@ -5,9 +5,10 @@
 
 type Token = { word: string } | { quoted: string } | { pipe: true }
 
-// What a command needs before it may run: nothing more, or the lease it names must be live with
-// this ssh_config, as `werft --json leases` reports it.
-export type AgentCommand = { lease?: { id: string; config: string } }
+// What a command needs before it may run: the lease it names must be live with this ssh_config, as
+// `werft --json leases` reports it; each path it reads on this host must land in the project, the
+// links on the way resolved; and under the tree it copies whole, each link must land there too.
+export type AgentCommand = { lease?: { id: string; config: string }; reads?: string[]; copiesTree?: string }
 
 // A word holds no character the shell gives a meaning to; a quoted string runs in the VM alone.
 const WORD = /^[A-Za-z0-9_./:=@%+,-]+$/
@@ -104,9 +105,12 @@ function scpInto(list: Token[]): AgentCommand | undefined {
   const [from, to] = paths
   const id = to?.split(':')[0]
 
-  return command === 'scp' && flag === '-F' && config && isWords(list) && paths.length === 2 && LOCAL_PATH.test(from ?? '') && id && to !== id && WORD.test(id)
-    ? { lease: { id, config } }
-    : undefined
+  if (!(command === 'scp' && flag === '-F' && config && from && isWords(list) && paths.length === 2 && LOCAL_PATH.test(from) && id && to !== id && WORD.test(id))) {
+    return undefined
+  }
+
+  // scp follows each link it meets, also inside a tree it copies with -r.
+  return { lease: { id, config }, reads: [from], copiesTree: wordOf(list[3]) === '-r' ? from : undefined }
 }
 
 // tar -C <dir> -cf - <path> | ssh ... : a read of the working tree into the lease.
@@ -114,9 +118,14 @@ function tarInto(list: Token[]): AgentCommand | undefined {
   const pipe = list.findIndex(token => 'pipe' in token)
   const [command, flag, dir, create, stdout, path] = list.slice(0, pipe).map(wordOf)
 
-  return pipe === 6 && command === 'tar' && flag === '-C' && create === '-cf' && stdout === '-' && [dir, path].every(part => LOCAL_PATH.test(part ?? ''))
-    ? ssh(list.slice(pipe + 1))
-    : undefined
+  if (!(pipe === 6 && command === 'tar' && flag === '-C' && create === '-cf' && stdout === '-' && dir && path && LOCAL_PATH.test(dir) && LOCAL_PATH.test(path))) {
+    return undefined
+  }
+
+  const into = ssh(list.slice(pipe + 1))
+
+  // tar follows the links in `-C` and in its operand's path, and stores each link under it as a link.
+  return into && { ...into, reads: [dir, `${dir}/${path}`] }
 }
 
 export function agentCommand(command: string): AgentCommand | undefined {
