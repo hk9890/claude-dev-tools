@@ -1,0 +1,4 @@
+{
+  "description": "Lets the werft skill and the guide's werft commands and its ssh, scp and tar calls into a lease run without a permission prompt, and releases the werft leases of a session when the session ends",
+  "modules": ["./register.ts"]
+}
