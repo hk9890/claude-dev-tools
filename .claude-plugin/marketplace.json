@@ -168,6 +168,18 @@
       },
       "category": "workflow",
       "keywords": ["revier", "projects", "agents", "multi-project", "cross-project", "mod"]
+    },
+    {
+      "name": "werft",
+      "source": "./plugins/werft",
+      "description": "Disposable test VMs through the werft CLI: one skill that makes the model take a werft lease whenever a task needs a VM or a clean machine, and follow the guide of the installed werft to lease, use and release it",
+      "version": "1.51.0",
+      "author": {
+        "name": "Hans Kohlreiter",
+        "email": "hans.kohlreiter@gmail.com"
+      },
+      "category": "workflow",
+      "keywords": ["werft", "vm", "virtual-machine", "libvirt", "disposable", "testing"]
     }
   ]
 }
