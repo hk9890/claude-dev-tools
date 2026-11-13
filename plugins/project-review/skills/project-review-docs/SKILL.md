@@ -54,10 +54,10 @@ docs inline. The workflow returns a structured report; relay it.
    ls "<STANDARD_DIR>/references/project-doc-guidelines.md" "<STANDARD_DIR>/references/project-setup.md" "<STANDARD_DIR>/../../references/writing-hygiene.md"
    ```
    ```bash
-   mktemp -d "<scratchpad>/docreview-XXXXXX"
+   mktemp -d "<session-tmp>/docreview-XXXXXX"
    ```
 
-   `<scratchpad>` is your scratchpad directory, or `/tmp` where the session has none: under
+   `<session-tmp>` is your scratchpad directory, or `${TMPDIR:-/tmp}` where the session has none: under
    `permissions.blockWritesOutsideWorkingDirectories` the history agent's Write calls cannot
    reach `/tmp`.
 

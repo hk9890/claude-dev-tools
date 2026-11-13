@@ -53,14 +53,14 @@ when the skill loads. It is absolute and install-correct — build every path fr
    between commands, so a value you only assign is gone by the time step 3 needs it.
    `<scratch>` in steps 3-6 is that printed absolute path, and the printed commit is
    `<audited-head>`: the triage opens a fix only against the commit the audit measured.
-   `<scratchpad>` is your scratchpad directory, or `/tmp` where the session has none: under
+   `<session-tmp>` is your scratchpad directory, or `${TMPDIR:-/tmp}` where the session has none: under
    `permissions.blockWritesOutsideWorkingDirectories` the file tools cannot write to `/tmp`,
    and the audit's worktrees, backups and logs are written under `<scratch>`.
 
    ```bash
    command -v python3 >/dev/null || { echo "python3 missing — stop and tell the user"; return 1 2>/dev/null || exit 1; }
    git -C "<path>" rev-parse HEAD
-   SCRATCH=$(mktemp -d "<scratchpad>/test-tests-XXXXXX") && echo "$SCRATCH" || { echo "mktemp failed — stop; do not launch without a scratch dir"; return 1 2>/dev/null || exit 1; }
+   SCRATCH=$(mktemp -d "<session-tmp>/test-tests-XXXXXX") && echo "$SCRATCH" || { echo "mktemp failed — stop; do not launch without a scratch dir"; return 1 2>/dev/null || exit 1; }
    git -C "<path>" status --porcelain > "$SCRATCH/pre-status.txt"
    git -C "<path>" diff > "$SCRATCH/pre-diff.patch"
    ( cd "<path>" && git ls-files --others --exclude-standard -z | xargs -0 -r cksum ) > "$SCRATCH/pre-untracked.cksum"

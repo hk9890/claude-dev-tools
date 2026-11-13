@@ -38,14 +38,14 @@ A suite is a `test-*.sh` under `tests/<plugin>/script-tests/` or `tests/marketpl
 Two skip rather than fail where their prerequisite is absent:
 
 - `tests/html-visualization/script-tests/test-browser.sh` — needs Playwright in the npm `_npx` cache: `npx playwright --version` populates it, then `npx playwright install chromium`. `REQUIRE_BROWSER=1` makes it fail instead.
-- `tests/marketplace/script-tests/test-claude-plugin.sh` — needs `claude` 2.1.287 or later on PATH. `REQUIRE_CLAUDE=1` makes it fail instead, and the CI `test` job sets it.
+- `tests/marketplace/script-tests/test-claude-plugin.sh` — needs `claude` 2.1.323 or later on PATH, the first release whose `validate --strict` type-checks a hooks module. `REQUIRE_CLAUDE=1` makes it fail instead, and the CI `test` job sets it.
 
 ## Mod tests — `claude plugin test`
 
 A mod's tests live inside the plugin, at `plugins/<plugin>/tests/*.test.ts`, and run against the engine with no session, sign-in or network:
 
 ```bash
-claude plugin validate --strict plugins/<plugin>   # manifest, load-time static analysis, a type check of the hooks module; fails on a warning
+claude plugin validate --strict plugins/<plugin>   # manifest, load-time static analysis, a type check of the hooks module (2.1.323+); fails on a warning, a plugin directory one excepted
 claude plugin test plugins/<plugin>                # the plugin's tests
 ```
 

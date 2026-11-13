@@ -2,14 +2,16 @@
 # test-claude-plugin.sh — validate every plugin and the marketplace, and test every mod.
 #
 # `claude plugin validate --strict` reads each manifest and its components as Claude Code will at
-# load, type-checks a mod's hooks module, and fails on any warning. A mod is a plugin whose
+# load, type-checks a mod's hooks module, and fails on a warning (a plugin directory warning, such
+# as a missing icon, excepted). A mod is a plugin whose
 # hooks/hooks.json names a hooks module under `modules`; for each one `claude plugin test` runs
 # the plugin's own tests/*.test.ts against the engine, with no session, sign-in or network.
 #
 # Exit codes:
 #   0  — every validation and every mod test passed
 #   1  — a validation or a test failed
-#   77 — skipped: `claude` is absent or older than the first release with mods.
+#   77 — skipped: `claude` is absent or older than the first release whose strict validation
+#        type-checks a hooks module; below it a type error would pass.
 #        REQUIRE_CLAUDE=1 turns the skip into a failure.
 
 set -uo pipefail
@@ -17,7 +19,7 @@ set -uo pipefail
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
 [[ -n "$REPO_ROOT" ]] || { printf 'FAIL: cannot resolve repo root from %s\n' "${BASH_SOURCE[0]}" >&2; exit 1; }
 
-MIN_VERSION="2.1.287"
+MIN_VERSION="2.1.323"
 
 skip() {
   printf 'SKIP: %s\n' "$1"
@@ -28,7 +30,7 @@ skip() {
 command -v claude >/dev/null 2>&1 || skip "claude is not on PATH"
 version="$(claude --version 2>/dev/null | awk '{print $1}')"
 [[ "$(printf '%s\n%s\n' "$MIN_VERSION" "$version" | sort -V | head -n1)" == "$MIN_VERSION" ]] \
-  || skip "claude $version is older than $MIN_VERSION, the first release with mods"
+  || skip "claude $version is older than $MIN_VERSION, the first release that type-checks a hooks module"
 echo "claude $version"
 
 MODS=()

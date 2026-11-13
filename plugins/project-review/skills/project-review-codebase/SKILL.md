@@ -68,10 +68,10 @@ modes are actually exercised.
    truncated — to a fresh temp file, then print the path:
 
    ```bash
-   printf '%s\n' "<scratchpad>/codebase-review-$(date +%Y%m%d-%H%M%S).md"
+   printf '%s\n' "<session-tmp>/codebase-review-$(date +%Y%m%d-%H%M%S).md"
    ```
 
-   `<scratchpad>` is your scratchpad directory, or `/tmp` where the session has none: under
+   `<session-tmp>` is your scratchpad directory, or `${TMPDIR:-/tmp}` where the session has none: under
    `permissions.blockWritesOutsideWorkingDirectories` the Write tool cannot reach `/tmp`.
 
    That prints the path — pass the printed value to the Write tool literally. Do
@@ -81,7 +81,7 @@ modes are actually exercised.
    it into the user's repository unless they ask for it there.
 
    Then surface it in one line, e.g.
-   `Full report with diagrams: <scratchpad>/codebase-review-20260724-101500.md`
+   `Full report with diagrams: <session-tmp>/codebase-review-20260724-101500.md`
    — and note what they can do with it:
    - **Decide on it** — follow
      `<SKILL_DIR>/../../references/decision-split.md` over the open

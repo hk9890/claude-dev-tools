@@ -47,12 +47,12 @@ know what the app reaches. Point it at an environment whose data you can afford 
    created, changed or deleted. Then create the scratch dir and echo it — shell state does
    not survive between commands, so a value you only assign is gone by the time step 4
    needs it. `<scratch>` in steps 4-6 is that printed absolute path, and the printed
-   commit is `<audited-head>`. `<scratchpad>` is your scratchpad directory, or `/tmp` where the
+   commit is `<audited-head>`. `<session-tmp>` is your scratchpad directory, or `${TMPDIR:-/tmp}` where the
    session has none: under `permissions.blockWritesOutsideWorkingDirectories` the file tools
    cannot write to `/tmp`.
 
    ```bash
-   SCRATCH=$(mktemp -d "<scratchpad>/test-app-XXXXXX") && echo "$SCRATCH" || { echo "mktemp failed — stop; do not launch without a scratch dir"; return 1 2>/dev/null || exit 1; }
+   SCRATCH=$(mktemp -d "<session-tmp>/test-app-XXXXXX") && echo "$SCRATCH" || { echo "mktemp failed — stop; do not launch without a scratch dir"; return 1 2>/dev/null || exit 1; }
    git -C "<absolute path to the project>" rev-parse HEAD 2>/dev/null || echo none
    ```
 

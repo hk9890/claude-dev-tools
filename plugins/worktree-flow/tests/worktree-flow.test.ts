@@ -281,6 +281,22 @@ test('denies an add run through Monitor', async ($, on) => {
   expect(seen.toasts).toEqual(['use EnterWorktree, not git worktree add'])
 })
 
+test('denies an add run through Monitor where the guard fails', async ($, on) => {
+  const seen = { ran: [] as string[] }
+
+  on('ui.toast', () => ({ value: undefined }))
+  on('tool.call', ($, e) => {
+    seen.ran.push(String(e.tool))
+
+    return { result: 'ok' }
+  })
+
+  const answer = await $.tool.call({ ...WATCH, command: 'git -C /home/me/other worktree add ../x' })
+
+  expect(answer.deny).toContain('EnterWorktree')
+  expect(seen.ran).toEqual([])
+})
+
 test('allows a Monitor command that adds no worktree', async ($, on) => {
   const seen = host(on)
 
