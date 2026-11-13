@@ -19,7 +19,7 @@ Call the Skill tool with `instruction-writing:writing-project-docs`, even where 
 
 Read what the project already carries and record two lists.
 
-**Present** — which of `README.md`, `AGENTS.md`, `CLAUDE.md` exist, and every file under `docs/`. Read each one against its *Inside* / *Not inside* contract in the standard and note what breaches it for step 4. Also note whether `docs/decisions/` holds a record, and any folder of decision records in another format (a MADR or Nygard ADR folder, say): note it, and judge it against no contract.
+**Present** — which of `README.md`, `AGENTS.md`, `CLAUDE.md` exist, and every file under `docs/`. Read each one against its *Inside* / *Not inside* contract in the standard and note what breaches it for step 4. Also note whether `docs/decisions/` holds a record, and any folder of decision records in another format (a MADR or Nygard ADR folder, say): steps 3 and 4 read that note, and the folder's files take part in no contract check.
 
 **Earned** — which canonical topics the repo has real local guidance for. A topic is *earned* only where the repo holds the evidence below; a topic doc for anything else would be hollow, which the standard rules out.
 
