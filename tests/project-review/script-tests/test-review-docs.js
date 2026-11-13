@@ -444,7 +444,7 @@ async function main() {
     reviewPrompts[0].includes('NON-STANDARD doc'));
   truthy('read-review: a misplaced decision record is judged for placement, with the registered home exempt',
     reviewPrompts[0].includes('DECISION RECORD PLACEMENT') &&
-    reviewPrompts[0].includes('Where docs/DOCUMENTING.md registers it, it is filed correctly'));
+    reviewPrompts[0].includes('One outside whose folder docs/DOCUMENTING.md registers is filed correctly'));
   eq('read-review: the placement rules are stated once per batch, not per non-standard doc',
     1, reviewPrompts[0].split('DECISION RECORD PLACEMENT —').length - 1);
   eq('read-review: findings reach raw', 1, deep.ret.raw.read_findings.length);

@@ -462,11 +462,11 @@ if (typeof agent === 'function') {
   }
 
   // Where a decision record not in the tree's shape belongs. Stated once per batch that
-  // holds a non-standard doc, since it reads the same for each.
-  const decisionPlacement = (batch) => batch.some(t => !t.useCase && !t.file.contract && t.file.path !== 'AGENTS.md')
-    ? `\nDECISION RECORD PLACEMENT — for a NON-STANDARD doc below that holds decisions:\n` +
+  // holds a non-standard doc or a tree record, since it reads the same for each.
+  const decisionPlacement = (batch) => batch.some(t => ['non-standard', 'decision'].includes(t.file.classification))
+    ? `\nDECISION RECORD PLACEMENT — for a NON-STANDARD doc or a Tree record below that holds decisions:\n` +
       `  - A record in the tree's shape (one decision, at most 8 lines, no status or date) belongs in docs/decisions/NNNN-slug.md: recommend that move.\n` +
-      `  - Records in another format (a MADR or Nygard ADR, say) live outside docs/decisions/, in a folder docs/DOCUMENTING.md registers: where one sits inside docs/decisions/, recommend moving it out and registering its folder; where its folder is not registered, recommend registering it. Where docs/DOCUMENTING.md registers it, it is filed correctly.\n` +
+      `  - Records in another format (a MADR or Nygard ADR, say) live in a folder outside docs/decisions/ that docs/DOCUMENTING.md registers. One inside docs/decisions/ is misplaced even where docs/DOCUMENTING.md names that folder: recommend moving it out and registering its new folder. One outside whose folder is not registered: recommend registering it. One outside whose folder docs/DOCUMENTING.md registers is filed correctly.\n` +
       `  - An index in docs/decisions/ (README.md, say) breaches the tree's contract, since the file names are the index: recommend deleting it.\n`
     : ''
 

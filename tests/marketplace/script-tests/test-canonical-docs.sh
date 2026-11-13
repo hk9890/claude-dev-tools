@@ -102,9 +102,9 @@ print('complete' if c.get('inside') and c.get('not_inside') else 'missing')
   assert_eq "personal file: project-setup.md has an Inside and Not inside block for $name" "complete" "$CONTRACT"
 done
 
-# 3. Every canonical doc is the target of exactly one review use case. The reviewer spawns
-#    one read-review agent per use case, so a doc missing here is audited as a bare file
-#    with no idea what work it has to carry.
+# 3. Every canonical topic file is the target of exactly one review use case, and a tree is
+#    the target of none: its route fires on edits to the paths its records govern, which no
+#    history label isolates.
 HISTORY_TARGETS=$(python3 -c "
 import importlib.util
 spec = importlib.util.spec_from_file_location('h', '$HISTORY')
@@ -112,7 +112,7 @@ h = importlib.util.module_from_spec(spec); spec.loader.exec_module(h)
 print(' '.join(sorted(v.split('/')[-1] for v in h.USE_CASE_DOCS.values())))
 ")
 EXPECTED_TARGETS=$(printf '%s\n' "$DOCS" | tr ' ' '\n' | grep -v '/$' | LC_ALL=C sort | tr '\n' ' ' | sed 's/ $//')
-assert_eq "use cases: history.py covers every canonical doc exactly once" "$EXPECTED_TARGETS" "$HISTORY_TARGETS"
+assert_eq "use cases: history.py covers every canonical topic file exactly once, and no tree" "$EXPECTED_TARGETS" "$HISTORY_TARGETS"
 
 printf '\nResults: %d passed, %d failed\n' "$PASS" "$FAIL"
 [[ "$FAIL" -eq 0 ]] || exit 1
