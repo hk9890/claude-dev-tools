@@ -16,9 +16,9 @@ applies the fixes it settled.
 
    | What is left | Subject |
    |---|---|
-   | no argument | the **default subject**: the uncommitted changes where `git status --porcelain` prints a line, otherwise the current branch against its base |
+   | no argument | the **default subject**: the uncommitted changes where `git status --porcelain` prints a line (a **dirty tree**), otherwise the current branch against its base |
    | a number, with or without `#` | that pull request |
-   | a branch name, or `<base>...<branch>` | that branch against its base |
+   | a branch name, or `<base branch>...<branch>` | that branch against its base |
    | a path | the default subject, confined to that path |
 
    A pull request needs `gh`: where `command -v gh` prints nothing, say so and ask for a
@@ -41,9 +41,9 @@ applies the fixes it settled.
 
    **Prove the subject exists before you spawn anything**: the reviewer takes the diff
    itself, and an empty subject comes back as a confident review of nothing. Outside a
-   dirty tree, `<base>` and `<head>` must each resolve (`git rev-parse --verify --quiet <base>`, and
-   the same for `<head>`): where one does not, name it, ask which branch was meant, and
-   stop. The file list is what `git diff --name-only HEAD` (a dirty tree) or
+   dirty tree, `<base>` and `<head>` must each resolve
+   (`git rev-parse --verify --quiet '<base>^{commit}'`, and the same for `<head>`): where
+   one does not, name it, ask which branch was meant, and stop. The file list is what `git diff --name-only HEAD` (a dirty tree) or
    `git diff --name-only <base>...<head>` prints, plus the untracked files of a dirty
    tree. For a path, end every `git status`, `git diff` and `git ls-files` command of this
    step, the dirty-tree test included, with `-- <path>`. Where a fetch or a file-list
@@ -89,7 +89,8 @@ applies the fixes it settled.
    > The subject is `<the step-1 subject in one sentence>`. Its files: `<the list>`. Take
    > the diff yourself with `<the step-1 diff command>` and read the changed files in full
    > — a diff hunk alone hides what a rule binds. Read every file, the project's documents
-   > included, `<from the working tree | as git show <head>:<path>>`.
+   > included, `<from the working tree | as git show <head>:<path>; report each command a
+   > document says to run as could not run: the working tree is not the subject>`.
    >
    > Verdict labels: `clean`, `minor issues`, `significant issues`, `broken`. `clean`
    > requires a genuine attempt to find a broken rule, not the absence of one.
