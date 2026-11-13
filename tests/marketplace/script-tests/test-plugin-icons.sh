@@ -3,7 +3,8 @@
 #
 # The generator runs in a scratch copy of the repo root, so the test changes nothing in the
 # checkout. It fails on a plugin with no icon, an icon edited by hand, and a plugin the
-# generator has no monogram or colour for.
+# generator has no monogram, glyph or colour for. Icons compare by header and decoded pixels:
+# the compressed bytes depend on the zlib build that wrote them.
 set -uo pipefail
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
@@ -16,6 +17,26 @@ PASS=0
 FAIL=0
 ok()   { echo "PASS: $1"; PASS=$((PASS + 1)); }
 fail() { echo "FAIL: $1"; FAIL=$((FAIL + 1)); }
+
+same_pixels() {
+  python3 -I - "$1" "$2" <<'PY'
+import sys
+import zlib
+
+
+def image(path):
+    data, chunks, at = open(path, 'rb').read(), {}, 8
+    while at < len(data):
+        size = int.from_bytes(data[at:at + 4], 'big')
+        kind = data[at + 4:at + 8]
+        chunks[kind] = chunks.get(kind, b'') + data[at + 8:at + 8 + size]
+        at += 12 + size
+    return chunks[b'IHDR'], zlib.decompress(chunks[b'IDAT'])
+
+
+sys.exit(0 if image(sys.argv[1]) == image(sys.argv[2]) else 1)
+PY
+}
 
 mkdir -p "$SCRATCH/scripts" "$SCRATCH/.claude-plugin"
 cp "$REPO_ROOT/scripts/generate-plugin-icons.py" "$SCRATCH/scripts/"
@@ -34,7 +55,7 @@ while IFS= read -r source; do
   icon="$source/.claude-plugin/icon.png"
   if [[ ! -f "$REPO_ROOT/$icon" ]]; then
     fail "$icon is missing; run python3 scripts/generate-plugin-icons.py"
-  elif cmp -s "$REPO_ROOT/$icon" "$SCRATCH/$icon"; then
+  elif [[ -f "$SCRATCH/$icon" ]] && same_pixels "$REPO_ROOT/$icon" "$SCRATCH/$icon"; then
     ok "$icon matches the generator"
   else
     fail "$icon differs from the generator; run python3 scripts/generate-plugin-icons.py"

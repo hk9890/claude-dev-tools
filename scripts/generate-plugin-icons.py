@@ -7,6 +7,7 @@ repo's other scripts do. Usage: python3 scripts/generate-plugin-icons.py
 """
 
 import json
+import math
 import struct
 import sys
 import zlib
@@ -67,26 +68,31 @@ def monogram_cells(letters):
     return rows
 
 
-def is_inside_tile(x, y):
-    nearest_x = min(max(x, CORNER_RADIUS), SIZE - 1 - CORNER_RADIUS)
-    nearest_y = min(max(y, CORNER_RADIUS), SIZE - 1 - CORNER_RADIUS)
-    return (x - nearest_x) ** 2 + (y - nearest_y) ** 2 <= CORNER_RADIUS ** 2
+def tile_inset(y):
+    """Pixels left transparent at each end of row y, to round the tile's corners."""
+    dy = max(CORNER_RADIUS - y, y - (SIZE - 1 - CORNER_RADIUS), 0)
+    return CORNER_RADIUS - math.isqrt(CORNER_RADIUS ** 2 - dy ** 2) if dy else 0
 
 
 def render(letters, color):
     cells = monogram_cells(letters)
     left = (SIZE - len(cells[0]) * PIXEL) // 2
     top = (SIZE - len(cells) * PIXEL) // 2
+    paper = bytes(color) + b'\xff'
+    ink = bytes(INK) + b'\xff'
+    blank = paper * SIZE
+    lines = [
+        paper * left
+        + b''.join((ink if cell == '1' else paper) * PIXEL for cell in cell_row)
+        + paper * (SIZE - left - len(cell_row) * PIXEL)
+        for cell_row in cells
+    ]
     raw = bytearray()
     for y in range(SIZE):
-        raw.append(0)
-        for x in range(SIZE):
-            if not is_inside_tile(x, y):
-                raw += b'\x00\x00\x00\x00'
-                continue
-            column, row = (x - left) // PIXEL, (y - top) // PIXEL
-            is_ink = 0 <= x - left and 0 <= y - top and row < len(cells) and column < len(cells[0]) and cells[row][column] == '1'
-            raw += bytes(INK if is_ink else color) + b'\xff'
+        row = (y - top) // PIXEL
+        line = lines[row] if 0 <= row < len(lines) else blank
+        clear = tile_inset(y) * 4
+        raw += b'\x00' + b'\x00' * clear + line[clear:len(line) - clear] + b'\x00' * clear
     return png(bytes(raw))
 
 
@@ -104,6 +110,9 @@ def main():
     no_monogram = [plugin['name'] for plugin in plugins if plugin['name'] not in MONOGRAMS]
     if no_monogram:
         sys.exit(f'No monogram for: {", ".join(no_monogram)}. Add one to MONOGRAMS.')
+    no_glyph = [f'{name} ({letters})' for name, letters in MONOGRAMS.items() if len(letters) != 2 or not set(letters) <= GLYPHS.keys()]
+    if no_glyph:
+        sys.exit(f'Not two letters with a glyph: {", ".join(no_glyph)}. Add each missing letter to GLYPHS.')
     no_color = sorted({plugin['category'] for plugin in plugins} - CATEGORY_COLORS.keys())
     if no_color:
         sys.exit(f'No colour for category: {", ".join(no_color)}. Add one to CATEGORY_COLORS.')
