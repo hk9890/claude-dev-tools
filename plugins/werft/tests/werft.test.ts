@@ -1,8 +1,8 @@
 import { expect, test } from 'claude-code/testing'
 import type { On, ProcessRunResult } from 'claude-code'
 
-// A release outlives the session end only in a session of its own with its output closed.
-const DETACHED_RELEASE = 'exec setsid -f werft --json release "$1" </dev/null >/dev/null 2>&1'
+// The releases outlive the session end only in a session of their own with their output closed.
+const DETACHED_RELEASES = `exec setsid -f sh -c 'for id do werft --json release "$id"; done' sh "$@" </dev/null >/dev/null 2>&1`
 
 const END = { reason: 'prompt_input_exit', sessionId: 's1', resume: { id: 's1' } } as const
 
@@ -27,9 +27,11 @@ function host(on: On, { listed = ran(0, JSON.stringify(LEASES)), isInstalled = t
       return { deny: 'spawn werft ENOENT' }
     }
 
+    expect(e.init?.cwd).toBe('/')
+
     if (e.argv[0] === 'sh') {
-      expect(e.argv.slice(0, 4)).toEqual(['sh', '-c', DETACHED_RELEASE, 'sh'])
-      seen.released.push(String(e.argv[4]))
+      expect(e.argv.slice(0, 4)).toEqual(['sh', '-c', DETACHED_RELEASES, 'sh'])
+      seen.released.push(...e.argv.slice(4))
 
       return ran(0, '')
     }
@@ -64,7 +66,7 @@ test('the session end releases each lease of this session and no other', async (
 test('a /clear releases the leases of the session it ends', async ($, on) => {
   const seen = host(on)
 
-  await $.session.end({ ...END, reason: 'clear', sessionId: 's2' })
+  await $.session.end({ reason: 'clear', sessionId: 's2', resume: { id: 's2' } })
 
   expect(seen.released).toEqual(['b2'])
 })
@@ -85,6 +87,7 @@ test('a failed werft call releases nothing and the session still ends', async ($
   await $.session.end(END)
 
   expect(seen.released).toEqual([])
+  expect(seen.logged).toEqual(['werft: no lease released at the session end: Error: werft --json leases exited 1: {"error": {"kind": "failed", "message": "libvirt"}}'])
   expect(seen.ended).toEqual(['s1'])
 })
 
