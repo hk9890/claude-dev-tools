@@ -275,8 +275,8 @@ def folder_docs(rel_path, target_rel, target_abs):
 
 
 def compute_reachability(link_map, repo_root):
-    """BFS from AGENTS.md over resolved .md links, a link to the decisions tree
-    standing for links to its records. Returns set of reachable rel paths.
+    """BFS from AGENTS.md over resolved .md links, plus the docs a folder link stands
+    for (folder_docs). Returns set of reachable rel paths.
 
     CLAUDE.md -> @AGENTS.md is the root import; AGENTS.md is the routing surface.
     A doc is reachable if AGENTS.md links it, directly or through another reachable doc.

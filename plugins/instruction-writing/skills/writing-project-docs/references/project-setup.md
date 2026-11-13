@@ -172,6 +172,5 @@ Content outside a file's boundary is a defect even when every statement in it is
 |---|---|
 | `CLAUDE.md`, `AGENTS.md`, `README.md`, `CONTRIBUTING.md` | project root |
 | Topic docs | `docs/` |
-| Decision records | `docs/decisions/` |
 
 - Every route in `AGENTS.md` must point to a real file or installed skill; flag stale routes left behind after merges or deletions.
