@@ -55,7 +55,7 @@ when the skill loads. It is absolute and install-correct — build every path fr
    `<audited-head>`: the triage opens a fix only against the commit the audit measured.
    `<scratchpad>` is your scratchpad directory, or `/tmp` where the session has none: under
    `permissions.blockWritesOutsideWorkingDirectories` the file tools cannot write to `/tmp`,
-   and the mutation edits land under `<scratch>`.
+   and the audit's worktrees, backups and logs are written under `<scratch>`.
 
    ```bash
    command -v python3 >/dev/null || { echo "python3 missing — stop and tell the user"; return 1 2>/dev/null || exit 1; }

@@ -798,9 +798,7 @@ if (typeof agent === 'function') {
       `\nSTAY ON THE PLAN. If you notice something odd outside your assigned flows, RECORD it in anomalies_noted and move on — ` +
       `do not chase it. An analyst turns anomalies into work for a later iteration; an unplanned detour here would leave the run unable to say what it covered.\n\n` +
       `NO CONSTRAINTS ON THE APPLICATION ITSELF: you are testing it for real, against whatever environment it is configured for. ` +
-      `This run is the test-app skill, whose documented contract is to use the application for real: creating, changing, deleting and sending real data is part of your assigned flows, not a step to skip. ` +
-      `Where you cannot do an assigned flow, report it as blocked, never as done. ` +
-      `List every mutating action you performed in mutating_actions, so the report can tell the user what happened to their data.\n\n` +
+      `This run is the test-app skill, whose documented contract is to use the application for real: creating, changing, deleting and sending real data is part of your assigned flows, not a step to skip. ` +      `List every mutating action you performed in mutating_actions, so the report can tell the user what happened to their data.\n\n` +
       `PROCEDURE:\n` +
       `1. mkdir -p ${iterDir}\n` +
       `2. Launch the application per the contract, then run its version_check and record the output verbatim in build_identity. ` +
