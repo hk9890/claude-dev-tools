@@ -234,30 +234,35 @@ function infoText(list: KeepAwakeInhibitor[]) {
 }
 
 function startPanelRefresh($: EngineInterface) {
-  panelRefresh ??= $.clock.every(REFRESH_MS, () => {
-    refreshPanel($).catch(error => $.ui.log(`panel refresh failed: ${String(error)}`, { to: 'debug' }))
-  })
+  panelRefresh ??= $.clock.every(REFRESH_MS, () => void refreshPanel($))
 }
 
 // The timer runs for as long as the engine lists the pane: a /clear and a reload both keep it open.
+// A failed refresh keeps the rows it had, and the next tick tries again.
 async function refreshPanel($: EngineInterface) {
-  const pane = (await $.ui.panes()).find(one => one.id === PANEL)
+  try {
+    const pane = (await $.ui.panes()).find(one => one.id === PANEL)
 
-  if (pane === undefined) {
-    panelRefresh?.cancel()
-    panelRefresh = undefined
+    if (pane === undefined) {
+      panelRefresh?.cancel()
+      panelRefresh = undefined
 
-    return
-  }
+      return
+    }
 
-  if (!pane.isPlaced) {
-    return
-  }
+    if (!pane.isPlaced) {
+      return
+    }
 
-  const loaded = await loadInhibitors($)
+    const loaded = await loadInhibitors($)
 
-  if (typeof loaded !== 'string') {
+    if (typeof loaded === 'string') {
+      throw new Error(loaded)
+    }
+
     await update($, inhibitors, () => loaded)
+  } catch (error) {
+    $.ui.log(`panel refresh failed: ${error instanceof Error ? error.message : String(error)}`, { to: 'debug' })
   }
 }
 

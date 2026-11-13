@@ -413,16 +413,29 @@ function ran(lines: string[]): { value: ProcessRunResult } {
 // Stands for the host of the panel: answers `ps` from `processes`, which a test changes in place,
 // and keeps the panes open in `seen.opened`, which a test empties as the person closing the pane.
 // A surface that seats no pane is `seen.isPlaced = false`.
-// Surfaces that cannot be read are `panelHost(on, processes, { surfaces: 'fail' })`.
+// Surfaces that cannot be read are `panelHost(on, processes, { surfaces: 'fail' })`. A pane listing
+// that fails once is `seen.panesFailures = 1`, a `ps` that fails once is `seen.psFailures = 1`.
 function panelHost(
   on: On,
   processes: { children: string[]; parents: string[] },
   { surfaces = ['terminal'] as RenderSurface[] | 'fail' } = {},
 ) {
-  const seen = { opened: [] as string[], isPlaced: true, psRuns: 0, panesFailures: 0, logged: [] as string[] }
+  const seen = {
+    opened: [] as string[],
+    isPlaced: true,
+    psRuns: 0,
+    panesFailures: 0,
+    psFailures: 0,
+    logged: [] as { text: string; to?: string }[],
+  }
 
   on('process.run', ($, e) => {
     seen.psRuns += 1
+
+    if (seen.psFailures > 0) {
+      seen.psFailures -= 1
+      throw new Error('no ps')
+    }
 
     return ran(e.argv[1] === '-C' ? processes.children : processes.parents)
   })
@@ -440,7 +453,7 @@ function panelHost(
     return { value: seen.opened.map(id => ({ id, title: id, isShown: true, isFocused: false, isPlaced: seen.isPlaced })) }
   })
   on('ui.log', ($, e) => {
-    seen.logged.push(e.text)
+    seen.logged.push({ text: e.text, to: e.to })
 
     return { value: undefined }
   })
@@ -530,24 +543,28 @@ test('the open pane follows the inhibitors as they change', async ($, on) => {
   expect((await ui.findAll({ type: 'Text' })).map(line => line.text)).toEqual([...HEADER, ...NO_BLOCK])
 })
 
-test('a failed pane refresh is logged, and the next one follows the inhibitors', async ($, on) => {
-  const clock = mock.clock(on)
-  const processes = { children: CHILDREN, parents: PARENTS }
-  const seen = panelHost(on, processes)
+for (const knob of ['panesFailures', 'psFailures'] as const) {
+  test(`a refresh that fails on ${knob} is logged to debug, and the next one follows the inhibitors`, async ($, on) => {
+    const clock = mock.clock(on)
+    const processes = { children: CHILDREN, parents: PARENTS }
+    const seen = panelHost(on, processes)
 
-  await $.session.start(TERMINAL)
-  await $.command.run(TYPED)
-  const ui = await $.ui.mount(PANEL)
-  processes.children = []
-  seen.panesFailures = 1
-  await clock.advance(REFRESH_MS)
+    await $.session.start(TERMINAL)
+    await $.command.run(TYPED)
+    const ui = await $.ui.mount(PANEL)
+    processes.children = []
+    seen[knob] = 1
+    await clock.advance(REFRESH_MS)
 
-  expect(seen.logged.some(line => line.startsWith('panel refresh failed: '))).toBe(true)
+    expect(seen.logged.filter(line => line.text.startsWith('panel refresh failed: ')).map(line => line.to)).toEqual([
+      'debug',
+    ])
 
-  await clock.advance(REFRESH_MS)
+    await clock.advance(REFRESH_MS)
 
-  expect((await ui.findAll({ type: 'Text' })).map(line => line.text)).toEqual([...HEADER, ...NO_BLOCK])
-})
+    expect((await ui.findAll({ type: 'Text' })).map(line => line.text)).toEqual([...HEADER, ...NO_BLOCK])
+  })
+}
 
 test('a closed pane reads the inhibitors no more', async ($, on) => {
   const clock = mock.clock(on)

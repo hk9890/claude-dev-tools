@@ -169,12 +169,11 @@ FEEDBACK_FILE  (the path from Step 2e)
 ```
 
 If `FEEDBACK_FILE` is missing or the server exited non-zero, act on the exit code's
-row in the exit-code table of `references/serve.md`. For an abandoned round, recover
-as in Cycle C (tell the user; offer to re-serve or take the feedback in chat).
+row in the exit-code table of `references/serve.md`.
 
 After reading and parsing the file, delete it (`rm -f "$HTML_DIR/review.feedback.json"`): the
 server overwrites it only on the next submit, so a stale copy could pass for fresh
-feedback if a later round is abandoned.
+feedback after a later round that ends without a submit.
 
 The file contains:
 
