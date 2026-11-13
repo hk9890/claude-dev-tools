@@ -53,10 +53,9 @@ subject's commits. With `--fix`, step 5 then applies the fixes it settled.
 
    A subject is **checked out here** where it is the default subject, with or without a
    path, or where `git rev-parse <head>` prints `git rev-parse HEAD` while
-   `git status --porcelain` prints nothing. Its files are read from the working tree; the
-   files of any other subject, the project's documents included, from `<head>`. `--fix`
-   edits the working tree, so it holds only for a subject checked out here: for any
-   other, run without `--fix` and say so now, with the reason.
+   `git status --porcelain` prints nothing. `--fix` edits the working tree, so it holds
+   only for a subject checked out here: for any other, run without `--fix` and say so
+   now, with the reason.
 
    A subject whose tree (the working tree, else `<head>`) has neither `AGENTS.md` nor
    `CLAUDE.md`, or no document they route to, has no standard to measure against: say so
@@ -90,9 +89,10 @@ subject's commits. With `--fix`, step 5 then applies the fixes it settled.
    > The subject is `<the step-1 subject in one sentence>`. Its files: `<the list>`. Take
    > the diff yourself with `<the step-1 diff command>` and read the changed files in full
    > — a diff hunk alone hides what a rule binds. Read every file, the project's documents
-   > included, and search the tree `<in the working tree | with git show <head>:<path>,
-   > git grep <pattern> <head> and git ls-tree -r --name-only <head>; report each command
-   > a document says to run as could not run: the working tree is not the subject>`.
+   > included, and search the tree `<in the working tree, for a subject checked out here |
+   > else with git show <head>:<path>, git grep <pattern> <head> and git ls-tree -r
+   > --name-only <head>; report each command a document says to run as could not run:
+   > the working tree is not the subject>`.
    >
    > Verdict labels: `clean`, `minor issues`, `significant issues`, `broken`. `clean`
    > requires a genuine attempt to find a broken rule, not the absence of one.
