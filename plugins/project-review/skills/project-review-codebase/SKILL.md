@@ -68,17 +68,20 @@ modes are actually exercised.
    truncated — to a fresh temp file, then print the path:
 
    ```bash
-   printf '%s\n' "${TMPDIR:-/tmp}/codebase-review-$(date +%Y%m%d-%H%M%S).md"
+   printf '%s\n' "<session-tmp>/codebase-review-$(date +%Y%m%d-%H%M%S).md"
    ```
+
+   `<session-tmp>` is your scratchpad directory, or `${TMPDIR:-/tmp}` where the session has none: under
+   `permissions.blockWritesOutsideWorkingDirectories` the Write tool cannot reach `/tmp`.
 
    That prints the path — pass the printed value to the Write tool literally. Do
    not assign it to a shell variable and reference it later: each Bash call gets a
-   fresh shell, so the variable would be empty by the time you used it. The temp
-   directory keeps this clear of the review's read-only contract: **never** write
+   fresh shell, so the variable would be empty by the time you used it. The scratchpad
+   keeps this clear of the review's read-only contract: **never** write
    it into the user's repository unless they ask for it there.
 
    Then surface it in one line, e.g.
-   `Full report with diagrams: /tmp/codebase-review-20260724-101500.md`
+   `Full report with diagrams: <session-tmp>/codebase-review-20260724-101500.md`
    — and note what they can do with it:
    - **Decide on it** — follow
      `<SKILL_DIR>/../../references/decision-split.md` over the open
