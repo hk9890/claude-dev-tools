@@ -473,7 +473,7 @@ if (typeof agent === 'function') {
   // Every decision record shares one contract, so a batch states it once, not per record.
   const decisionContract = (batch) => batch.some(t => t.file.classification === 'decision')
     ? `\nDOCS/DECISIONS/ TREE — every file marked "Tree record" below is one record of the docs/decisions/ tree. ` +
-      `A record in another format (a MADR or Nygard ADR with status, date, and sections) is misplaced, not a record to cut down: recommend moving its folder out of docs/decisions/ and registering it in docs/DOCUMENTING.md.\n` +
+      `A record in another format (a MADR or Nygard ADR with status, date, and sections) is misplaced, not a record to cut down: the DECISION RECORD PLACEMENT rules decide its fix.\n` +
       contractLines({ contract: manifest.decision_contract })
     : ''
 
