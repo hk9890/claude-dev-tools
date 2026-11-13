@@ -72,6 +72,7 @@ Every skill is loaded with a `Base directory for this skill: <absolute path>` li
 Each `Bash` call starts a fresh shell: a variable a skill assigns in one call is empty in the next.
 
 - Print every value a later step needs — a path, a temp dir — and name it in later steps with one placeholder, defined at the step that prints it. `test-tests`' `<scratch>` is the worked example.
+- Make a scratch dir or temp file the file tools write to under the session scratchpad, or `${TMPDIR:-/tmp}` where the session has none: under `permissions.blockWritesOutsideWorkingDirectories` they cannot write to `/tmp`. `test-app`'s `<session-tmp>` is the worked example. A dir that a project's test suite runs in stays under `/tmp`, as `test-tests`' does: the long scratchpad path pushes a socket the suite binds past the 108-byte limit.
 - Stop a process started with `run_in_background` by calling `TaskStop` with the task id the start returned. No later shell holds its PID. `html-visualization`'s `serve.md` is the worked example.
 
 ## Mods
