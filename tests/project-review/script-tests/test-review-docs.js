@@ -443,8 +443,10 @@ async function main() {
   truthy('read-review: the non-standard doc is judged for placement',
     reviewPrompts[0].includes('NON-STANDARD doc'));
   truthy('read-review: a misplaced decision record is judged for placement, with the registered home exempt',
-    reviewPrompts[0].includes('docs/decisions/NNNN-slug.md') &&
-    reviewPrompts[0].includes('unless docs/DOCUMENTING.md registers that folder'));
+    reviewPrompts[0].includes('DECISION RECORD PLACEMENT') &&
+    reviewPrompts[0].includes('Where docs/DOCUMENTING.md registers it, it is filed correctly'));
+  eq('read-review: the placement rules are stated once per batch, not per non-standard doc',
+    1, reviewPrompts[0].split('DECISION RECORD PLACEMENT —').length - 1);
   eq('read-review: findings reach raw', 1, deep.ret.raw.read_findings.length);
   eq('read-review: the batches are reported', [['AGENTS.md', 'docs/CODING.md', 'docs/A.md']], deep.ret.raw.review_batches);
   eq('read-review: a complete run reports no unreviewed file', [], deep.ret.raw.not_reviewed);
@@ -516,8 +518,8 @@ async function main() {
   eq('history: verdicts reach raw', 4, deep.ret && deep.ret.raw.history[0].segments_judged);
   eq('history: coverage reaches raw', 4, deep.ret && deep.ret.raw.history_coverage.coding.valid);
 
-  // The manifest keys a folder route without its trailing slash, and the use case names
-  // the tree with it: the judge must still get the route's wording, not "no route".
+  // The manifest keys a folder route with its trailing slash, as the use case names the
+  // tree: the judge must get the route's wording, not "no route".
   const treeRoute = '**MUST read the records in [docs/decisions/](docs/decisions/) that bear on the change before editing `src/store/`.**';
   const tree = await runAudit({
     level: 'ultra',

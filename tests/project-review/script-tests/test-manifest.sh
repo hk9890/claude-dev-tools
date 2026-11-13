@@ -259,8 +259,8 @@ test_decision_records() {
     "$(json_val "$out" "d['orphans']")"
   printf '\n### Decisions\n\nMUST read [docs/decisions/](docs/decisions/) before a change.\n' >> "$dir/AGENTS.md"
   out=$("$SCRIPT" "$dir")
-  assert_eq "decision: a folder link from AGENTS.md reaches every file in it" "[]" \
-    "$(json_val "$out" "[p for p in d['orphans'] if p.startswith('docs/decisions/')]")"
+  assert_eq "decision: a folder link from AGENTS.md reaches every record in it" "[]" \
+    "$(json_val "$out" "[p for p in d['orphans'] if p.startswith('docs/decisions/0')]")"
   assert_contains "decision: a folder route keeps its trailing slash" "docs/decisions/" \
     "$(json_val "$out" "[r['target'] for r in d['agents_routes'] if r['target'].startswith('docs/decisions')]")"
   # Only the decisions tree stands for its files: a link to any other folder reaches nothing.
@@ -268,6 +268,18 @@ test_decision_records() {
   out=$("$SCRIPT" "$dir")
   assert_contains "decision: a link to another folder leaves its docs orphaned" "docs/NOTES.md" \
     "$(json_val "$out" "d['orphans']")"
+  # The tree's route reaches its records only: an index in the tree stays an orphan.
+  printf '# Index\n\nA list.\n' > "$dir/docs/decisions/README.md"
+  out=$("$SCRIPT" "$dir")
+  assert_contains "decision: an index in the tree stays an orphan" "docs/decisions/README.md" \
+    "$(json_val "$out" "d['orphans']")"
+  # DOCUMENTING.md registers a doc tree by linking its folder: that reaches its docs.
+  mkdir -p "$dir/docs/adr"
+  printf '# ADR 1\n\nOld format.\n' > "$dir/docs/adr/0001-old.md"
+  printf '\nDecision records live in [docs/adr/](adr/).\n' >> "$dir/docs/DOCUMENTING.md"
+  out=$("$SCRIPT" "$dir")
+  assert_eq "decision: a folder DOCUMENTING.md registers reaches its docs" "[]" \
+    "$(json_val "$out" "[p for p in d['orphans'] if p.startswith('docs/adr/')]")"
   rm -rf "$dir"
 }
 

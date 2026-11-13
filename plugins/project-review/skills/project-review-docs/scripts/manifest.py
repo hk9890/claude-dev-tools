@@ -249,17 +249,29 @@ def file_links(vr, repo_root, rel_path):
         })
         if ok and target_rel.endswith(".md"):
             resolved_targets.append(target_rel)
-        elif ok and target_rel.replace("\\", "/") == "docs/" + DECISIONS_TREE.rstrip("/"):
-            # A link to the decisions tree reaches every record in it: the tree has
-            # no index, so its route is the only link to them.
-            try:
-                names = sorted(os.listdir(target_abs))
-            except OSError:
-                names = []
-            resolved_targets.extend(
-                os.path.join(target_rel, n) for n in names
-                if n.endswith(".md") and os.path.isfile(os.path.join(target_abs, n)))
+        elif ok and os.path.isdir(target_abs):
+            resolved_targets.extend(folder_docs(rel_path, target_rel, target_abs))
     return records, resolved_targets
+
+
+def folder_docs(rel_path, target_rel, target_abs):
+    """The docs a folder link stands for. A link to the decisions tree reaches its
+    records, since the tree has no index. A link from docs/DOCUMENTING.md registers a
+    doc tree, and reaches every doc directly inside it. Any other folder link reaches
+    nothing."""
+    posix = target_rel.replace("\\", "/")
+    if posix == "docs/" + DECISIONS_TREE.rstrip("/"):
+        wanted = lambda n: bool(DECISION_FILE_RE.match(posix + "/" + n))
+    elif rel_path.replace("\\", "/") == "docs/DOCUMENTING.md":
+        wanted = lambda n: n.endswith(".md")
+    else:
+        return []
+    try:
+        names = sorted(os.listdir(target_abs))
+    except OSError:
+        return []
+    return [os.path.join(target_rel, n) for n in names
+            if wanted(n) and os.path.isfile(os.path.join(target_abs, n))]
 
 
 def compute_reachability(link_map, repo_root):

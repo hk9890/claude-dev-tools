@@ -34,7 +34,7 @@ Read what the project already carries and record two lists.
 | `REVIEWING.md` | a review rule or a source-wide convention — comments, naming, error handling — where no tool checks it and a generic reviewer could not guess it |
 | `RUNNING.md` | an entrypoint a human starts by hand — CLI, server, app |
 | `MONITORING.md` | logs, metrics, traces, or usage data the project produces and someone reads |
-| `decisions/` | a decision the repo states together with its reason — a code comment, a commit or PR message, an existing doc — that meets the standard's `docs/decisions/` Inside test. A decision whose reason the repo never states is not evidence |
+| `decisions/` | a decision the repo states together with its reason — a code comment, a commit or PR message — that meets the standard's `docs/decisions/` Inside test. A decision whose reason the repo never states is not evidence |
 
 Keep the evidence you found for each earned topic. It is the material step 3 writes from, and the reason step 4 gives for every topic left out.
 
