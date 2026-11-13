@@ -120,3 +120,109 @@ test('output that is not JSON releases nothing and the debug log says why', asyn
   expect(seen.logged).toHaveLength(1)
   expect(seen.ended).toEqual(['s1'])
 })
+
+// Stands for the engine's verdict on a Skill call: `verdict` for every skill.
+function engine(on: On, verdict: 'allow' | 'ask' | 'deny') {
+  on('tool.check', () => ({ decision: verdict }))
+}
+
+for (const skill of ['werft:werft', 'werft']) {
+  test(`the ${skill} skill loads without a question`, async ($, on) => {
+    engine(on, 'ask')
+
+    const verdict = await $.tool.check({ tool: 'Skill', input: { skill } })
+
+    expect(verdict.decision).toBe('allow')
+  })
+}
+
+test('a deny rule on the werft skill stands', async ($, on) => {
+  engine(on, 'deny')
+
+  const verdict = await $.tool.check({ tool: 'Skill', input: { skill: 'werft:werft' } })
+
+  expect(verdict.decision).toBe('deny')
+})
+
+test('another skill keeps its question', async ($, on) => {
+  engine(on, 'ask')
+
+  const verdict = await $.tool.check({ tool: 'Skill', input: { skill: 'revier:revier' } })
+
+  expect(verdict.decision).toBe('ask')
+})
+
+const C = '/home/u/.local/state/werft/leases/ab12cd/ssh_config'
+
+// The forms of the werft guide, as an agent writes them.
+const ALLOWED = [
+  'werft --json images',
+  'werft --json leases',
+  'werft --json lease ubuntu-26-04 --tier plain --owner claude-s1 --for 1h',
+  'werft --json extend ab12cd --for 2h',
+  'werft --json release ab12cd',
+  'werft guide',
+  'werft help lease',
+  `ssh -F ${C} ab12cd 'uname -a'`,
+  `ssh -F ${C} ab12cd 'sudo -n apt-get update && sudo -n apt-get install -y curl'`,
+  `ssh -F ${C} ab12cd '$SHELL -ic "mise ls"'`,
+  `ssh -F ${C} ab12cd 'nohup python3 -m http.server 8080 </dev/null >/dev/null 2>&1 &'`,
+  `ssh -F ${C} ab12cd python3 --version`,
+  `ssh -F ${C} -f -N -o ExitOnForwardFailure=yes -L 18080:localhost:8080 ab12cd`,
+  `scp -F ${C} ab12cd:src/result.log .`,
+  `scp -F ${C} ./file ab12cd:dst/`,
+  `scp -F ${C} -r ab12cd:src out/src`,
+  `tar -C ./dir -cf - . | ssh -F ${C} ab12cd 'mkdir -p src && tar -C src -xf -'`,
+]
+
+// Each one runs on this host outside the guide's forms, so its question stands.
+const ASKED = [
+  'ls',
+  'werft start build-vm',
+  'werft --json leases; rm -rf /tmp/zz',
+  'werft --json release $(cat ids)',
+  `ssh -F /tmp/evil_config ab12cd 'x'`,
+  `ssh -F ${C} other 'x'`,
+  `ssh -F ${C} ab12cd 'x'; rm -rf /tmp/zz`,
+  `ssh -F ${C} ab12cd 'x' && rm -rf /tmp/zz`,
+  `ssh -F ${C} ab12cd 'x' > /tmp/out`,
+  `ssh -F ${C} ab12cd "$(rm -rf /tmp/zz)"`,
+  `ssh -F ${C} ab12cd'x'`,
+  `ssh -F ${C} -o ProxyCommand=sh ab12cd 'x'`,
+  `ssh -F ${C} ab12cd 'x' | sh`,
+  `scp -F ${C} ab12cd:x /home/u/.bashrc`,
+  `scp -F ${C} ab12cd:x ../outside`,
+  `scp -F ${C} ./a ./b`,
+  `scp -F /tmp/x ab12cd:b .`,
+  'tar -C / -xf -',
+  `tar -C ./dir -cf - . | sh`,
+  `tar -C ./dir -cf - . | ssh -F /tmp/evil ab12cd 'x'`,
+]
+
+for (const command of ALLOWED) {
+  test(`allows: ${command}`, async ($, on) => {
+    engine(on, 'ask')
+
+    const verdict = await $.tool.check({ tool: 'Bash', input: { command } })
+
+    expect(verdict.decision).toBe('allow')
+  })
+}
+
+for (const command of ASKED) {
+  test(`keeps the question: ${command}`, async ($, on) => {
+    engine(on, 'ask')
+
+    const verdict = await $.tool.check({ tool: 'Bash', input: { command } })
+
+    expect(verdict.decision).toBe('ask')
+  })
+}
+
+test('a deny rule on a werft command stands', async ($, on) => {
+  engine(on, 'deny')
+
+  const verdict = await $.tool.check({ tool: 'Bash', input: { command: 'werft --json leases' } })
+
+  expect(verdict.decision).toBe('deny')
+})
