@@ -168,13 +168,12 @@ When the harness re-invokes Claude after server exit, read:
 FEEDBACK_FILE  (the path from Step 2e)
 ```
 
-If `FEEDBACK_FILE` is missing or the server exited non-zero, the round timed
-out — recover as in serve.md Cycle C (tell the user; offer to re-serve or take the
-feedback in chat).
+If `FEEDBACK_FILE` is missing or the server exited non-zero, act on the exit code's
+row in the exit-code table of `references/serve.md`.
 
 After reading and parsing the file, delete it (`rm -f "$HTML_DIR/review.feedback.json"`): the
 server overwrites it only on the next submit, so a stale copy could pass for fresh
-feedback if a later round times out.
+feedback after a later round that ends without a submit.
 
 The file contains:
 
