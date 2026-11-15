@@ -1,15 +1,28 @@
-import type { Register, ToolCheckResult } from 'claude-code'
+import type { ProcessRunResult, Register, ToolCheckResult } from 'claude-code'
 
 import { agentCommand } from './agent-commands'
 
 // A release takes longer than the session end allows, so it runs in a session of its own with its
 // output closed, and `sh` returns at once: only a missing werft can still answer. A failed release
 // runs once more, as the werft guide says. `release --owner` needs werft v0.5.0 or later.
-const WERFT_MISSING = 3
+// Outside the exit codes of werft itself.
+const WERFT_MISSING = 99
 const RELEASE = `werft --json release --owner "$1"`
 const DETACHED_RELEASE = `command -v werft >/dev/null || exit ${WERFT_MISSING}; exec setsid -f sh -c '${RELEASE} || ${RELEASE}' sh "$1" </dev/null >/dev/null 2>&1`
 
-type Lease = { id: string; ssh_config: string }
+type Lease = { id: string; owner: string; ssh_config: string }
+
+// The owner that the werft skill gives every lease of a session.
+const ownerOf = (sessionId: string) => `claude-${sessionId}`
+
+// A werft that cannot list, or lists what is not JSON, lists no lease.
+function leasesIn(listed: ProcessRunResult): Lease[] {
+  try {
+    return listed.exitCode === 0 ? (JSON.parse(listed.stdout) as Lease[]) : []
+  } catch {
+    return []
+  }
+}
 
 // The mode's own question, which the mod may answer; one from a rule, a hook or a setting of the
 // user stays theirs.
@@ -35,17 +48,19 @@ export const register: Register = on => {
       return verdict
     }
 
-    if (found.lease) {
-      const { id, config } = found.lease
-      const listed = await $.process.run(['werft', '--json', 'leases'], { cwd: '/', timeoutMs: 10_000 })
-      const leases = listed.exitCode === 0 ? (JSON.parse(listed.stdout) as Lease[]) : []
+    const { lease, owner, releaseId } = found
+    const leases = lease || releaseId ? leasesIn(await $.process.run(['werft', '--json', 'leases'], { cwd: '/', timeoutMs: 10_000 })) : []
+    const thisOwner = owner !== undefined || releaseId ? ownerOf(await $.session.id()) : undefined
 
-      if (!leases.some(lease => lease.id === id && lease.ssh_config === config)) {
-        return verdict
-      }
+    if (lease && !leases.some(live => live.id === lease.id && live.ssh_config === lease.config)) {
+      return verdict
     }
 
-    if (found.owner !== undefined && found.owner !== `claude-${await $.session.id()}`) {
+    if (releaseId && !leases.some(live => live.id === releaseId && live.owner === thisOwner)) {
+      return verdict
+    }
+
+    if (owner !== undefined && owner !== thisOwner) {
       return verdict
     }
 
@@ -54,9 +69,8 @@ export const register: Register = on => {
 
   on('session.end', async ($, e, next) => {
     try {
-      // The owner that the werft skill gives every lease of this session. `/` outlives every
-      // directory the session worked in, a removed worktree included.
-      const started = await $.process.run(['sh', '-c', DETACHED_RELEASE, 'sh', `claude-${e.sessionId}`], { cwd: '/' })
+      // `/` outlives every directory the session worked in, a removed worktree included.
+      const started = await $.process.run(['sh', '-c', DETACHED_RELEASE, 'sh', ownerOf(e.sessionId)], { cwd: '/' })
 
       if (started.exitCode === WERFT_MISSING) {
         throw new Error('werft is not on PATH')

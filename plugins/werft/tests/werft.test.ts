@@ -3,7 +3,7 @@ import type { On, ProcessRunResult, ToolCheckResult } from 'claude-code'
 
 // The release outlives the session end only in a session of its own with its output closed, and
 // runs once more where it fails.
-const DETACHED_RELEASE = `command -v werft >/dev/null || exit 3; exec setsid -f sh -c 'werft --json release --owner "$1" || werft --json release --owner "$1"' sh "$1" </dev/null >/dev/null 2>&1`
+const DETACHED_RELEASE = `command -v werft >/dev/null || exit 99; exec setsid -f sh -c 'werft --json release --owner "$1" || werft --json release --owner "$1"' sh "$1" </dev/null >/dev/null 2>&1`
 
 const END = { reason: 'prompt_input_exit', sessionId: 's1', resume: { id: 's1' } } as const
 
@@ -12,7 +12,7 @@ function ran(exitCode: number, stdout: string): { value: ProcessRunResult } {
 }
 
 // Stands for the host: records the owner of each release started and each debug line, and ends
-// the session. A host with no werft is `{ releaseExit: 3 }`, a host whose `sh` cannot start the
+// the session. A host with no werft is `{ releaseExit: 99 }`, a host whose `sh` cannot start the
 // detached release (no setsid) is `{ releaseExit: 127 }`.
 function host(on: On, { releaseExit = 0 } = {}) {
   const seen = { released: [] as string[], logged: [] as string[], ended: [] as string[] }
@@ -57,7 +57,7 @@ test('a /clear releases the leases of the session it ends', async ($, on) => {
 })
 
 test('without werft the session ends and the debug log says why', async ($, on) => {
-  const seen = host(on, { releaseExit: 3 })
+  const seen = host(on, { releaseExit: 99 })
 
   await $.session.end(END)
 
@@ -76,15 +76,21 @@ test('a release that cannot start names setsid in the debug log', async ($, on) 
 
 const C = '/home/u/.local/state/werft/leases/ab12cd/ssh_config'
 
+const LEASES = JSON.stringify([
+  { id: 'ab12cd', owner: 'claude-s1', ssh_config: C },
+  { id: 'hh00hh', owner: 'hans', ssh_config: '/home/u/.local/state/werft/leases/hh00hh/ssh_config' },
+])
+
 // Stands for the engine and the host: `verdict` on every call, the session s1, and
-// `werft --json leases` lists the one live lease ab12cd with the ssh_config C.
-function engine(on: On, verdict: ToolCheckResult) {
+// `werft --json leases` prints `listed`: by default the live lease ab12cd of this session with the
+// ssh_config C, and the lease hh00hh of the user.
+function engine(on: On, verdict: ToolCheckResult, listed = LEASES) {
   on('tool.check', () => verdict)
   on('session.id', () => ({ value: 's1' }))
   on('process.run', ($, e) => {
     expect(e.argv).toEqual(['werft', '--json', 'leases'])
 
-    return ran(0, JSON.stringify([{ id: 'ab12cd', owner: 'claude-s1', ssh_config: C }]))
+    return ran(0, listed)
   })
 }
 
@@ -174,6 +180,11 @@ const ASKED = [
   'werft --json release --owner claude-s1 --owner hans',
   'werft --json release --owner',
   'werft --json release --owner=',
+  'werft --json release hh00hh',
+  'werft --json release zz99zz',
+  'werft --json release ab12cd --owner claude-s1',
+  'werft --json release --owner claude-s1 ab12cd',
+  'werft --json release ab12cd hh00hh',
   `tar -C . -cf - -I./prog | ssh -F ${C} ab12cd 'cat'`,
   `tar -C -Iprog -cf - . | ssh -F ${C} ab12cd 'cat'`,
   `scp -F ${C} -S./prog ab12cd:x`,
@@ -252,6 +263,14 @@ for (const verdict of [{ decision: 'ask', rule: 'Bash(ssh:*)' }, { decision: 'as
     expect(answer.decision).toBe('ask')
   })
 }
+
+test('a werft that lists what is not JSON keeps the question of a call into a lease', async ($, on) => {
+  engine(on, ASK, 'werft: warning\n')
+
+  const verdict = await $.tool.check({ tool: 'Bash', input: { command: `ssh -F ${C} ab12cd 'x'` } })
+
+  expect(verdict.decision).toBe('ask')
+})
 
 test('a call out of the sandbox keeps its question', async ($, on) => {
   engine(on, ASK)
