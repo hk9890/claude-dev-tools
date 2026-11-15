@@ -1,12 +1,28 @@
-import type { Register, ToolCheckResult } from 'claude-code'
+import type { ProcessRunResult, Register, ToolCheckResult } from 'claude-code'
 
 import { agentCommand } from './agent-commands'
 
-// A release takes longer than the session end allows, so one shell runs all of them, in a session
-// of its own with its output closed, and the outer `sh` returns at once.
-const DETACHED_RELEASES = `exec setsid -f sh -c 'for id do werft --json release "$id"; done' sh "$@" </dev/null >/dev/null 2>&1`
+// A release takes longer than the session end allows, so it runs in a session of its own with its
+// output closed, and `sh` returns at once: only a missing werft can still answer. A failed release
+// runs once more, as the werft guide says. `release --owner` needs werft v0.5.0 or later.
+// Outside the exit codes of werft itself.
+const WERFT_MISSING = 99
+const RELEASE = `werft --json release --owner "$1"`
+const DETACHED_RELEASE = `command -v werft >/dev/null || exit ${WERFT_MISSING}; exec setsid -f sh -c '${RELEASE} || ${RELEASE}' sh "$1" </dev/null >/dev/null 2>&1`
 
 type Lease = { id: string; owner: string; ssh_config: string }
+
+// The owner that the werft skill gives every lease of a session.
+const ownerOf = (sessionId: string) => `claude-${sessionId}`
+
+// A werft that cannot list, or lists what is not JSON, lists no lease.
+function leasesIn(listed: ProcessRunResult): Lease[] {
+  try {
+    return listed.exitCode === 0 ? (JSON.parse(listed.stdout) as Lease[]) : []
+  } catch {
+    return []
+  }
+}
 
 // The mode's own question, which the mod may answer; one from a rule, a hook or a setting of the
 // user stays theirs.
@@ -32,14 +48,20 @@ export const register: Register = on => {
       return verdict
     }
 
-    if (found.lease) {
-      const { id, config } = found.lease
-      const listed = await $.process.run(['werft', '--json', 'leases'], { cwd: '/', timeoutMs: 10_000 })
-      const leases = listed.exitCode === 0 ? (JSON.parse(listed.stdout) as Lease[]) : []
+    const { lease, owner, releaseId } = found
+    const leases = lease || releaseId ? leasesIn(await $.process.run(['werft', '--json', 'leases'], { cwd: '/', timeoutMs: 10_000 })) : []
+    const thisOwner = owner !== undefined || releaseId ? ownerOf(await $.session.id()) : undefined
 
-      if (!leases.some(lease => lease.id === id && lease.ssh_config === config)) {
-        return verdict
-      }
+    if (lease && !leases.some(live => live.id === lease.id && live.ssh_config === lease.config)) {
+      return verdict
+    }
+
+    if (releaseId && !leases.some(live => live.id === releaseId && live.owner === thisOwner)) {
+      return verdict
+    }
+
+    if (owner !== undefined && owner !== thisOwner) {
+      return verdict
     }
 
     return { decision: 'allow' }
@@ -48,25 +70,14 @@ export const register: Register = on => {
   on('session.end', async ($, e, next) => {
     try {
       // `/` outlives every directory the session worked in, a removed worktree included.
-      const listed = await $.process.run(['werft', '--json', 'leases'], {
-        cwd: '/',
-        timeoutMs: Math.max(1, Math.floor(next.budget.remainingMs / 2)),
-      })
+      const started = await $.process.run(['sh', '-c', DETACHED_RELEASE, 'sh', ownerOf(e.sessionId)], { cwd: '/' })
 
-      if (listed.exitCode !== 0) {
-        throw new Error(`werft --json leases exited ${listed.exitCode}: ${listed.stderr || listed.stdout}`)
+      if (started.exitCode === WERFT_MISSING) {
+        throw new Error('werft is not on PATH')
       }
 
-      // The owner that the werft skill gives every lease of this session.
-      const owner = `claude-${e.sessionId}`
-      const ids = (JSON.parse(listed.stdout) as Lease[]).filter(lease => lease.owner === owner).map(lease => lease.id)
-
-      if (ids.length > 0) {
-        const started = await $.process.run(['sh', '-c', DETACHED_RELEASES, 'sh', ...ids], { cwd: '/' })
-
-        if (started.exitCode !== 0) {
-          throw new Error(`the releases did not start (exit ${started.exitCode}): is setsid -f on PATH?`)
-        }
+      if (started.exitCode !== 0) {
+        throw new Error(`the release did not start (exit ${started.exitCode}): is setsid -f on PATH?`)
       }
     } catch (error) {
       $.ui.log(`werft: no lease released at the session end: ${String(error)}`, { to: 'debug' })

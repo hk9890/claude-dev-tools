@@ -5,9 +5,10 @@
 
 type Token = { word: string } | { quoted: string } | { pipe: true }
 
-// What a command needs before it may run: nothing more, or the lease it names must be live with
-// this ssh_config, as `werft --json leases` reports it.
-export type AgentCommand = { lease?: { id: string; config: string } }
+// What a command needs before it may run, as `werft --json leases` reports the leases: nothing
+// more, the lease it names must be live with this ssh_config, or what it releases, an owner or
+// the owner of a lease id, must be the one of this session.
+export type AgentCommand = { lease?: { id: string; config: string }; owner?: string; releaseId?: string }
 
 // A word holds no character the shell gives a meaning to; a quoted string runs in the VM alone.
 const WORD = /^[A-Za-z0-9_./:=@%+,-]+$/
@@ -20,6 +21,7 @@ const LOCAL_PATH = /^(?![/-])(?!(?:.*\/)?\.\.(?:\/|$))[A-Za-z0-9_./@%+,-]+$/
 // user, in every spelling Go's flag package reads: `-prune`, `--prune`, `--prune=true`.
 const AGENT_SUBCOMMANDS = ['images', 'lease', 'leases', 'extend', 'release', 'reap', 'guide', 'help']
 const USER_FLAG = /^--?(?:prune|yes|view)(?:=|$)/
+const OWNER_FLAG = /^--?owner(?:=(.*))?$/
 
 function tokens(command: string): Token[] | undefined {
   const end = command.trimEnd().length
@@ -54,17 +56,34 @@ const wordOf = (token: Token | undefined) => (token && 'word' in token ? token.w
 const textOf = (token: Token) => ('word' in token ? token.word : 'quoted' in token ? token.quoted : '|')
 const isWords = (list: Token[]) => list.every(token => 'word' in token)
 
-// werft [--json] <agent subcommand> [words]
+// werft [--json] <agent subcommand> [words]. A release names whose leases it destroys: one owner
+// (`--owner <o>` or `--owner=<o>`), or one lease id; any other release form keeps its question.
 function werft(list: Token[]): AgentCommand | undefined {
   const words = list.map(wordOf)
-  const subcommand = words[1] === '--json' ? words[2] : words[1]
+  const at = words[1] === '--json' ? 2 : 1
+  const subcommand = words[at]
 
-  return words[0] === 'werft' &&
-    isWords(list) &&
-    AGENT_SUBCOMMANDS.includes(subcommand ?? '') &&
-    !words.some(word => USER_FLAG.test(word ?? ''))
-    ? {}
-    : undefined
+  if (words[0] !== 'werft' || !isWords(list) || !AGENT_SUBCOMMANDS.includes(subcommand ?? '') || words.some(word => USER_FLAG.test(word ?? ''))) {
+    return undefined
+  }
+
+  if (subcommand !== 'release') {
+    return {}
+  }
+
+  const args = words.slice(at + 1)
+  const [first = '', second] = args
+  const flag = OWNER_FLAG.exec(first)
+
+  if (flag && args.length === (flag[1] === undefined ? 2 : 1)) {
+    return { owner: flag[1] ?? second }
+  }
+
+  if (args.length === 1 && !first.startsWith('-')) {
+    return { releaseId: first }
+  }
+
+  return args.length === 0 ? {} : undefined
 }
 
 // ssh -F <config> [-f] [-N] [-o <safe option>] [-L <forward>] <lease id> [remote command]
