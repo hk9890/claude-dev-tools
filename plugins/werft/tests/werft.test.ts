@@ -1,45 +1,31 @@
 import { expect, test } from 'claude-code/testing'
 import type { On, ProcessRunResult, ToolCheckResult } from 'claude-code'
 
-// The releases outlive the session end only in a session of their own with their output closed.
-const DETACHED_RELEASES = `exec setsid -f sh -c 'for id do werft --json release "$id"; done' sh "$@" </dev/null >/dev/null 2>&1`
+// The release outlives the session end only in a session of its own with its output closed.
+const DETACHED_RELEASE = `exec setsid -f werft --json release --owner "$1" </dev/null >/dev/null 2>&1`
 
 const END = { reason: 'prompt_input_exit', sessionId: 's1', resume: { id: 's1' } } as const
-
-const LEASES = [
-  { id: 'a1', owner: 'claude-s1' },
-  { id: 'b2', owner: 'claude-s2' },
-  { id: 'c3', owner: 'claude-s1' },
-  { id: 'd4', owner: 'hans' },
-]
 
 function ran(exitCode: number, stdout: string): { value: ProcessRunResult } {
   return { value: { exitCode, stdout, stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
 }
 
-// Stands for the host: answers `werft --json leases` with `listed`, records each release started
-// and each debug line, and ends the session. A werft that is not on PATH is `{ isInstalled: false }`,
-// a host whose `sh` cannot start the detached releases (no setsid) is `{ releaseExit: 127 }`.
-function host(on: On, { listed = ran(0, JSON.stringify(LEASES)), isInstalled = true, releaseExit = 0 } = {}) {
+// Stands for the host: records the owner of each release started and each debug line, and ends
+// the session. A host with no sh to spawn is `{ isInstalled: false }`, a host whose `sh` cannot
+// start the detached release (no setsid) is `{ releaseExit: 127 }`.
+function host(on: On, { isInstalled = true, releaseExit = 0 } = {}) {
   const seen = { released: [] as string[], logged: [] as string[], ended: [] as string[] }
 
   on('process.run', ($, e) => {
     if (!isInstalled) {
-      return { deny: 'spawn werft ENOENT' }
+      return { deny: 'spawn sh ENOENT' }
     }
 
     expect(e.init?.cwd).toBe('/')
+    expect(e.argv.slice(0, 4)).toEqual(['sh', '-c', DETACHED_RELEASE, 'sh'])
+    seen.released.push(...e.argv.slice(4))
 
-    if (e.argv[0] === 'sh') {
-      expect(e.argv.slice(0, 4)).toEqual(['sh', '-c', DETACHED_RELEASES, 'sh'])
-      seen.released.push(...e.argv.slice(4))
-
-      return ran(releaseExit, '')
-    }
-
-    expect(e.argv).toEqual(['werft', '--json', 'leases'])
-
-    return listed
+    return ran(releaseExit, '')
   })
   on('ui.log', ($, e) => {
     seen.logged.push(e.text)
@@ -55,12 +41,13 @@ function host(on: On, { listed = ran(0, JSON.stringify(LEASES)), isInstalled = t
   return seen
 }
 
-test('the session end releases each lease of this session and no other', async ($, on) => {
+test('the session end releases the leases of this session by its owner', async ($, on) => {
   const seen = host(on)
 
   await $.session.end(END)
 
-  expect(seen.released).toEqual(['a1', 'c3'])
+  expect(seen.released).toEqual(['claude-s1'])
+  expect(seen.logged).toEqual([])
   expect(seen.ended).toEqual(['s1'])
 })
 
@@ -69,65 +56,26 @@ test('a /clear releases the leases of the session it ends', async ($, on) => {
 
   await $.session.end({ reason: 'clear', sessionId: 's2', resume: { id: 's2' } })
 
-  expect(seen.released).toEqual(['b2'])
+  expect(seen.released).toEqual(['claude-s2'])
 })
 
-test('a session with no lease releases nothing', async ($, on) => {
-  const seen = host(on, { listed: ran(0, '[]') })
-
-  await $.session.end(END)
-
-  expect(seen.released).toEqual([])
-  expect(seen.logged).toEqual([])
-  expect(seen.ended).toEqual(['s1'])
-})
-
-test('a failed werft call releases nothing and the session still ends', async ($, on) => {
-  const seen = host(on, { listed: ran(1, '{"error": {"kind": "failed", "message": "libvirt"}}') })
-
-  await $.session.end(END)
-
-  expect(seen.released).toEqual([])
-  expect(seen.logged).toEqual(['werft: no lease released at the session end: Error: werft --json leases exited 1: {"error": {"kind": "failed", "message": "libvirt"}}'])
-  expect(seen.ended).toEqual(['s1'])
-})
-
-test('without werft the session ends and the debug log says why', async ($, on) => {
+test('a release that cannot spawn leaves the debug log a line and the session still ends', async ($, on) => {
   const seen = host(on, { isInstalled: false })
 
   await $.session.end(END)
 
   expect(seen.released).toEqual([])
   expect(seen.logged).toHaveLength(1)
-  expect(seen.logged[0]).toContain('spawn werft ENOENT')
+  expect(seen.logged[0]).toContain('spawn sh ENOENT')
   expect(seen.ended).toEqual(['s1'])
 })
 
-test('a failed werft call releases nothing, also where it printed leases', async ($, on) => {
-  const seen = host(on, { listed: ran(1, JSON.stringify(LEASES)) })
-
-  await $.session.end(END)
-
-  expect(seen.released).toEqual([])
-  expect(seen.ended).toEqual(['s1'])
-})
-
-test('releases that cannot start name setsid in the debug log', async ($, on) => {
+test('a release that cannot start names setsid in the debug log', async ($, on) => {
   const seen = host(on, { releaseExit: 127 })
 
   await $.session.end(END)
 
-  expect(seen.logged).toEqual(['werft: no lease released at the session end: Error: the releases did not start (exit 127): is setsid -f on PATH?'])
-  expect(seen.ended).toEqual(['s1'])
-})
-
-test('output that is not JSON releases nothing and the debug log says why', async ($, on) => {
-  const seen = host(on, { listed: ran(0, 'not json') })
-
-  await $.session.end(END)
-
-  expect(seen.released).toEqual([])
-  expect(seen.logged).toHaveLength(1)
+  expect(seen.logged).toEqual(['werft: no lease released at the session end: Error: the release did not start (exit 127): is setsid -f on PATH?'])
   expect(seen.ended).toEqual(['s1'])
 })
 
@@ -193,6 +141,7 @@ const ALLOWED = [
   'werft --json lease ubuntu-26-04 --tier plain --owner claude-s1 --for 1h',
   'werft --json extend ab12cd --for 2h',
   'werft --json release ab12cd',
+  'werft --json release --owner claude-s1',
   'werft --json reap',
   'werft release ab12cd',
   'werft guide',
