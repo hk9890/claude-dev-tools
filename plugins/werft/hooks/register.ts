@@ -3,9 +3,11 @@ import type { Register, ToolCheckResult } from 'claude-code'
 import { agentCommand } from './agent-commands'
 
 // A release takes longer than the session end allows, so it runs in a session of its own with its
-// output closed, and `sh` returns at once. `release --owner` needs werft v0.5.0 or later; an older or
-// missing werft fails without a trace, and its leases stay until they expire.
-const DETACHED_RELEASE = `exec setsid -f werft --json release --owner "$1" </dev/null >/dev/null 2>&1`
+// output closed, and `sh` returns at once: only a missing werft can still answer. A failed release
+// runs once more, as the werft guide says. `release --owner` needs werft v0.5.0 or later.
+const WERFT_MISSING = 3
+const RELEASE = `werft --json release --owner "$1"`
+const DETACHED_RELEASE = `command -v werft >/dev/null || exit ${WERFT_MISSING}; exec setsid -f sh -c '${RELEASE} || ${RELEASE}' sh "$1" </dev/null >/dev/null 2>&1`
 
 type Lease = { id: string; ssh_config: string }
 
@@ -43,6 +45,10 @@ export const register: Register = on => {
       }
     }
 
+    if (found.owner !== undefined && found.owner !== `claude-${await $.session.id()}`) {
+      return verdict
+    }
+
     return { decision: 'allow' }
   })
 
@@ -51,6 +57,10 @@ export const register: Register = on => {
       // The owner that the werft skill gives every lease of this session. `/` outlives every
       // directory the session worked in, a removed worktree included.
       const started = await $.process.run(['sh', '-c', DETACHED_RELEASE, 'sh', `claude-${e.sessionId}`], { cwd: '/' })
+
+      if (started.exitCode === WERFT_MISSING) {
+        throw new Error('werft is not on PATH')
+      }
 
       if (started.exitCode !== 0) {
         throw new Error(`the release did not start (exit ${started.exitCode}): is setsid -f on PATH?`)
