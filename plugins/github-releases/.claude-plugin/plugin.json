@@ -1,6 +1,6 @@
 {
   "name": "github-releases",
-  "description": "Language-agnostic GitHub release workflow with quality gates, semver, and release notes",
+  "description": "Language-agnostic GitHub release workflow with quality gates, semver, and release notes.",
   "version": "1.53.0",
   "author": {
     "name": "Hans Kohlreiter",
