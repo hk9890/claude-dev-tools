@@ -1,9 +1,9 @@
 import { expect, test } from 'claude-code/testing'
 import type { On, ProcessRunResult, ToolCheckResult } from 'claude-code'
 
-// The release outlives the session end only in a session of its own with its output closed, and
-// runs once more where it fails.
-const DETACHED_RELEASE = `command -v werft >/dev/null || exit 99; exec setsid -f sh -c 'werft --json release --owner "$1" || werft --json release --owner "$1"' sh "$1" </dev/null >/dev/null 2>&1`
+// The release outlives the session end only in a session of its own with its output closed,
+// releases each owner it is given, and runs once more where it fails.
+const DETACHED_RELEASE = `command -v werft >/dev/null || exit 99; exec setsid -f sh -c 'for o; do werft --json release --owner "$o" || werft --json release --owner "$o"; done' sh "$@" </dev/null >/dev/null 2>&1`
 
 const END = { reason: 'prompt_input_exit', sessionId: 's1', resume: { id: 's1' } } as const
 
@@ -15,7 +15,14 @@ function ran(exitCode: number, stdout: string): { value: ProcessRunResult } {
 // the session. A host with no werft is `{ releaseExit: 99 }`, a host whose `sh` cannot start the
 // detached release (no setsid) is `{ releaseExit: 127 }`.
 function host(on: On, { releaseExit = 0 } = {}) {
-  const seen = { released: [] as string[], logged: [] as string[], ended: [] as string[] }
+  const seen = { released: [] as string[], logged: [] as string[], ended: [] as string[], ran: [] as string[] }
+
+  on('session.id', () => ({ value: 's1' }))
+  on('tool.call', { tool: 'Bash' }, ($, e) => {
+    seen.ran.push(e.command)
+
+    return { result: 'ok' }
+  })
 
   on('process.run', ($, e) => {
     expect(e.init?.cwd).toBe('/')
@@ -46,6 +53,30 @@ test('the session end releases the leases of this session by its owner', async (
   expect(seen.released).toEqual(['claude-s1'])
   expect(seen.logged).toEqual([])
   expect(seen.ended).toEqual(['s1'])
+})
+
+test('a lease of a subagent takes the owner of that agent, which the session end releases', async ($, on) => {
+  const seen = host(on)
+
+  await $.tool.call({ tool: 'Bash', command: 'werft --json lease ubuntu-26-04 --owner claude-s1 --for 1h', agentId: 'ag1' })
+  await $.tool.call({ tool: 'Bash', command: 'werft --json lease ubuntu-26-04 --owner=claude-s1', agentId: 'ag2' })
+  await $.tool.call({ tool: 'Bash', command: 'werft lease my-owner -owner claude-s1', agentId: 'ag2' })
+  await $.session.end(END)
+
+  expect(seen.ran).toEqual(['werft --json lease ubuntu-26-04 --owner claude-s1-ag1 --for 1h', 'werft --json lease ubuntu-26-04 --owner=claude-s1-ag2', 'werft lease my-owner -owner claude-s1-ag2'])
+  expect(seen.released).toEqual(['claude-s1', 'claude-s1-ag1', 'claude-s1-ag2'])
+})
+
+test('a lease of the main agent and any other command keep their words', async ($, on) => {
+  const seen = host(on)
+
+  await $.tool.call({ tool: 'Bash', command: 'werft --json lease ubuntu-26-04 --owner claude-s1' })
+  await $.tool.call({ tool: 'Bash', command: 'werft --json lease ubuntu-26-04 --owner hans', agentId: 'ag1' })
+  await $.tool.call({ tool: 'Bash', command: 'werft --json release ab12cd', agentId: 'ag1' })
+  await $.session.end(END)
+
+  expect(seen.ran).toEqual(['werft --json lease ubuntu-26-04 --owner claude-s1', 'werft --json lease ubuntu-26-04 --owner hans', 'werft --json release ab12cd'])
+  expect(seen.released).toEqual(['claude-s1'])
 })
 
 test('a /clear releases the leases of the session it ends', async ($, on) => {
@@ -79,6 +110,7 @@ const C = '/home/u/.local/state/werft/leases/ab12cd/ssh_config'
 const LEASES = JSON.stringify([
   { id: 'ab12cd', owner: 'claude-s1', ssh_config: C },
   { id: 'hh00hh', owner: 'hans', ssh_config: '/home/u/.local/state/werft/leases/hh00hh/ssh_config' },
+  { id: 'ag1111', owner: 'claude-s1-ag1', ssh_config: '/home/u/.local/state/werft/leases/ag1111/ssh_config' },
 ])
 
 // Stands for the engine and the host: `verdict` on every call, the session s1, and
@@ -214,6 +246,7 @@ const ASKED = [
   'werft --json release ab12cd --owner claude-s1',
   'werft --json release --owner claude-s1 ab12cd',
   'werft --json release ab12cd hh00hh',
+  'werft --json release ag1111',
   `tar -C . -cf - -I./prog | ssh -F ${C} ab12cd 'cat'`,
   `tar -C -Iprog -cf - . | ssh -F ${C} ab12cd 'cat'`,
   `scp -F ${C} -S./prog ab12cd:x`,
@@ -329,6 +362,29 @@ test('a werft that lists what is not a JSON list keeps the question without a fa
   expect(verdict.decision).toBe('ask')
   expect(logged).toEqual([])
 })
+
+const IN_AGENT_ALLOWED = ['werft --json release ag1111', 'werft --json extend ag1111 --for 1h', 'werft --json lease ubuntu-26-04 --owner claude-s1', 'werft --json lease ubuntu-26-04 --owner claude-s1-ag1']
+const IN_AGENT_ASKED = ['werft --json release ab12cd', 'werft --json extend ab12cd', 'werft --json lease ubuntu-26-04 --owner claude-s1-ag2']
+
+for (const command of IN_AGENT_ALLOWED) {
+  test(`allows in the subagent ag1: ${command}`, async ($, on) => {
+    engine(on, ASK)
+
+    const verdict = await $.tool.check({ tool: 'Bash', input: { command }, agentId: 'ag1' })
+
+    expect(verdict.decision).toBe('allow')
+  })
+}
+
+for (const command of IN_AGENT_ASKED) {
+  test(`keeps the question in the subagent ag1: ${command}`, async ($, on) => {
+    engine(on, ASK)
+
+    const verdict = await $.tool.check({ tool: 'Bash', input: { command }, agentId: 'ag1' })
+
+    expect(verdict.decision).toBe('ask')
+  })
+}
 
 test('a call out of the sandbox keeps its question', async ($, on) => {
   engine(on, ASK)

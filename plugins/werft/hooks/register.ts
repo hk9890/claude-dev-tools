@@ -3,17 +3,23 @@ import type { ProcessRunResult, Register, ToolCheckResult } from 'claude-code'
 import { agentCommand } from './agent-commands'
 
 // A release takes longer than the session end allows, so it runs in a session of its own with its
-// output closed, and `sh` returns at once: only a missing werft can still answer. A failed release
-// runs once more, as the werft guide says. `release --owner` needs werft v0.5.0 or later.
+// output closed, and `sh` returns at once: only a missing werft can still answer. It releases
+// each owner it is given, and a failed release runs once more, as the werft guide says.
+// `release --owner` needs werft v0.5.0 or later.
 // Outside the exit codes of werft itself.
 const WERFT_MISSING = 99
-const RELEASE = `werft --json release --owner "$1"`
-const DETACHED_RELEASE = `command -v werft >/dev/null || exit ${WERFT_MISSING}; exec setsid -f sh -c '${RELEASE} || ${RELEASE}' sh "$1" </dev/null >/dev/null 2>&1`
+const RELEASE = `werft --json release --owner "$o"`
+const DETACHED_RELEASE = `command -v werft >/dev/null || exit ${WERFT_MISSING}; exec setsid -f sh -c 'for o; do ${RELEASE} || ${RELEASE}; done' sh "$@" </dev/null >/dev/null 2>&1`
 
 type Lease = { id: string; owner: string; ssh_config: string }
 
-// The owner that the werft skill gives every lease of a session.
-const ownerOf = (sessionId: string) => `claude-${sessionId}`
+// The owner that the werft skill gives every lease of a session. The mod gives a lease of a
+// subagent the owner of that agent, so one agent cannot release the leases of another by id.
+const ownerOf = (sessionId: string, agentId?: string) => (agentId ? `claude-${sessionId}-${agentId}` : `claude-${sessionId}`)
+
+// The subagents of each session that leased, whose owners the session end releases. A hot reload
+// of the mod forgets them; their leases then live until they expire.
+const leasingAgents = new Map<string, Set<string>>()
 
 // A werft that cannot list, or lists what is not a JSON list, lists no lease.
 function leasesIn(listed: ProcessRunResult): Lease[] {
@@ -51,13 +57,15 @@ export const register: Register = on => {
     }
 
     const { lease, owner, ownedId } = found
-    const [leases, thisOwner] = await Promise.all([
+    const [leases, sessionId] = await Promise.all([
       lease || ownedId ? $.process.run(['werft', '--json', 'leases'], { cwd: '/', timeoutMs: 10_000 }).then(leasesIn) : [],
-      owner !== undefined || ownedId ? $.session.id().then(ownerOf) : undefined,
+      owner !== undefined || ownedId ? $.session.id() : undefined,
     ])
+    const agentOwner = sessionId === undefined ? undefined : ownerOf(sessionId, e.agentId)
     const isLive = !lease || leases.some(live => live.id === lease.id && live.ssh_config === lease.config)
-    const isOwned = !ownedId || leases.some(live => live.id === ownedId && live.owner === thisOwner)
-    const isThisOwner = owner === undefined || owner === thisOwner
+    const isOwned = !ownedId || leases.some(live => live.id === ownedId && live.owner === agentOwner)
+    // The agent writes the owner of the session, which the lease call below makes its own.
+    const isThisOwner = owner === undefined || (sessionId !== undefined && [ownerOf(sessionId), agentOwner].includes(owner))
 
     return isLive && isOwned && isThisOwner ? { decision: 'allow' } : verdict
   }).catch(($, e, next) => {
@@ -66,10 +74,30 @@ export const register: Register = on => {
     return next(e)
   })
 
+  // A lease of a subagent with the owner of the session takes the owner of that agent.
+  on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
+    const { command } = e
+    const owner = e.agentId ? agentCommand(command)?.owner : undefined
+    const sessionId = owner === undefined ? undefined : await $.session.id()
+
+    if (!e.agentId || sessionId === undefined || owner !== ownerOf(sessionId)) {
+      return next(e)
+    }
+
+    leasingAgents.set(sessionId, (leasingAgents.get(sessionId) ?? new Set()).add(e.agentId))
+    const agentCommandLine = command.replace(/(?<=[ \t])(--?owner(?:[ \t]+|=))\S+/, `$1${ownerOf(sessionId, e.agentId)}`)
+
+    return next({ ...e, command: agentCommandLine })
+  }).catch(($, e, next) => next(e))
+
   on('session.end', async ($, e, next) => {
+    const agents = [...(leasingAgents.get(e.sessionId) ?? [])]
+    leasingAgents.delete(e.sessionId)
+
     try {
       // `/` outlives every directory the session worked in, a removed worktree included.
-      const started = await $.process.run(['sh', '-c', DETACHED_RELEASE, 'sh', ownerOf(e.sessionId)], { cwd: '/' })
+      const owners = [ownerOf(e.sessionId), ...agents.map(agent => ownerOf(e.sessionId, agent))]
+      const started = await $.process.run(['sh', '-c', DETACHED_RELEASE, 'sh', ...owners], { cwd: '/' })
 
       if (started.exitCode === WERFT_MISSING) {
         throw new Error('werft is not on PATH')
