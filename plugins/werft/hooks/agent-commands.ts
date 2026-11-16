@@ -59,7 +59,7 @@ const isWords = (list: Token[]) => list.every(token => 'word' in token)
 // werft [--json] <agent subcommand> [words]. A new lease takes one owner, `--owner <o>` or
 // `--owner=<o>`, which the session end releases. A release names one lease id: the agents of a
 // session share its owner, so `release --owner` would destroy the leases of the others too, and
-// keeps its question like every other release form.
+// keeps its question like every other release form, a bare `release` included.
 function werft(list: Token[]): AgentCommand | undefined {
   const words = list.map(wordOf)
   const at = words[1] === '--json' ? 2 : 1
@@ -81,18 +81,16 @@ function werft(list: Token[]): AgentCommand | undefined {
 
   const [first = ''] = args
 
-  if (args.length === 1 && !first.startsWith('-')) {
-    return { releaseId: first }
-  }
-
-  return args.length === 0 ? {} : undefined
+  return args.length === 1 && !first.startsWith('-') ? { releaseId: first } : undefined
 }
 
-// The one owner of `werft lease`, else undefined: no owner, an empty one, or two. Every flag of
-// lease but the user's --view takes a value, which Go's flag package reads from the next word
-// when the flag has no `=`, whatever that word is: in `--tier --owner o`, `--owner` is the tier.
+// The one owner of `werft lease <image>`, else undefined: no owner, an empty one, two, or a word
+// beyond the image, after which Go's flag package reads no flag. Every flag of lease but the
+// user's --view takes a value, which it reads from the next word when the flag has no `=`,
+// whatever that word is: in `--tier --owner o`, `--owner` is the tier.
 function leaseOwner(args: string[]): AgentCommand | undefined {
   const owners: string[] = []
+  let positionals = 0
 
   for (let at = 0; at < args.length; at += 1) {
     const arg = args[at] ?? ''
@@ -101,12 +99,14 @@ function leaseOwner(args: string[]): AgentCommand | undefined {
 
     if (flag) {
       owners.push(flag[1] ?? value ?? '')
+    } else if (!arg.startsWith('-')) {
+      positionals += 1
     }
   }
 
   const [owner] = owners
 
-  return owners.length === 1 && owner ? { owner } : undefined
+  return owners.length === 1 && owner && positionals === 1 ? { owner } : undefined
 }
 
 // ssh -F <config> [-f] [-N] [-o <safe option>] [-L <forward>] <lease id> [remote command]
