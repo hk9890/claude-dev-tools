@@ -6,8 +6,8 @@
 type Token = { word: string } | { quoted: string } | { pipe: true }
 
 // What a command needs before it may run, as `werft --json leases` reports the leases: nothing
-// more, the lease it names must be live with this ssh_config, or what it releases, an owner or
-// the owner of a lease id, must be the one of this session.
+// more, the lease it names must be live with this ssh_config, the owner a new lease takes must be
+// the one of this session, or the lease id it releases must be of that owner.
 export type AgentCommand = { lease?: { id: string; config: string }; owner?: string; releaseId?: string }
 
 // A word holds no character the shell gives a meaning to; a quoted string runs in the VM alone.
@@ -56,8 +56,10 @@ const wordOf = (token: Token | undefined) => (token && 'word' in token ? token.w
 const textOf = (token: Token) => ('word' in token ? token.word : 'quoted' in token ? token.quoted : '|')
 const isWords = (list: Token[]) => list.every(token => 'word' in token)
 
-// werft [--json] <agent subcommand> [words]. A release names whose leases it destroys: one owner
-// (`--owner <o>` or `--owner=<o>`), or one lease id; any other release form keeps its question.
+// werft [--json] <agent subcommand> [words]. A new lease takes one owner, `--owner <o>` or
+// `--owner=<o>`, which the session end releases. A release names one lease id: the agents of a
+// session share its owner, so `release --owner` would destroy the leases of the others too, and
+// keeps its question like every other release form.
 function werft(list: Token[]): AgentCommand | undefined {
   const words = list.map(wordOf)
   const at = words[1] === '--json' ? 2 : 1
@@ -67,23 +69,44 @@ function werft(list: Token[]): AgentCommand | undefined {
     return undefined
   }
 
+  const args = words.slice(at + 1).map(word => word ?? '')
+
+  if (subcommand === 'lease') {
+    return leaseOwner(args)
+  }
+
   if (subcommand !== 'release') {
     return {}
   }
 
-  const args = words.slice(at + 1)
-  const [first = '', second] = args
-  const flag = OWNER_FLAG.exec(first)
-
-  if (flag && args.length === (flag[1] === undefined ? 2 : 1)) {
-    return { owner: flag[1] ?? second }
-  }
+  const [first = ''] = args
 
   if (args.length === 1 && !first.startsWith('-')) {
     return { releaseId: first }
   }
 
   return args.length === 0 ? {} : undefined
+}
+
+// The one owner of `werft lease`, else undefined: no owner, an empty one, or two. Every flag of
+// lease but the user's --view takes a value, which Go's flag package reads from the next word
+// when the flag has no `=`, whatever that word is: in `--tier --owner o`, `--owner` is the tier.
+function leaseOwner(args: string[]): AgentCommand | undefined {
+  const owners: string[] = []
+
+  for (let at = 0; at < args.length; at += 1) {
+    const arg = args[at] ?? ''
+    const flag = OWNER_FLAG.exec(arg)
+    const value = arg.startsWith('-') && !arg.includes('=') ? args[(at += 1)] : undefined
+
+    if (flag) {
+      owners.push(flag[1] ?? value ?? '')
+    }
+  }
+
+  const [owner] = owners
+
+  return owners.length === 1 && owner ? { owner } : undefined
 }
 
 // ssh -F <config> [-f] [-N] [-o <safe option>] [-L <forward>] <lease id> [remote command]

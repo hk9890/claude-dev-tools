@@ -9,9 +9,10 @@ allowed-tools: Bash(werft guide*)
 
 Take every new VM a task needs as a werft lease, in place of a VM built by hand with qemu, virt-install or a cloud image, and of a container that stands in for the VM. Build a VM another way only where the user asks for that way by name.
 
-In this session, three points of the guide take a fixed form:
+In this session, four points of the guide take a fixed form:
 
 - `--owner claude-${CLAUDE_SESSION_ID}` on every lease.
+- Release each lease by its id, `werft --json release <id>`, never with `--owner`: the other agents of this session lease with the same owner, and `--owner` releases their leases too.
 - A Bash call runs 10 minutes at most, less than the guide gives a lease call: run `werft --json lease` with `run_in_background` and wait for its notification.
 - Each werft and ssh command, scp copy and tar pipe into a lease is one Bash call of its own, written as the guide writes it: the ssh_config path in full as the lease printed it, the remote command in one single-quoted string, and paths on this host relative to the working directory. Only that form runs without a permission prompt. A copy out of the lease asks for permission, and so does a command joined to another, piped into a filter or held in a shell variable.
 

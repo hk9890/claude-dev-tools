@@ -143,9 +143,8 @@ const ALLOWED = [
   'werft --json lease ubuntu-26-04 --tier plain --owner claude-s1 --for 1h',
   'werft --json extend ab12cd --for 2h',
   'werft --json release ab12cd',
-  'werft --json release --owner claude-s1',
-  'werft --json release --owner=claude-s1',
-  'werft release -owner claude-s1',
+  'werft --json lease ubuntu-26-04 --owner=claude-s1',
+  'werft lease ubuntu-26-04 -owner claude-s1 --memory 8192 --cpus 4 --for 2h',
   'werft --json reap',
   'werft release ab12cd',
   'werft guide',
@@ -174,10 +173,18 @@ const ASKED = [
   'werft --json images -prune',
   'werft --json images -yes',
   'werft --json lease ubuntu-26-04 --owner claude-s1 --view',
+  'werft --json lease ubuntu-26-04 --tier plain --for 1h',
+  'werft --json lease ubuntu-26-04 --owner hans',
+  'werft --json lease ubuntu-26-04 --owner=claude-s2',
+  'werft --json lease ubuntu-26-04 --owner claude-s1 --owner claude-s1',
+  'werft --json lease ubuntu-26-04 --owner',
+  'werft --json lease ubuntu-26-04 --owner=',
+  'werft --json lease ubuntu-26-04 --tier --owner claude-s1',
+  'werft --json lease ubuntu-26-04 --tier=plain --for --owner=claude-s1',
+  'werft --json release --owner claude-s1',
+  'werft --json release --owner=claude-s1',
+  'werft release -owner claude-s1',
   'werft --json release --owner hans',
-  'werft --json release --owner=claude-s2',
-  'werft --json release -owner claude-s2',
-  'werft --json release --owner claude-s1 --owner hans',
   'werft --json release --owner',
   'werft --json release --owner=',
   'werft --json release hh00hh',
@@ -268,6 +275,26 @@ test('a werft that lists what is not JSON keeps the question of a call into a le
   engine(on, ASK, 'werft: warning\n')
 
   const verdict = await $.tool.check({ tool: 'Bash', input: { command: `ssh -F ${C} ab12cd 'x'` } })
+
+  expect(verdict.decision).toBe('ask')
+})
+
+for (const failing of ['process.run', 'session.id'] as const) {
+  test(`a ${failing} that fails keeps the question`, async ($, on) => {
+    on('tool.check', () => ASK)
+    on('session.id', () => (failing === 'session.id' ? Promise.reject(new Error('no session')) : { value: 's1' }))
+    on('process.run', () => (failing === 'process.run' ? Promise.reject(new Error('no werft')) : ran(0, LEASES)))
+
+    const verdict = await $.tool.check({ tool: 'Bash', input: { command: 'werft --json release ab12cd' } })
+
+    expect(verdict.decision).toBe('ask')
+  })
+}
+
+test('a werft that lists what is not a JSON list keeps the question', async ($, on) => {
+  engine(on, ASK, '{"id":"ab12cd"}')
+
+  const verdict = await $.tool.check({ tool: 'Bash', input: { command: 'werft --json release ab12cd' } })
 
   expect(verdict.decision).toBe('ask')
 })
