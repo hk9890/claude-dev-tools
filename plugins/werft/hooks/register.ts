@@ -1,6 +1,6 @@
-import type { EngineInterface, ProcessRunResult, Register, ToolCheckResult } from 'claude-code'
+import type { ProcessRunResult, Register, ToolCheckResult } from 'claude-code'
 
-import { type AgentCommand, agentCommand } from './agent-commands'
+import { agentCommand } from './agent-commands'
 
 // A release takes longer than the session end allows, so it runs in a session of its own with its
 // output closed, and `sh` returns at once: only a missing werft can still answer. A failed release
@@ -29,19 +29,6 @@ function leasesIn(listed: ProcessRunResult): Lease[] {
 // user stays theirs.
 const isModeAsk = (verdict: ToolCheckResult) => verdict.decision === 'ask' && !verdict.rule && !verdict.hook && !verdict.setting
 
-// The lease the command names is live with its ssh_config, the owner of a new lease is the one
-// of this session, and the lease it releases is of that owner.
-async function isOfThisSession($: EngineInterface, { lease, owner, releaseId }: AgentCommand): Promise<boolean> {
-  const leases = lease || releaseId ? leasesIn(await $.process.run(['werft', '--json', 'leases'], { cwd: '/', timeoutMs: 10_000 })) : []
-  const thisOwner = owner !== undefined || releaseId ? ownerOf(await $.session.id()) : undefined
-
-  return (
-    (!lease || leases.some(live => live.id === lease.id && live.ssh_config === lease.config)) &&
-    (!releaseId || leases.some(live => live.id === releaseId && live.owner === thisOwner)) &&
-    (owner === undefined || owner === thisOwner)
-  )
-}
-
 export const register: Register = on => {
   // The skill's allowed-tools make the engine ask before it loads the skill, and in the default
   // mode of a headless run nobody can answer, so the skill never loads.
@@ -53,7 +40,7 @@ export const register: Register = on => {
   }).catch(($, e, next) => next(e))
 
   // A command that fails here keeps the engine's verdict, and so does a check that throws: a werft
-  // that cannot start, or a session id that cannot be read.
+  // that cannot start, or a session id that cannot be read; the debug log says why.
   on('tool.check', { tool: 'Bash' }, async ($, e, next) => {
     const verdict = await next(e)
     const { command, dangerouslyDisableSandbox } = e.input as { command?: string; dangerouslyDisableSandbox?: boolean }
@@ -63,8 +50,21 @@ export const register: Register = on => {
       return verdict
     }
 
-    return (await isOfThisSession($, found)) ? { decision: 'allow' } : verdict
-  }).catch(($, e, next) => next(e))
+    const { lease, owner, ownedId } = found
+    const [leases, thisOwner] = await Promise.all([
+      lease || ownedId ? $.process.run(['werft', '--json', 'leases'], { cwd: '/', timeoutMs: 10_000 }).then(leasesIn) : [],
+      owner !== undefined || ownedId ? $.session.id().then(ownerOf) : undefined,
+    ])
+    const isLive = !lease || leases.some(live => live.id === lease.id && live.ssh_config === lease.config)
+    const isOwned = !ownedId || leases.some(live => live.id === ownedId && live.owner === thisOwner)
+    const isThisOwner = owner === undefined || owner === thisOwner
+
+    return isLive && isOwned && isThisOwner ? { decision: 'allow' } : verdict
+  }).catch(($, e, next) => {
+    $.ui.log(`werft: a permission check failed, the engine's verdict stands: ${next.error.message ?? next.error.kind}`, { to: 'debug' })
+
+    return next(e)
+  })
 
   on('session.end', async ($, e, next) => {
     try {

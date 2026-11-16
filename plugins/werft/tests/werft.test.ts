@@ -83,8 +83,10 @@ const LEASES = JSON.stringify([
 
 // Stands for the engine and the host: `verdict` on every call, the session s1, and
 // `werft --json leases` prints `listed`: by default the live lease ab12cd of this session with the
-// ssh_config C, and the lease hh00hh of the user.
+// ssh_config C, and the lease hh00hh of the user. Returns each debug line.
 function engine(on: On, verdict: ToolCheckResult, listed = LEASES) {
+  const logged: string[] = []
+
   on('tool.check', () => verdict)
   on('session.id', () => ({ value: 's1' }))
   on('process.run', ($, e) => {
@@ -92,6 +94,13 @@ function engine(on: On, verdict: ToolCheckResult, listed = LEASES) {
 
     return ran(0, listed)
   })
+  on('ui.log', ($, e) => {
+    logged.push(e.text)
+
+    return { value: undefined }
+  })
+
+  return logged
 }
 
 const ASK: ToolCheckResult = { decision: 'ask' }
@@ -144,6 +153,10 @@ const ALLOWED = [
   'werft --json extend ab12cd --for 2h',
   'werft --json release ab12cd',
   'werft --json lease ubuntu-26-04 --owner=claude-s1',
+  'werft --json lease --owner claude-s1 ubuntu-26-04',
+  'werft lease ubuntu-26-04 --json --owner claude-s1',
+  'werft release ab12cd --json',
+  'werft --json extend ab12cd',
   'werft lease ubuntu-26-04 -owner claude-s1 --memory 8192 --cpus 4 --for 2h',
   'werft --json reap',
   'werft release ab12cd',
@@ -183,6 +196,12 @@ const ASKED = [
   'werft --json lease ubuntu-26-04 extra --owner claude-s1',
   'werft --json lease --owner claude-s1',
   'werft --json release',
+  'werft --json lease ubuntu-26-04 --owner claude-s1 --wait --owner=hans',
+  'werft --json lease ubuntu-26-04 --stock --json --owner=claude-s1',
+  'werft --json lease ubuntu-26-04 --owner claude-s1 --',
+  'werft --json extend hh00hh --for 2h',
+  'werft --json extend zz99zz',
+  'werft --json extend ab12cd --owner claude-s1',
   'werft --json lease ubuntu-26-04 --tier=plain --for --owner=claude-s1',
   'werft --json release --owner claude-s1',
   'werft --json release --owner=claude-s1',
@@ -283,23 +302,32 @@ test('a werft that lists what is not JSON keeps the question of a call into a le
 })
 
 for (const failing of ['process.run', 'session.id'] as const) {
-  test(`a ${failing} that fails keeps the question`, async ($, on) => {
+  test(`a ${failing} that fails keeps the question and says why in the debug log`, async ($, on) => {
+    const logged: string[] = []
     on('tool.check', () => ASK)
     on('session.id', () => (failing === 'session.id' ? Promise.reject(new Error('no session')) : { value: 's1' }))
     on('process.run', () => (failing === 'process.run' ? Promise.reject(new Error('no werft')) : ran(0, LEASES)))
+    on('ui.log', ($, e) => {
+      logged.push(e.text)
+
+      return { value: undefined }
+    })
 
     const verdict = await $.tool.check({ tool: 'Bash', input: { command: 'werft --json release ab12cd' } })
 
     expect(verdict.decision).toBe('ask')
+    expect(logged).toHaveLength(1)
+    expect(logged[0]).toStartWith("werft: a permission check failed, the engine's verdict stands: ")
   })
 }
 
-test('a werft that lists what is not a JSON list keeps the question', async ($, on) => {
-  engine(on, ASK, '{"id":"ab12cd"}')
+test('a werft that lists what is not a JSON list keeps the question without a failure', async ($, on) => {
+  const logged = engine(on, ASK, '{"id":"ab12cd"}')
 
   const verdict = await $.tool.check({ tool: 'Bash', input: { command: 'werft --json release ab12cd' } })
 
   expect(verdict.decision).toBe('ask')
+  expect(logged).toEqual([])
 })
 
 test('a call out of the sandbox keeps its question', async ($, on) => {
