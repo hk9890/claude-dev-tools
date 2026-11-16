@@ -1,45 +1,35 @@
 import { expect, test } from 'claude-code/testing'
 import type { On, ProcessRunResult, ToolCheckResult } from 'claude-code'
 
-// The releases outlive the session end only in a session of their own with their output closed.
-const DETACHED_RELEASES = `exec setsid -f sh -c 'for id do werft --json release "$id"; done' sh "$@" </dev/null >/dev/null 2>&1`
+// The release outlives the session end only in a session of its own with its output closed,
+// releases each owner it is given, and runs once more where it fails.
+const DETACHED_RELEASE = `command -v werft >/dev/null || exit 99; exec setsid -f sh -c 'for o; do werft --json release --owner "$o" || werft --json release --owner "$o"; done' sh "$@" </dev/null >/dev/null 2>&1`
 
 const END = { reason: 'prompt_input_exit', sessionId: 's1', resume: { id: 's1' } } as const
-
-const LEASES = [
-  { id: 'a1', owner: 'claude-s1' },
-  { id: 'b2', owner: 'claude-s2' },
-  { id: 'c3', owner: 'claude-s1' },
-  { id: 'd4', owner: 'hans' },
-]
 
 function ran(exitCode: number, stdout: string): { value: ProcessRunResult } {
   return { value: { exitCode, stdout, stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
 }
 
-// Stands for the host: answers `werft --json leases` with `listed`, records each release started
-// and each debug line, and ends the session. A werft that is not on PATH is `{ isInstalled: false }`,
-// a host whose `sh` cannot start the detached releases (no setsid) is `{ releaseExit: 127 }`.
-function host(on: On, { listed = ran(0, JSON.stringify(LEASES)), isInstalled = true, releaseExit = 0 } = {}) {
-  const seen = { released: [] as string[], logged: [] as string[], ended: [] as string[] }
+// Stands for the host: records the owner of each release started and each debug line, and ends
+// the session. A host with no werft is `{ releaseExit: 99 }`, a host whose `sh` cannot start the
+// detached release (no setsid) is `{ releaseExit: 127 }`.
+function host(on: On, { releaseExit = 0 } = {}) {
+  const seen = { released: [] as string[], logged: [] as string[], ended: [] as string[], ran: [] as string[] }
+
+  on('session.id', () => ({ value: 's1' }))
+  on('tool.call', { tool: 'Bash' }, ($, e) => {
+    seen.ran.push(e.command)
+
+    return { result: 'ok' }
+  })
 
   on('process.run', ($, e) => {
-    if (!isInstalled) {
-      return { deny: 'spawn werft ENOENT' }
-    }
-
     expect(e.init?.cwd).toBe('/')
+    expect(e.argv.slice(0, 4)).toEqual(['sh', '-c', DETACHED_RELEASE, 'sh'])
+    seen.released.push(...e.argv.slice(4))
 
-    if (e.argv[0] === 'sh') {
-      expect(e.argv.slice(0, 4)).toEqual(['sh', '-c', DETACHED_RELEASES, 'sh'])
-      seen.released.push(...e.argv.slice(4))
-
-      return ran(releaseExit, '')
-    }
-
-    expect(e.argv).toEqual(['werft', '--json', 'leases'])
-
-    return listed
+    return ran(releaseExit, '')
   })
   on('ui.log', ($, e) => {
     seen.logged.push(e.text)
@@ -55,13 +45,50 @@ function host(on: On, { listed = ran(0, JSON.stringify(LEASES)), isInstalled = t
   return seen
 }
 
-test('the session end releases each lease of this session and no other', async ($, on) => {
+test('the session end releases the leases of this session by its owner', async ($, on) => {
   const seen = host(on)
 
   await $.session.end(END)
 
-  expect(seen.released).toEqual(['a1', 'c3'])
+  expect(seen.released).toEqual(['claude-s1'])
+  expect(seen.logged).toEqual([])
   expect(seen.ended).toEqual(['s1'])
+})
+
+test('a lease of a subagent takes the owner of that agent, which the session end releases', async ($, on) => {
+  const seen = host(on)
+
+  await $.tool.call({ tool: 'Bash', command: 'werft --json lease ubuntu-26-04 --owner claude-s1 --for 1h', agentId: 'ag1' })
+  await $.tool.call({ tool: 'Bash', command: 'werft --json lease ubuntu-26-04 --owner=claude-s1', agentId: 'ag2' })
+  await $.tool.call({ tool: 'Bash', command: 'werft lease my-owner -owner claude-s1', agentId: 'ag2' })
+  await $.tool.call({ tool: 'Bash', command: 'werft lease img --tier --owner --owner claude-s1', agentId: 'ag2' })
+  await $.tool.call({ tool: 'Bash', command: 'werft --json lease ubuntu-26-04 --owner claude-s1-ag3', agentId: 'ag3' })
+  await $.tool.call({ tool: 'Bash', command: 'werft --json lease ubuntu-26-04 --owner claude-s1\n', agentId: 'ag3' })
+  await $.session.end(END)
+
+  expect(seen.ran).toEqual(['werft --json lease ubuntu-26-04 --owner claude-s1-ag1 --for 1h', 'werft --json lease ubuntu-26-04 --owner=claude-s1-ag2', 'werft lease my-owner -owner claude-s1-ag2', 'werft lease img --tier --owner --owner claude-s1-ag2', 'werft --json lease ubuntu-26-04 --owner claude-s1-ag3', 'werft --json lease ubuntu-26-04 --owner claude-s1-ag3\n'])
+  expect(seen.released).toEqual(['claude-s1', 'claude-s1-ag1', 'claude-s1-ag2', 'claude-s1-ag3'])
+})
+
+test('a lease of the main agent and any other command keep their words', async ($, on) => {
+  const seen = host(on)
+
+  await $.tool.call({ tool: 'Bash', command: 'werft --json lease ubuntu-26-04 --owner claude-s1' })
+  await $.tool.call({ tool: 'Bash', command: 'werft --json lease ubuntu-26-04 --owner hans', agentId: 'ag1' })
+  await $.tool.call({ tool: 'Bash', command: 'werft --json release ab12cd', agentId: 'ag1' })
+  await $.session.end(END)
+
+  expect(seen.ran).toEqual(['werft --json lease ubuntu-26-04 --owner claude-s1', 'werft --json lease ubuntu-26-04 --owner hans', 'werft --json release ab12cd'])
+  expect(seen.released).toEqual(['claude-s1'])
+})
+
+test('a lease of a subagent that cannot take its owner does not run', async ($, on) => {
+  const seen = host(on)
+
+  const answer = await $.tool.call({ tool: 'Bash', command: 'werft --json lease ubuntu-26-04 --owner claude-s1', agentId: 'a b' })
+
+  expect(answer.deny).toContain('cannot be part of a lease owner')
+  expect(seen.ran).toEqual([])
 })
 
 test('a /clear releases the leases of the session it ends', async ($, on) => {
@@ -69,65 +96,24 @@ test('a /clear releases the leases of the session it ends', async ($, on) => {
 
   await $.session.end({ reason: 'clear', sessionId: 's2', resume: { id: 's2' } })
 
-  expect(seen.released).toEqual(['b2'])
-})
-
-test('a session with no lease releases nothing', async ($, on) => {
-  const seen = host(on, { listed: ran(0, '[]') })
-
-  await $.session.end(END)
-
-  expect(seen.released).toEqual([])
-  expect(seen.logged).toEqual([])
-  expect(seen.ended).toEqual(['s1'])
-})
-
-test('a failed werft call releases nothing and the session still ends', async ($, on) => {
-  const seen = host(on, { listed: ran(1, '{"error": {"kind": "failed", "message": "libvirt"}}') })
-
-  await $.session.end(END)
-
-  expect(seen.released).toEqual([])
-  expect(seen.logged).toEqual(['werft: no lease released at the session end: Error: werft --json leases exited 1: {"error": {"kind": "failed", "message": "libvirt"}}'])
-  expect(seen.ended).toEqual(['s1'])
+  expect(seen.released).toEqual(['claude-s2'])
 })
 
 test('without werft the session ends and the debug log says why', async ($, on) => {
-  const seen = host(on, { isInstalled: false })
+  const seen = host(on, { releaseExit: 99 })
 
   await $.session.end(END)
 
-  expect(seen.released).toEqual([])
-  expect(seen.logged).toHaveLength(1)
-  expect(seen.logged[0]).toContain('spawn werft ENOENT')
+  expect(seen.logged).toEqual(['werft: no lease released at the session end: Error: werft is not on PATH'])
   expect(seen.ended).toEqual(['s1'])
 })
 
-test('a failed werft call releases nothing, also where it printed leases', async ($, on) => {
-  const seen = host(on, { listed: ran(1, JSON.stringify(LEASES)) })
-
-  await $.session.end(END)
-
-  expect(seen.released).toEqual([])
-  expect(seen.ended).toEqual(['s1'])
-})
-
-test('releases that cannot start name setsid in the debug log', async ($, on) => {
+test('a release that cannot start names setsid in the debug log', async ($, on) => {
   const seen = host(on, { releaseExit: 127 })
 
   await $.session.end(END)
 
-  expect(seen.logged).toEqual(['werft: no lease released at the session end: Error: the releases did not start (exit 127): is setsid -f on PATH?'])
-  expect(seen.ended).toEqual(['s1'])
-})
-
-test('output that is not JSON releases nothing and the debug log says why', async ($, on) => {
-  const seen = host(on, { listed: ran(0, 'not json') })
-
-  await $.session.end(END)
-
-  expect(seen.released).toEqual([])
-  expect(seen.logged).toHaveLength(1)
+  expect(seen.logged).toEqual(['werft: no lease released at the session end: Error: the release did not start (exit 127): is setsid -f on PATH?'])
   expect(seen.ended).toEqual(['s1'])
 })
 
@@ -157,13 +143,14 @@ const FILES: Record<string, string> = {
   '/p/sub': 'dir',
   '/p/sub/notes.txt': '->/home/u/.ssh/id_ed25519',
   '/p/notes.txt': 'file',
+  '/p/locked': 'dir',
   '/q': 'dir',
   '/q/file': 'file',
   '/home/u/.ssh': 'dir',
   '/home/u/.ssh/id_ed25519': 'file',
 }
 const files = (length: number) => Array.from({ length }, (_, n) => ({ name: `f${n}`, kind: 'file' as const, size: 0, mtimeMs: 0, isLink: false }))
-// One entry past the tree limit, and the limit itself.
+// One entry past the tree limit, and the limit itself; /p/locked cannot be listed.
 const LISTED: Record<string, ReturnType<typeof files>> = { '/p/big': files(10_001), '/p/full': files(10_000) }
 
 // Where a path lands as realpath(1) resolves it, or undefined where it leads nowhere.
@@ -191,15 +178,26 @@ function realPath(path: string): string | undefined {
   return at || '/'
 }
 
-// Stands for the engine and the host: `verdict` on every call, `werft --json leases` lists the one
-// live lease ab12cd with the ssh_config C, the files are FILES, the project is /p, and the session
-// runs in `cwd`.
-function engine(on: On, verdict: ToolCheckResult, cwd = '/p') {
+const LEASES = JSON.stringify([
+  { id: 'ab12cd', owner: 'claude-s1', ssh_config: C },
+  { id: 'hh00hh', owner: 'hans', ssh_config: '/home/u/.local/state/werft/leases/hh00hh/ssh_config' },
+  { id: 'ag1111', owner: 'claude-s1-ag1', ssh_config: '/home/u/.local/state/werft/leases/ag1111/ssh_config' },
+  { id: 'ag2222', owner: 'claude-s1-ag2', ssh_config: '/home/u/.local/state/werft/leases/ag2222/ssh_config' },
+])
+
+// Stands for the engine and the host: `verdict` on every call, the session s1, and
+// `werft --json leases` prints `listed`: by default the live lease ab12cd of this session with the
+// ssh_config C, and the lease hh00hh of the user. The files are FILES, the project is /p, and the
+// session runs in `cwd`. Returns each debug line.
+function engine(on: On, verdict: ToolCheckResult, { listed = LEASES, cwd = '/p' } = {}) {
+  const logged: string[] = []
+
   on('tool.check', () => verdict)
+  on('session.id', () => ({ value: 's1' }))
   on('process.run', ($, e) => {
     expect(e.argv).toEqual(['werft', '--json', 'leases'])
 
-    return ran(0, JSON.stringify([{ id: 'ab12cd', owner: 'claude-s1', ssh_config: C }]))
+    return ran(0, listed)
   })
   on('session.root', () => ({ value: '/p' }))
   on('session.cwd', () => ({ value: cwd }))
@@ -220,10 +218,14 @@ function engine(on: On, verdict: ToolCheckResult, cwd = '/p') {
   on('fs.list', ($, e) => {
     expect(FILES[e.path]).toBe('dir')
 
-    const listed = LISTED[e.path]
+    if (e.path === '/p/locked') {
+      return Promise.reject(new Error(`EACCES: ${e.path}`))
+    }
 
-    if (listed) {
-      return { value: listed }
+    const entries = LISTED[e.path]
+
+    if (entries) {
+      return { value: entries }
     }
 
     const children = Object.entries(FILES).filter(([path]) => path.slice(0, path.lastIndexOf('/')) === e.path)
@@ -238,6 +240,13 @@ function engine(on: On, verdict: ToolCheckResult, cwd = '/p') {
       })),
     }
   })
+  on('ui.log', ($, e) => {
+    logged.push(e.text)
+
+    return { value: undefined }
+  })
+
+  return logged
 }
 
 const ASK: ToolCheckResult = { decision: 'ask' }
@@ -289,6 +298,14 @@ const ALLOWED = [
   'werft --json lease ubuntu-26-04 --tier plain --owner claude-s1 --for 1h',
   'werft --json extend ab12cd --for 2h',
   'werft --json release ab12cd',
+  'werft --json lease ubuntu-26-04 --owner=claude-s1',
+  'werft --json lease --owner claude-s1 ubuntu-26-04',
+  'werft lease ubuntu-26-04 --json --owner claude-s1',
+  'werft release ab12cd --json',
+  'werft --json extend ab12cd',
+  'werft --json release ag1111',
+  'werft --json extend ag1111 --for 1h',
+  'werft lease ubuntu-26-04 -owner claude-s1 --memory 8192 --cpus 4 --for 2h',
   'werft --json reap',
   'werft release ab12cd',
   'werft guide',
@@ -323,6 +340,36 @@ const ASKED = [
   'werft --json images -prune',
   'werft --json images -yes',
   'werft --json lease ubuntu-26-04 --owner claude-s1 --view',
+  'werft --json lease ubuntu-26-04 --tier plain --for 1h',
+  'werft --json lease ubuntu-26-04 --owner hans',
+  'werft --json lease ubuntu-26-04 --owner=claude-s2',
+  'werft --json lease ubuntu-26-04 --owner claude-s1 --owner claude-s1',
+  'werft --json lease ubuntu-26-04 --owner',
+  'werft --json lease ubuntu-26-04 --owner=',
+  'werft --json lease ubuntu-26-04 --tier --owner claude-s1',
+  'werft --json lease ubuntu-26-04 extra --owner claude-s1',
+  'werft --json lease --owner claude-s1',
+  'werft --json release',
+  '--json werft --json lease ubuntu-26-04 --owner claude-s1',
+  '--json werft images',
+  'werft --json lease ubuntu-26-04 --owner claude-s1 --wait --owner=hans',
+  'werft --json lease ubuntu-26-04 --stock --json --owner=claude-s1',
+  'werft --json lease ubuntu-26-04 --owner claude-s1 --',
+  'werft --json extend hh00hh --for 2h',
+  'werft --json extend zz99zz',
+  'werft --json extend ab12cd --owner claude-s1',
+  'werft --json lease ubuntu-26-04 --tier=plain --for --owner=claude-s1',
+  'werft --json release --owner claude-s1',
+  'werft --json release --owner=claude-s1',
+  'werft release -owner claude-s1',
+  'werft --json release --owner hans',
+  'werft --json release --owner',
+  'werft --json release --owner=',
+  'werft --json release hh00hh',
+  'werft --json release zz99zz',
+  'werft --json release ab12cd --owner claude-s1',
+  'werft --json release --owner claude-s1 ab12cd',
+  'werft --json release ab12cd hh00hh',
   `tar -C . -cf - -I./prog | ssh -F ${C} ab12cd 'cat'`,
   `tar -C -Iprog -cf - . | ssh -F ${C} ab12cd 'cat'`,
   `scp -F ${C} -S./prog ab12cd:x`,
@@ -398,7 +445,7 @@ for (const command of ASKED) {
 
 // The shell reads a relative path from the directory the session runs in, which a cd moves.
 test('after a cd, an upload reads from the new directory', async ($, on) => {
-  engine(on, ASK, '/p/sub')
+  engine(on, ASK, { cwd: '/p/sub' })
 
   const verdict = await $.tool.check({ tool: 'Bash', input: { command: `scp -F ${C} notes.txt ab12cd:k` } })
 
@@ -406,7 +453,7 @@ test('after a cd, an upload reads from the new directory', async ($, on) => {
 })
 
 test('an upload from a working directory outside the project runs', async ($, on) => {
-  engine(on, ASK, '/q')
+  engine(on, ASK, { cwd: '/q' })
 
   const verdict = await $.tool.check({ tool: 'Bash', input: { command: `scp -F ${C} file ab12cd:k` } })
 
@@ -428,6 +475,76 @@ for (const verdict of [{ decision: 'ask', rule: 'Bash(ssh:*)' }, { decision: 'as
     const answer = await $.tool.check({ tool: 'Bash', input: { command: `ssh -F ${C} ab12cd 'x'` } })
 
     expect(answer.decision).toBe('ask')
+  })
+}
+
+test('a werft that lists what is not JSON keeps the question of a call into a lease', async ($, on) => {
+  engine(on, ASK, { listed: 'werft: warning\n' })
+
+  const verdict = await $.tool.check({ tool: 'Bash', input: { command: `ssh -F ${C} ab12cd 'x'` } })
+
+  expect(verdict.decision).toBe('ask')
+})
+
+for (const failing of ['process.run', 'session.id'] as const) {
+  test(`a ${failing} that fails keeps the question and says why in the debug log`, async ($, on) => {
+    const logged: string[] = []
+    on('tool.check', () => ASK)
+    on('session.id', () => (failing === 'session.id' ? Promise.reject(new Error('no session')) : { value: 's1' }))
+    on('process.run', () => (failing === 'process.run' ? Promise.reject(new Error('no werft')) : ran(0, LEASES)))
+    on('ui.log', ($, e) => {
+      logged.push(e.text)
+
+      return { value: undefined }
+    })
+
+    const verdict = await $.tool.check({ tool: 'Bash', input: { command: 'werft --json release ab12cd' } })
+
+    expect(verdict.decision).toBe('ask')
+    expect(logged).toHaveLength(1)
+    expect(logged[0]).toStartWith("werft: a permission check failed, the engine's verdict stands: ")
+  })
+}
+
+test('a tree that cannot be listed keeps the question of its copy and says why in the debug log', async ($, on) => {
+  const logged = engine(on, ASK)
+
+  const verdict = await $.tool.check({ tool: 'Bash', input: { command: `scp -F ${C} -r locked ab12cd:locked` } })
+
+  expect(verdict.decision).toBe('ask')
+  expect(logged).toHaveLength(1)
+  expect(logged[0]).toStartWith("werft: a permission check failed, the engine's verdict stands: ")
+})
+
+test('a werft that lists what is not a JSON list keeps the question without a failure', async ($, on) => {
+  const logged = engine(on, ASK, { listed: '{"id":"ab12cd"}' })
+
+  const verdict = await $.tool.check({ tool: 'Bash', input: { command: 'werft --json release ab12cd' } })
+
+  expect(verdict.decision).toBe('ask')
+  expect(logged).toEqual([])
+})
+
+const IN_AGENT_ALLOWED = ['werft --json release ag1111', 'werft --json extend ag1111 --for 1h', 'werft --json lease ubuntu-26-04 --owner claude-s1', 'werft --json lease ubuntu-26-04 --owner claude-s1-ag1']
+const IN_AGENT_ASKED = ['werft --json release ab12cd', 'werft --json extend ab12cd', 'werft --json lease ubuntu-26-04 --owner claude-s1-ag2', 'werft --json release ag2222']
+
+for (const command of IN_AGENT_ALLOWED) {
+  test(`allows in the subagent ag1: ${command}`, async ($, on) => {
+    engine(on, ASK)
+
+    const verdict = await $.tool.check({ tool: 'Bash', input: { command }, agentId: 'ag1' })
+
+    expect(verdict.decision).toBe('allow')
+  })
+}
+
+for (const command of IN_AGENT_ASKED) {
+  test(`keeps the question in the subagent ag1: ${command}`, async ($, on) => {
+    engine(on, ASK)
+
+    const verdict = await $.tool.check({ tool: 'Bash', input: { command }, agentId: 'ag1' })
+
+    expect(verdict.decision).toBe('ask')
   })
 }
 
