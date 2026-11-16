@@ -48,54 +48,58 @@ const resolved = ($: EngineInterface, path: string): Promise<Landing | undefined
     () => undefined,
   )
 
-// Whether each path the command reads on this host lands in the project or the directory the
-// session runs in, and, under a tree it copies whole, each link too: a link in the working tree may
-// lead to a file anywhere on this host.
+const isUnder = (path: string, edge: string) => path === edge || path.startsWith(edge.endsWith('/') ? edge : `${edge}/`)
+
+// Whether each path the command reads on this host lands in the project, or in the directory the
+// session runs in where no link leads there, and, under the tree it copies whole, each link too: a
+// link in the working tree may lead to a file anywhere on this host.
 async function readsOnlyTheProject($: EngineInterface, command: AgentCommand): Promise<boolean> {
-  if (!command.reads) {
+  const { reads, tree } = command
+
+  if (!reads) {
     return true
   }
 
   // The shell resolves the command's relative paths against the directory the session runs in.
   const [root, cwd] = await Promise.all([$.session.root(), $.session.cwd()])
-  const edges = (await Promise.all([resolved($, root), resolved($, cwd)])).flatMap(edge => (edge ? [edge.realPath] : []))
-  const isInside = (landing: Landing | undefined) =>
-    landing !== undefined && edges.some(edge => landing.realPath === edge || landing.realPath.startsWith(`${edge}/`))
+  const [rootLanding, cwdLanding] = await Promise.all([resolved($, root), resolved($, cwd)])
+  // A working directory reached through a link would make the link's target part of the project.
+  const edges = [rootLanding?.realPath, cwdLanding?.realPath === cwd ? cwd : undefined].filter(edge => edge !== undefined)
+  const isInside = (landing: Landing | undefined) => landing !== undefined && edges.some(edge => isUnder(landing.realPath, edge))
 
-  const landings = await Promise.all(command.reads.map(path => resolved($, `${cwd}/${path}`)))
+  const landings = await Promise.all(reads.map(path => resolved($, `${cwd}/${path}`)))
 
   if (!landings.every(isInside)) {
     return false
   }
 
-  const top = landings[0]
-  const pending = command.isRecursive && top?.kind === 'dir' ? [top.realPath] : []
+  const top = tree === undefined ? undefined : landings[reads.indexOf(tree)]
   const walked = new Set<string>()
+  let level = top?.kind === 'dir' ? [top.realPath] : []
   let entries = 0
 
-  for (let dir = pending.pop(); dir !== undefined; dir = pending.pop()) {
-    if (walked.has(dir)) {
-      continue
-    }
-
-    walked.add(dir)
-    const listed = await $.fs.list(dir)
-    entries += listed.length
+  while (level.length > 0) {
+    const dirs = [...new Set(level)].filter(dir => !walked.has(dir))
+    dirs.forEach(dir => walked.add(dir))
+    const listings = await Promise.all(dirs.map(dir => $.fs.list(dir).then(listed => ({ dir, listed }))))
+    entries += listings.reduce((sum, { listed }) => sum + listed.length, 0)
 
     if (entries > TREE_LIMIT) {
       return false
     }
 
-    const links = await Promise.all(listed.filter(entry => entry.isLink).map(entry => resolved($, `${dir}/${entry.name}`)))
+    const links = await Promise.all(
+      listings.flatMap(({ dir, listed }) => listed.filter(entry => entry.isLink).map(entry => resolved($, `${dir}/${entry.name}`))),
+    )
 
     if (!links.every(isInside)) {
       return false
     }
 
-    pending.push(
-      ...listed.filter(entry => !entry.isLink && entry.kind === 'dir').map(entry => `${dir}/${entry.name}`),
+    level = [
+      ...listings.flatMap(({ dir, listed }) => listed.filter(entry => !entry.isLink && entry.kind === 'dir').map(entry => `${dir}/${entry.name}`)),
       ...links.flatMap(link => (link?.kind === 'dir' ? [link.realPath] : [])),
-    )
+    ]
   }
 
   return true
@@ -123,9 +127,10 @@ export const register: Register = on => {
     }
 
     const { lease, owner, ownedId } = found
-    const [leases, sessionId] = await Promise.all([
+    const [leases, sessionId, isReadOfTheProject] = await Promise.all([
       lease || ownedId ? $.process.run(['werft', '--json', 'leases'], { cwd: '/', timeoutMs: 10_000 }).then(leasesIn) : [],
       owner !== undefined || ownedId ? $.session.id() : undefined,
+      readsOnlyTheProject($, found),
     ])
     const agentOwner = sessionId === undefined ? undefined : ownerOf(sessionId, e.agentId)
     const isLive = !lease || leases.some(live => live.id === lease.id && live.ssh_config === lease.config)
@@ -133,7 +138,7 @@ export const register: Register = on => {
     // The agent writes the owner of the session, which the lease call below makes its own.
     const isThisOwner = owner === undefined || (sessionId !== undefined && [ownerOf(sessionId), agentOwner].includes(owner))
 
-    return isLive && isOwned && isThisOwner && (await readsOnlyTheProject($, found)) ? { decision: 'allow' } : verdict
+    return isLive && isOwned && isThisOwner && isReadOfTheProject ? { decision: 'allow' } : verdict
   }).catch(($, e, next) => {
     $.ui.log(`werft: a permission check failed, the engine's verdict stands: ${next.error.message ?? next.error.kind}`, { to: 'debug' })
 

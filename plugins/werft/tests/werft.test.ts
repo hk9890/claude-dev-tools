@@ -121,6 +121,7 @@ const C = '/home/u/.local/state/werft/leases/ab12cd/ssh_config'
 
 // The host's files: the project /p is the working directory; `->` marks a link and its target.
 const FILES: Record<string, string> = {
+  '/': 'dir',
   '/p': 'dir',
   '/p/file': 'file',
   '/p/src': 'dir',
@@ -146,6 +147,8 @@ const FILES: Record<string, string> = {
   '/p/locked': 'dir',
   '/q': 'dir',
   '/q/file': 'file',
+  '/home': 'dir',
+  '/home/u': 'dir',
   '/home/u/.ssh': 'dir',
   '/home/u/.ssh/id_ed25519': 'file',
 }
@@ -187,9 +190,9 @@ const LEASES = JSON.stringify([
 
 // Stands for the engine and the host: `verdict` on every call, the session s1, and
 // `werft --json leases` prints `listed`: by default the live lease ab12cd of this session with the
-// ssh_config C, and the lease hh00hh of the user. The files are FILES, the project is /p, and the
-// session runs in `cwd`. Returns each debug line.
-function engine(on: On, verdict: ToolCheckResult, { listed = LEASES, cwd = '/p' } = {}) {
+// ssh_config C, and the lease hh00hh of the user. The files are FILES, the project is `root`, and
+// the session runs in `cwd`. Returns each debug line.
+function engine(on: On, verdict: ToolCheckResult, { listed = LEASES, root = '/p', cwd = '/p' } = {}) {
   const logged: string[] = []
 
   on('tool.check', () => verdict)
@@ -199,7 +202,7 @@ function engine(on: On, verdict: ToolCheckResult, { listed = LEASES, cwd = '/p' 
 
     return ran(0, listed)
   })
-  on('session.root', () => ({ value: '/p' }))
+  on('session.root', () => ({ value: root }))
   on('session.cwd', () => ({ value: cwd }))
   on('fs.stat', ($, e) => {
     const own = FILES[e.path]
@@ -435,11 +438,13 @@ for (const command of ALLOWED) {
 
 for (const command of ASKED) {
   test(`keeps the question: ${command}`, async ($, on) => {
-    engine(on, ASK)
+    // A check that throws keeps the question too, and says so in the debug log.
+    const logged = engine(on, ASK)
 
     const verdict = await $.tool.check({ tool: 'Bash', input: { command } })
 
     expect(verdict.decision).toBe('ask')
+    expect(logged).toEqual([])
   })
 }
 
@@ -456,6 +461,22 @@ test('an upload from a working directory outside the project runs', async ($, on
   engine(on, ASK, { cwd: '/q' })
 
   const verdict = await $.tool.check({ tool: 'Bash', input: { command: `scp -F ${C} file ab12cd:k` } })
+
+  expect(verdict.decision).toBe('allow')
+})
+
+test('a working directory reached through a link does not widen the project', async ($, on) => {
+  engine(on, ASK, { cwd: '/p/linkdir' })
+
+  const verdict = await $.tool.check({ tool: 'Bash', input: { command: `scp -F ${C} id_ed25519 ab12cd:k` } })
+
+  expect(verdict.decision).toBe('ask')
+})
+
+test('an upload of a session in / runs', async ($, on) => {
+  engine(on, ASK, { root: '/', cwd: '/' })
+
+  const verdict = await $.tool.check({ tool: 'Bash', input: { command: `scp -F ${C} p/file ab12cd:k` } })
 
   expect(verdict.decision).toBe('allow')
 })

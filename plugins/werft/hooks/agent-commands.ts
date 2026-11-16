@@ -8,14 +8,14 @@ type Token = { word: string } | { quoted: string } | { pipe: true }
 // What a command needs before it may run, as `werft --json leases` reports the leases: nothing
 // more, the lease it names must be live with this ssh_config, the owner a new lease takes must be
 // the one of this session or of the asking agent, or the lease it extends or releases must be of
-// the asking agent. Each path it reads on this host must land in the project, the links on the way
-// resolved; and where it copies the first of them whole, each link under it too.
+// the asking agent. Each path it reads on this host must land in the project or the directory the
+// session runs in, the links on the way resolved; and under the tree it copies whole, each link too.
 export type AgentCommand = {
   lease?: { id: string; config: string }
   owner?: string
   ownedId?: string
   reads?: string[]
-  isRecursive?: boolean
+  tree?: string
 }
 
 // A word holds no character the shell gives a meaning to; a quoted string runs in the VM alone.
@@ -171,7 +171,7 @@ function scpInto(list: Token[]): AgentCommand | undefined {
   }
 
   // scp follows each link it meets, also inside a tree it copies with -r.
-  return { lease: { id, config }, reads: [from], isRecursive: wordOf(list[3]) === '-r' }
+  return { lease: { id, config }, reads: [from], ...(wordOf(list[3]) === '-r' && { tree: from }) }
 }
 
 // tar -C <dir> -cf - <path> | ssh ... : a read of the working tree into the lease.
@@ -185,11 +185,11 @@ function tarInto(list: Token[]): AgentCommand | undefined {
 
   const into = ssh(list.slice(pipe + 1))
 
-  // tar follows a link in `-C` and in the directories on its operand's path; the operand itself, and
-  // each link under it, it stores as a link.
+  // tar follows a link in `-C` and in the directories on its operand's path, so their parent, which
+  // starts with `-C`, is what it reads; the operand itself, and each link under it, it stores as a link.
   const operand = `${dir}/${path}`.replace(/\/+$/, '')
 
-  return into && { ...into, reads: [dir, operand.slice(0, operand.lastIndexOf('/'))] }
+  return into && { ...into, reads: [operand.slice(0, operand.lastIndexOf('/'))] }
 }
 
 export function agentCommand(command: string): AgentCommand | undefined {
