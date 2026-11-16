@@ -14,7 +14,8 @@ const DETACHED_RELEASE = `command -v werft >/dev/null || exit ${WERFT_MISSING}; 
 type Lease = { id: string; owner: string; ssh_config: string }
 
 // The owner that the werft skill gives every lease of a session. The mod gives a lease of a
-// subagent the owner of that agent, so one agent cannot release the leases of another by id.
+// subagent the owner of that agent, so a subagent cannot release the leases of another agent by
+// id; the main agent can release them all, the leases its subagents hand back included.
 const ownerOf = (sessionId: string, agentId?: string) => (agentId ? `claude-${sessionId}-${agentId}` : `claude-${sessionId}`)
 
 // The subagents of each session that leased, whose owners the session end releases. A hot reload
@@ -63,7 +64,7 @@ export const register: Register = on => {
     ])
     const agentOwner = sessionId === undefined ? undefined : ownerOf(sessionId, e.agentId)
     const isLive = !lease || leases.some(live => live.id === lease.id && live.ssh_config === lease.config)
-    const isOwned = !ownedId || leases.some(live => live.id === ownedId && live.owner === agentOwner)
+    const isOwned = !ownedId || leases.some(live => live.id === ownedId && (live.owner === agentOwner || (!e.agentId && live.owner.startsWith(`${agentOwner}-`))))
     // The agent writes the owner of the session, which the lease call below makes its own.
     const isThisOwner = owner === undefined || (sessionId !== undefined && [ownerOf(sessionId), agentOwner].includes(owner))
 
@@ -75,7 +76,9 @@ export const register: Register = on => {
   })
 
   // A lease of a subagent with the owner of the session takes the owner of that agent, in each
-  // word that names it, whichever flag werft reads it for. The session end releases that owner.
+  // word that names it, whichever flag werft reads it for. The session end releases that owner. A
+  // lease that cannot take it does not run: under the owner of the session, any agent could
+  // release it.
   on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
     const { command, agentId } = e
     const owner = agentId ? agentCommand(command)?.owner : undefined
@@ -85,11 +88,16 @@ export const register: Register = on => {
       return next(e)
     }
 
-    leasingAgents.set(sessionId, (leasingAgents.get(sessionId) ?? new Set()).add(agentId))
-    const sessionOwnerWord = new RegExp(`(?<=[ \\t=])${ownerOf(sessionId)}(?=[ \\t]|$)`, 'g')
+    if (!/^[A-Za-z0-9_-]+$/.test(agentId)) {
+      return { deny: `werft: the agent id ${JSON.stringify(agentId)} cannot be part of a lease owner` }
+    }
 
-    return next({ ...e, command: command.replace(sessionOwnerWord, ownerOf(sessionId, agentId)) })
-  }).catch(($, e, next) => next(e))
+    leasingAgents.set(sessionId, (leasingAgents.get(sessionId) ?? new Set()).add(agentId))
+    const sessionOwner = ownerOf(sessionId).replace(/[^A-Za-z0-9_-]/g, '\\$&')
+    const sessionOwnerWord = new RegExp(`(?<=[\\s=])${sessionOwner}(?=\\s|$)`, 'g')
+
+    return next({ ...e, command: command.replace(sessionOwnerWord, () => ownerOf(sessionId, agentId)) })
+  }).catch(($, e, next) => (next.called ? next(e) : { deny: `werft: the lease could not take the owner of this agent: ${next.error.message ?? next.error.kind}` }))
 
   on('session.end', async ($, e, next) => {
     const agents = [...(leasingAgents.get(e.sessionId) ?? [])]

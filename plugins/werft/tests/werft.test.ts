@@ -63,9 +63,10 @@ test('a lease of a subagent takes the owner of that agent, which the session end
   await $.tool.call({ tool: 'Bash', command: 'werft lease my-owner -owner claude-s1', agentId: 'ag2' })
   await $.tool.call({ tool: 'Bash', command: 'werft lease img --tier --owner --owner claude-s1', agentId: 'ag2' })
   await $.tool.call({ tool: 'Bash', command: 'werft --json lease ubuntu-26-04 --owner claude-s1-ag3', agentId: 'ag3' })
+  await $.tool.call({ tool: 'Bash', command: 'werft --json lease ubuntu-26-04 --owner claude-s1\n', agentId: 'ag3' })
   await $.session.end(END)
 
-  expect(seen.ran).toEqual(['werft --json lease ubuntu-26-04 --owner claude-s1-ag1 --for 1h', 'werft --json lease ubuntu-26-04 --owner=claude-s1-ag2', 'werft lease my-owner -owner claude-s1-ag2', 'werft lease img --tier --owner --owner claude-s1-ag2', 'werft --json lease ubuntu-26-04 --owner claude-s1-ag3'])
+  expect(seen.ran).toEqual(['werft --json lease ubuntu-26-04 --owner claude-s1-ag1 --for 1h', 'werft --json lease ubuntu-26-04 --owner=claude-s1-ag2', 'werft lease my-owner -owner claude-s1-ag2', 'werft lease img --tier --owner --owner claude-s1-ag2', 'werft --json lease ubuntu-26-04 --owner claude-s1-ag3', 'werft --json lease ubuntu-26-04 --owner claude-s1-ag3\n'])
   expect(seen.released).toEqual(['claude-s1', 'claude-s1-ag1', 'claude-s1-ag2', 'claude-s1-ag3'])
 })
 
@@ -79,6 +80,15 @@ test('a lease of the main agent and any other command keep their words', async (
 
   expect(seen.ran).toEqual(['werft --json lease ubuntu-26-04 --owner claude-s1', 'werft --json lease ubuntu-26-04 --owner hans', 'werft --json release ab12cd'])
   expect(seen.released).toEqual(['claude-s1'])
+})
+
+test('a lease of a subagent that cannot take its owner does not run', async ($, on) => {
+  const seen = host(on)
+
+  const answer = await $.tool.call({ tool: 'Bash', command: 'werft --json lease ubuntu-26-04 --owner claude-s1', agentId: 'a b' })
+
+  expect(answer.deny).toContain('cannot be part of a lease owner')
+  expect(seen.ran).toEqual([])
 })
 
 test('a /clear releases the leases of the session it ends', async ($, on) => {
@@ -113,6 +123,7 @@ const LEASES = JSON.stringify([
   { id: 'ab12cd', owner: 'claude-s1', ssh_config: C },
   { id: 'hh00hh', owner: 'hans', ssh_config: '/home/u/.local/state/werft/leases/hh00hh/ssh_config' },
   { id: 'ag1111', owner: 'claude-s1-ag1', ssh_config: '/home/u/.local/state/werft/leases/ag1111/ssh_config' },
+  { id: 'ag2222', owner: 'claude-s1-ag2', ssh_config: '/home/u/.local/state/werft/leases/ag2222/ssh_config' },
 ])
 
 // Stands for the engine and the host: `verdict` on every call, the session s1, and
@@ -191,6 +202,8 @@ const ALLOWED = [
   'werft lease ubuntu-26-04 --json --owner claude-s1',
   'werft release ab12cd --json',
   'werft --json extend ab12cd',
+  'werft --json release ag1111',
+  'werft --json extend ag1111 --for 1h',
   'werft lease ubuntu-26-04 -owner claude-s1 --memory 8192 --cpus 4 --for 2h',
   'werft --json reap',
   'werft release ab12cd',
@@ -230,6 +243,8 @@ const ASKED = [
   'werft --json lease ubuntu-26-04 extra --owner claude-s1',
   'werft --json lease --owner claude-s1',
   'werft --json release',
+  '--json werft --json lease ubuntu-26-04 --owner claude-s1',
+  '--json werft images',
   'werft --json lease ubuntu-26-04 --owner claude-s1 --wait --owner=hans',
   'werft --json lease ubuntu-26-04 --stock --json --owner=claude-s1',
   'werft --json lease ubuntu-26-04 --owner claude-s1 --',
@@ -248,7 +263,6 @@ const ASKED = [
   'werft --json release ab12cd --owner claude-s1',
   'werft --json release --owner claude-s1 ab12cd',
   'werft --json release ab12cd hh00hh',
-  'werft --json release ag1111',
   `tar -C . -cf - -I./prog | ssh -F ${C} ab12cd 'cat'`,
   `tar -C -Iprog -cf - . | ssh -F ${C} ab12cd 'cat'`,
   `scp -F ${C} -S./prog ab12cd:x`,
@@ -366,7 +380,7 @@ test('a werft that lists what is not a JSON list keeps the question without a fa
 })
 
 const IN_AGENT_ALLOWED = ['werft --json release ag1111', 'werft --json extend ag1111 --for 1h', 'werft --json lease ubuntu-26-04 --owner claude-s1', 'werft --json lease ubuntu-26-04 --owner claude-s1-ag1']
-const IN_AGENT_ASKED = ['werft --json release ab12cd', 'werft --json extend ab12cd', 'werft --json lease ubuntu-26-04 --owner claude-s1-ag2']
+const IN_AGENT_ASKED = ['werft --json release ab12cd', 'werft --json extend ab12cd', 'werft --json lease ubuntu-26-04 --owner claude-s1-ag2', 'werft --json release ag2222']
 
 for (const command of IN_AGENT_ALLOWED) {
   test(`allows in the subagent ag1: ${command}`, async ($, on) => {

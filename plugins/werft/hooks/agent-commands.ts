@@ -7,7 +7,8 @@ type Token = { word: string } | { quoted: string } | { pipe: true }
 
 // What a command needs before it may run, as `werft --json leases` reports the leases: nothing
 // more, the lease it names must be live with this ssh_config, the owner a new lease takes must be
-// the one of this session, or the lease it extends or releases must be of that owner.
+// the one of this session or of the asking agent, or the lease it extends or releases must be of
+// the asking agent.
 export type AgentCommand = { lease?: { id: string; config: string }; owner?: string; ownedId?: string }
 
 // A word holds no character the shell gives a meaning to; a quoted string runs in the VM alone.
@@ -55,14 +56,14 @@ const wordOf = (token: Token | undefined) => (token && 'word' in token ? token.w
 const textOf = (token: Token) => ('word' in token ? token.word : 'quoted' in token ? token.quoted : '|')
 const isWords = (list: Token[]) => list.every(token => 'word' in token)
 
-// werft <agent subcommand> [words], with `--json` anywhere before a `--`, where werft takes it
-// out. A new lease takes one owner, which the session end releases. An extend or a release names
-// one lease id: the agents of a session share its owner, so `release --owner` would destroy the
-// leases of the others too, and keeps its question like every other release form.
+// werft <agent subcommand> [words], with `--json` anywhere after `werft` and before a `--`, where
+// werft takes it out. A new lease takes one owner, which the session end releases. An extend or a
+// release names one lease id, of a lease of the asking agent; `release --owner` keeps its
+// question like every other release form, as the skill has each agent release by id.
 function werft(list: Token[]): AgentCommand | undefined {
   const words = list.map(wordOf)
   const end = words.indexOf('--')
-  const [command, subcommand = '', ...args] = words.filter((word, at) => word !== '--json' || (end !== -1 && at > end))
+  const [command, subcommand = '', ...args] = words.filter((word, at) => word !== '--json' || at === 0 || (end !== -1 && at > end))
 
   if (command !== 'werft' || !isWords(list) || !AGENT_SUBCOMMANDS.includes(subcommand) || words.some(word => USER_FLAG.test(word ?? ''))) {
     return undefined
