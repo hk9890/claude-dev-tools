@@ -74,20 +74,21 @@ export const register: Register = on => {
     return next(e)
   })
 
-  // A lease of a subagent with the owner of the session takes the owner of that agent.
+  // A lease of a subagent with the owner of the session takes the owner of that agent, in each
+  // word that names it, whichever flag werft reads it for. The session end releases that owner.
   on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
-    const { command } = e
-    const owner = e.agentId ? agentCommand(command)?.owner : undefined
+    const { command, agentId } = e
+    const owner = agentId ? agentCommand(command)?.owner : undefined
     const sessionId = owner === undefined ? undefined : await $.session.id()
 
-    if (!e.agentId || sessionId === undefined || owner !== ownerOf(sessionId)) {
+    if (!agentId || sessionId === undefined || ![ownerOf(sessionId), ownerOf(sessionId, agentId)].includes(owner ?? '')) {
       return next(e)
     }
 
-    leasingAgents.set(sessionId, (leasingAgents.get(sessionId) ?? new Set()).add(e.agentId))
-    const agentCommandLine = command.replace(/(?<=[ \t])(--?owner(?:[ \t]+|=))\S+/, `$1${ownerOf(sessionId, e.agentId)}`)
+    leasingAgents.set(sessionId, (leasingAgents.get(sessionId) ?? new Set()).add(agentId))
+    const sessionOwnerWord = new RegExp(`(?<=[ \\t=])${ownerOf(sessionId)}(?=[ \\t]|$)`, 'g')
 
-    return next({ ...e, command: agentCommandLine })
+    return next({ ...e, command: command.replace(sessionOwnerWord, ownerOf(sessionId, agentId)) })
   }).catch(($, e, next) => next(e))
 
   on('session.end', async ($, e, next) => {
