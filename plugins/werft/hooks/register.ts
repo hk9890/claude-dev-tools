@@ -77,8 +77,8 @@ export const register: Register = on => {
 
   // A lease of a subagent with the owner of the session takes the owner of that agent, in each
   // word that names it, whichever flag werft reads it for. The session end releases that owner. A
-  // lease that cannot take it does not run: under the owner of the session, any agent could
-  // release it.
+  // lease in a form the mod reads that cannot take it does not run: under the owner of the
+  // session, any agent could release it. Any other form keeps the engine's question.
   on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
     const { command, agentId } = e
     const owner = agentId ? agentCommand(command)?.owner : undefined
