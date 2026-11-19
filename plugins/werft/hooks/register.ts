@@ -1,6 +1,6 @@
-import type { ProcessRunResult, Register, ToolCheckResult } from 'claude-code'
+import type { EngineInterface, FsStat, ProcessRunResult, Register, ToolCheckResult } from 'claude-code'
 
-import { agentCommand } from './agent-commands'
+import { type AgentCommand, agentCommand } from './agent-commands'
 
 // A release takes longer than the session end allows, so it runs in a session of its own with its
 // output closed, and `sh` returns at once: only a missing werft can still answer. It releases
@@ -36,6 +36,75 @@ function leasesIn(listed: ProcessRunResult): Lease[] {
 // user stays theirs.
 const isModeAsk = (verdict: ToolCheckResult) => verdict.decision === 'ask' && !verdict.rule && !verdict.hook && !verdict.setting
 
+// More entries than a tree an agent copies into a lease holds; past it the copy keeps its question.
+const TREE_LIMIT = 10_000
+
+type Landing = { kind: FsStat['kind']; realPath: string }
+
+// What a path leads to and where it lands, every link resolved; undefined where it leads nowhere.
+const resolved = ($: EngineInterface, path: string): Promise<Landing | undefined> =>
+  $.fs.stat(path, { resolve: true }).then(
+    ({ kind, realPath }: FsStat) => (realPath === undefined ? undefined : { kind, realPath }),
+    () => undefined,
+  )
+
+const isUnder = (path: string, edge: string) => path === edge || path.startsWith(edge.endsWith('/') ? edge : `${edge}/`)
+
+// Whether each path the command reads on this host lands in the project, or in the directory the
+// session runs in where no link leads there, and, under the tree it copies whole, each link too: a
+// link in the working tree may lead to a file anywhere on this host.
+async function readsOnlyTheProject($: EngineInterface, command: AgentCommand): Promise<boolean> {
+  const { reads, tree } = command
+
+  if (!reads) {
+    return true
+  }
+
+  // The shell resolves the command's relative paths against the directory the session runs in.
+  const [root, cwd] = await Promise.all([$.session.root(), $.session.cwd()])
+  const [rootLanding, cwdLanding] = await Promise.all([resolved($, root), resolved($, cwd)])
+  // A working directory reached through a link would make the link's target part of the project.
+  const edges = [rootLanding?.realPath, cwdLanding?.realPath === cwd ? cwd : undefined].filter(edge => edge !== undefined)
+  const isInside = (landing: Landing | undefined) => landing !== undefined && edges.some(edge => isUnder(landing.realPath, edge))
+
+  const landings = await Promise.all(reads.map(path => resolved($, `${cwd}/${path}`)))
+
+  if (!landings.every(isInside)) {
+    return false
+  }
+
+  const top = tree === undefined ? undefined : landings[reads.indexOf(tree)]
+  const walked = new Set<string>()
+  let level = top?.kind === 'dir' ? [top.realPath] : []
+  let entries = 0
+
+  while (level.length > 0) {
+    const dirs = [...new Set(level)].filter(dir => !walked.has(dir))
+    dirs.forEach(dir => walked.add(dir))
+    const listings = await Promise.all(dirs.map(dir => $.fs.list(dir).then(listed => ({ dir, listed }))))
+    entries += listings.reduce((sum, { listed }) => sum + listed.length, 0)
+
+    if (entries > TREE_LIMIT) {
+      return false
+    }
+
+    const links = await Promise.all(
+      listings.flatMap(({ dir, listed }) => listed.filter(entry => entry.isLink).map(entry => resolved($, `${dir}/${entry.name}`))),
+    )
+
+    if (!links.every(isInside)) {
+      return false
+    }
+
+    level = [
+      ...listings.flatMap(({ dir, listed }) => listed.filter(entry => !entry.isLink && entry.kind === 'dir').map(entry => `${dir}/${entry.name}`)),
+      ...links.flatMap(link => (link?.kind === 'dir' ? [link.realPath] : [])),
+    ]
+  }
+
+  return true
+}
+
 export const register: Register = on => {
   // The skill's allowed-tools make the engine ask before it loads the skill, and in the default
   // mode of a headless run nobody can answer, so the skill never loads.
@@ -58,9 +127,10 @@ export const register: Register = on => {
     }
 
     const { lease, owner, ownedId } = found
-    const [leases, sessionId] = await Promise.all([
+    const [leases, sessionId, isReadOfTheProject] = await Promise.all([
       lease || ownedId ? $.process.run(['werft', '--json', 'leases'], { cwd: '/', timeoutMs: 10_000 }).then(leasesIn) : [],
       owner !== undefined || ownedId ? $.session.id() : undefined,
+      readsOnlyTheProject($, found),
     ])
     const agentOwner = sessionId === undefined ? undefined : ownerOf(sessionId, e.agentId)
     const isLive = !lease || leases.some(live => live.id === lease.id && live.ssh_config === lease.config)
@@ -68,7 +138,7 @@ export const register: Register = on => {
     // The agent writes the owner of the session, which the lease call below makes its own.
     const isThisOwner = owner === undefined || (sessionId !== undefined && [ownerOf(sessionId), agentOwner].includes(owner))
 
-    return isLive && isOwned && isThisOwner ? { decision: 'allow' } : verdict
+    return isLive && isOwned && isThisOwner && isReadOfTheProject ? { decision: 'allow' } : verdict
   }).catch(($, e, next) => {
     $.ui.log(`werft: a permission check failed, the engine's verdict stands: ${next.error.message ?? next.error.kind}`, { to: 'debug' })
 
