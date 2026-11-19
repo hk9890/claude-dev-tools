@@ -63,10 +63,11 @@ test('a lease of a subagent takes the owner of that agent, which the session end
   await $.tool.call({ tool: 'Bash', command: 'werft lease my-owner -owner claude-s1', agentId: 'ag2' })
   await $.tool.call({ tool: 'Bash', command: 'werft lease img --tier --owner --owner claude-s1', agentId: 'ag2' })
   await $.tool.call({ tool: 'Bash', command: 'werft --json lease ubuntu-26-04 --owner claude-s1-ag3', agentId: 'ag3' })
+  await $.tool.call({ tool: 'Bash', command: 'werft --json lease ubuntu-26-04 --desktop --owner claude-s1', agentId: 'ag3' })
   await $.tool.call({ tool: 'Bash', command: 'werft --json lease ubuntu-26-04 --owner claude-s1\n', agentId: 'ag3' })
   await $.session.end(END)
 
-  expect(seen.ran).toEqual(['werft --json lease ubuntu-26-04 --owner claude-s1-ag1 --for 1h', 'werft --json lease ubuntu-26-04 --owner=claude-s1-ag2', 'werft lease my-owner -owner claude-s1-ag2', 'werft lease img --tier --owner --owner claude-s1-ag2', 'werft --json lease ubuntu-26-04 --owner claude-s1-ag3', 'werft --json lease ubuntu-26-04 --owner claude-s1-ag3\n'])
+  expect(seen.ran).toEqual(['werft --json lease ubuntu-26-04 --owner claude-s1-ag1 --for 1h', 'werft --json lease ubuntu-26-04 --owner=claude-s1-ag2', 'werft lease my-owner -owner claude-s1-ag2', 'werft lease img --tier --owner --owner claude-s1-ag2', 'werft --json lease ubuntu-26-04 --owner claude-s1-ag3', 'werft --json lease ubuntu-26-04 --desktop --owner claude-s1-ag3', 'werft --json lease ubuntu-26-04 --owner claude-s1-ag3\n'])
   expect(seen.released).toEqual(['claude-s1', 'claude-s1-ag1', 'claude-s1-ag2', 'claude-s1-ag3'])
 })
 
@@ -205,6 +206,11 @@ const ALLOWED = [
   'werft --json release ag1111',
   'werft --json extend ag1111 --for 1h',
   'werft lease ubuntu-26-04 -owner claude-s1 --memory 8192 --cpus 4 --for 2h',
+  'werft --json lease ubuntu-26-04 --owner claude-s1 --desktop',
+  'werft --json lease --desktop ubuntu-26-04 --owner claude-s1',
+  'werft --json lease ubuntu-26-04 --desktop --tier plain --owner claude-s1 --for 1h --memory 8192 --cpus 4',
+  'werft lease --tier plain --desktop --owner=claude-s1 -desktop=true ubuntu-26-04',
+  'werft --json lease ubuntu-26-04 --owner claude-s1 --desktop=false',
   'werft --json reap',
   'werft release ab12cd',
   'werft guide',
@@ -233,6 +239,14 @@ const ASKED = [
   'werft --json images -prune',
   'werft --json images -yes',
   'werft --json lease ubuntu-26-04 --owner claude-s1 --view',
+  'werft --json lease ubuntu-26-04 --owner claude-s1 --desktop --view',
+  'werft --json lease --desktop ubuntu-26-04 --owner claude-s1 --view=true',
+  'werft --json lease ubuntu-26-04 --owner claude-s1 --desktop=yes',
+  'werft --json lease ubuntu-26-04 --owner claude-s1 --desktop yes',
+  'werft --json lease ubuntu-26-04 --desktop',
+  'werft --json extend ab12cd --desktop',
+  'werft --json extend ab12cd --for 1h --desktop',
+  'werft --json release ab12cd --desktop',
   'werft --json lease ubuntu-26-04 --tier plain --for 1h',
   'werft --json lease ubuntu-26-04 --owner hans',
   'werft --json lease ubuntu-26-04 --owner=claude-s2',
@@ -379,7 +393,7 @@ test('a werft that lists what is not a JSON list keeps the question without a fa
   expect(logged).toEqual([])
 })
 
-const IN_AGENT_ALLOWED = ['werft --json release ag1111', 'werft --json extend ag1111 --for 1h', 'werft --json lease ubuntu-26-04 --owner claude-s1', 'werft --json lease ubuntu-26-04 --owner claude-s1-ag1']
+const IN_AGENT_ALLOWED = ['werft --json release ag1111', 'werft --json lease --desktop ubuntu-26-04 --owner claude-s1', 'werft --json extend ag1111 --for 1h', 'werft --json lease ubuntu-26-04 --owner claude-s1', 'werft --json lease ubuntu-26-04 --owner claude-s1-ag1']
 const IN_AGENT_ASKED = ['werft --json release ab12cd', 'werft --json extend ab12cd', 'werft --json lease ubuntu-26-04 --owner claude-s1-ag2', 'werft --json release ag2222']
 
 for (const command of IN_AGENT_ALLOWED) {
