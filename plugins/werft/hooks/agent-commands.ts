@@ -69,10 +69,10 @@ function werft(list: Token[]): AgentCommand | undefined {
     return undefined
   }
 
-  const names = VALUE_FLAGS[subcommand]
-  const parsed = names ? flagsOf(args.map(word => word ?? ''), names) : undefined
+  const flags = FLAGS[subcommand]
+  const parsed = flags ? flagsOf(args.map(word => word ?? ''), flags) : undefined
 
-  if (names && !parsed) {
+  if (flags && !parsed) {
     return undefined
   }
 
@@ -90,28 +90,33 @@ function werft(list: Token[]): AgentCommand | undefined {
   return {}
 }
 
-// The flags of each werft command the mod reads, each of which takes a value: Go's flag package
-// reads it from the next word when the flag has no `=`, whatever that word is, so in
-// `--tier --owner o`, `--owner` is the tier.
-const VALUE_FLAGS: Record<string, string[]> = {
-  lease: ['tier', 'stock', 'memory', 'cpus', 'for', 'owner'],
-  extend: ['for'],
-  release: [],
+// The flags of each werft command the mod reads. Go's flag package reads the value of a value
+// flag from the next word when the flag has no `=`, whatever that word is, so in
+// `--tier --owner o`, `--owner` is the tier. A boolean flag takes no next word, and only `true`
+// or `false` after an `=`.
+type Flags = { values: string[]; booleans: string[] }
+
+const FLAGS: Record<string, Flags> = {
+  lease: { values: ['tier', 'stock', 'memory', 'cpus', 'for', 'owner'], booleans: ['desktop'] },
+  extend: { values: ['for'], booleans: [] },
+  release: { values: [], booleans: [] },
 }
 
 type Parsed = { flags: Record<string, string[]>; positionals: string[] }
 
-// The values of each flag and the words that are no flag, else undefined: a flag the command
-// does not take, such as `release --owner`, or one werft could add without a value.
-function flagsOf(args: string[], names: string[]): Parsed | undefined {
+// The values of each value flag and the words that are no flag, else undefined: a flag the
+// command does not take, such as `release --owner`, or one werft could add later.
+function flagsOf(args: string[], { values, booleans }: Flags): Parsed | undefined {
   const parsed: Parsed = { flags: {}, positionals: [] }
 
   for (let at = 0; at < args.length; at += 1) {
     const arg = args[at] ?? ''
     const [isFlag, name = '', value] = /^--?([a-z]+)(?:=(.*))?$/.exec(arg) ?? []
 
-    if (isFlag && names.includes(name)) {
+    if (isFlag && values.includes(name)) {
       parsed.flags[name] = [...(parsed.flags[name] ?? []), value ?? args[(at += 1)] ?? '']
+    } else if (isFlag && booleans.includes(name) && [undefined, 'true', 'false'].includes(value)) {
+      continue
     } else if (arg.startsWith('-')) {
       return undefined
     } else {
