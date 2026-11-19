@@ -1,7 +1,7 @@
 {
   "name": "project-review",
   "description": "Adversarial reviews against the project's own standards, read-only by default: the codebase (consistency, structure, architecture, rules), one change against the project's written rules (--fix applies the settled fixes), and the docs, each returning a prioritized action list, plus a retrospective on one coding session.",
-  "version": "1.53.0",
+  "version": "1.54.0",
   "author": {
     "name": "Hans Kohlreiter",
     "email": "hans.kohlreiter@gmail.com"
