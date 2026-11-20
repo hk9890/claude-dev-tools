@@ -1,9 +1,13 @@
 import type { Register, ToolCheckResult } from 'claude-code'
 
 const OPENS_WINDOW =
-  "This command opens a browser window on the user's screen, and web-dev runs every browser headless. Where a sign-in needs a visible window, give the user the exact command to run in their own terminal, then go on headless with the state it saved."
+  "This command opens a browser window on the user's screen, and web-dev runs every browser headless. Where a sign-in needs a visible window, give the user the exact `cd <scratch> && playwright-cli -s=<session> open --headed <url>` to run in their own terminal; once they have signed in, `state-save` the state, `close`, and go on headless with `state-load`."
+const LIGHTHOUSE_HEADED =
+  'This Lighthouse run opens a visible Chrome on the user\'s screen. Run it with `--chrome-flags="--headless=new"` and without `--view`.'
 const CLOSES_OTHERS =
   'This command stops the browsers of every session on this machine, not only the ones of this session. Close your own browser with `playwright-cli -s=<your session> close`.'
+const NO_SESSION =
+  'This playwright-cli command names no session, so it acts on the shared default browser, which another session or the user may own. Add `-s=<your session>`.'
 
 // Text the shell does not run, so a commit message, a heredoc or a grep pattern that mentions the
 // command passes: a heredoc body, then a comment or a quoted string. An escaped character is
@@ -12,6 +16,11 @@ const HEREDOC_BODY = /((?<!<)<<-?[ \t]*(["']?)([\w-]+)\2.*\n)[\s\S]*?^[ \t]*\3$/
 const NOT_RUN = /\\(?:\r?\n|[\s\S])|(?<=^|\s)#.*|'[^']*'|"(?:\\[\s\S]|[^"\\])*"/gm
 const ESCAPED = /\\[\s\S]/g
 const SUBSTITUTION = /\$\(|`/
+
+// A quoted string stays one word that starts no command: its quotes go, and its whitespace and
+// the shell's separators become FILL. Its text stays, so a quoted flag value can be read.
+const FILL = '\u0001'
+const QUOTED_SEPARATORS = /[\s;&|(`]/g
 
 // A command sits in command position: first on a line or after `;`, `&`, `|`, `(` or a backtick,
 // then past any assignment (`A=b cmd`), keyword (`do cmd`) or wrapper that runs its arguments
@@ -22,34 +31,41 @@ const ASSIGNMENT = String.raw`\w+=\S*`
 const KEYWORD = String.raw`if|then|elif|else|while|until|do|time|!|\{`
 const WRAPPER = String.raw`(?:command|exec|env|nohup|setsid|timeout|xargs)(?:\s+(?:-\S+|\d\S*))*`
 const LEAD = String.raw`(?:^|[;&|(\`])\s*(?:(?:${ASSIGNMENT}|${KEYWORD}|${WRAPPER})\s+)*`
-// A tool runs by name, by path, or through a package runner, with or without a version.
-const RUNNER = String.raw`(?:(?:npx|pnpm\s+dlx|bunx)\s+(?:(?:-y|--yes)\s+)?)`
-const PATH = String.raw`(?:[\w.~/-]*/)?`
-const VERSION = String.raw`(?:@[\w.^~-]+)?`
-const PLAYWRIGHT = String.raw`(?:${RUNNER}?${PATH}playwright-cli${VERSION}|${RUNNER}(?:@playwright/cli${VERSION}|playwright\s+cli))`
-const OPENER = String.raw`(?:xdg-open|gio\s+open|sensible-browser)`
-const DEVTOOLS = 'chrome-devtools'
-const LIGHTHOUSE = String.raw`${RUNNER}?${PATH}lighthouse${VERSION}`
-const IS_LIGHTHOUSE = new RegExp(String.raw`^${LIGHTHOUSE}(?![\w-])`)
-const IS_DEVTOOLS = new RegExp(String.raw`^${DEVTOOLS}(?![\w-])`)
-const WATCHED = new RegExp(String.raw`(?=(${LEAD}(?:${PLAYWRIGHT}|${OPENER}|${DEVTOOLS}|${LIGHTHOUSE})(?![\w-])[^;&|]*))`, 'g')
 const LEADING = new RegExp(String.raw`^[;&|(\`]?\s*(?:(?:${ASSIGNMENT}|${KEYWORD}|${WRAPPER})\s+)*`)
 
-// --extension and --cdp drive a browser the user runs, in front of them.
-const HEADED = /^--(?:headed(?:=(?!false$).*)?|extension(?:=.*)?|cdp(?:=.*)?)$/
+// A tool runs by name, by path, or through a package runner, with or without a version.
+const PACKAGE_RUNNER = String.raw`(?:npx|bunx|pnpm\s+(?:dlx|exec)|npm\s+exec|yarn(?:\s+dlx)?)(?:\s+(?:-y|--yes|-p\s+\S+|--package(?:=|\s+)\S+|--))*`
+const MISE_RUNNER = String.raw`mise\s+(?:exec|x)(?:\s+(?!--)\S+)*\s+--`
+const RUN = String.raw`(?:(?:${PACKAGE_RUNNER}|${MISE_RUNNER})\s+)?`
+const PATH = String.raw`(?:[\w.~/\${}-]*/)?`
+const VERSION = String.raw`(?:@[\w.^~-]+)?`
+
+const PLAYWRIGHT = String.raw`${RUN}(?:${PATH}playwright-cli${VERSION}|@playwright/cli${VERSION}|${PATH}playwright\s+cli)`
+const OPENER = String.raw`${PATH}(?:xdg-open|x-www-browser|www-browser|sensible-browser|gio\s+open|python3?\s+-m\s+webbrowser)`
+const DEVTOOLS = String.raw`${RUN}${PATH}chrome-devtools${VERSION}`
+const LIGHTHOUSE = String.raw`${RUN}${PATH}lighthouse${VERSION}`
+const WATCHED = new RegExp(String.raw`(?=(${LEAD}(?:${PLAYWRIGHT}|${OPENER}|${DEVTOOLS}|${LIGHTHOUSE})(?![\w-])[^;&|]*))`, 'g')
+const anchored = (tool: string) => new RegExp(String.raw`^${tool}(?![\w-])`)
+const IS_OPENER = anchored(OPENER)
+const IS_DEVTOOLS = anchored(DEVTOOLS)
+const IS_LIGHTHOUSE = anchored(LIGHTHOUSE)
+const IS_PLAYWRIGHT = anchored(PLAYWRIGHT)
+
+// --extension, --cdp and --endpoint drive a browser that already runs, the user's too.
+const HEADED = /^--(?:headed(?:=(?!false$).*)?|extension(?:=.*)?|cdp(?:=.*)?|endpoint(?:=.*)?)$/
 const WINDOW_SUBCOMMANDS = new Set(['show'])
+const ALL_SESSIONS_SUBCOMMANDS = new Set(['close-all', 'kill-all'])
+// Subcommands that act on no browser session.
+const SESSION_FREE_SUBCOMMANDS = new Set(['', 'list', 'install', 'install-browser', 'attach'])
 // A session flag whose name is the next word: `-s claude-s1`.
 const SESSION_FLAG = /^(?:-s|--session)$/
-const ALL_SESSIONS_SUBCOMMANDS = new Set(['close-all', 'kill-all'])
+const NAMES_SESSION = /^(?:-s|--session)(?:=|$)/
+const HELP = /^(?:--help|-h|--version)$/
+
 // --autoConnect, --browserUrl and --wsEndpoint drive a browser that already runs, the user's too.
 // The CLI takes each flag in camel case and in kebab case.
 const VISIBLE_DEVTOOLS =
   /\s(?:--(?:no-headless|headless(?:=|\s+)false|(?:autoConnect|auto-connect)(?!=false)|browserUrl|browser-url|wsEndpoint|ws-endpoint)|-[uw])(?![\w-])/
-
-// A lighthouse command of the raw line, its quoted Chrome flags kept: the parser blanks quoted text.
-// Heredoc bodies and comments are cut first, as the shell runs neither.
-const RAW_LIGHTHOUSE = new RegExp(String.raw`${LEAD}${LIGHTHOUSE}(?![\w-])[^;&|\n]*`, 'gm')
-const COMMENT = /(?<=^|\s)#.*/gm
 
 // A line that ends in `\` continues on the next. A double-quoted string still runs its command
 // substitutions, so it stays from the first one on. Its escaped characters are blanked first: an
@@ -60,33 +76,56 @@ function runnable(command: string) {
       return text.endsWith('\n') ? ' ' : text
     }
 
-    if (!text.startsWith('"')) {
+    if (text.startsWith('#')) {
       return ' '
+    }
+
+    const quoted = text.slice(1, -1).replace(QUOTED_SEPARATORS, FILL)
+
+    if (text.startsWith("'")) {
+      return quoted
     }
 
     const unescaped = text.replace(ESCAPED, '  ')
     const substitution = unescaped.search(SUBSTITUTION)
 
-    return substitution < 0 ? ' ' : unescaped.slice(substitution)
+    return substitution < 0 ? quoted : unescaped.slice(substitution)
   })
 }
 
-// Lighthouse launches a visible Chrome unless its Chrome flags say headless, and `--view` opens
-// its report in the user's browser; `--version` and `--help` launch nothing.
-function opensLighthouseWindow(run: string) {
-  if (/\s--view(?![\w-])/.test(run)) {
+// Lighthouse launches a visible Chrome unless its --chrome-flags value says headless, and --view
+// opens its report in the user's browser; --version and --help launch nothing.
+function opensLighthouseWindow(words: string) {
+  if (/\s--view(?!=false)(?![\w-])/.test(words)) {
     return true
   }
 
-  return !/\s--(?:version|help)(?![\w-])/.test(run) && !/(?<=[\s"'=,])--headless(?!=false)(?![\w-])/.test(run)
+  return !/\s--(?:version|help)(?![\w-])/.test(words) && !/\s--chrome-flags(?:=|\s+)\S*--headless(?!=false)(?![\w-])/.test(words)
 }
 
-// The deny reason for one command of the raw command line, or undefined where it opens no window
-// and stops no other session's browser.
-function refusal(run: string, raw: string) {
+function playwrightRefusal(run: string, words: string) {
+  const args = words.replace(IS_PLAYWRIGHT, '').trim().split(/\s+/).filter(Boolean)
+  const subcommand = args.find((arg, i) => !arg.startsWith('-') && !SESSION_FLAG.test(args[i - 1] ?? '')) ?? ''
+
+  if (ALL_SESSIONS_SUBCOMMANDS.has(subcommand)) {
+    return CLOSES_OTHERS
+  }
+
+  if (WINDOW_SUBCOMMANDS.has(subcommand) || args.some(arg => HEADED.test(arg))) {
+    return OPENS_WINDOW
+  }
+
+  const namesSession = args.some(arg => NAMES_SESSION.test(arg)) || /(?:^|\s)PLAYWRIGHT_CLI_SESSION=\S/.test(run)
+
+  return namesSession || SESSION_FREE_SUBCOMMANDS.has(subcommand) || args.some(arg => HELP.test(arg)) ? undefined : NO_SESSION
+}
+
+// The deny reason for one command, or undefined where it opens no window and touches no other
+// session's browser.
+function refusal(run: string) {
   const words = run.replace(LEADING, '').trim()
 
-  if (new RegExp(`^${OPENER}(?![\\w-])`).test(words)) {
+  if (IS_OPENER.test(words)) {
     return OPENS_WINDOW
   }
 
@@ -95,25 +134,16 @@ function refusal(run: string, raw: string) {
   }
 
   if (IS_LIGHTHOUSE.test(words)) {
-    const shellRuns = raw.replace(HEREDOC_BODY, '$1').replace(COMMENT, '')
-
-    return Array.from(shellRuns.matchAll(RAW_LIGHTHOUSE), ([run]) => run).some(opensLighthouseWindow) ? OPENS_WINDOW : undefined
+    return opensLighthouseWindow(words) ? LIGHTHOUSE_HEADED : undefined
   }
 
-  const args = words.replace(new RegExp(`^${PLAYWRIGHT}`), '').trim().split(/\s+/)
-  const subcommand = args.find((arg, i) => !arg.startsWith('-') && !SESSION_FLAG.test(args[i - 1] ?? '')) ?? ''
-
-  if (ALL_SESSIONS_SUBCOMMANDS.has(subcommand)) {
-    return CLOSES_OTHERS
-  }
-
-  return WINDOW_SUBCOMMANDS.has(subcommand) || args.some(arg => HEADED.test(arg)) ? OPENS_WINDOW : undefined
+  return playwrightRefusal(run, words)
 }
 
 function refusalOf(command: string) {
   return runnable(command)
     .split(/\r?\n/)
-    .flatMap(line => Array.from(line.matchAll(WATCHED), ([, run = '']) => refusal(run, command)))
+    .flatMap(line => Array.from(line.matchAll(WATCHED), ([, run = '']) => refusal(run)))
     .find(reason => reason !== undefined)
 }
 

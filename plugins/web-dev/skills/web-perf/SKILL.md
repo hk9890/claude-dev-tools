@@ -22,7 +22,7 @@ Make `<scratch>` as `<session scratchpad>/web-perf`, or `${TMPDIR:-/tmp}/web-per
 
 Measure a production build, never the dev server: a dev server sends unbundled, unminified code. Take the build command and the command that serves the build from the project's run docs, as `web-dev:web-drive` takes the launch contract: call the Skill tool with `web-dev:web-drive`, even where it loaded earlier in this session, and follow its "Start the app" steps with these two commands. Where the docs name no build or no way to serve it, stop and tell the user which is missing. `<url>` is the URL of the ready line with the page from the scope appended.
 
-For `--compare`, build the ref in its own worktree (`git worktree add <scratch>/base <git-ref>`), serve one build at a time, and take each URL from its own ready line.
+For `--compare`, build the ref in its own worktree (`git worktree add --detach <scratch>/base <git-ref>`, as the ref may be checked out elsewhere), after the setup the project's docs name for a fresh checkout. Serve one build at a time, take each URL from its own ready line, and put `base-` in front of the file names of the ref's runs.
 
 ## 3. Trace
 

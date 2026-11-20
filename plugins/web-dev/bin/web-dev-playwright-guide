@@ -10,10 +10,12 @@ stop() {
 
 command -v playwright-cli >/dev/null 2>&1 || stop "playwright-cli is not on PATH."
 
-relative=$(playwright-cli --help 2>/dev/null | sed -n 's/^Agent skill: //p' | head -n 1)
+relative=$(playwright-cli --help 2>/dev/null | sed -n 's/^Agent skill: //p' | head -n 1) || true
 [ -n "$relative" ] || stop "playwright-cli --help names no agent skill."
 
-skill=$(realpath -e "$relative" 2>/dev/null) || stop "the agent skill that playwright-cli --help names does not exist: $relative."
+[ -f "$relative" ] || stop "the agent skill that playwright-cli --help names does not exist: $relative."
+# realpath -e is GNU only; cd and pwd -P resolve the directory on every platform.
+skill="$(cd "$(dirname "$relative")" && pwd -P)/$(basename "$relative")"
 
 echo "Guide directory: $(dirname "$skill")"
 echo

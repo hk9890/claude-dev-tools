@@ -66,7 +66,25 @@ const OPENS_WINDOW = [
   'bunx @playwright/cli show',
   'npx @playwright/cli@latest show',
   '/home/u/.local/bin/playwright-cli show',
+  'for i in 1 2 3; do echo "Run #$i"; lighthouse http://localhost:4173 --output=json; done',
+  "git commit -m 'fix #12' && lighthouse http://localhost:4173",
+  'lighthouse http://localhost:4173 --output=json --headless --quiet',
+  'playwright-cli -s=a attach --endpoint=ws://127.0.0.1:3000/x',
+  '/usr/bin/xdg-open http://localhost:5173',
+  './node_modules/.bin/chrome-devtools start --no-headless',
+  '$HOME/.local/bin/playwright-cli -s=a show',
+  'mise exec -- playwright-cli -s=a show',
+  'pnpm exec playwright-cli -s=a show',
+  'npm exec lighthouse http://localhost:4173',
+  'yarn dlx @playwright/cli -s=a show',
+  'npx -p lighthouse lighthouse http://localhost:4173',
+  'chrome-devtools start --headless "false" --isolated',
+  "chrome-devtools start --headless='false'",
+  'x-www-browser http://localhost:5173',
+  'python3 -m webbrowser http://localhost:5173',
 ]
+
+const NO_SESSION = ['playwright-cli close', 'playwright-cli goto http://localhost:5173', 'cd /tmp && playwright-cli delete-data']
 
 const CLOSES_OTHERS = ['playwright-cli close-all', 'playwright-cli -s=claude-s1 kill-all', 'cd /tmp && playwright-cli close-all']
 
@@ -89,6 +107,14 @@ const ALLOWED = [
   "cat <<EOF\nlighthouse x\nEOF\nlighthouse http://localhost:4173 --chrome-flags='--headless=new'",
   'npx lighthouse http://localhost:4173 --chrome-flags=--headless',
   'chrome-devtools start --auto-connect=false',
+  'lighthouse http://localhost:4173 --only-categories=performance \\\n  --chrome-flags="--headless=new" --output=json',
+  'lighthouse "http://localhost:4173/?a=1&b=2" --chrome-flags="--headless=new"',
+  'lighthouse http://localhost:4173 --chrome-flags="--headless=new" --view=false',
+  'lighthouse http://localhost:4173 --chrome-flags="--no-sandbox --headless=new"',
+  'PLAYWRIGHT_CLI_SESSION=claude-s1 playwright-cli close',
+  'playwright-cli -s=claude-s1 fill e3 "show me"',
+  'playwright-cli install-browser ffmpeg',
+  'git commit -m "playwright-cli close; xdg-open x"',
   'playwright-cli -s=claude-s1 attach claude-s1-2',
   'git commit -m "deny playwright-cli --headed and xdg-open"',
   "grep -n 'xdg-open' README.md",
@@ -107,6 +133,17 @@ for (const command of OPENS_WINDOW) {
     expect(answer.deny).toContain("on the user's screen")
     expect(seen.ran).toEqual([])
     expect(seen.toasts.length).toBe(1)
+  })
+}
+
+for (const command of NO_SESSION) {
+  test(`denies a command on the shared default session: ${command}`, async ($, on) => {
+    const seen = host(on)
+
+    const answer = await $.tool.call({ tool: 'Bash', command })
+
+    expect(answer.deny).toContain('names no session')
+    expect(seen.ran).toEqual([])
   })
 }
 
