@@ -85,7 +85,7 @@ The manifest is informational — check its summary line for a false `claude_md_
 /plugin install plugin-dev@claude-code-plugins
 ```
 
-The `plugin-dev:plugin-validator` agent checks a plugin's manifest, component frontmatter, hook schema, and file organisation. When it must run is the Plugin-Structure-Check gate in [CHANGE-WORKFLOW.md](CHANGE-WORKFLOW.md#pre-push-checklist). Invoke it as:
+The `plugin-dev:plugin-validator` agent checks a plugin's manifest, component frontmatter, hook schema, and file organisation. When it must run is the Plugin-Structure-Check gate in [CHANGE-WORKFLOW.md](CHANGE-WORKFLOW.md#pre-push-checklist), and over every plugin before a release per [RELEASING.md](RELEASING.md). Invoke it as:
 
 ```
 Validate the plugin at plugins/my-plugin
