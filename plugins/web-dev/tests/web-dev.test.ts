@@ -1,0 +1,142 @@
+import { expect, test } from 'claude-code/testing'
+import type { On, ToolCheckResult } from 'claude-code'
+
+// Stands for the host: records the toasts shown and the tool calls that reached the engine.
+function host(on: On) {
+  const seen = { toasts: [] as string[], ran: [] as string[] }
+
+  on('ui.toast', ($, e) => {
+    seen.toasts.push(e.text)
+
+    return { value: undefined }
+  })
+  on('tool.call', ($, e) => {
+    seen.ran.push(String(e.tool))
+
+    return { result: 'ok' }
+  })
+
+  return seen
+}
+
+const OPENS_WINDOW = [
+  'playwright-cli open --headed https://example.com',
+  'playwright-cli -s=claude-s1 open --headed=true https://example.com',
+  'playwright-cli -s=claude-s1 open https://example.com --browser=chrome --headed',
+  'playwright-cli show',
+  'playwright-cli -s=claude-s1 show --annotate',
+  'cd /tmp/x && playwright-cli -s=claude-s1 show',
+  'npx playwright cli open --headed https://example.com',
+  'npx -y @playwright/cli show',
+  'xdg-open http://localhost:5173',
+  'gio open http://localhost:5173',
+  'sensible-browser http://localhost:5173',
+  'npm run dev & xdg-open http://localhost:5173',
+  'timeout 5 xdg-open index.html',
+  'result=$(xdg-open x)',
+  'echo "$(xdg-open x)"',
+  'chrome-devtools start --headless=false',
+  'chrome-devtools start --headless false --isolated',
+  'chrome-devtools start --no-headless',
+  'chrome-devtools start --autoConnect',
+  'playwright-cli -s=a close; playwright-cli -s=a open --headed',
+  'playwright-cli -s=claude-s1 open --extension',
+  'playwright-cli -s=claude-s1 open --cdp=http://127.0.0.1:9222',
+  'lighthouse http://localhost:4173 --output=json',
+  'npm run build && lighthouse http://localhost:4173',
+]
+
+const CLOSES_OTHERS = ['playwright-cli close-all', 'playwright-cli -s=claude-s1 kill-all', 'cd /tmp && playwright-cli close-all']
+
+const ALLOWED = [
+  'playwright-cli -s=claude-s1 open --browser=chrome http://localhost:5173',
+  'playwright-cli -s=claude-s1 open --headed=false http://localhost:5173',
+  'playwright-cli -s=claude-s1 close',
+  'playwright-cli -s=claude-s1 fill e3 "show"',
+  'playwright-cli -s=claude-s1 video-start demo.webm --size=1280x720',
+  'playwright-cli --help',
+  'playwright-cli list',
+  'chrome-devtools start --headless --isolated --performanceCrux=false',
+  'chrome-devtools start --autoConnect=false',
+  'chrome-devtools navigate_page 1 --url http://localhost:4173',
+  'lighthouse http://localhost:4173 --only-categories=performance --chrome-flags="--headless=new" --output=json',
+  "lighthouse http://localhost:4173 --chrome-flags='--headless'",
+  'lighthouse --version',
+  'playwright-cli -s=claude-s1 attach claude-s1-2',
+  'git commit -m "deny playwright-cli --headed and xdg-open"',
+  "grep -n 'xdg-open' README.md",
+  'echo playwright-cli show',
+  'cat <<EOF\nplaywright-cli show\nEOF',
+  'ls # xdg-open',
+  './bin/xdg-open-wrapper',
+]
+
+for (const command of OPENS_WINDOW) {
+  test(`denies a window: ${command}`, async ($, on) => {
+    const seen = host(on)
+
+    const answer = await $.tool.call({ tool: 'Bash', command })
+
+    expect(answer.deny).toContain("on the user's screen")
+    expect(seen.ran).toEqual([])
+    expect(seen.toasts.length).toBe(1)
+  })
+}
+
+for (const command of CLOSES_OTHERS) {
+  test(`denies stopping other sessions: ${command}`, async ($, on) => {
+    const seen = host(on)
+
+    const answer = await $.tool.call({ tool: 'Bash', command })
+
+    expect(answer.deny).toContain('every session on this machine')
+    expect(seen.ran).toEqual([])
+  })
+}
+
+for (const command of ALLOWED) {
+  test(`allows: ${command}`, async ($, on) => {
+    const seen = host(on)
+
+    const answer = await $.tool.call({ tool: 'Bash', command })
+
+    expect(answer.deny).toBeUndefined()
+    expect(seen.ran).toEqual(['Bash'])
+    expect(seen.toasts).toEqual([])
+  })
+}
+
+test('denies a window opened through Monitor', async ($, on) => {
+  const seen = host(on)
+
+  const answer = await $.tool.call({ tool: 'Monitor', description: 'watch', timeout_ms: 60_000, command: 'xdg-open http://localhost:5173' })
+
+  expect(answer.deny).toContain("on the user's screen")
+  expect(seen.ran).toEqual([])
+})
+
+const ASK: ToolCheckResult = { decision: 'ask' }
+
+test('the web-dev:web-drive skill loads without a question', async ($, on) => {
+  on('tool.check', () => ASK)
+
+  const verdict = await $.tool.check({ tool: 'Skill', input: { skill: 'web-dev:web-drive' } })
+
+  expect(verdict.decision).toBe('allow')
+})
+
+test('another skill keeps its question', async ($, on) => {
+  on('tool.check', () => ASK)
+
+  const verdict = await $.tool.check({ tool: 'Skill', input: { skill: 'web-drive' } })
+
+  expect(verdict.decision).toBe('ask')
+})
+
+test('an ask rule of the user on the skill stands', async ($, on) => {
+  on('tool.check', () => ({ decision: 'ask', rule: 'Skill(web-dev:web-drive)' }))
+
+  const verdict = await $.tool.check({ tool: 'Skill', input: { skill: 'web-dev:web-drive' } })
+
+  expect(verdict.decision).toBe('ask')
+})

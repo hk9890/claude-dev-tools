@@ -1,0 +1,13 @@
+{
+  "name": "web-dev",
+  "description": "Web apps in a headless browser through playwright-cli: one skill that makes the model start a web app the way the project documents it, use it in a browser no one sees, and record a video of each feature working, a user-invoked skill that measures page load with chrome-devtools traces and Lighthouse, plus a mod that denies the commands that would open a browser window on the user's screen or close the browsers of other sessions.",
+  "version": "1.54.0",
+  "author": {
+    "name": "Hans Kohlreiter",
+    "email": "hans.kohlreiter@gmail.com"
+  },
+  "homepage": "https://github.com/hk9890/claude-dev-tools",
+  "repository": "https://github.com/hk9890/claude-dev-tools",
+  "license": "MIT",
+  "keywords": ["web", "browser", "playwright", "headless", "video", "performance", "mod"]
+}
