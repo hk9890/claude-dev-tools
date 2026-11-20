@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Prints the agent skill of the playwright-cli on PATH: its directory, then its SKILL.md.
+# playwright-cli has no guide command; its --help names the file, relative to the cwd.
+set -euo pipefail
+
+stop() {
+  echo "STOP: $1 Tell the user that web-dev drives the browser through playwright-cli, which installs with 'npm install -g @playwright/cli' (or 'mise use -g npm:@playwright/cli'), and ask whether to wait for it."
+  exit 0
+}
+
+command -v playwright-cli >/dev/null 2>&1 || stop "playwright-cli is not on PATH."
+
+relative=$(playwright-cli --help 2>/dev/null | sed -n 's/^Agent skill: //p' | head -n 1) || true
+[ -n "$relative" ] || stop "playwright-cli --help names no agent skill."
+
+[ -f "$relative" ] || stop "the agent skill that playwright-cli --help names does not exist: $relative."
+# realpath -e is GNU only; cd and pwd -P resolve the directory on every platform.
+skill="$(cd "$(dirname "$relative")" && pwd -P)/$(basename "$relative")"
+
+echo "Guide directory: $(dirname "$skill")"
+echo
+cat "$skill"

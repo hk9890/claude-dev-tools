@@ -41,6 +41,7 @@ MONOGRAMS = {
     'worktree-flow': 'WF',
     'revier': 'RV',
     'werft': 'WT',
+    'web-dev': 'WE',
 }
 
 GLYPHS = {
