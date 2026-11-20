@@ -51,7 +51,8 @@ modes are actually exercised.
    those mean and how to relay them (the plugin-root layout applies, so `../..`
    is correct here). When `architecture_candidates` is non-empty, list
    the candidates **numbered from 1 in array order** with their title, strength and
-   dependency category; that number is how the user selects one. For a "did you
+   dependency category; that number is how the user selects one, so the relay keeps it
+   for each candidate, apart from the numbers of the open items. For a "did you
    really check X?" follow-up, **re-run the skill**; never answer from the report
    alone.
 

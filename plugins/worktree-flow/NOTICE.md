@@ -6,14 +6,13 @@ MIT license:
 - [mattpocock/skills](https://github.com/mattpocock/skills) — adapted from the `pr` skill at
   commit [`d81f3a1`](https://github.com/mattpocock/skills/commit/d81f3a1): the Summary, Evidence
   and Merge Danger template, the line on brief prose in the project's terms, and the one-way door
-  definition trace there. The gate and driven
-  lines in Evidence, the Issues line, the line about the review line, and the blast radius scale are locally
-  authored
+  definition trace there. The gate and driven lines in Evidence, the Issues line, the line about
+  the review line, and the blast radius scale are locally authored.
 - [humanlayer/skills](https://github.com/humanlayer/skills) — the Summary's list of visuals
   (pseudocode, a call tree, a file tree, a Mermaid diagram, a diff) comes from Dex Horthy's
   `show-me` skill, which the `pr` skill reproduces almost word for word; its split between a diff
-  of a changed shape and the whole of a mostly new one comes from the same author's `visual-pr` skill at
-  commit [`4e39d8f`](https://github.com/humanlayer/skills/commit/4e39d8f)
+  of a changed shape and the whole of a mostly new one comes from the same author's `visual-pr`
+  skill at commit [`4e39d8f`](https://github.com/humanlayer/skills/commit/4e39d8f).
 
 `skills/worktree-ship/SKILL.md` takes one rule from mattpocock/skills: step 1's fetch of a named
 tracker issue, with its title stated and an ambiguous reference asked about, comes from the
