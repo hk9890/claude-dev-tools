@@ -35,7 +35,11 @@ open ones last, numbered continuously across two lists that the user answers in 
    gave. An item with no `options` asks whether to apply it as stated; an item with no
    `recommendation` says that it has none.
 
-An open item with no reason for **Needs you** goes to **Done on "go"**.
+An open item that misses any condition of **Done on "go"** goes to **Needs you**. The
+relay picks the list; the item stays open, and nothing in either list is applied before
+the user's reply. The `project-auto-work` copy relays every open item as a question.
+`worktree-flow`'s `worktree-review` step 5 copies these two lists: a change to them is a
+change to both.
 
 ## The browser form
 

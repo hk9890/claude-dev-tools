@@ -30,7 +30,7 @@ revier also places and raises windows, and the user is typing in one of them whi
 
 This skill needs revier 0.22.0 or later: where the "Installed" line above shows an older one, tell the user to update revier, and do nothing else with this skill.
 
-The rest of the CLI is outside this skill. Most of it opens, raises or closes a window: `shell new` raises the tab it adds, and so does `agent new` without `--no-focus`. When the task needs one of those commands, take its syntax from `revier --help` and give the user the exact command to run, as `! <command>`. A hook of this plugin refuses those commands, also where the user tells you to run one.
+The rest of the CLI is outside this skill. Most of it opens, raises or closes a window: `shell new` raises the tab it adds, and so does `agent new` without `--no-focus`. When the task needs one of those commands, take its syntax from `revier --help` and give the user the exact command to run. A hook of this plugin refuses most of them, also where the user tells you to run one.
 
 ## Projects and agents
 

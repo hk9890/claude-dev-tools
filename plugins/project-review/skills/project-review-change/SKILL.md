@@ -23,14 +23,13 @@ subject's commits. With `--fix`, step 5 then applies the fixes it settled.
 
    A pull request needs `gh`: where `command -v gh` prints nothing, say so and ask for a
    branch. Take `gh pr view <n> --json baseRefOid,baseRefName,headRefOid`. Where
-   `<headRefOid>` is what `git rev-parse HEAD` prints, fetch only the base:
-   `git fetch origin <baseRefName>`, which holds where `git cat-file -e <baseRefOid>`
-   then succeeds. Else fetch both commits with gh's token:
-   `git -c credential.helper='!gh auth git-credential' fetch <url> <baseRefOid>
-   <headRefOid>`, with `<url>` what `gh repo view --json url -q .url` prints. A
-   worktree-isolated session refuses this form: there, ask the user to check the PR out
-   (`gh pr checkout <n>`) and stop. `<base>` is `<baseRefOid>`, `<head>` is
-   `<headRefOid>`.
+   `git cat-file -e '<headRefOid>^{commit}'` succeeds, the head is here: fetch only the
+   base, `git fetch origin +refs/heads/<baseRefName>:refs/remotes/origin/<baseRefName>`.
+   Where `git cat-file -e` then fails for `<baseRefOid>` or `<headRefOid>`, fetch both
+   with gh's token: `git -c credential.helper='!gh auth git-credential' fetch <url>
+   <baseRefOid> <headRefOid>`, with `<url>` what `gh repo view --json url -q .url` prints.
+   A worktree-isolated session refuses this form: that refusal is a failed fetch.
+   `<base>` is `<baseRefOid>`, `<head>` is `<headRefOid>`.
 
    A branch, the current one included, is `<head>`. Where `gh pr view <branch> --json
    number,state` prints an `OPEN` pull request (leave out `<branch>` for the current one),
