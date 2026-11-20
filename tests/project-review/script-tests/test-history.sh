@@ -187,6 +187,28 @@ assert_eq "empty: a repo with no transcripts still exits 0" "0" "$rc"
 assert_eq "empty: and reports no batches" "0" "$(json_val "len(d['batches'])" <<< "$P2")"
 rm -rf "$EMPTY"
 
+# A private root: hako-private is a git repository of its own inside the checkout, and
+# the sessions run in the checkout. The checkout has a docs/CODING.md too, so a read of
+# that one must not count as a read of the private doc.
+PRIV="$REPO/hako-private"
+mkdir -p "$PRIV/docs"
+git -C "$PRIV" init -q 2>/dev/null
+git -C "$PRIV" config user.email t@t.t
+git -C "$PRIV" config user.name t
+printf '# Coding delta\n\nOne more rule.\n' > "$PRIV/docs/CODING.md"
+printf '**MUST read [docs/CODING.md](docs/CODING.md) before editing.**\n' > "$PRIV/AGENTS.md"
+git -C "$PRIV" add -A >/dev/null 2>&1
+GIT_AUTHOR_DATE="2019-01-01T00:00:00Z" GIT_COMMITTER_DATE="2019-01-01T00:00:00Z" \
+  git -C "$PRIV" commit -qm init >/dev/null 2>&1
+POUT="$FIX/private-out"
+PP=$(python3 "$SCRIPT" prompts "$PRIV" --out "$POUT" --projects-dir "$PROJECTS" 2>&1)
+assert_eq "private: the checkout's sessions are found" "1" "$(json_val "d['transcripts_found']" <<< "$PP")"
+cp "$OUT/labels-01.json" "$POUT/labels-01.json"
+PE=$(python3 "$SCRIPT" evidence "$PRIV" --scratch "$POUT" --projects-dir "$PROJECTS" --per-use-case 3 2>&1)
+assert_eq "private: the labelled segment is picked up" "1" "$(json_val "d['coverage']['coding']['labelled']" <<< "$PE")"
+assert_eq "private: a read of the checkout's doc of the same name is no read of the private doc" "None" \
+  "$(json_val "d['segments'][0]['activity']['first_doc_read_turn']" < "$POUT/evidence-coding.json")"
+
 # ---------------------------------------------------------------------------
 # Drift: the use-case table exists twice — Python owns the classifier's vocabulary,
 # JS owns the review prompts. Workflow scripts cannot import, so pin them here.

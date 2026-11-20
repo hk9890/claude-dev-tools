@@ -8,7 +8,7 @@ argument-hint: "[private [write]]"
 
 **Set up this project's agent-facing docs.** Write the canonical files the project is missing, drafted from what the repo already does.
 
-Write only files that are absent. A file that already exists stays exactly as it is, whatever it contains — step 4 reports it instead.
+Write only files that are absent. A file that already exists stays exactly as it is, whatever it contains — step 4 reports it instead. The one exception is the route lines that private mode adds to `hako-private/AGENTS.md`.
 
 **Mode** — from `$ARGUMENTS`:
 
@@ -29,7 +29,7 @@ Where it exits non-zero, relay its `error:` line, or the shell's message where i
 **Private mode** changes steps 1–4 in four places:
 
 - The standard's *Private layout* section governs where each file goes.
-- Step 2 reads the repository's own `AGENTS.md`, `CLAUDE.md` and `docs/` as the base, and the files in `hako-private/` as **Present**. A topic is earned only for what the base lacks.
+- Step 2 reads the repository's own `AGENTS.md`, `CLAUDE.md` and `docs/` as the base, and `hako-private/AGENTS.md` and the files under `hako-private/docs/` as **Present**. A topic is earned only for what the base lacks.
 - Step 3 writes topic docs into `hako-private/docs/` and never `README.md` or `CLAUDE.md`. Each doc links to the base files it builds on. Add the route of each new doc to `hako-private/AGENTS.md`, and leave its other lines as they are.
 - Step 4 names `/project-review:project-review-docs hako-private` for the full audit.
 

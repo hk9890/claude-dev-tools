@@ -89,6 +89,31 @@ test_tracked() {
   assert_eq "tracked .worktreeinclude with the line: left unchanged" "" "$(git -C "$dir" status --porcelain)"
 }
 
+test_tolerant_match() {
+  local dir; dir=$(make_repo)
+  commit_worktreeinclude "$dir" /CLAUDE.local.md
+  printf '@%s/hako-private/AGENTS.md \r\n' "$dir" > "$dir/CLAUDE.local.md"
+  local code=0; run_in "$dir" >/dev/null 2>&1 || code=$?
+  assert_eq "tolerant: a committed /CLAUDE.local.md is accepted" "0" "$code"
+  assert_eq "tolerant: an import with CR and a space is not added again" "1" "$(grep -c hako-private "$dir/CLAUDE.local.md")"
+}
+
+test_agents_ignored_globally() {
+  local dir; dir=$(make_repo)
+  printf 'AGENTS.md\n' >> "$SANDBOX/ignore"
+  run_in "$dir" >/dev/null 2>&1
+  printf 'CLAUDE.local.md\n.worktreeinclude\nhako-private/\n' > "$SANDBOX/ignore"
+  assert_eq "AGENTS.md ignored globally: still committed" "AGENTS.md" "$(git -C "$dir/hako-private" ls-files)"
+}
+
+test_whitespace_path() {
+  local dir; dir="$SANDBOX/with space"
+  mkdir -p "$dir"
+  git -C "$dir" init -q
+  local code=0; run_in "$dir" >/dev/null 2>&1 || code=$?
+  assert_eq "whitespace in the path: exit 1" "1" "$code"
+}
+
 test_commit_fails() {
   local dir; dir=$(make_repo)
   local code=0
@@ -112,6 +137,9 @@ test_setup
 test_existing_notes
 test_not_ignored
 test_tracked
+test_tolerant_match
+test_agents_ignored_globally
+test_whitespace_path
 test_commit_fails
 test_worktree
 

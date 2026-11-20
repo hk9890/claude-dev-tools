@@ -414,9 +414,12 @@ def private_import(repo_root):
               "present": os.path.isfile(local_abs), "canonical": False, "detail": "missing"}
     if claude["present"]:
         body = read_stripped(local_abs)
+        # The setup writes the path git prints, which resolves symlinks: compare real paths.
+        target = os.path.realpath(os.path.join(root, "AGENTS.md"))
         if body is None:
             claude["detail"] = "unreadable"
-        elif expected in (ln.strip() for ln in body.splitlines()):
+        elif any(ln.strip().startswith("@") and os.path.realpath(ln.strip()[1:]) == target
+                 for ln in body.splitlines()):
             claude.update(canonical=True, detail=f"holds {expected}")
         else:
             claude["detail"] = f"no line {expected}"
@@ -486,10 +489,11 @@ def build(repo_root, setup_md=None):
         present_canonical.add("CLAUDE.md")
     missing = [n for n in required if n not in present_canonical]
 
-    # Location violations: canonical docs/ file found at root, or root file under docs/
+    # Location violations: canonical docs/ file found at root, or root file under docs/.
+    # The top level of a private root holds scratch, which is outside the set.
     location_violations = []
     for n in (n for n in CANONICAL_DOCS if n.endswith(".md")):
-        if os.path.isfile(os.path.join(repo_root, n)):
+        if not private and os.path.isfile(os.path.join(repo_root, n)):
             location_violations.append({"file": n, "found_at": n, "expected_at": f"docs/{n}"})
     for n in CANONICAL_ROOT + OPTIONAL_CANONICAL_ROOT:
         if os.path.isfile(os.path.join(repo_root, "docs", n)):
@@ -498,7 +502,7 @@ def build(repo_root, setup_md=None):
     # Injected blocks in steering docs. Scan each real file once: a steering doc that links
     # to the other one would report the same blocks twice, so a link comes after the files.
     injected, scanned = [], set()
-    for n in sorted(("CLAUDE.md", "AGENTS.md"), key=lambda n: os.path.islink(os.path.join(repo_root, n))):
+    for n in sorted(PRIVATE_REQUIRED if private else ("CLAUDE.md", "AGENTS.md"), key=lambda n: os.path.islink(os.path.join(repo_root, n))):
         p = os.path.join(repo_root, n)
         real = os.path.realpath(p)
         if os.path.isfile(p) and real not in scanned:

@@ -487,7 +487,7 @@ if (typeof agent === 'function') {
     return `Repo root: ${repoRoot}\n` +
       `You audit ${batch.length} documentation file(s) of this repository against an authoring standard.\n\n` +
       (manifest.private
-        ? `PRIVATE LAYOUT — this root is the hako-private folder of a repository the user cannot commit to. Its docs are a delta to that repository's own docs, which stay as they are: a link into the repository is how a private doc builds on a repository rule, never a finding.\n\n`
+        ? `PRIVATE LAYOUT — this root is the hako-private folder of a repository the user cannot commit to. Its docs are a delta to that repository's own docs, which stay as they are: a link into the repository is how a private doc builds on a repository rule, so such a link is no finding by itself. An unresolved one still is.\n\n`
         : '') +
       `READ ONCE — your first action is ONE parallel batch of Read calls, one per file in this list. They are the only tool calls you make before you return: no Bash, no Grep, no Glob, no other Read. The audit is judged on these files alone, and what they do not show is outside it. If a Read is refused for size, read that file in parts with offset and limit.\n` +
       readList.map(p => `  ${p}`).join('\n') + '\n\n' +

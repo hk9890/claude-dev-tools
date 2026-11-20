@@ -12,12 +12,22 @@ cd "$top"
 [[ "$(git rev-parse --path-format=absolute --git-dir)" == "$(git rev-parse --path-format=absolute --git-common-dir)" ]] \
   || fail "$top is a git worktree: run this in the main checkout, which the import must name"
 
+[[ "$top" =~ [[:space:]] ]] && fail "the checkout path \"$top\" holds whitespace, which ends an @-import"
+
 tracked() { git ls-files --error-unmatch "$1" >/dev/null 2>&1; }
+# Whether file $1 holds one of the lines after it, ignoring surrounding whitespace and a CR.
+has_line() {
+  local file=$1; shift
+  [[ -f "$file" ]] && awk -v want="$*" '
+    BEGIN { n = split(want, w, " ") }
+    { sub(/\r$/, ""); gsub(/^[ \t]+|[ \t]+$/, ""); for (i = 1; i <= n; i++) if ($0 == w[i]) found = 1 }
+    END { exit !found }' "$file"
+}
 
 # A .worktreeinclude the repository commits already does the job where it lists CLAUDE.local.md.
 include_done=no
 if tracked .worktreeinclude; then
-  grep -qxF CLAUDE.local.md .worktreeinclude \
+  has_line .worktreeinclude CLAUDE.local.md /CLAUDE.local.md \
     || fail ".worktreeinclude is tracked by this repository and does not list CLAUDE.local.md, so the private layout cannot add it"
   include_done=yes
 fi
@@ -51,7 +61,7 @@ if [[ -d hako-private/.git ]] && git -C hako-private rev-parse -q --verify HEAD 
   echo "kept    hako-private/.git"
 else
   git -C hako-private init -q
-  git -C hako-private add AGENTS.md
+  git -C hako-private add -f AGENTS.md
   git -C hako-private commit -q -m "Start the private docs" \
     || fail "the first commit in hako-private failed (see git's message above); fix it and run this again"
   echo "created hako-private/.git (local, no remote)"
@@ -60,14 +70,14 @@ fi
 if [[ ! -f CLAUDE.local.md ]]; then
   printf '%s\n' "$import" > CLAUDE.local.md
   echo "created CLAUDE.local.md"
-elif grep -qxF "$import" CLAUDE.local.md; then
+elif has_line CLAUDE.local.md "$import"; then
   echo "kept    CLAUDE.local.md"
 else
   printf '\n%s\n' "$import" >> CLAUDE.local.md
   echo "added   the import to CLAUDE.local.md"
 fi
 
-if [[ "$include_done" == yes ]] || { [[ -f .worktreeinclude ]] && grep -qxF CLAUDE.local.md .worktreeinclude; }; then
+if [[ "$include_done" == yes ]] || has_line .worktreeinclude CLAUDE.local.md /CLAUDE.local.md; then
   echo "kept    .worktreeinclude"
 else
   if [[ -s .worktreeinclude && -n "$(tail -c 1 .worktreeinclude)" ]]; then echo >> .worktreeinclude; fi

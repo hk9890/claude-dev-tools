@@ -379,7 +379,13 @@ test_private_root() {
   assert_eq "private: a link into the repository resolves" "0" "$(json_val "$out" "d['summary']['unresolved_links']")"
   assert_eq "private: the routed doc is no orphan" "[]" "$(json_val "$out" "d['orphans']")"
   assert_eq "private: the import is checked in the parent's CLAUDE.local.md" "../CLAUDE.local.md True" "$(json_val "$out" "d['claude_md']['file'] + ' ' + str(d['claude_md']['canonical'])")"
-  rm -rf "$dir"
+  printf 'scratch\n' > "$dir/hako-private/TESTING.md"
+  out=$("$SCRIPT" "$dir/hako-private")
+  assert_eq "private: scratch with a canonical name is no location violation" "[]" "$(json_val "$out" "d['location_violations']")"
+  ln -s "$dir" "$dir-link"
+  out=$("$SCRIPT" "$dir-link/hako-private")
+  assert_eq "private: the import matches through a symlinked checkout path" "True" "$(json_val "$out" "d['claude_md']['canonical']")"
+  rm -rf "$dir" "$dir-link"
 }
 test_private_relative_import() {
   local dir; dir=$(make_private_fixture)
