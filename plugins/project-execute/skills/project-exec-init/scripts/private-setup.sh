@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 # Set up the private layout of the standard in the git checkout of the current directory:
-# hako-private/ with AGENTS.md and docs/ as a local git repository, the absolute import in
+# <folder>/ with AGENTS.md and docs/ as a local git repository, the absolute import in
 # CLAUDE.local.md, and CLAUDE.local.md in .worktreeinclude. Writes only what is absent,
 # prints one line per file, and exits 1 without writing where a check fails.
+#
+# Usage: private-setup.sh [<folder>]
+# With no folder, the folder of the import CLAUDE.local.md already holds; where it holds
+# none, exit 2 with no write, for the caller to ask the user for a name.
 set -euo pipefail
 
 fail() { printf 'error: %s\n' "$1" >&2; exit 1; }
@@ -18,11 +22,32 @@ tracked() { git ls-files --error-unmatch "$1" >/dev/null 2>&1; }
 # Whether file $1 holds one of the lines after it, ignoring surrounding whitespace and a CR.
 has_line() {
   local file=$1; shift
-  [[ -f "$file" ]] && awk -v want="$*" '
-    BEGIN { n = split(want, w, " ") }
+  [[ -f "$file" ]] && WANT="$*" awk '
+    BEGIN { n = split(ENVIRON["WANT"], w, " ") }
     { sub(/\r$/, ""); gsub(/^[ \t]+|[ \t]+$/, ""); for (i = 1; i <= n; i++) if ($0 == w[i]) found = 1 }
     END { exit !found }' "$file"
 }
+# The folder of each import of <top>/<folder>/AGENTS.md that CLAUDE.local.md holds.
+imported_folders() {
+  [[ -f CLAUDE.local.md ]] || return 0
+  # Through the environment: gawk reads a -v value of the form @/…/ as a regex constant.
+  PREFIX="@$top/" awk '
+    BEGIN { pre = ENVIRON["PREFIX"] }
+    { sub(/\r$/, ""); gsub(/^[ \t]+|[ \t]+$/, "") }
+    index($0, pre) == 1 { rest = substr($0, length(pre) + 1); if (rest ~ /^[^\/]+\/AGENTS\.md$/) { sub(/\/AGENTS\.md$/, "", rest); print rest } }
+  ' CLAUDE.local.md
+}
+
+existing=$(imported_folders | head -n 1)
+folder=${1:-$existing}
+if [[ -z "$folder" ]]; then
+  echo "no private folder yet: name one, as private-setup.sh <folder>" >&2
+  exit 2
+fi
+[[ "$folder" =~ ^[A-Za-z0-9._-]+$ && "$folder" != . && "$folder" != .. && "$folder" != .git ]] \
+  || fail "\"$folder\" is no folder name: use one path segment of letters, digits, . _ -"
+[[ -z "$existing" || "$existing" == "$folder" ]] \
+  || fail "CLAUDE.local.md already imports the private folder $existing, not $folder"
 
 # A .worktreeinclude the repository commits already does the job where it lists CLAUDE.local.md.
 include_done=no
@@ -32,20 +57,20 @@ if tracked .worktreeinclude; then
   include_done=yes
 fi
 
-for path in CLAUDE.local.md .worktreeinclude hako-private/AGENTS.md; do
+for path in CLAUDE.local.md .worktreeinclude "$folder/AGENTS.md"; do
   [[ "$path" == .worktreeinclude && "$include_done" == yes ]] && continue
   tracked "$path" && fail "$path is tracked by this repository, so the private layout cannot write it"
   git check-ignore -q --no-index "$path" \
-    || fail "git does not ignore $path here: add ${path%%/*} to your global gitignore (core.excludesFile), never to this repository's .gitignore"
+    || fail "git does not ignore $path here: add ${path%%/*}$([[ "$path" == */* ]] && echo /) to your global gitignore (core.excludesFile), never to this repository's .gitignore"
 done
 
-import="@$top/hako-private/AGENTS.md"
+import="@$top/$folder/AGENTS.md"
 
-mkdir -p hako-private/docs
-if [[ -f hako-private/AGENTS.md ]]; then
-  echo "kept    hako-private/AGENTS.md"
+mkdir -p "$folder/docs"
+if [[ -f "$folder/AGENTS.md" ]]; then
+  echo "kept    $folder/AGENTS.md"
 else
-  cat > hako-private/AGENTS.md <<EOF
+  cat > "$folder/AGENTS.md" <<EOF
 # AGENTS.md — $(basename "$top") private routing
 
 The private delta to this repository's own docs, which load as they are.
@@ -54,17 +79,17 @@ The private delta to this repository's own docs, which load as they are.
 
 Every route below is **mandatory, not advisory**. Load the document BEFORE the first action of that kind — loading it afterwards does not count, and no route becomes skippable because the task looks small.
 EOF
-  echo "created hako-private/AGENTS.md"
+  echo "created $folder/AGENTS.md"
 fi
 
-if [[ -d hako-private/.git ]] && git -C hako-private rev-parse -q --verify HEAD >/dev/null 2>&1; then
-  echo "kept    hako-private/.git"
+if [[ -d "$folder/.git" ]] && git -C "$folder" rev-parse -q --verify HEAD >/dev/null 2>&1; then
+  echo "kept    $folder/.git"
 else
-  git -C hako-private init -q
-  git -C hako-private add -f AGENTS.md
-  git -C hako-private commit -q -m "Start the private docs" \
-    || fail "the first commit in hako-private failed (see git's message above); fix it and run this again"
-  echo "created hako-private/.git (local, no remote)"
+  git -C "$folder" init -q
+  git -C "$folder" add -f AGENTS.md
+  git -C "$folder" commit -q -m "Start the private docs" \
+    || fail "the first commit in $folder failed (see git's message above); fix it and run this again"
+  echo "created $folder/.git (local, no remote)"
 fi
 
 if [[ ! -f CLAUDE.local.md ]]; then
@@ -84,3 +109,4 @@ else
   printf 'CLAUDE.local.md\n' >> .worktreeinclude
   echo "added   CLAUDE.local.md to .worktreeinclude"
 fi
+echo "folder  $folder"

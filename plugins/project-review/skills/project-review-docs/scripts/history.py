@@ -34,6 +34,7 @@ history — an empty result is an answer, not a failure.
 
 import argparse
 import glob
+import importlib.util
 import json
 import os
 import re
@@ -84,20 +85,25 @@ COLLECT_FACTOR = 2
 # that many per use case rather than discarding it silently.
 HISTORICAL_CAP = 25
 
-# The private layout of a repository the user cannot commit to: the docs sit in this
-# folder of the checkout, which is a git repository of its own, while the sessions run
-# in the checkout around it.
-PRIVATE_ROOT_NAME = "hako-private"
 
 
 def is_private_root(repo_root):
-    return os.path.basename(os.path.abspath(repo_root)) == PRIVATE_ROOT_NAME
+    """The private layout of a repository the user cannot commit to (private_root.py): the
+    docs sit in a folder of the checkout, a git repository of its own, while the sessions
+    run in the checkout around it."""
+    path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "private_root.py")
+    spec = importlib.util.spec_from_file_location("private_root", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.is_private(repo_root)
 
 
 def read_suffix(repo_root, doc):
-    """The end of the path a session reads the doc by. A private doc is read under the
-    folder, and the checkout around it has a doc of the same name."""
-    return os.path.join(PRIVATE_ROOT_NAME, doc) if is_private_root(repo_root) else doc
+    """The end of the path a session reads the doc by. A private doc is read under its
+    folder, and the checkout around it can have a doc of the same name."""
+    if is_private_root(repo_root):
+        return os.path.join(os.path.basename(os.path.abspath(repo_root)), doc)
+    return doc
 
 
 # ---------------------------------------------------------------------------

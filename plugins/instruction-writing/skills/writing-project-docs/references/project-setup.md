@@ -177,17 +177,17 @@ Content outside a file's boundary is a defect even when every statement in it is
 
 ## Private layout
 
-The same set for a repository the user cannot commit to, kept in files git never sees. `/project-execute:project-exec-init private` sets it up.
+The same set for a repository the user cannot commit to, kept in files git never sees. `<private>` is a folder the user names; `/project-execute:project-exec-init private` asks for it and sets the layout up. The import in `CLAUDE.local.md` is what makes a folder private, and the only record of its name.
 
 | File | Holds |
 |---|---|
-| `CLAUDE.local.md` | the line `@<absolute path of the checkout>/hako-private/AGENTS.md`, beside any personal notes. Absolute, because a worktree gets a copy of this file and a relative import there resolves inside the worktree, which has no `hako-private/` |
+| `CLAUDE.local.md` | the line `@<absolute path of the checkout>/<private>/AGENTS.md`, beside any personal notes. Absolute, because a worktree gets a copy of this file and a relative import there resolves inside the worktree, which has no `<private>/` |
 | `.worktreeinclude` | the line `CLAUDE.local.md`, so each worktree Claude Code creates gets the import. A committed one that already lists it does the job |
-| `hako-private/AGENTS.md` | the routing, under the `AGENTS.md` contract. The one required file |
-| `hako-private/docs/<TOPIC>.md` | the topic docs, under the canonical names and contracts |
+| `<private>/AGENTS.md` | the routing, under the `AGENTS.md` contract. The one required file |
+| `<private>/docs/<TOPIC>.md` | the topic docs, under the canonical names and contracts |
 
 - **A delta.** The repository's own `AGENTS.md`, `CLAUDE.md` and `docs/` load or route as they are, and stay unchanged. A private doc holds only what they lack, and links to the repository file it builds on (`[the coding rules](../../docs/CODING.md)`) rather than repeat it.
-- **Links resolve from the file that holds them.** Claude Code shows an imported file with its absolute path, so a link in `hako-private/AGENTS.md` reaches the checkout's `hako-private/docs/` from a worktree too. A link into the repository reaches the main checkout's copy, so in a worktree read that file in the worktree.
-- **Ignored globally.** `CLAUDE.local.md`, `.worktreeinclude` and `hako-private/` are in the user's global gitignore, never in the repository's `.gitignore`.
-- **Versioned locally.** `hako-private/` is its own git repository with no remote.
-- **Scratch beside the set.** Every other file at the top of `hako-private/` is outside the set.
+- **Links resolve from the file that holds them.** Claude Code shows an imported file with its absolute path, so a link in `<private>/AGENTS.md` reaches the checkout's `<private>/docs/` from a worktree too. A link into the repository reaches the main checkout's copy, so in a worktree read that file in the worktree.
+- **Ignored globally.** `CLAUDE.local.md`, `.worktreeinclude` and `<private>/` are in the user's global gitignore, never in the repository's `.gitignore`.
+- **Versioned locally.** `<private>/` is its own git repository with no remote.
+- **Scratch beside the set.** Every other file at the top of `<private>/` is outside the set.

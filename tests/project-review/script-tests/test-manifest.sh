@@ -355,49 +355,50 @@ test_text() {
   rm -rf "$dir"
 }
 
-# 15. a private root: a hako-private folder holds AGENTS.md and docs/ for a repository the
-# user cannot commit to. Only AGENTS.md is required, the parent's CLAUDE.local.md must
-# import it by absolute path, a link into the repository resolves, and the rest of the
+# 15. a private root: a folder the user names (my-notes here) holds AGENTS.md and docs/
+# for a repository the user cannot commit to. The parent's CLAUDE.local.md importing its
+# AGENTS.md is what makes it private, never its name. Only AGENTS.md is required, the
+# import must be absolute, a link into the repository resolves, and the rest of the
 # folder's top level is scratch, outside the set.
 make_private_fixture() {
-  local dir; dir=$(tmpdir); mkdir -p "$dir/docs" "$dir/hako-private/docs"
+  local dir; dir=$(tmpdir); mkdir -p "$dir/docs" "$dir/my-notes/docs"
   printf '@AGENTS.md\n' > "$dir/CLAUDE.md"
   printf '# Agents\n' > "$dir/AGENTS.md"
   printf '# Coding\n\nRepo rule.\n' > "$dir/docs/CODING.md"
-  printf '# Private routing\n\nMUST read [docs/CODING.md](docs/CODING.md) before editing.\n' > "$dir/hako-private/AGENTS.md"
-  printf '# Coding delta\n\nBuilds on [the repo rules](../../docs/CODING.md).\n' > "$dir/hako-private/docs/CODING.md"
-  printf 'scratch\n' > "$dir/hako-private/release-notes.md"
-  printf '@%s/hako-private/AGENTS.md\n' "$dir" > "$dir/CLAUDE.local.md"
+  printf '# Private routing\n\nMUST read [docs/CODING.md](docs/CODING.md) before editing.\n' > "$dir/my-notes/AGENTS.md"
+  printf '# Coding delta\n\nBuilds on [the repo rules](../../docs/CODING.md).\n' > "$dir/my-notes/docs/CODING.md"
+  printf 'scratch\n' > "$dir/my-notes/release-notes.md"
+  printf '@%s/my-notes/AGENTS.md\n' "$dir" > "$dir/CLAUDE.local.md"
   echo "$dir"
 }
 test_private_root() {
   local dir; dir=$(make_private_fixture)
-  local out; out=$("$SCRIPT" "$dir/hako-private")
+  local out; out=$("$SCRIPT" "$dir/my-notes")
   assert_eq "private: flagged" "True" "$(json_val "$out" "d['private']")"
   assert_eq "private: nothing missing without README.md and CLAUDE.md" "[]" "$(json_val "$out" "d['missing_canonical']")"
   assert_eq "private: scratch at the top level is outside the set" "['AGENTS.md', 'docs/CODING.md']" "$(json_val "$out" "[f['path'] for f in d['files']]")"
   assert_eq "private: a link into the repository resolves" "0" "$(json_val "$out" "d['summary']['unresolved_links']")"
   assert_eq "private: the routed doc is no orphan" "[]" "$(json_val "$out" "d['orphans']")"
   assert_eq "private: the import is checked in the parent's CLAUDE.local.md" "../CLAUDE.local.md True" "$(json_val "$out" "d['claude_md']['file'] + ' ' + str(d['claude_md']['canonical'])")"
-  printf 'scratch\n' > "$dir/hako-private/TESTING.md"
-  out=$("$SCRIPT" "$dir/hako-private")
+  printf 'scratch\n' > "$dir/my-notes/TESTING.md"
+  out=$("$SCRIPT" "$dir/my-notes")
   assert_eq "private: scratch with a canonical name is no location violation" "[]" "$(json_val "$out" "d['location_violations']")"
   ln -s "$dir" "$dir-link"
-  out=$("$SCRIPT" "$dir-link/hako-private")
+  out=$("$SCRIPT" "$dir-link/my-notes")
   assert_eq "private: the import matches through a symlinked checkout path" "True" "$(json_val "$out" "d['claude_md']['canonical']")"
   rm -rf "$dir" "$dir-link"
 }
 test_private_relative_import() {
   local dir; dir=$(make_private_fixture)
-  printf '@hako-private/AGENTS.md\n' > "$dir/CLAUDE.local.md"
-  local out; out=$("$SCRIPT" "$dir/hako-private")
+  printf '@my-notes/AGENTS.md\n' > "$dir/CLAUDE.local.md"
+  local out; out=$("$SCRIPT" "$dir/my-notes")
   assert_eq "private: a relative import is non-canonical" "False" "$(json_val "$out" "d['claude_md']['canonical']")"
-  printf 'Personal note.\n\n@%s/hako-private/AGENTS.md\n' "$dir" > "$dir/CLAUDE.local.md"
-  out=$("$SCRIPT" "$dir/hako-private")
+  printf 'Personal note.\n\n@%s/my-notes/AGENTS.md\n' "$dir" > "$dir/CLAUDE.local.md"
+  out=$("$SCRIPT" "$dir/my-notes")
   assert_eq "private: the import beside personal notes is canonical" "True" "$(json_val "$out" "d['claude_md']['canonical']")"
   rm "$dir/CLAUDE.local.md"
-  out=$("$SCRIPT" "$dir/hako-private")
-  assert_eq "private: a missing CLAUDE.local.md is reported" "missing" "$(json_val "$out" "d['claude_md']['detail']")"
+  out=$("$SCRIPT" "$dir/my-notes")
+  assert_eq "private: no import means an ordinary root" "False ['README.md', 'CLAUDE.md']" "$(json_val "$out" "str(d['private']) + ' ' + str(d['missing_canonical'])")"
   rm -rf "$dir"
 }
 

@@ -187,11 +187,13 @@ assert_eq "empty: a repo with no transcripts still exits 0" "0" "$rc"
 assert_eq "empty: and reports no batches" "0" "$(json_val "len(d['batches'])" <<< "$P2")"
 rm -rf "$EMPTY"
 
-# A private root: hako-private is a git repository of its own inside the checkout, and
-# the sessions run in the checkout. The checkout has a docs/CODING.md too, so a read of
-# that one must not count as a read of the private doc.
-PRIV="$REPO/hako-private"
+# A private root: a folder the user names (my-notes here), which the checkout's
+# CLAUDE.local.md imports, is a git repository of its own inside the checkout, and the
+# sessions run in the checkout. The checkout has a docs/CODING.md too, so a read of that
+# one must not count as a read of the private doc.
+PRIV="$REPO/my-notes"
 mkdir -p "$PRIV/docs"
+printf '@%s/AGENTS.md\n' "$PRIV" > "$REPO/CLAUDE.local.md"
 git -C "$PRIV" init -q 2>/dev/null
 git -C "$PRIV" config user.email t@t.t
 git -C "$PRIV" config user.name t

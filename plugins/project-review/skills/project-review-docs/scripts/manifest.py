@@ -18,8 +18,8 @@ What is a *fact* here (and therefore lives in this script, never in an agent):
     an existing directory with no anchor resolves OK (valid GitHub navigation)
   - reachability of each doc from AGENTS.md (graph walk over doc links)
   - the CLAUDE.md == @AGENTS.md invariant, hollow docs, location violations,
-    and for a private root (a <repo-root> named hako-private) the CLAUDE.local.md
-    import of the parent directory in its place
+    and for a private root (a <repo-root> whose AGENTS.md the parent's CLAUDE.local.md
+    imports) that import in its place
     injected tool-blocks in steering docs
   - the personal files (CLAUDE.local.md, and the legacy .claude.local.md with the
     file it moves to), which the review leaves out
@@ -56,11 +56,9 @@ import sys
 
 CANONICAL_ROOT = ["README.md", "AGENTS.md", "CLAUDE.md"]  # required at repo root
 OPTIONAL_CANONICAL_ROOT = ["CONTRIBUTING.md"]             # optional at repo root
-# The private layout of a repository the user cannot commit to: its AGENTS.md and docs/
-# sit in this folder, and the parent's CLAUDE.local.md imports the AGENTS.md by its
-# absolute path. The parent repository owns README.md and CLAUDE.md, and every other
-# file at the folder's top level is scratch, outside the set.
-PRIVATE_ROOT_NAME = "hako-private"
+# The private layout of a repository the user cannot commit to (private_root.py): the
+# parent repository owns README.md and CLAUDE.md, and every file at the folder's top
+# level but AGENTS.md is scratch, outside the set.
 PRIVATE_REQUIRED = ["AGENTS.md"]
 # The one canonical tree: docs/decisions/NNNN-slug.md, one file per decision in force.
 # Its contract is keyed by the tree name, as project-setup.md heads its block.
@@ -91,6 +89,14 @@ _SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 # Reuse validate-routes.py (kept as the single home of link/anchor logic;
 # check-internal-consistency.py imports the same module by path)
 # ---------------------------------------------------------------------------
+
+def _private_root():
+    path = os.path.join(_SCRIPT_DIR, "private_root.py")
+    spec = importlib.util.spec_from_file_location("private_root", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
 
 def _load_validate_routes():
     path = os.path.join(_SCRIPT_DIR, "validate-routes.py")
@@ -164,15 +170,11 @@ def parse_ownership(setup_path):
 # File discovery + metrics
 # ---------------------------------------------------------------------------
 
-def is_private_root(repo_root):
-    return os.path.basename(os.path.abspath(repo_root)) == PRIVATE_ROOT_NAME
-
-
 def md_files(repo_root):
     """Root-level *.md plus every *.md under docs/ (recursive), sorted, relative.
     A private root contributes only its AGENTS.md: the rest of its top level is scratch."""
     out = []
-    private = is_private_root(repo_root)
+    private = _private_root().is_private(repo_root)
     try:
         for e in sorted(os.scandir(repo_root), key=lambda e: e.name):
             if e.is_file(follow_symlinks=False) and e.name.endswith(".md") and (not private or e.name in PRIVATE_REQUIRED):
@@ -404,26 +406,16 @@ def claude_md_invariant(repo_root):
 
 
 def private_import(repo_root):
-    """The parent's CLAUDE.local.md must hold the import of this folder's AGENTS.md by its
-    absolute path, beside any personal notes: a git worktree gets a copy of CLAUDE.local.md,
-    and a relative import there resolves inside the worktree, which holds no private folder."""
-    root = os.path.abspath(repo_root)
-    local_abs = os.path.join(os.path.dirname(root), PERSONAL_LOCAL[0])
-    expected = "@" + os.path.join(root, "AGENTS.md")
-    claude = {"file": "../" + PERSONAL_LOCAL[0], "expected": expected,
-              "present": os.path.isfile(local_abs), "canonical": False, "detail": "missing"}
-    if claude["present"]:
-        body = read_stripped(local_abs)
-        # The setup writes the path git prints, which resolves symlinks: compare real paths.
-        target = os.path.realpath(os.path.join(root, "AGENTS.md"))
-        if body is None:
-            claude["detail"] = "unreadable"
-        elif any(ln.strip().startswith("@") and os.path.realpath(ln.strip()[1:]) == target
-                 for ln in body.splitlines()):
-            claude.update(canonical=True, detail=f"holds {expected}")
-        else:
-            claude["detail"] = f"no line {expected}"
-    return claude
+    """The parent's CLAUDE.local.md imports this folder's AGENTS.md, which is what makes it
+    private. The import must be absolute: a git worktree gets a copy of CLAUDE.local.md, and
+    a relative import there resolves inside the worktree, which holds no private folder."""
+    pr = _private_root()
+    paths = pr.imports_of(repo_root)
+    absolute = [p for p in paths if pr.is_absolute(p)]
+    return {"file": "../" + PERSONAL_LOCAL[0],
+            "expected": "@" + os.path.join(os.path.abspath(repo_root), "AGENTS.md"),
+            "present": True, "canonical": bool(absolute),
+            "detail": f"holds @{absolute[0]}" if absolute else f"relative import @{paths[0]}, which fails in a git worktree"}
 
 
 def compare_import(abs_path, expected):
@@ -479,7 +471,7 @@ def build(repo_root, setup_md=None):
     for e in files:
         e["reachable_from_agents"] = (e["path"] == "CLAUDE.md") or (e["path"] in reachable)
 
-    private = is_private_root(repo_root)
+    private = _private_root().is_private(repo_root)
     claude = private_import(repo_root) if private else claude_md_invariant(repo_root)
 
     # Missing canonical: only the required root files. Every docs/ topic doc is

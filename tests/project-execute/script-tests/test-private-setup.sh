@@ -17,7 +17,7 @@ assert_eq() {
 SANDBOX=$(mktemp -d)
 trap 'rm -rf "$SANDBOX"' EXIT
 export GIT_CONFIG_GLOBAL="$SANDBOX/gitconfig" GIT_CONFIG_NOSYSTEM=1
-printf 'CLAUDE.local.md\n.worktreeinclude\nhako-private/\n' > "$SANDBOX/ignore"
+printf 'CLAUDE.local.md\n.worktreeinclude\nmy-notes/\n' > "$SANDBOX/ignore"
 git config --global core.excludesFile "$SANDBOX/ignore"
 git config --global user.name test
 git config --global user.email test@example.invalid
@@ -31,7 +31,9 @@ make_repo() {
   git -C "$dir" commit -q -m init
   echo "$dir"
 }
-run_in() { (cd "$1" && bash "$SCRIPT"); }
+# The folder name is the user's choice; my-notes here, so no default name can pass.
+run_in() { (cd "$1" && bash "$SCRIPT" my-notes); }
+run_bare() { (cd "$1" && bash "$SCRIPT"); }
 
 test_outside_git() {
   local dir; dir=$(mktemp -d "$SANDBOX/plain-XXXXXX")
@@ -42,15 +44,27 @@ test_outside_git() {
 test_setup() {
   local dir; dir=$(make_repo)
   run_in "$dir" >/dev/null
-  assert_eq "setup: CLAUDE.local.md is the absolute import" "@$dir/hako-private/AGENTS.md" "$(cat "$dir/CLAUDE.local.md")"
+  assert_eq "setup: CLAUDE.local.md is the absolute import" "@$dir/my-notes/AGENTS.md" "$(cat "$dir/CLAUDE.local.md")"
   assert_eq "setup: .worktreeinclude names CLAUDE.local.md" "CLAUDE.local.md" "$(cat "$dir/.worktreeinclude")"
-  assert_eq "setup: hako-private/docs exists" "yes" "$([[ -d "$dir/hako-private/docs" ]] && echo yes)"
-  assert_eq "setup: AGENTS.md is committed in the local repository" "AGENTS.md" "$(git -C "$dir/hako-private" ls-files)"
-  assert_eq "setup: the private repository has no remote" "" "$(git -C "$dir/hako-private" remote)"
+  assert_eq "setup: my-notes/docs exists" "yes" "$([[ -d "$dir/my-notes/docs" ]] && echo yes)"
+  assert_eq "setup: AGENTS.md is committed in the local repository" "AGENTS.md" "$(git -C "$dir/my-notes" ls-files)"
+  assert_eq "setup: the private repository has no remote" "" "$(git -C "$dir/my-notes" remote)"
   assert_eq "setup: the checkout stays clean" "" "$(git -C "$dir" status --porcelain)"
-  local again; again=$(run_in "$dir")
-  assert_eq "rerun: every file kept" "4" "$(grep -c '^kept' <<< "$again")"
-  assert_eq "rerun: CLAUDE.local.md unchanged" "@$dir/hako-private/AGENTS.md" "$(cat "$dir/CLAUDE.local.md")"
+  local again; again=$(run_bare "$dir")
+  assert_eq "rerun with no name: every file kept" "4" "$(grep -c '^kept' <<< "$again")"
+  assert_eq "rerun with no name: the folder comes from the import" "folder  my-notes" "$(tail -n 1 <<< "$again")"
+  assert_eq "rerun: CLAUDE.local.md unchanged" "@$dir/my-notes/AGENTS.md" "$(cat "$dir/CLAUDE.local.md")"
+  local code=0; (cd "$dir" && bash "$SCRIPT" other-notes) >/dev/null 2>&1 || code=$?
+  assert_eq "a second folder beside the imported one: exit 1" "1" "$code"
+}
+
+test_name_needed() {
+  local dir; dir=$(make_repo)
+  local code=0; run_bare "$dir" >/dev/null 2>&1 || code=$?
+  assert_eq "no name and no import: exit 2" "2" "$code"
+  assert_eq "no name and no import: nothing written" "no" "$([[ -e "$dir/CLAUDE.local.md" ]] && echo yes || echo no)"
+  code=0; (cd "$dir" && bash "$SCRIPT" ../up) >/dev/null 2>&1 || code=$?
+  assert_eq "a name with a slash: exit 1" "1" "$code"
 }
 
 test_existing_notes() {
@@ -58,17 +72,17 @@ test_existing_notes() {
   printf 'Personal note.' > "$dir/CLAUDE.local.md"
   printf 'other.env' > "$dir/.worktreeinclude"
   run_in "$dir" >/dev/null
-  assert_eq "notes: the import is added, the notes kept" "Personal note.|@$dir/hako-private/AGENTS.md" "$(grep -v '^$' "$dir/CLAUDE.local.md" | paste -sd'|')"
+  assert_eq "notes: the import is added, the notes kept" "Personal note.|@$dir/my-notes/AGENTS.md" "$(grep -v '^$' "$dir/CLAUDE.local.md" | paste -sd'|')"
   assert_eq "notes: .worktreeinclude keeps its line" "other.env|CLAUDE.local.md" "$(paste -sd'|' "$dir/.worktreeinclude")"
 }
 
 test_not_ignored() {
   local dir; dir=$(make_repo)
-  printf 'CLAUDE.local.md\nhako-private/\n' > "$SANDBOX/ignore"
+  printf 'CLAUDE.local.md\nmy-notes/\n' > "$SANDBOX/ignore"
   local code=0; run_in "$dir" >/dev/null 2>&1 || code=$?
-  printf 'CLAUDE.local.md\n.worktreeinclude\nhako-private/\n' > "$SANDBOX/ignore"
+  printf 'CLAUDE.local.md\n.worktreeinclude\nmy-notes/\n' > "$SANDBOX/ignore"
   assert_eq "not ignored: exit 1" "1" "$code"
-  assert_eq "not ignored: nothing written" "no" "$([[ -e "$dir/hako-private" || -e "$dir/CLAUDE.local.md" || -e "$dir/.worktreeinclude" ]] && echo yes || echo no)"
+  assert_eq "not ignored: nothing written" "no" "$([[ -e "$dir/my-notes" || -e "$dir/CLAUDE.local.md" || -e "$dir/.worktreeinclude" ]] && echo yes || echo no)"
 }
 
 commit_worktreeinclude() {
@@ -92,18 +106,18 @@ test_tracked() {
 test_tolerant_match() {
   local dir; dir=$(make_repo)
   commit_worktreeinclude "$dir" /CLAUDE.local.md
-  printf '@%s/hako-private/AGENTS.md \r\n' "$dir" > "$dir/CLAUDE.local.md"
+  printf '@%s/my-notes/AGENTS.md \r\n' "$dir" > "$dir/CLAUDE.local.md"
   local code=0; run_in "$dir" >/dev/null 2>&1 || code=$?
   assert_eq "tolerant: a committed /CLAUDE.local.md is accepted" "0" "$code"
-  assert_eq "tolerant: an import with CR and a space is not added again" "1" "$(grep -c hako-private "$dir/CLAUDE.local.md")"
+  assert_eq "tolerant: an import with CR and a space is not added again" "1" "$(grep -c my-notes "$dir/CLAUDE.local.md")"
 }
 
 test_agents_ignored_globally() {
   local dir; dir=$(make_repo)
   printf 'AGENTS.md\n' >> "$SANDBOX/ignore"
   run_in "$dir" >/dev/null 2>&1
-  printf 'CLAUDE.local.md\n.worktreeinclude\nhako-private/\n' > "$SANDBOX/ignore"
-  assert_eq "AGENTS.md ignored globally: still committed" "AGENTS.md" "$(git -C "$dir/hako-private" ls-files)"
+  printf 'CLAUDE.local.md\n.worktreeinclude\nmy-notes/\n' > "$SANDBOX/ignore"
+  assert_eq "AGENTS.md ignored globally: still committed" "AGENTS.md" "$(git -C "$dir/my-notes" ls-files)"
 }
 
 test_whitespace_path() {
@@ -121,7 +135,7 @@ test_commit_fails() {
     run_in "$dir" >/dev/null 2>&1 || code=$?
   assert_eq "failed first commit: exit 1" "1" "$code"
   run_in "$dir" >/dev/null 2>&1
-  assert_eq "failed first commit: a rerun commits" "AGENTS.md" "$(git -C "$dir/hako-private" ls-files)"
+  assert_eq "failed first commit: a rerun commits" "AGENTS.md" "$(git -C "$dir/my-notes" ls-files)"
 }
 
 test_worktree() {
@@ -129,11 +143,12 @@ test_worktree() {
   git -C "$dir" worktree add -q "$dir-wt" 2>/dev/null
   local code=0; run_in "$dir-wt" >/dev/null 2>&1 || code=$?
   assert_eq "in a worktree: exit 1" "1" "$code"
-  assert_eq "in a worktree: nothing written" "no" "$([[ -e "$dir-wt/hako-private" ]] && echo yes || echo no)"
+  assert_eq "in a worktree: nothing written" "no" "$([[ -e "$dir-wt/my-notes" ]] && echo yes || echo no)"
 }
 
 test_outside_git
 test_setup
+test_name_needed
 test_existing_notes
 test_not_ignored
 test_tracked
