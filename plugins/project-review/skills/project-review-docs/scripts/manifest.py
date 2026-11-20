@@ -18,6 +18,8 @@ What is a *fact* here (and therefore lives in this script, never in an agent):
     an existing directory with no anchor resolves OK (valid GitHub navigation)
   - reachability of each doc from AGENTS.md (graph walk over doc links)
   - the CLAUDE.md == @AGENTS.md invariant, hollow docs, location violations,
+    and for a private root (a <repo-root> named hako-private) the CLAUDE.local.md
+    import of the parent directory in its place
     injected tool-blocks in steering docs
   - the personal files (CLAUDE.local.md, and the legacy .claude.local.md with the
     file it moves to), which the review leaves out
@@ -54,6 +56,12 @@ import sys
 
 CANONICAL_ROOT = ["README.md", "AGENTS.md", "CLAUDE.md"]  # required at repo root
 OPTIONAL_CANONICAL_ROOT = ["CONTRIBUTING.md"]             # optional at repo root
+# The private layout of a repository the user cannot commit to: its AGENTS.md and docs/
+# sit in this folder, and the parent's CLAUDE.local.md imports the AGENTS.md by its
+# absolute path. The parent repository owns README.md and CLAUDE.md, and every other
+# file at the folder's top level is scratch, outside the set.
+PRIVATE_ROOT_NAME = "hako-private"
+PRIVATE_REQUIRED = ["AGENTS.md"]
 # The one canonical tree: docs/decisions/NNNN-slug.md, one file per decision in force.
 # Its contract is keyed by the tree name, as project-setup.md heads its block.
 DECISIONS_TREE = "decisions/"
@@ -156,12 +164,18 @@ def parse_ownership(setup_path):
 # File discovery + metrics
 # ---------------------------------------------------------------------------
 
+def is_private_root(repo_root):
+    return os.path.basename(os.path.abspath(repo_root)) == PRIVATE_ROOT_NAME
+
+
 def md_files(repo_root):
-    """Root-level *.md plus every *.md under docs/ (recursive), sorted, relative."""
+    """Root-level *.md plus every *.md under docs/ (recursive), sorted, relative.
+    A private root contributes only its AGENTS.md: the rest of its top level is scratch."""
     out = []
+    private = is_private_root(repo_root)
     try:
         for e in sorted(os.scandir(repo_root), key=lambda e: e.name):
-            if e.is_file(follow_symlinks=False) and e.name.endswith(".md"):
+            if e.is_file(follow_symlinks=False) and e.name.endswith(".md") and (not private or e.name in PRIVATE_REQUIRED):
                 out.append(e.name)
     except OSError:
         pass
@@ -373,6 +387,59 @@ def injected_blocks(abs_path):
 # Build the manifest
 # ---------------------------------------------------------------------------
 
+def claude_md_invariant(repo_root):
+    """CLAUDE.md must be exactly @AGENTS.md. md_files() skips root-level symlinks, so a
+    CLAUDE.md that links to AGENTS.md is present but absent from files[]; reading it
+    would read AGENTS.md."""
+    claude_abs = os.path.join(repo_root, "CLAUDE.md")
+    claude = {"file": "CLAUDE.md", "expected": "@AGENTS.md",
+              "present": os.path.islink(claude_abs) or os.path.isfile(claude_abs), "canonical": False, "detail": ""}
+    if os.path.islink(claude_abs):
+        claude["detail"] = f"symlink to {os.readlink(claude_abs)}, not a file holding the @AGENTS.md import"
+    elif claude["present"]:
+        claude.update(compare_import(claude_abs, claude["expected"]))
+    else:
+        claude["detail"] = "missing"
+    return claude
+
+
+def private_import(repo_root):
+    """The parent's CLAUDE.local.md must hold the import of this folder's AGENTS.md by its
+    absolute path, beside any personal notes: a git worktree gets a copy of CLAUDE.local.md,
+    and a relative import there resolves inside the worktree, which holds no private folder."""
+    root = os.path.abspath(repo_root)
+    local_abs = os.path.join(os.path.dirname(root), PERSONAL_LOCAL[0])
+    expected = "@" + os.path.join(root, "AGENTS.md")
+    claude = {"file": "../" + PERSONAL_LOCAL[0], "expected": expected,
+              "present": os.path.isfile(local_abs), "canonical": False, "detail": "missing"}
+    if claude["present"]:
+        body = read_stripped(local_abs)
+        if body is None:
+            claude["detail"] = "unreadable"
+        elif expected in (ln.strip() for ln in body.splitlines()):
+            claude.update(canonical=True, detail=f"holds {expected}")
+        else:
+            claude["detail"] = f"no line {expected}"
+    return claude
+
+
+def compare_import(abs_path, expected):
+    body = read_stripped(abs_path)
+    if body is None:
+        return {"detail": "unreadable"}
+    if body == expected:
+        return {"canonical": True, "detail": f"exactly {expected}"}
+    return {"detail": f"extra content ({len(body.splitlines())} line(s))"}
+
+
+def read_stripped(abs_path):
+    try:
+        with open(abs_path, encoding="utf-8", errors="replace") as fh:
+            return fh.read().strip()
+    except OSError:
+        return None
+
+
 def build(repo_root, setup_md=None):
     vr = _load_validate_routes()
     ownership = parse_ownership(setup_md)
@@ -409,27 +476,13 @@ def build(repo_root, setup_md=None):
     for e in files:
         e["reachable_from_agents"] = (e["path"] == "CLAUDE.md") or (e["path"] in reachable)
 
-    # CLAUDE.md invariant. md_files() skips root-level symlinks, so a CLAUDE.md that links
-    # to AGENTS.md is present but absent from files[]; reading it would read AGENTS.md.
-    claude_abs = os.path.join(repo_root, "CLAUDE.md")
-    claude = {"present": os.path.islink(claude_abs) or os.path.isfile(claude_abs), "canonical": False, "detail": ""}
-    if os.path.islink(claude_abs):
-        claude["detail"] = f"symlink to {os.readlink(claude_abs)}, not a file holding the @AGENTS.md import"
-    elif claude["present"]:
-        try:
-            with open(claude_abs, encoding="utf-8", errors="replace") as fh:
-                body = fh.read().strip()
-            claude["canonical"] = (body == "@AGENTS.md")
-            claude["detail"] = "exactly @AGENTS.md" if claude["canonical"] else f"extra content ({len(body.splitlines())} line(s))"
-        except OSError as exc:
-            claude["detail"] = f"unreadable: {exc}"
-    else:
-        claude["detail"] = "missing"
+    private = is_private_root(repo_root)
+    claude = private_import(repo_root) if private else claude_md_invariant(repo_root)
 
     # Missing canonical: only the required root files. Every docs/ topic doc is
     # optional (created when needed), so none is ever reported missing.
-    required = CANONICAL_ROOT
-    if claude["present"]:
+    required = PRIVATE_REQUIRED if private else CANONICAL_ROOT
+    if claude["present"] and not private:
         present_canonical.add("CLAUDE.md")
     missing = [n for n in required if n not in present_canonical]
 
@@ -471,6 +524,7 @@ def build(repo_root, setup_md=None):
 
     return {
         "repo_root": os.path.abspath(repo_root),
+        "private": private,
         "decision_contract": ownership.get(DECISIONS_TREE),
         "summary": {
             "total_md": len(files),
@@ -507,7 +561,8 @@ def format_text(data):
     out.append(f"=== manifest: {data['repo_root']} ===")
     out.append(f"  markdown docs: {s['total_md']}  |  canonical present: {s['canonical_present']}  missing: {s['canonical_missing']}")
     out.append(f"  non-standard: {s['non_standard']}  |  unresolved links: {s['unresolved_links']}  orphans: {s['orphans']}  hollow: {s['hollow']}")
-    out.append(f"  CLAUDE.md == @AGENTS.md: {s['claude_md_ok']}  |  location violations: {s['location_violations']}  injected blocks: {s['injected_blocks']}")
+    c = data["claude_md"]
+    out.append(f"  {c['file']} == {c['expected']}: {s['claude_md_ok']}  |  location violations: {s['location_violations']}  injected blocks: {s['injected_blocks']}")
     if data["missing_canonical"]:
         out.append(f"  MISSING canonical: {', '.join(data['missing_canonical'])}")
     for l in data["legacy_personal"]:

@@ -19,7 +19,8 @@ docs inline. The workflow returns a structured report; relay it.
    Unlike the other reviewers, what-to-review here must resolve to a **path** —
    `manifest.py` takes a directory, not a free-form description. Default: the repo root.
    If the argument is a description rather than a path, resolve it to a directory or
-   fall back to the root.
+   fall back to the root. "My private docs" resolves to `<repo root>/hako-private`: a
+   directory of that name is the standard's private layout, and `manifest.py` audits it as one.
 
 2. Load the standard. `SKILL_DIR` is the **base directory for this skill**, given at the top
    of this file when the skill loads. It is absolute and install-correct — build every path

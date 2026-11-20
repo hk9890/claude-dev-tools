@@ -8,7 +8,7 @@ argument-hint: "[what-to-analyze]"
 
 **Analyze the monitoring data.** Scope: $ARGUMENTS
 
-Follow the project's own monitoring flow exactly. Do not invent metrics, tools, or data sources — if the project defines no monitoring flow, do nothing and report that monitoring is not configured for this project. A flow counts as defined only if stated in the project's docs (CLAUDE.md/AGENTS.md routing, README) or config (analysis scripts, log or metric locations); check those before reporting not configured.
+Follow the project's own monitoring flow exactly. Do not invent metrics, tools, or data sources — if the project defines no monitoring flow, do nothing and report that monitoring is not configured for this project. A flow counts as defined only if stated in the project's docs (CLAUDE.md/AGENTS.md routing, the private routing CLAUDE.local.md imports, README) or config (analysis scripts, log or metric locations); check those before reporting not configured.
 
 With no scope, summarise what the project's monitoring shows now, then ask which area to go deeper on.
 

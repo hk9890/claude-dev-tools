@@ -8,7 +8,7 @@ argument-hint: "[version-or-scope]"
 
 **Cut a release.** Scope: $ARGUMENTS
 
-Follow the project's own release flow exactly. Do not invent versioning, gates, or steps — if the project defines no release flow, do nothing and report that releasing is not configured for this project. A flow counts as defined only if stated in the project's docs (CLAUDE.md/AGENTS.md routing, README) or config (task-runner scripts, CI); check those before reporting not configured.
+Follow the project's own release flow exactly. Do not invent versioning, gates, or steps — if the project defines no release flow, do nothing and report that releasing is not configured for this project. A flow counts as defined only if stated in the project's docs (CLAUDE.md/AGENTS.md routing, the private routing CLAUDE.local.md imports, README) or config (task-runner scripts, CI); check those before reporting not configured.
 
 With no version or scope, ask which version to cut before doing anything — a release is not reversible, so never infer one.
 
