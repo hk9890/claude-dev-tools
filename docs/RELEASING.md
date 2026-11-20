@@ -1,6 +1,6 @@
 # Releasing
 
-All plugins ship together under a single repo-level version tag (per-plugin tags would break the dependency rule in [CODING.md](CODING.md#declaring-plugin-dependencies)). There is no build step.
+All plugins ship together under a single repo-level version tag ([decision 0001](decisions/0001-all-plugins-ship-under-one-version-and-one-repo-tag.md)). There is no build step.
 
 Requires `gh` (authenticated), `jq`, and `python3` on PATH. Cut releases from a clean tree on an up-to-date `master`.
 
