@@ -11,6 +11,8 @@ Use the web app in a browser that nobody sees. The user does not use this browse
 
 !`web-dev-playwright-guide 2>&1 || echo "STOP: web-dev-playwright-guide did not run, so the playwright-cli guide did not print. Tell the user that the web-dev plugin is installed without its bin/ directory on PATH, and give them the error above."`
 
+Read a file the guide links to from the `Guide directory:` path.
+
 ## Rules for this session
 
 These rules win over the guide above.

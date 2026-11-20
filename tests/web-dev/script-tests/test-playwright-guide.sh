@@ -47,5 +47,5 @@ assert_contains "help with no skill line stops" "STOP: playwright-cli --help nam
 rm "$WORK/bin/playwright-cli"
 assert_contains "a missing playwright-cli stops" "STOP: playwright-cli is not on PATH." "$(run)"
 
-echo "$PASS passed, $FAIL failed"
+echo "Results: $PASS passed, $FAIL failed"
 [[ "$FAIL" -eq 0 ]]

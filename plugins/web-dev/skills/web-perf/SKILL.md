@@ -20,7 +20,7 @@ Make `<scratch>` as `<session scratchpad>/web-perf`, or `${TMPDIR:-/tmp}/web-per
 
 ## 2. Serve a production build
 
-Measure a production build, never the dev server: a dev server sends unbundled, unminified code. Take the build command and the command that serves the build from the project's run docs, as `web-dev:web-drive` takes the launch contract: call the Skill tool with `web-dev:web-drive`, even where it loaded earlier in this session, and follow its "Start the app" steps with these two commands. Where the docs name no build or no way to serve it, stop and tell the user which is missing.
+Measure a production build, never the dev server: a dev server sends unbundled, unminified code. Take the build command and the command that serves the build from the project's run docs, as `web-dev:web-drive` takes the launch contract: call the Skill tool with `web-dev:web-drive`, even where it loaded earlier in this session, and follow its "Start the app" steps with these two commands. Where the docs name no build or no way to serve it, stop and tell the user which is missing. `<url>` is the URL of the ready line with the page from the scope appended.
 
 For `--compare`, build the ref in its own worktree (`git worktree add <scratch>/base <git-ref>`), serve one build at a time, and take each URL from its own ready line.
 
@@ -33,7 +33,7 @@ chrome-devtools emulate 1 --cpuThrottlingRate 4 --networkConditions "Fast 4G"
 chrome-devtools performance_start_trace 1 --reload true --autoStop true --ignoreCache true --filePath <scratch>/trace-<n>.json.gz
 ```
 
-`--performanceCrux=false` keeps the page URLs on this machine. `emulate` replaces all its settings on each call: set the CPU and the network in one call. Run the trace 5 times. For each run, keep LCP, CLS and the insights the trace names. Read the insight with the largest saving with `chrome-devtools performance_analyze_insight 1 <insight set id> <insight name>`, both as the trace names them (`NAVIGATION_0 RenderBlocking`).
+`--performanceCrux=false` keeps the page URLs on this machine. `emulate` replaces all its settings on each call: set the CPU and the network in one call. Run the trace 5 times, `<n>` from 1 to 5, repeating only the `performance_start_trace` line. For each run, keep LCP, CLS and the insights the trace names. Read the insight with the largest saving with `chrome-devtools performance_analyze_insight 1 <insight set id> <insight name>`, both as the trace names them (`NAVIGATION_0 RenderBlocking`).
 
 ## 4. Score
 
@@ -41,12 +41,12 @@ chrome-devtools performance_start_trace 1 --reload true --autoStop true --ignore
 lighthouse <url> --only-categories=performance --chrome-flags="--headless=new" --output=json --output-path=<scratch>/lighthouse-<n>.json --quiet
 ```
 
-Run it 3 times and keep the median score. Lighthouse simulates its throttling, while the trace in step 3 applies real throttling: never put their numbers in one table.
+Run it 3 times, `<n>` from 1 to 3, and keep the median of the score, LCP, TBT and CLS.
 
 ## 5. Report and clean up
 
 Run `chrome-devtools stop`, stop each server you started with `TaskStop`, and for `--compare` run `git worktree remove --force <scratch>/base`.
 
-Report two tables: the trace medians (LCP, CLS) and the Lighthouse medians (score, LCP, TBT, CLS), each with a before and after column for `--compare`. Add the top insights. State that the numbers come from throttling on this machine, that they compare only with runs on this machine, and that every run measured a cold load.
+Report two tables, because Lighthouse simulates its throttling while the trace applies real throttling: the trace medians (LCP, CLS) and the Lighthouse medians (score, LCP, TBT, CLS), each with a before and after column for `--compare`. Add the top insights. State that the numbers come from throttling on this machine, that they compare only with runs on this machine, and that every run measured a cold load.
 
 Done when both tables are reported, or a skipped part and the reason for it are reported, and nothing you started is still running.
