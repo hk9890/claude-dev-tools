@@ -1,4 +1,4 @@
 {
-  "description": "Denies the commands that open a browser window on the user's screen or close the browsers of other sessions, and lets the web-drive skill load without a permission prompt",
+  "description": "Denies the playwright-cli, chrome-devtools, Lighthouse and xdg-open commands that open a browser window on the user's screen, and the playwright-cli commands that close the browsers of other sessions, and lets the web-drive skill load without a permission prompt",
   "modules": ["./register.ts"]
 }

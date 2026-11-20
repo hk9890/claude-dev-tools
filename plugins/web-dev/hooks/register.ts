@@ -22,10 +22,16 @@ const ASSIGNMENT = String.raw`\w+=\S*`
 const KEYWORD = String.raw`if|then|elif|else|while|until|do|time|!|\{`
 const WRAPPER = String.raw`(?:command|exec|env|nohup|setsid|timeout|xargs)(?:\s+(?:-\S+|\d\S*))*`
 const LEAD = String.raw`(?:^|[;&|(\`])\s*(?:(?:${ASSIGNMENT}|${KEYWORD}|${WRAPPER})\s+)*`
-const PLAYWRIGHT = String.raw`(?:playwright-cli|npx\s+(?:(?:-y|--yes)\s+)?(?:@playwright/cli|playwright\s+cli))`
+// A tool runs by name, by path, or through a package runner, with or without a version.
+const RUNNER = String.raw`(?:(?:npx|pnpm\s+dlx|bunx)\s+(?:(?:-y|--yes)\s+)?)`
+const PATH = String.raw`(?:[\w.~/-]*/)?`
+const VERSION = String.raw`(?:@[\w.^~-]+)?`
+const PLAYWRIGHT = String.raw`(?:${RUNNER}?${PATH}playwright-cli${VERSION}|${RUNNER}(?:@playwright/cli${VERSION}|playwright\s+cli))`
 const OPENER = String.raw`(?:xdg-open|gio\s+open|sensible-browser)`
 const DEVTOOLS = 'chrome-devtools'
-const LIGHTHOUSE = 'lighthouse'
+const LIGHTHOUSE = String.raw`${RUNNER}?${PATH}lighthouse${VERSION}`
+const IS_LIGHTHOUSE = new RegExp(String.raw`^${LIGHTHOUSE}(?![\w-])`)
+const IS_DEVTOOLS = new RegExp(String.raw`^${DEVTOOLS}(?![\w-])`)
 const WATCHED = new RegExp(String.raw`(?=(${LEAD}(?:${PLAYWRIGHT}|${OPENER}|${DEVTOOLS}|${LIGHTHOUSE})(?![\w-])[^;&|]*))`, 'g')
 const LEADING = new RegExp(String.raw`^[;&|(\`]?\s*(?:(?:${ASSIGNMENT}|${KEYWORD}|${WRAPPER})\s+)*`)
 
@@ -36,10 +42,14 @@ const WINDOW_SUBCOMMANDS = new Set(['show'])
 const SESSION_FLAG = /^(?:-s|--session)$/
 const ALL_SESSIONS_SUBCOMMANDS = new Set(['close-all', 'kill-all'])
 // --autoConnect, --browserUrl and --wsEndpoint drive a browser that already runs, the user's too.
-const VISIBLE_DEVTOOLS = /\s(?:--(?:no-headless|headless(?:=|\s+)false|autoConnect(?!=false)|browserUrl|wsEndpoint)|-[uw])(?![\w-])/
+// The CLI takes each flag in camel case and in kebab case.
+const VISIBLE_DEVTOOLS =
+  /\s(?:--(?:no-headless|headless(?:=|\s+)false|(?:autoConnect|auto-connect)(?!=false)|browserUrl|browser-url|wsEndpoint|ws-endpoint)|-[uw])(?![\w-])/
 
 // A lighthouse command of the raw line, its quoted Chrome flags kept: the parser blanks quoted text.
-const RAW_LIGHTHOUSE = new RegExp(String.raw`${LEAD}lighthouse(?![\w-])[^;&|\n]*`, 'gm')
+// Heredoc bodies and comments are cut first, as the shell runs neither.
+const RAW_LIGHTHOUSE = new RegExp(String.raw`${LEAD}${LIGHTHOUSE}(?![\w-])[^;&|\n]*`, 'gm')
+const COMMENT = /(?<=^|\s)#.*/gm
 
 // A line that ends in `\` continues on the next. A double-quoted string still runs its command
 // substitutions, so it stays from the first one on. Its escaped characters are blanked first: an
@@ -61,10 +71,14 @@ function runnable(command: string) {
   })
 }
 
-// Lighthouse launches a visible Chrome unless its Chrome flags say headless; `--version` and
-// `--help` launch none.
+// Lighthouse launches a visible Chrome unless its Chrome flags say headless, and `--view` opens
+// its report in the user's browser; `--version` and `--help` launch nothing.
 function opensLighthouseWindow(run: string) {
-  return !/\s--(?:version|help)(?![\w-])/.test(run) && !/--headless(?!=false)(?![\w-])/.test(run)
+  if (/\s--view(?![\w-])/.test(run)) {
+    return true
+  }
+
+  return !/\s--(?:version|help)(?![\w-])/.test(run) && !/(?<=[\s"'=,])--headless(?!=false)(?![\w-])/.test(run)
 }
 
 // The deny reason for one command of the raw command line, or undefined where it opens no window
@@ -76,12 +90,14 @@ function refusal(run: string, raw: string) {
     return OPENS_WINDOW
   }
 
-  if (words.startsWith(DEVTOOLS)) {
+  if (IS_DEVTOOLS.test(words)) {
     return VISIBLE_DEVTOOLS.test(words) ? OPENS_WINDOW : undefined
   }
 
-  if (words.startsWith(LIGHTHOUSE)) {
-    return Array.from(raw.matchAll(RAW_LIGHTHOUSE), ([run]) => run).some(opensLighthouseWindow) ? OPENS_WINDOW : undefined
+  if (IS_LIGHTHOUSE.test(words)) {
+    const shellRuns = raw.replace(HEREDOC_BODY, '$1').replace(COMMENT, '')
+
+    return Array.from(shellRuns.matchAll(RAW_LIGHTHOUSE), ([run]) => run).some(opensLighthouseWindow) ? OPENS_WINDOW : undefined
   }
 
   const args = words.replace(new RegExp(`^${PLAYWRIGHT}`), '').trim().split(/\s+/)
