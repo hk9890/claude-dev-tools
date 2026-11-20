@@ -26,7 +26,7 @@ From the main checkout, choose a kebab-case `<worktree-name>`. Where the **dirty
 
 In the worktree, where this run moved stray work out or continued a move, or where `git branch --list 'worktree-ship-stray/<worktree-name>'` prints a branch, with the last path segment of `git rev-parse --show-toplevel` as the name, do the **Bring in** of [the stray-work move](references/stray-work.md). Then run the setup.
 
-Done when the session is in a worktree, the setup has run there, and that `git branch --list` prints nothing.
+Done when the session is in a worktree, the setup has run there, that `git branch --list` prints nothing, and, where the change goes to an open PR, the worktree is on that PR's branch at its head.
 
 ## 3. Implement
 
