@@ -57,8 +57,8 @@ const LEVEL_CONFIG = {
 // one agent can still give every file in its batch real attention.
 const BATCH_BYTES = 120000
 
-// How often the manifest agent is asked to relay the manifest before the run gives up.
-const MANIFEST_ATTEMPTS = 3
+// How often a relay agent is asked to return a script's JSON before the stage gives up.
+const RELAY_ATTEMPTS = 3
 
 // A single miss is not a pattern. Below this many valid segments a use case reports
 // coverage only — the floor that stops "no evidence" from being read as "bad doc".
@@ -167,6 +167,39 @@ function checkManifest(m) {
   if (m.files.length !== m.summary.total_md) {
     throw new Error(`the relay lists ${m.files.length} of the ${m.summary.total_md} files manifest.py counted`)
   }
+  return m
+}
+
+// Names what a relay holds without pasting it: a relay of the wrong file can be hundreds of
+// KB of transcript text, and the error reaches the log and the synthesis prompt.
+const describe = (m) => (m && typeof m === 'object') ? `an object with keys ${Object.keys(m).join(', ') || 'none'}` : JSON.stringify(m)
+
+// history.py ends each output with "complete": true, so a copy cut short anywhere lacks it.
+// It also counts every session it batched in sessions_with_prompts.
+function checkPromptIndex(m) {
+  if (!m || typeof m !== 'object' || !Array.isArray(m.batches) || m.complete !== true) {
+    throw new Error(`the relay is ${describe(m)}, not a complete prompt index`)
+  }
+  const batched = m.batches.reduce((n, b) => n + ((b && b.sessions) || 0), 0)
+  if (batched !== m.sessions_with_prompts) {
+    throw new Error(`the relay batches ${batched} of the ${m.sessions_with_prompts} sessions history.py counted`)
+  }
+  return m
+}
+
+// history.py evidence emits coverage and an evidence file for every use case, then the
+// superseded-route buckets, whose segments add up to each use case's historical_examined,
+// then "complete": true.
+function checkEvidence(m) {
+  if (!m || typeof m !== 'object' || !m.coverage || !m.evidence_files || m.complete !== true) {
+    throw new Error(`the relay is ${describe(m)}, not a complete evidence summary`)
+  }
+  const missing = Object.keys(USE_CASES).filter(u => !m.coverage[u] || !m.evidence_files[u])
+  if (missing.length) throw new Error(`the relay lacks the use case(s) ${missing.join(', ')}`)
+  const historical = m.historical || {}
+  const short = Object.keys(USE_CASES).filter(u =>
+    (historical[u] || []).reduce((n, b) => n + ((b && b.segments) || 0), 0) !== (m.coverage[u].historical_examined || 0))
+  if (short.length) throw new Error(`the relay's superseded-route evidence is incomplete for ${short.join(', ')}`)
   return m
 }
 
@@ -368,9 +401,9 @@ const HISTORY_SCHEMA = {
 // it is reached whichever path that takes.
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    normalizeArgs, parseManifest, checkManifest, splitReviewTargets, orderTargets, packBatches,
+    normalizeArgs, parseManifest, checkManifest, checkPromptIndex, checkEvidence, splitReviewTargets, orderTargets, packBatches,
     unreviewedFiles, historyFindingBar,
-    LEVELS, LEVEL_CONFIG, USE_CASES, BATCH_BYTES, MIN_SEGMENTS_FOR_FINDING, MANIFEST_ATTEMPTS,
+    LEVELS, LEVEL_CONFIG, USE_CASES, BATCH_BYTES, MIN_SEGMENTS_FOR_FINDING, RELAY_ATTEMPTS,
   }
 }
 
@@ -393,36 +426,40 @@ if (typeof agent === 'function') {
 
   // ── Manifest (deterministic facts)
 
+  // A script's JSON reaches this workflow only through an agent that retypes it, and a
+  // retyped copy of 11KB has come back cut short. A copy that fails its check is asked for
+  // again. A null return is a skipped or dead agent: the relay stops there rather than
+  // start another.
+  const relayJson = async (command, { label, phaseName, check }) => {
+    const prompt =
+      `Run this exact command and return ONLY its raw stdout — no prose, no markdown fences:\n\n${command}\n\n` +
+      `Do not summarize, do not edit the output. Return the JSON exactly as printed.`
+    let text, error
+    for (let attempt = 1; attempt <= RELAY_ATTEMPTS; attempt++) {
+      text = await agent(prompt, { label: attempt === 1 ? label : `${label}-${attempt}`, phase: phaseName, model: 'haiku', effort: 'low' })
+      if (text === null) return { error: `agent returned nothing on attempt ${attempt}: it was skipped or died` }
+      try {
+        return { value: check(parseManifest(text)) }
+      } catch (e) {
+        error = String(e)
+        log(`${label} attempt ${attempt}/${RELAY_ATTEMPTS} is unusable: ${error}`)
+      }
+    }
+    return { error: `no usable copy after ${RELAY_ATTEMPTS} attempts: ${error}`, text }
+  }
+
   phase('Manifest')
   // --brief: the agent's Bash tool returns only a preview of a large output, and the full
   // manifest of a 45-doc repo is 132KB. Relaying a preview is how two runs died here.
-  // The agent retypes the JSON, and a retyped copy of 11KB has come back cut short, so an
-  // incomplete copy is asked for again. A null return is a skipped or dead agent: the run
-  // stops there rather than start another.
-  const manifestPrompt =
-    `Run this exact command and return ONLY its raw stdout — no prose, no markdown fences:\n\n` +
-    `python3 "${scriptsDir}/manifest.py" "${repoRoot}" --format=json --brief\n\n` +
-    `Do not summarize, do not edit the output. Return the JSON exactly as printed.`
-  let manifest, manifestText, parseError
-  for (let attempt = 1; attempt <= MANIFEST_ATTEMPTS && !manifest; attempt++) {
-    manifestText = await agent(manifestPrompt, {
-      label: attempt === 1 ? 'manifest' : `manifest-${attempt}`, phase: 'Manifest', model: 'haiku', effort: 'low',
-    })
-    if (manifestText === null) {
-      log(`FATAL: manifest agent ${attempt}/${MANIFEST_ATTEMPTS} returned nothing — aborting.`)
-      return { error: `manifest agent returned nothing on attempt ${attempt}: it was skipped or died` }
-    }
-    try {
-      manifest = checkManifest(parseManifest(manifestText))
-    } catch (e) {
-      parseError = String(e)
-      log(`Manifest attempt ${attempt}/${MANIFEST_ATTEMPTS} is unusable: ${parseError}`)
-    }
+  const manifestRelay = await relayJson(
+    `python3 "${scriptsDir}/manifest.py" "${repoRoot}" --format=json --brief`,
+    { label: 'manifest', phaseName: 'Manifest', check: checkManifest }
+  )
+  if (manifestRelay.error) {
+    log(`FATAL: no complete manifest — aborting. ${manifestRelay.error}`)
+    return { error: `manifest relay failed: ${manifestRelay.error}`, raw: (manifestRelay.text || '').slice(0, 400) }
   }
-  if (!manifest) {
-    log(`FATAL: no complete manifest after ${MANIFEST_ATTEMPTS} attempts — aborting.`)
-    return { error: `manifest parse failed after ${MANIFEST_ATTEMPTS} attempts: ${parseError}`, raw: (manifestText || '').slice(0, 400) }
-  }
+  const manifest = manifestRelay.value
 
   log(`Manifest: ${manifest.summary.total_md} docs, ${manifest.summary.canonical_missing} missing canonical, ` +
       `${manifest.summary.unresolved_links} dead links, ${manifest.summary.orphans} orphans, ${manifest.agents_routes.length} routes`)
@@ -510,7 +547,8 @@ if (typeof agent === 'function') {
       hygieneFile,
       setupFile,
       ...(hasDocumenting ? [documentingFile] : []),
-      ...batch.map(t => `${repoRoot}/${t.file.path}`),
+      // docs/DOCUMENTING.md can also be one of the batch's own files; one Read covers both.
+      ...batch.map(t => `${repoRoot}/${t.file.path}`).filter(p => !(hasDocumenting && p === documentingFile)),
     ]
     return `Repo root: ${repoRoot}\n` +
       `You audit ${batch.length} documentation file(s) of this repository against an authoring standard.\n\n` +
@@ -565,20 +603,16 @@ if (typeof agent === 'function') {
   phase('History')
 
   const historyDir = `${scratchDir}/history`
-  const prompts = await agent(
-    `Run this exact command and return ONLY its raw stdout — no prose, no markdown fences:\n\n` +
-    `python3 "${scriptsDir}/history.py" prompts "${repoRoot}" --out "${historyDir}" --limit ${levelConfig.sessionLimit}\n\n` +
-    `Return the JSON exactly as printed.`,
-    { label: 'history:extract', phase: 'History', model: 'haiku', effort: 'low' }
+  const promptRelay = await relayJson(
+    `python3 "${scriptsDir}/history.py" prompts "${repoRoot}" --out "${historyDir}" --limit ${levelConfig.sessionLimit}`,
+    { label: 'history:extract', phaseName: 'History', check: checkPromptIndex }
   )
 
-  let promptIndex = null
+  const promptIndex = promptRelay.value || null
   let historyFailure = null
-  try {
-    promptIndex = parseManifest(prompts)
-  } catch (e) {
-    historyFailure = 'the prompt index from history.py could not be parsed: ' + String(e)
-    log('History: could not parse the prompt index — skipping the stage. ' + String(e))
+  if (promptRelay.error) {
+    historyFailure = 'the prompt index from history.py: ' + promptRelay.error
+    log('History: no usable prompt index — skipping the stage. ' + promptRelay.error)
   }
 
   let historyEntries = []
@@ -610,17 +644,14 @@ if (typeof agent === 'function') {
     log(`History: ${labelled.length}/${sessionBatches.length} batch(es) classified, ${claimed} session(s) labelled`)
 
     // Filter, stratify, and project — all mechanical, so no agent judges any of it.
-    const evidenceText = await agent(
-      `Run this exact command and return ONLY its raw stdout — no prose, no markdown fences:\n\n` +
-      `python3 "${scriptsDir}/history.py" evidence "${repoRoot}" --scratch "${historyDir}" --per-use-case ${levelConfig.perUseCase}\n\n` +
-      `Return the JSON exactly as printed.`,
-      { label: 'history:evidence', phase: 'History', model: 'haiku', effort: 'low' }
+    const evidenceRelay = await relayJson(
+      `python3 "${scriptsDir}/history.py" evidence "${repoRoot}" --scratch "${historyDir}" --per-use-case ${levelConfig.perUseCase}`,
+      { label: 'history:evidence', phaseName: 'History', check: checkEvidence }
     )
-    try {
-      historySummary = parseManifest(evidenceText)
-    } catch (e) {
-      historyFailure = 'the evidence summary from history.py could not be parsed: ' + String(e)
-      log('History: could not parse the evidence summary — no history findings this run. ' + String(e))
+    historySummary = evidenceRelay.value || null
+    if (evidenceRelay.error) {
+      historyFailure = 'the evidence summary from history.py: ' + evidenceRelay.error
+      log('History: no usable evidence summary — no history findings this run. ' + evidenceRelay.error)
     }
     // The label agents report their own counts, and one whose write failed reports 0 or nothing
     // at all. Only history.py's count, against the sessions sent out, shows what reached the files.

@@ -276,6 +276,8 @@ def cmd_prompts(args):
         "transcripts_found": len(files),
         "sessions_with_prompts": len(sessions),
         "batches": batches,
+        # Last, so a relay agent's copy cut short anywhere lacks it.
+        "complete": True,
     }, sys.stdout, indent=1)
     print()
     return 0
@@ -540,6 +542,8 @@ def cmd_evidence(args):
         # evidence.json, and dropping it here is how it would go quiet again.
         "historical": {e["use_case"]: e["historical"]
                        for e in result["use_cases"] if e.get("historical")},
+        # Last, so a relay agent's copy cut short anywhere lacks it.
+        "complete": True,
     }
     json.dump(summary, sys.stdout, indent=1)
     print()
