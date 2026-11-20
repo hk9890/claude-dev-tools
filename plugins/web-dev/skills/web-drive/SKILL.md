@@ -1,7 +1,7 @@
 ---
 name: web-drive
 description: "Use a web app in a headless browser through playwright-cli, and record a video of each feature working."
-when_to_use: "Use when a task needs to open, use or check a web page or web app in a browser, or to show the user a feature working. Triggers on 'check it in the browser', 'click through the app', 'record a demo', 'show me it works'. Also loaded by name when a project's run docs or another skill send a web UI here. Not for page-load numbers (`/web-dev:web-perf`), or an app with no web UI (`run`)."
+when_to_use: "Use when a task needs to open, use or check a web page or web app in a browser, or to show the user a feature working. Triggers on 'check it in the browser', 'click through the app', 'record a demo', 'show me it works'. Also loaded by name when a project's run docs or another skill send a web UI here. Not for page-load numbers (`/web-dev:web-perf`), or an app with no web UI (the built-in `run`)."
 allowed-tools: Bash(web-dev-playwright-guide*)
 ---
 

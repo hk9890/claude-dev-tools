@@ -32,8 +32,14 @@ const LEADING = new RegExp(String.raw`^[;&|(\`]?\s*(?:(?:${ASSIGNMENT}|${KEYWORD
 // --extension and --cdp drive a browser the user runs, in front of them.
 const HEADED = /^--(?:headed(?:=(?!false$).*)?|extension(?:=.*)?|cdp(?:=.*)?)$/
 const WINDOW_SUBCOMMANDS = new Set(['show'])
+// A session flag whose name is the next word: `-s claude-s1`.
+const SESSION_FLAG = /^(?:-s|--session)$/
 const ALL_SESSIONS_SUBCOMMANDS = new Set(['close-all', 'kill-all'])
-const VISIBLE_DEVTOOLS = /\s--(?:no-headless|headless(?:=|\s+)false|autoConnect(?!=false))(?![\w-])/
+// --autoConnect, --browserUrl and --wsEndpoint drive a browser that already runs, the user's too.
+const VISIBLE_DEVTOOLS = /\s(?:--(?:no-headless|headless(?:=|\s+)false|autoConnect(?!=false)|browserUrl|wsEndpoint)|-[uw])(?![\w-])/
+
+// A lighthouse command of the raw line, its quoted Chrome flags kept: the parser blanks quoted text.
+const RAW_LIGHTHOUSE = new RegExp(String.raw`${LEAD}lighthouse(?![\w-])[^;&|\n]*`, 'gm')
 
 // A line that ends in `\` continues on the next. A double-quoted string still runs its command
 // substitutions, so it stays from the first one on. Its escaped characters are blanked first: an
@@ -55,6 +61,12 @@ function runnable(command: string) {
   })
 }
 
+// Lighthouse launches a visible Chrome unless its Chrome flags say headless; `--version` and
+// `--help` launch none.
+function opensLighthouseWindow(run: string) {
+  return !/\s--(?:version|help)(?![\w-])/.test(run) && !/--headless(?!=false)(?![\w-])/.test(run)
+}
+
 // The deny reason for one command of the raw command line, or undefined where it opens no window
 // and stops no other session's browser.
 function refusal(run: string, raw: string) {
@@ -68,14 +80,12 @@ function refusal(run: string, raw: string) {
     return VISIBLE_DEVTOOLS.test(words) ? OPENS_WINDOW : undefined
   }
 
-  // Lighthouse launches a visible Chrome unless its Chrome flags say headless; `--version` and
-  // `--help` launch none. A flag inside quotes was blanked as text, so the raw run is read.
   if (words.startsWith(LIGHTHOUSE)) {
-    return /--headless|--version|--help/.test(raw) ? undefined : OPENS_WINDOW
+    return Array.from(raw.matchAll(RAW_LIGHTHOUSE), ([run]) => run).some(opensLighthouseWindow) ? OPENS_WINDOW : undefined
   }
 
   const args = words.replace(new RegExp(`^${PLAYWRIGHT}`), '').trim().split(/\s+/)
-  const subcommand = args.find(arg => !arg.startsWith('-')) ?? ''
+  const subcommand = args.find((arg, i) => !arg.startsWith('-') && !SESSION_FLAG.test(args[i - 1] ?? '')) ?? ''
 
   if (ALL_SESSIONS_SUBCOMMANDS.has(subcommand)) {
     return CLOSES_OTHERS

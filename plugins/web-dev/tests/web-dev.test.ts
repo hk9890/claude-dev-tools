@@ -44,6 +44,14 @@ const OPENS_WINDOW = [
   'playwright-cli -s=claude-s1 open --cdp=http://127.0.0.1:9222',
   'lighthouse http://localhost:4173 --output=json',
   'npm run build && lighthouse http://localhost:4173',
+  'chrome-devtools start --headless --isolated && lighthouse http://localhost:4173',
+  'lighthouse http://localhost:4173 --output=json; echo --help',
+  'lighthouse http://localhost:4173 --chrome-flags="--headless=false"',
+  'chrome-devtools start --browserUrl http://127.0.0.1:9222',
+  'chrome-devtools start --wsEndpoint=ws://127.0.0.1:9222/devtools/browser/x',
+  'chrome-devtools start -u http://127.0.0.1:9222',
+  'playwright-cli -s claude-s1 show',
+  'playwright-cli --session claude-s1 open --headed',
 ]
 
 const CLOSES_OTHERS = ['playwright-cli close-all', 'playwright-cli -s=claude-s1 kill-all', 'cd /tmp && playwright-cli close-all']
@@ -62,6 +70,8 @@ const ALLOWED = [
   'lighthouse http://localhost:4173 --only-categories=performance --chrome-flags="--headless=new" --output=json',
   "lighthouse http://localhost:4173 --chrome-flags='--headless'",
   'lighthouse --version',
+  'chrome-devtools stop && lighthouse http://localhost:4173 --chrome-flags="--headless=new"',
+  'playwright-cli -s claude-s1 fill e3 show',
   'playwright-cli -s=claude-s1 attach claude-s1-2',
   'git commit -m "deny playwright-cli --headed and xdg-open"',
   "grep -n 'xdg-open' README.md",
