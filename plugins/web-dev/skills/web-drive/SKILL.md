@@ -1,7 +1,7 @@
 ---
 name: web-drive
 description: "Use a web app in a headless browser through playwright-cli, and record a video of each feature working."
-when_to_use: "Use when a task needs to open, use or check a web page or web app in a browser, or to show the user a feature working. Triggers on 'check it in the browser', 'click through the app', 'record a demo', 'show me it works'. Also loaded by name when a project's run docs or another skill send a web UI here. Not for page-load numbers (`/web-dev:web-perf`), or an app with no web UI (the built-in `run`)."
+when_to_use: "Use when a task needs to open, use or check a web page or web app in a browser, or to show the user a feature working. Triggers on 'check it in the browser', 'record a demo'. Also loaded by name when a project's run docs or another skill send a web UI here. Not for page-load numbers (`/web-dev:web-perf`), or an app with no web UI (the built-in `run`)."
 allowed-tools: Bash(web-dev-playwright-guide*)
 ---
 
@@ -24,21 +24,11 @@ These rules win over the guide above, and over a project skill or doc that drive
 - **Check each page** — after each navigation and each action that loads data, run `console error` and `requests`. An error or a failed request is a finding: report it, even where the flow goes on.
 - **Snapshots** — read only the part you need, with `find <text>` or a read of the snapshot file, not the full tree.
 - **Wait for the page, not the network** — before the first input on a page, wait until an element the step needs is in the snapshot. Never wait for network idle: a dev server's live reload, a WebSocket or a stream keeps the network busy. Where the app streams its answer, it is settled when its busy indicator is gone and two snapshots a second apart are the same. Where the app runs in an iframe, aim each locator into that frame.
-- **Sign-in** — keep one sign-in state per project, across sessions, at `<state>`: `${XDG_CACHE_HOME:-$HOME/.cache}/web-dev/<project>/state.json`, where `<project>` is `$(basename "$d")-$(printf %s "$d" | cksum | cut -d' ' -f1)`, with `d` the directory that `git rev-parse --path-format=absolute --git-common-dir` sits in, or the working directory outside a repository. Make its directory with mode 700 and the file with mode 600, and print the path. Where `<state>` exists, `state-load <state>` after `open`, then `goto <url>`. Where the app shows a sign-in page instead, the state is missing or expired: give the user the exact `cd <scratch> && playwright-cli -s=<session> open --headed <url>` to run in their own terminal, and wait for them. Once they have signed in, run `state-save <state>`, `close`, `open --browser=chrome`, `state-load <state>` and `goto <url>`.
+- **Sign-in** — where the app needs a sign-in (its docs say so, or it shows a sign-in page), read `<base directory for this skill>/references/sign-in.md` before the first `goto`, and follow it.
 
 ## Start the app
 
-Skip this where the page is a file, or a URL the user or the caller gave.
-
-1. **Find the launch contract.** It has four parts: the start command, the line the server prints when it is ready, where the URL comes from (fixed, or the ready line), and how to stop it. Two more parts are optional: how long the first start may take, and a line that asks the user to act before the server is ready, such as a URL to open for a sign-in. Take it from the first of these that states it:
-   - the project's run docs (a `docs/RUNNING.md`, or the route in `AGENTS.md` or `CLAUDE.md`);
-   - a project skill that runs the app;
-   - the skill that loaded this one.
-
-   Never take a start command from `package.json`, a Makefile or a lockfile. Where no source states the start command, stop: tell the user which parts are missing and ask. Where the server opens a browser on start (its docs or its `--help` say so) and the contract names no flag that stops it, stop and ask for that flag: `BROWSER=none` stops only some tools.
-2. **Reuse your own server.** Where this session started the server earlier and its task is still running, use it. A server that another session or the user started serves other code: do not use it, and do not stop it.
-3. **Start it.** Run `export BROWSER=none; <start command>` with the Bash tool's `run_in_background`, with the no-open flag where the contract names one: an export reaches every command of a compound start command. Do not force a port: a server may move to the next free port.
-4. **Wait until it is ready.** Read the task's output until the ready line shows, and take the URL from it where the contract says so. Where the line that asks the user to act shows first, give the user that line and keep waiting. Wait as long as the contract says, else 3 minutes. A server that exits, prints an error or is not ready in time did not start: report its output, stop it with `TaskStop`, and stop.
+Skip this where the page is a file, or a URL the user or the caller gave. Else read `<base directory for this skill>/../../references/start-app.md` and follow it. The `../..` is the plugin-root layout: `web-perf` reads the same file.
 
 ## Record each feature
 
