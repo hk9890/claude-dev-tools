@@ -35,7 +35,7 @@ find plugins -name plugin.json -path "*/.claude-plugin/*"   # every file to bump
 4. Consistency-Check: `mise run check-consistency` must exit 0. It fails on a `plugin.json` that does not match its `marketplace.json` entry, and on more than one distinct version, `metadata.version` included.
 5. Draft the release notes (below) in `hako-private/release-notes-vX.Y.Z.md`. The maintainer's global gitignore covers `hako-private/`; never add it to the repo `.gitignore`.
 6. Commit as `Bump all plugins to vX.Y.Z` on a `chore/release-X.Y.Z` branch and merge via PR — `master` is protected ([CHANGE-WORKFLOW.md](CHANGE-WORKFLOW.md)), so the bump cannot be pushed to it directly.
-7. Directly after the merge, create the release from the merged bump commit, whose SHA `gh pr view <bump-pr> --json mergeCommit -q .mergeCommit.oid` prints: `gh release create vX.Y.Z --title "vX.Y.Z" --notes-file hako-private/release-notes-vX.Y.Z.md --target <bump-merge-sha>`. `--target master` tags whatever merged last.
+7. Create the release from the merged bump commit, whose SHA `gh pr view <bump-pr> --json mergeCommit -q .mergeCommit.oid` prints: `gh release create vX.Y.Z --title "vX.Y.Z" --notes-file hako-private/release-notes-vX.Y.Z.md --target <bump-merge-sha>`. `--target master` tags whatever merged last.
 
 Publish in the same sitting the bump PR merges — a merged bump with no tag leaves `marketplace.json` advertising a version that appears in no release. `vX.Y.Z` must tag the commit whose `plugin.json` files read `X.Y.Z`.
 
