@@ -27,16 +27,16 @@ plugins/<plugin-name>/
   agents/                # subagents (.md)
   assets/                # static files the plugin serves or bundles (e.g. browser CSS/JS)
   bin/                   # bundled executables
-  commands/              # slash commands (.md; no plugin uses these yet)
+  commands/              # slash commands (.md)
   hooks/                 # hooks.json, and the hooks module it names when the plugin is a mod
-  output-styles/         # output styles (.md) — declare the dir in plugin.json "outputStyles"
+  output-styles/         # output styles (.md)
   references/            # .md, or a workflow .js, shared by two or more of the plugin's skills, reached with ../..
   scripts/               # build-time scripts, e.g. a themes/ generator (not loaded at runtime)
   skills/                # <skill-name>/SKILL.md + optional references/, scripts/, examples/, workflows/
   tests/                 # a mod's *.test.ts — every other test lives in the repo's tests/
   themes/                # color themes
   types/                 # a mod's $.state contract (index.d.ts)
-  workflows/             # Workflow-tool scripts (.js) launched by name; each gets a skill-listing entry
+  workflows/             # Workflow-tool scripts (.js) launched by name
 ```
 
 ## Finding things

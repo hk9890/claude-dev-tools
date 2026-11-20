@@ -8,7 +8,7 @@ Requires `gh` (authenticated), `jq`, and `python3` on PATH. Cut releases from a 
 
 Re-run three of the [CHANGE-WORKFLOW.md pre-push checklist](CHANGE-WORKFLOW.md#pre-push-checklist) gates over the whole repo, not just the release commit. Shell-Lint does not apply: a bump changes no shell script, and the CI `shellcheck` job runs it on every PR. Consistency-Check runs as step 4, after the bump.
 
-- **Test-Run** — `bash tests/run-all.sh`.
+- **Test-Run** — `mise run test`.
 - **Plugin-Structure-Check** — `plugin-dev:plugin-validator` over **every** plugin, not just recently changed ones, with zero errors. The full sweep is the point: nothing tracks whether it ran on each merged PR, so the release is where a never-validated plugin is caught. Skip it only if `plugin-dev` cannot be installed.
 - **Docs-Route-Check** — `validate-routes.py` must exit 0; [TESTING.md](TESTING.md#docs-validation) carries the command. No CI job runs it, so the release is where a broken route that a PR merged is caught.
 
@@ -16,9 +16,9 @@ Re-run three of the [CHANGE-WORKFLOW.md pre-push checklist](CHANGE-WORKFLOW.md#p
 
 One version covers every plugin, so it describes the release rather than any one plugin. Take the largest change in it:
 
-- **Minor** (`1.26.0` → `1.27.0`) — the default. Any new skill, command, agent, or hook; any behaviour change to an existing one.
+- **Minor** (`1.26.0` → `1.27.0`) — the default. Any new skill, command, agent, or hook; any behaviour change to an existing one; a skill or command removed with a documented successor.
 - **Patch** (`1.26.0` → `1.26.1`) — fixes and documentation only, in every plugin.
-- **Major** — a break in how an installed plugin is invoked: a skill or command removed or renamed, or an argument contract changed incompatibly. A rename of a plugin with skills is one: every `<plugin>:<skill>` name changes. Never used yet; a retirement with a documented successor has so far gone out as minor.
+- **Major** — a break in how an installed plugin is invoked: a skill or command removed or renamed with no documented successor, or an argument contract changed incompatibly. A rename of a plugin with skills is one: every `<plugin>:<skill>` name changes.
 
 ## Release steps
 
@@ -32,10 +32,10 @@ find plugins -name plugin.json -path "*/.claude-plugin/*"   # every file to bump
 1. Run the three gates above.
 2. Bump `"version"` in every `plugin.json` found above to the same new version.
 3. Bump every `"version"` in `.claude-plugin/marketplace.json` to match. Edit only the version lines: piping these files through `jq` rewrites unrelated compact arrays and buries the bump in churn.
-4. Consistency-Check: `python3 scripts/check-internal-consistency.py` must exit 0. It fails on a `plugin.json` that does not match its `marketplace.json` entry, and on more than one distinct version, `metadata.version` included.
-5. Commit as `Bump all plugins to vX.Y.Z` on a `chore/release-X.Y.Z` branch and merge via PR — `master` is protected ([CHANGE-WORKFLOW.md](CHANGE-WORKFLOW.md)), so the bump cannot be pushed to it directly.
-6. Draft the release notes (below) in `hako-private/release-notes-vX.Y.Z.md`. The maintainer's global gitignore covers `hako-private/`; never add it to the repo `.gitignore`.
-7. Create the release from the merged bump commit, whose SHA `gh pr view <bump-pr> --json mergeCommit -q .mergeCommit.oid` prints: `gh release create vX.Y.Z --title "vX.Y.Z" --notes-file hako-private/release-notes-vX.Y.Z.md --target <bump-merge-sha>`. `--target master` tags whatever merged last.
+4. Consistency-Check: `mise run check-consistency` must exit 0. It fails on a `plugin.json` that does not match its `marketplace.json` entry, and on more than one distinct version, `metadata.version` included.
+5. Draft the release notes (below) in `hako-private/release-notes-vX.Y.Z.md`. The maintainer's global gitignore covers `hako-private/`; never add it to the repo `.gitignore`.
+6. Commit as `Bump all plugins to vX.Y.Z` on a `chore/release-X.Y.Z` branch and merge via PR — `master` is protected ([CHANGE-WORKFLOW.md](CHANGE-WORKFLOW.md)), so the bump cannot be pushed to it directly.
+7. Directly after the merge, create the release from the merged bump commit, whose SHA `gh pr view <bump-pr> --json mergeCommit -q .mergeCommit.oid` prints: `gh release create vX.Y.Z --title "vX.Y.Z" --notes-file hako-private/release-notes-vX.Y.Z.md --target <bump-merge-sha>`. `--target master` tags whatever merged last.
 
 Publish in the same sitting the bump PR merges — a merged bump with no tag leaves `marketplace.json` advertising a version that appears in no release. `vX.Y.Z` must tag the commit whose `plugin.json` files read `X.Y.Z`.
 
@@ -55,11 +55,11 @@ Publish with `--notes-file` from a drafted file, never `--notes`. Use `--generat
 
 ## Verification
 
-The release is not done until all four agree; the middle two catch a merged bump whose release was never published:
+After the fetch, the release is not done until all three checks agree; the first two catch a merged bump whose release was never published:
 
 ```bash
 git fetch --tags origin                       # gh release create writes the tag server-side only
 gh release view vX.Y.Z                        # the release exists and its notes read as intended
 git describe --tags --abbrev=0 origin/master  # prints vX.Y.Z, not the previous tag
-jq -r '.metadata.version' .claude-plugin/marketplace.json   # prints X.Y.Z
+git show origin/master:.claude-plugin/marketplace.json | jq -r '.metadata.version'   # prints X.Y.Z
 ```

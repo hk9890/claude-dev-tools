@@ -10,9 +10,9 @@ Call the Skill tool with `commit-commands:commit` (or `commit-commands:commit-pu
 
 ## Pre-push checklist
 
-These gates apply at PR-open time; re-run at merge time only if new commits landed since the last green run. Each is named for what it checks, and the same names are used in [RELEASING.md](RELEASING.md).
+Every applicable gate must pass before each push to a branch. Each is named for what it checks, and the same names are used in [RELEASING.md](RELEASING.md).
 
-- **Test-Run** (always) — `bash tests/run-all.sh` must pass. Mirrored by the CI `test` job.
+- **Test-Run** (always) — `mise run test` must pass. Mirrored by the CI `test` job.
 - **Consistency-Check** (always) — `mise run check-consistency` must exit 0. Mirrored by the CI `consistency` job.
 - **Plugin-Structure-Check** (plugin changes only) — run `plugin-dev:plugin-validator` on every changed plugin; zero errors required. Skip it when the change touches none of `.claude-plugin/plugin.json`, `agents/`, `skills/`, `commands/`, or `hooks/`. Put its summary line in the PR body: the validator is an agent, so no CI job can enforce it and nothing audits it afterwards. A result stands for the commit it ran on: rerun it for a plugin whose files changed since, and name the commit in the summary line. It ships in the external `plugin-dev` plugin ([TESTING.md](TESTING.md)).
 - **Docs-Route-Check** (any change to `AGENTS.md`, `CLAUDE.md`, `README.md`, or a file under `docs/`) — `validate-routes.py` must exit 0; the Docs validation section in TESTING.md carries the commands.
@@ -20,10 +20,9 @@ These gates apply at PR-open time; re-run at merge time only if new commits land
 
 ## Pull requests
 
-Internal changes (maintainer or agent-orchestrated) use feature-branch PRs as the canonical workflow:
+Every change lands through a PR:
 
-1. Branch off `master` per the convention above and push it to `origin`.
-2. Open a PR — every applicable gate must pass before opening.
-3. Merge after review, with all five CI jobs green ([TESTING.md](TESTING.md)). The review: call the Skill tool with `worktree-flow:worktree-review` and the argument `<pr>`, against [REVIEWING.md](REVIEWING.md); `/worktree-flow:worktree-ship` runs it. Merges use GitHub's default merge-commit style, producing `Merge pull request #N from hk9890/<branch>` subjects — `hk9890/` is the owner namespace, not part of the branch name.
-
-External contributors fork the repo and open a PR from their fork branch; no direct branch push to origin. The same checklist applies.
+1. Branch off `master` per the convention above.
+2. Run every applicable gate, then push the branch to `origin` and open a PR.
+3. Review it: call the Skill tool with `worktree-flow:worktree-review` and the argument `<pr>`, against [REVIEWING.md](REVIEWING.md); `/worktree-flow:worktree-ship` runs it.
+4. Merge once all five CI jobs are green ([TESTING.md](TESTING.md)), with `gh pr merge <pr> --merge`, or call the Skill tool with `worktree-flow:worktree-merge` and `<pr>` to also remove the worktree and the merged branches.

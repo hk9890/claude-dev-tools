@@ -28,7 +28,7 @@ SESSION_REVIEW_DIR = "/home/<you>/dev/github/session-data"
 
 ## Run a review
 
-`git fetch --tags` first: the pick finds the last release in the local tags only. Then run the `review-sessions` workflow ([`.claude/workflows/review-sessions.js`](../.claude/workflows/review-sessions.js)) from the repo root, with `{perBucket, sinceDays, host}`: the sessions each bucket takes, the window in days, and the ssh host ([Another machine](#another-machine)). The script's head sets the defaults of the first two, and its `meta.phases` names what each phase does; the run commits and pushes itself to the store. A run folder holds the transcript copies under `transcripts/`, `usage.md`, `context.md`, `picks.json`, and `findings.json` with only the findings that the verify phase did not refute.
+`git fetch --tags` first: the pick finds the last release in the local tags only. Then call the Skill tool with `review-sessions` and `{perBucket, sinceDays, host}`: the sessions each bucket takes, the window in days, and the ssh host ([Another machine](#another-machine)). The head of its script ([`.claude/workflows/review-sessions.js`](../.claude/workflows/review-sessions.js)) sets the defaults of the first two, and its `meta.phases` names what each phase does; the run commits and pushes itself to the store. `scripts/pick-sessions.py` lists what a run folder holds where it writes the folder.
 
 Quote a transcript line from the run's copy under `transcripts/`: it stays after Claude Code deletes the original.
 

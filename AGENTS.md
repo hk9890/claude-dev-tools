@@ -18,7 +18,7 @@ Every route below is **mandatory, not advisory**. Load the document BEFORE the f
 
 ### Writing project docs
 
-**MUST call the Skill tool with `instruction-writing:writing-project-docs` before creating or editing `AGENTS.md`, `README.md`, or ANY file under `docs/`.** It owns which file may carry what, and the authoring rules `/project-review-docs` audits against.
+**MUST call the Skill tool with `instruction-writing:writing-project-docs` before creating or editing `AGENTS.md`, `CLAUDE.md`, `README.md`, or ANY file under `docs/`.** It owns which file may carry what, and the authoring rules `/project-review-docs` audits against.
 
 ### Testing a plugin
 

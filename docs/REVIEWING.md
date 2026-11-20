@@ -1,10 +1,10 @@
 # Reviewing
 
-Local review rules for this plugin marketplace. The generic lenses are `project-review-change`, `project-review-codebase`, `project-review-docs`, and `project-auto-work:test-tests`; this file records only the delta, and wins where the two conflict.
+Local review rules for this plugin marketplace. Call the Skill tool with `project-review:project-review-change` for the rules review of a diff, or with `worktree-flow:worktree-review` and `<pr>` for a PR; the user runs `/project-review-codebase` and `/project-review-docs` for the whole-tree and docs audits. **Local delta:** the rules below win where the two conflict.
 
 ## What to prioritise
 
-- **Quality gates stay green.** Flag any change that breaks, skips, or weakens `bash tests/run-all.sh` or `mise run check-consistency` ([TESTING.md](TESTING.md)).
+- **Quality gates stay green.** Flag any change that breaks, skips, or weakens `mise run test` or `mise run check-consistency` ([TESTING.md](TESTING.md)).
 - **Skill triggering.** For Schema B skills, `when_to_use` is load-bearing: review wording changes for trigger accuracy, sibling overlap, and the bidirectional carve-out ([CODING.md](CODING.md)). Flag a new skill reaching for Schema B where Schema A, the default, would do.
 - **A new canonical doc lands in three plugins or in none.** Flag a change that skips a step of [Adding a canonical doc](CODING.md#adding-a-canonical-doc), most of all the example route and the `project-exec-init` row, which no test checks.
 
@@ -20,14 +20,17 @@ How a finished change must look. Each is a condition to check on the diff.
 
   It is an aid, not a gate: of the `plugin-dev` tools, only `plugin-dev:plugin-validator` blocks a PR ([CHANGE-WORKFLOW.md](CHANGE-WORKFLOW.md)). The rubric binds the lines the change wrote: a defect on an older line of the same file is a non-blocking suggestion.
 - **`argument-hint` shape.** The hint names the shape in a short bracketed placeholder, because the slash-command picker truncates anything longer, and spells out an enum-valued argument: `[low|medium|high|ultra]`, not `[level]`.
+- **Empty argument.** A skill that takes an argument states what an empty one does — defaults it ("with no argument, review the whole test suite") or asks.
 - **Skill names.** A new or renamed skill shares one prefix with its siblings, so they sort and read as a family: the plugin's domain word where it has one (`worktree-`, `html-visualize-`, `project-review-`, `tasks-`), otherwise a word the siblings agree on (`writing-` in `instruction-writing`, `test-` in `project-auto-work`). A "main" skill may take the plugin's own name (`github-releases:github-releases`).
   - ✅ `worktree-flow:worktree-ship`, `instruction-writing:writing-skills`
   - ❌ `worktree-flow:ship` — bare verb, shared with no sibling
 
   The exception is a plugin whose names trigger on their own, each a distinct concept rather than a generic operation, where a shared prefix would only dilute them — every skill in `challenge` (`grill`, `kiss`, `are-you-sure`, `what-do-you-mean`).
+- **Command names.** A name registered with `$.command.register` leads with the plugin's domain word (`tasks-board`).
+- **Mod footprint.** A mod runs unsandboxed, so it reaches only the `$` namespaces its feature needs; the `calls:` line `claude plugin validate` prints is the footprint a user audits before installing.
 - **Minimum version of a mod.** The `README.md` row of a mod says "needs Claude Code 2.1.287+".
 
 ## Out of scope / non-blocking
 
 - Style-only findings. Shell style belongs to ShellCheck (`mise run lint`); markdown and JSON have no configured formatter, and reviews do not fill that gap by hand.
-- Anything the deterministic checkers already cover: cross-references and version lockstep (`mise run check-consistency`), and route resolution, the `CLAUDE.md` = `@AGENTS.md` contract, and canonical inventory (`manifest.py`, the deterministic layer of the `project-review-docs` audit). Lean on them rather than re-checking by hand.
+- Anything the deterministic checkers already cover: cross-references and version lockstep (`mise run check-consistency`), route resolution (`validate-routes.py`), and the `CLAUDE.md` = `@AGENTS.md` contract and canonical inventory (`manifest.py`). No CI job runs the last two: on a diff that touches docs, run them with the commands in [TESTING.md](TESTING.md#docs-validation) rather than re-check by hand.
