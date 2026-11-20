@@ -4,15 +4,7 @@ How to run this marketplace's automated suites and validators.
 
 ## mise tasks
 
-`.mise.toml` at the repo root is the single entry point; `mise tasks` lists them.
-
-| Task | What it runs |
-|---|---|
-| `mise run test` | Full test suite — every plugin (`tests/run-all.sh`) |
-| `mise run test-html` | html-visualization browser/server tests only |
-| `mise run check-consistency` | Cross-reference and version-mirror validation (`scripts/check-internal-consistency.py`) |
-| `mise run lint` | ShellCheck `--severity=warning` over every tracked shell script (`scripts/list-shell-scripts.sh`) |
-| `mise run pick-sessions -- <subcommand>` | Session review picker, with `SESSION_REVIEW_DIR` from `mise.local.toml` — the review procedure in [MONITORING.md](MONITORING.md#run-a-review) |
+`.mise.toml` at the repo root is the single entry point; `mise tasks` lists the tasks and what each runs. `mise run pick-sessions -- <subcommand>` sets `SESSION_REVIEW_DIR` from `mise.local.toml` — the review procedure is in [MONITORING.md](MONITORING.md#run-a-review).
 
 `bash`, `perl`, `python3`, `node`, `jq`, `rsync`, and `shellcheck` must already be on PATH: `.mise.toml` declares no `[tools]`, so mise runs the tasks but installs none of them. Absent `node`, the node-backed suites fail rather than skip. The plugin suite alone needs `claude` too ([Suites that skip](#suites-that-skip)).
 
@@ -93,7 +85,7 @@ The manifest is informational — check its summary line for a false `claude_md_
 /plugin install plugin-dev@claude-code-plugins
 ```
 
-The `plugin-dev:plugin-validator` agent checks a plugin's manifest, component frontmatter, hook schema, and file organisation. Run it after creating or modifying components, and over every plugin before a release ([RELEASING.md](RELEASING.md)):
+The `plugin-dev:plugin-validator` agent checks a plugin's manifest, component frontmatter, hook schema, and file organisation. When it must run is the Plugin-Structure-Check gate in [CHANGE-WORKFLOW.md](CHANGE-WORKFLOW.md#pre-push-checklist). Invoke it as:
 
 ```
 Validate the plugin at plugins/my-plugin
