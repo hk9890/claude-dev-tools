@@ -82,11 +82,34 @@ const OPENS_WINDOW = [
   "chrome-devtools start --headless='false'",
   'x-www-browser http://localhost:5173',
   'python3 -m webbrowser http://localhost:5173',
+  '(cd /tmp/s && playwright-cli -s=a open --headed)',
+  '(cd /tmp/s && playwright-cli -s=a show)',
+  'chrome-devtools start --headless=new --isolated',
+  'npx --no playwright-cli show',
+  'playwright-cli -s=a --host 127.0.0.1 show',
+  'wslview http://localhost:5173',
+  'google-chrome http://localhost:5173',
+  'firefox http://localhost:5173',
+  'open http://localhost:5173',
+  'open dist/index.html',
 ]
 
 const TEST_WINDOWS = [
   'npx playwright test',
   'npx playwright test --ui',
+  '(cd web && npx playwright show-report)',
+  '(cd web && npx playwright codegen)',
+  '(CI=1 npx playwright test --ui)',
+  'pnpm playwright test --ui',
+  'pnpm playwright show-report',
+  'npm x playwright test --ui',
+  'bun x playwright test --ui',
+  'npx --no-install playwright test --ui',
+  'npx @playwright/test show-report',
+  'CI=1 npx playwright test --ui-port=0',
+  'CI=1 npx playwright test --ui-host=127.0.0.1',
+  'PWDEBUG=1 CI=1 npx playwright test',
+  'CI=1 npx playwright test --debug',
   'CI=1 npx playwright test --headed',
   'CI=1 npx playwright test --debug e2e/login.spec.ts',
   'CI=0 npx playwright test',
@@ -99,7 +122,7 @@ const TEST_WINDOWS = [
 
 const NO_SESSION = ['playwright-cli close', 'playwright-cli goto http://localhost:5173', 'cd /tmp && playwright-cli delete-data']
 
-const CLOSES_OTHERS = ['playwright-cli close-all', 'playwright-cli -s=claude-s1 kill-all', 'cd /tmp && playwright-cli close-all']
+const CLOSES_OTHERS = ['x=$(playwright-cli -s=a kill-all)', 'playwright-cli close-all', 'playwright-cli -s=claude-s1 kill-all', 'cd /tmp && playwright-cli close-all']
 
 const ALLOWED = [
   'playwright-cli -s=claude-s1 open --browser=chrome http://localhost:5173',
@@ -133,6 +156,14 @@ const ALLOWED = [
   'npx playwright install chromium',
   'npx playwright --version',
   'npx playwright cli -s=claude-s1 snapshot',
+  'CI=1 npx playwright test --debug=cli',
+  'cd web &&CI=1 npx playwright test',
+  '(PLAYWRIGHT_CLI_SESSION=a playwright-cli close)',
+  '(cd /tmp/s && playwright-cli -s=a snapshot)',
+  'chrome-devtools start --headless=true',
+  'google-chrome --headless=new --dump-dom http://localhost:5173',
+  'lighthouse http://localhost:4173 --port=0 --chrome-flags="--headless=new"',
+  'open -a Calculator',
   'git commit -m "playwright-cli close; xdg-open x"',
   'playwright-cli -s=claude-s1 attach claude-s1-2',
   'git commit -m "deny playwright-cli --headed and xdg-open"',
@@ -199,6 +230,15 @@ for (const command of ALLOWED) {
     expect(seen.toasts).toEqual([])
   })
 }
+
+test('denies a Lighthouse run that attaches to a running Chrome', async ($, on) => {
+  const seen = host(on)
+
+  const answer = await $.tool.call({ tool: 'Bash', command: 'lighthouse http://x --port=9222 --chrome-flags="--headless=new"' })
+
+  expect(answer.deny).toContain('already runs')
+  expect(seen.ran).toEqual([])
+})
 
 test('denies a window opened through Monitor', async ($, on) => {
   const seen = host(on)

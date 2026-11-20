@@ -35,7 +35,7 @@ run() { (cd "$WORK/cwd" && PATH="$WORK/bin:/usr/bin:/bin" bash "$SCRIPT" 2>&1); 
 
 stub 'Agent skill: ../pkg/skills/playwright-cli/SKILL.md'
 out=$(run)
-assert_contains "prints the guide directory" "Guide directory: $WORK/pkg/skills/playwright-cli" "$out"
+assert_contains "prints the guide directory" "Guide directory: $(cd "$WORK" && pwd -P)/pkg/skills/playwright-cli" "$out"
 assert_contains "prints the guide" "# Browser Automation with playwright-cli" "$out"
 
 stub 'Agent skill: ../pkg/skills/missing/SKILL.md'
