@@ -101,7 +101,7 @@ For every `SKILL.md` under `plugins/<plugin-name>/skills/<skill-name>/`. The aut
 
 ### Naming
 
-Directory name and frontmatter `name:` must match. Choose the name by the naming rule in [REVIEWING.md](REVIEWING.md).
+Directory name and frontmatter `name:` must match. Choose the name by the naming rule in [REVIEWING.md](REVIEWING.md#quality-rules).
 
 ### Frontmatter
 
