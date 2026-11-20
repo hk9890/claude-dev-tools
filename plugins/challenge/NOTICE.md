@@ -7,7 +7,9 @@ The following files in this plugin are derived from
   [v1.1.0](https://github.com/mattpocock/skills/releases/tag/v1.1.0), then reworked against
   [v1.2.0](https://github.com/mattpocock/skills/releases/tag/v1.2.0): the design tree, the
   rounds and the frontier, and the split between facts and decisions all trace there. The
-  prose shape for complex questions grows from upstream's chat-prose question template. The cold
+  prose shape for complex questions grows from upstream's chat-prose question template, and the
+  rule that "yes" accepts the recommendation comes from
+  [v1.3.2](https://github.com/mattpocock/skills/releases/tag/v1.3.2). The cold
   reader, the split between simple and complex questions, the `AskUserQuestion` format for
   simple ones, and the rule that a request for more is not an answer are locally authored
 - `skills/what-do-you-mean/SKILL.md` — adapted from the `wait-what` skill at

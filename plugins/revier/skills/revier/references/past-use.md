@@ -9,7 +9,7 @@ python3 "<base directory for this skill>/scripts/past-use.py" --days <n>
 It prints one JSON line per project, most used first: the project with more `.days`, then the one with more `go` presses. Each line gives:
 
 - `.project`, and `.host` for a project on a linked host. A link and the project it points to are one line, under the name of the link, with `.host_project` for its name on that host.
-- `.days`: the days, on the clock of this machine, on which revier did something there. A project with `.sessions[]` and no `.days` had an agent open that revier was not asked to show: report it apart, as open and not as worked in.
+- `.days`: the days, on the clock of this machine, on which revier did something there. A project with `.sessions[]` and an empty `.days` had an agent open that revier was not asked to show: report it apart, as open and not as worked in.
 - `.last`: the time of the newest event.
 - `.events`: a count per kind, except `agent session`, which `.sessions[]` carries. `revier events --help` says what each kind records.
 - `.sessions[]`: each conversation an agent held there, with its `.agent`, `.session` and `.dir`.

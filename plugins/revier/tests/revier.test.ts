@@ -27,6 +27,7 @@ const DENIED = [
   'revier popup',
   'revier agent new -p dt-assist-cli',
   'revier agent focus dt-assist-cli:home:24',
+  'revier agent close dt-assist-cli:home:24',
   'revier shell new -p dt-assist-cli',
   'revier session restore',
   'revier session restore monday',
@@ -116,15 +117,35 @@ const ALLOWED = [
   'revier agent new -p "$(basename "$PWD")" --no-focus',
 ]
 
+// The guard is best effort: these pass it. A change that closes a gap moves its command to DENIED.
+const NOT_CHECKED = [
+  "bash -c 'revier open demo'",
+  'sh -c "revier open demo"',
+  'eval revier open demo',
+  'nice revier open demo',
+  '/usr/local/bin/revier open demo',
+]
+
 for (const command of DENIED) {
   test(`denies: ${command}`, async ($, on) => {
     const seen = host(on)
 
     const answer = await $.tool.call({ tool: 'Bash', command })
 
-    expect(answer.deny).toContain('takes the focus')
+    expect(answer.deny).toContain('the user may be typing in')
     expect(seen.ran).toEqual([])
-    expect(seen.toasts).toEqual(['blocked a command that takes the focus'])
+    expect(seen.toasts).toEqual(["blocked a revier command that is the user's to run"])
+  })
+}
+
+for (const command of NOT_CHECKED) {
+  test(`not checked: ${command}`, async ($, on) => {
+    const seen = host(on)
+
+    const answer = await $.tool.call({ tool: 'Bash', command })
+
+    expect(answer.deny).toBeUndefined()
+    expect(seen.ran).toEqual(['Bash'])
   })
 }
 
@@ -147,9 +168,9 @@ test('denies a focus mover run through Monitor', async ($, on) => {
 
   const answer = await $.tool.call({ ...WATCH, command: 'revier open demo' })
 
-  expect(answer.deny).toContain('takes the focus')
+  expect(answer.deny).toContain('the user may be typing in')
   expect(seen.ran).toEqual([])
-  expect(seen.toasts).toEqual(['blocked a command that takes the focus'])
+  expect(seen.toasts).toEqual(["blocked a revier command that is the user's to run"])
 })
 
 test('allows a Monitor command that moves no window', async ($, on) => {

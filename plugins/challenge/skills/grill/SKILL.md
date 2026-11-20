@@ -67,7 +67,7 @@ not available, they go out as prose too.
 care: usually one, more only where each is short. Each takes this shape:
 
 ```
-**Q<n>: <the decision, in one line>**
+**Q<n>: <the decision in one line, worded so "yes" accepts the recommended option>**
 
 <The background: the facts the decision rests on, and the later decisions that hang on it.>
 
@@ -79,7 +79,7 @@ your mind.
 
 A question about the user's goal or situation ends on
 `**My guess: <one option's label, exactly>.** Why I think so: <the evidence, in plain words>.` in
-place of the recommendation.
+place of the recommendation, and its one line asks the question neutrally.
 
 In a round with both kinds, make the `AskUserQuestion` call first, then write the prose questions
 once it returns.
