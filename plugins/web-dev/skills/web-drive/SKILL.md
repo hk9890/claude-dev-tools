@@ -24,11 +24,11 @@ These rules win over the guide above, and over a project skill or doc that drive
 - **Check each page** — after each navigation and each action that loads data, run `console error` and `requests`. An error or a failed request is a finding: report it, even where the flow goes on.
 - **Snapshots** — read only the part you need, with `find <text>` or a read of the snapshot file, not the full tree.
 - **Wait for the page, not the network** — before the first input on a page, wait until an element the step needs is in the snapshot. Never wait for network idle: a dev server's live reload, a WebSocket or a stream keeps the network busy. Where the app streams its answer, it is settled when its busy indicator is gone and two snapshots a second apart are the same. Where the app runs in an iframe, aim each locator into that frame.
-- **Sign-in** — where the app needs a sign-in (its docs say so, or it shows a sign-in page), read `<base directory for this skill>/references/sign-in.md` before the first `goto`, and follow it.
+- **Sign-in** — where the app's docs name a sign-in, read `<base directory for this skill>/references/sign-in.md` before the first `goto`, and follow it. Where a page shows a sign-in form, read it then.
 
 ## Start the app
 
-Skip this where the page is a file, or a URL the user or the caller gave. Else read `<base directory for this skill>/../../references/start-app.md` and follow it. The `../..` is the plugin-root layout: `web-perf` reads the same file.
+Skip this where the page is a file, or a URL the user or the caller gave: that is `<url>`. Else read `<base directory for this skill>/../../references/start-app.md` and follow it. The `../..` is the plugin-root layout: `web-perf` reads the same file.
 
 ## Record each feature
 
