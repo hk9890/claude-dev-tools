@@ -34,6 +34,7 @@ history — an empty result is an answer, not a failure.
 
 import argparse
 import glob
+import importlib.util
 import json
 import os
 import re
@@ -85,6 +86,26 @@ COLLECT_FACTOR = 2
 HISTORICAL_CAP = 25
 
 
+
+def is_private_root(repo_root):
+    """The private layout of a repository the user cannot commit to (private_root.py): the
+    docs sit in a folder of the checkout, a git repository of its own, while the sessions
+    run in the checkout around it."""
+    path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "private_root.py")
+    spec = importlib.util.spec_from_file_location("private_root", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.is_private(repo_root)
+
+
+def read_suffix(repo_root, doc):
+    """The end of the path a session reads the doc by. A private doc is read under its
+    folder, and the checkout around it can have a doc of the same name."""
+    if is_private_root(repo_root):
+        return os.path.join(os.path.basename(os.path.abspath(repo_root)), doc)
+    return doc
+
+
 # ---------------------------------------------------------------------------
 # Locating this repository's transcripts
 # ---------------------------------------------------------------------------
@@ -121,7 +142,8 @@ def slug_for(path):
 
 def session_files(repo_root, projects_dir, limit):
     """Transcripts for this repo and any worktree under it, newest first."""
-    root = main_checkout(repo_root)
+    checkout = os.path.dirname(os.path.abspath(repo_root)) if is_private_root(repo_root) else repo_root
+    root = main_checkout(checkout)
     prefix = slug_for(root)
     files = []
     if not os.path.isdir(projects_dir):
@@ -468,7 +490,7 @@ def cmd_evidence(args):
                         "route_then": then, "segments": 0, "opened_doc": 0,
                         "did_work": 0, "first_ts": seg["ts"], "last_ts": seg["ts"]})
                     proj = segment_projection(
-                        seg["file"], seg["start_turn"], seg["end_turn"], doc)
+                        seg["file"], seg["start_turn"], seg["end_turn"], read_suffix(args.repo_root, doc))
                     bucket["segments"] += 1
                     if proj["first_doc_read_turn"] is not None:
                         bucket["opened_doc"] += 1
@@ -486,7 +508,7 @@ def cmd_evidence(args):
                 "prompt": seg["prompt"],
                 "route_stability": stab,
                 "activity": segment_projection(
-                    seg["file"], seg["start_turn"], seg["end_turn"], doc),
+                    seg["file"], seg["start_turn"], seg["end_turn"], read_suffix(args.repo_root, doc)),
             })
         # Superseded-route evidence: reported, never a finding about current text.
         entry["historical"] = sorted(

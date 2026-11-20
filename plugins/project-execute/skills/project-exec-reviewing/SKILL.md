@@ -8,7 +8,7 @@ argument-hint: "[what-to-review]"
 
 **Review the change.** Scope: $ARGUMENTS
 
-Follow the project's own review rules exactly. Do not invent criteria, checklists, or severity scales — if the project defines no review rules, do nothing and report that reviewing is not configured for this project. Rules count as defined only if stated in the project's docs (CLAUDE.md/AGENTS.md routing, README) or config (review checklists, CI review gates); check those before reporting not configured.
+Follow the project's own review rules exactly. Do not invent criteria, checklists, or severity scales — if the project defines no review rules, do nothing and report that reviewing is not configured for this project. Rules count as defined only if stated in the project's docs (CLAUDE.md/AGENTS.md routing, the private routing CLAUDE.local.md imports, README) or config (review checklists, CI review gates); check those before reporting not configured.
 
 A project states only its local delta and routes the rest to a general review skill or checklist. Follow that route where it exists, and let the local rules win wherever the two conflict. Where the route names a skill that is in your available skills, call the Skill tool with it, even where it loaded earlier in this session. Where it names one that is not, only the user can start it: tell the user to run `/<plugin>:<skill>`.
 
