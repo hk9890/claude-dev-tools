@@ -55,6 +55,19 @@ Done when, in `gh pr view <pr-number> --json headRefOid,body`, the commit after 
 
 ## 5. Report
 
-Report the PR URL, each review with its outcome, each gate with its result, and the items step 3 kept; for a review step 3 did not run, the **Review** line's open questions. Put the open questions last, as one numbered list the user answers in one reply. Where `worktree-ship` invoked this run, keep these items, in that form, for its report instead.
+Report the PR URL, each review with its outcome, each gate with its result, and the items step 3 kept; for a review step 3 did not run, the **Review** line's open questions. Put the open questions last, numbered continuously across two lists the user answers in one reply:
+
+1. **Done on "go"** — each question whose recommendation you stand behind, where the change stays inside the PR and is easy to undo: one line each, the question and the option you take. A "go" takes every item of this list; the user names only those they object to.
+2. **Needs you** — each question the user owns: it changes a project rule, a name or interface other people use, or another repository, it rewrites pushed history, it accepts a cost or risk that falls on the user, or it has no recommendation. Lead each with that reason in one sentence. The question reads without the review beside it: what is wrong, where, and what each option changes for the user, with its options in the review's words, the recommended one first, marked as recommended, with its reason and cost. A question with no options asks whether to apply it as stated; one with no recommendation says that it has none.
+
+A question that misses any condition of **Done on "go"** goes to **Needs you**. The report picks the list; the question stays open, and nothing in either list is applied before the user's reply. These two lists copy the relay of `project-review`'s `decision-split.md`, which this plugin cannot read: a change to one is a change to both. Where **Needs you** holds a question, give this command for the user to type, with `<N>` its count, in place of any kept `html-visualize-ask` command:
+
+```
+/html-visualization:html-visualize-ask the <N> decisions that need me from PR <pr-number> — leave out the settled fixes and the items done on "go"
+```
+
+Then say that the form holds only the **Needs you** questions, and that a reply in chat stops any "go" one. Where `worktree-ship` invoked this run, keep these items, in that form, for its report instead.
+
+Where the user's reply applies a change, go back to step 3 from its gates and repeat each drive, then commit, push, and do step 4 again.
 
 Done when the report, or the items kept for `worktree-ship`, hold each item or say it does not apply.

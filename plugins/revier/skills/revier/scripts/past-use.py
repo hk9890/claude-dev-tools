@@ -33,7 +33,7 @@ def revier(*args):
     sys.stderr.write(done.stderr)
     if done.returncode != 0:
         if "unknown command" in done.stderr:
-            sys.exit("STOP: this revier has no `events` command. Tell the user to update revier to 0.13.0 or later.")
+            sys.exit("STOP: this revier has no `events` command. Tell the user to update revier to 0.22.0 or later.")
         sys.exit(done.returncode)
     return done.stdout
 
