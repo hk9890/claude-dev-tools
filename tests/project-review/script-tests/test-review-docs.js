@@ -204,19 +204,28 @@ async function main() {
     throwsWith(() => checkManifest({ ...whole, summary: { total_md: 2 } }), /lists 1 of the 2 files/));
 
   // ── checkPromptIndex / checkEvidence ─────────────────────────────────────────
-  const index = { sessions_with_prompts: 3, batches: [{ sessions: 2 }, { sessions: 1 }] };
+  const index = { sessions_with_prompts: 3, batches: [{ sessions: 2 }, { sessions: 1 }], complete: true };
   eq('checkPromptIndex: a complete prompt index passes', index, checkPromptIndex(index));
+  truthy('checkPromptIndex: a relay without the closing sentinel is rejected',
+    throwsWith(() => checkPromptIndex({ ...index, complete: undefined }), /not a complete prompt index/));
   truthy('checkPromptIndex: a relay that lost a batch from the end is rejected',
     throwsWith(() => checkPromptIndex({ ...index, batches: index.batches.slice(0, 1) }), /batches 2 of the 3 sessions/));
   truthy('checkPromptIndex: a relay without batches is rejected',
-    throwsWith(() => checkPromptIndex({ sessions_with_prompts: 0 }), /not a prompt index/));
+    throwsWith(() => checkPromptIndex({ sessions_with_prompts: 0, complete: true }), /not a complete prompt index/));
+  // A relay of the wrong file can carry a whole transcript; the error names it, never pastes it.
+  truthy('checkPromptIndex: a rejected relay is named by its keys, not pasted',
+    throwsWith(() => checkPromptIndex({ sessions: ['a long transcript'] }), /^(?!.*long transcript).*keys sessions/));
   const allCases = (v) => Object.fromEntries(Object.keys(USE_CASES).map((u) => [u, v]));
   const summary = {
     coverage: { ...allCases({ valid: 0 }), coding: { valid: 1, historical_examined: 3 } },
     evidence_files: allCases('/f.json'),
     historical: { coding: [{ segments: 2 }, { segments: 1 }] },
+    complete: true,
   };
   eq('checkEvidence: a complete evidence summary passes', summary, checkEvidence(summary));
+  // A copy cut inside the last coverage entry, with no superseded routes, keeps every key.
+  truthy('checkEvidence: a relay without the closing sentinel is rejected',
+    throwsWith(() => checkEvidence({ ...summary, complete: undefined }), /not a complete evidence summary/));
   truthy('checkEvidence: a relay that lost a use case is rejected',
     throwsWith(() => checkEvidence({ ...summary, evidence_files: { coding: '/f.json' } }), /lacks the use case/));
   // historical is the summary's last key, so a copy cut short loses its buckets first.
@@ -363,6 +372,7 @@ async function main() {
   const promptIndex = {
     repo_root: '/repo', projects_dir: '/p', transcripts_found: 2, sessions_with_prompts: 2,
     batches: [{ file: '/tmp/sc/history/prompts-01.json', labels_file: '/tmp/sc/history/labels-01.json', sessions: 2, messages: 10 }],
+    complete: true,
   };
   // history.py emits coverage and an evidence file for every use case.
   const evidence = {
@@ -376,11 +386,12 @@ async function main() {
       coding: [{ route_then: 'Load [docs/CODING.md](docs/CODING.md) for guidance.',
                  segments: 2, opened_doc: 0, did_work: 2 }],
     },
+    complete: true,
   };
 
   const runAudit = async (over = {}) => {
     // promptIndex and manifest are stub overrides for the scripts, not workflow arguments.
-    const { promptIndex: promptOverride, manifest: manifestOverride, evidence: evidenceOverride, labelWrite, dropFile, manifestRelays = [], evidenceCuts = 0, ...argOver } = over;
+    const { promptIndex: promptOverride, manifest: manifestOverride, evidence: evidenceOverride, labelWrite, dropFile, manifestRelays = [], evidenceCuts = 0, promptCuts = 0, ...argOver } = over;
     // manifest.py counts every file it lists; an override that adds files keeps that true.
     const base = manifestOverride || manifest;
     const manifestForRun = { ...base, summary: { ...base.summary, total_md: base.files.length } };
@@ -401,13 +412,20 @@ async function main() {
         if (relay === 'null') return null;
         return '```json\n' + full + '\n```';
       }
-      if (opts.label === 'history:extract') return JSON.stringify(promptOverride || promptIndex);
+      if (opts.label.startsWith('history:extract')) {
+        const relayed = promptOverride || promptIndex;
+        // A relay cut short and closed by the model: the last batch and the sentinel are gone.
+        const cut = labels.filter((l) => l.startsWith('history:extract')).length <= promptCuts;
+        const { complete, ...rest } = relayed;
+        return JSON.stringify(cut ? { ...rest, batches: relayed.batches.slice(0, -1) } : relayed);
+      }
       if (opts.label.startsWith('history:evidence')) {
         if (typeof evidenceOverride === 'string') return evidenceOverride;
         const relayed = evidenceOverride || evidence;
         // A relay cut short and closed by the model: the superseded-route buckets are gone.
         const cut = labels.filter((l) => l.startsWith('history:evidence')).length <= evidenceCuts;
-        return JSON.stringify(cut ? { ...relayed, historical: {} } : relayed);
+        const { complete, ...rest } = relayed;
+        return JSON.stringify(cut ? { ...rest, historical: {} } : relayed);
       }
       if (opts.label.startsWith('history:label-')) {
         return labelWrite || { labels_file: '/tmp/sc/history/labels-01.json', sessions_labelled: 2, messages_labelled: 10 };
@@ -479,7 +497,7 @@ async function main() {
     retried.ret && retried.ret.report && retried.ret.report.verdict);
   const exhausted = await runAudit({ manifestRelays: Array(RELAY_ATTEMPTS).fill('closed') });
   truthy('manifest: the run aborts once every attempt failed, and says how many',
-    exhausted.ret && new RegExp(`manifest parse failed after ${RELAY_ATTEMPTS} attempts`).test(exhausted.ret.error || ''),
+    exhausted.ret && new RegExp(`manifest relay failed: no usable copy after ${RELAY_ATTEMPTS} attempts`).test(exhausted.ret.error || ''),
     `got ${JSON.stringify(exhausted.ret)}`);
   eq('manifest: no review agent runs on an aborted manifest', [],
     exhausted.labels.filter((l) => !l.startsWith('manifest')));
@@ -549,13 +567,19 @@ async function main() {
   const unparsed = await runAudit({ evidence: 'Traceback (most recent call last):' });
   truthy('history: an evidence summary that does not parse reaches the synthesis as a failure',
     unparsed.prompts[unparsed.prompts.length - 1].includes(
-      `History stage failure: the evidence summary from history.py: parse failed after ${RELAY_ATTEMPTS} attempts`));
+      `History stage failure: the evidence summary from history.py: no usable copy after ${RELAY_ATTEMPTS} attempts`));
   const evidenceRetried = await runAudit({ evidenceCuts: RELAY_ATTEMPTS - 1 });
   eq('history: an incomplete evidence summary is asked for again',
     ['history:evidence', ...Array.from({ length: RELAY_ATTEMPTS - 1 }, (_, i) => `history:evidence-${i + 2}`)],
     evidenceRetried.labels.filter((l) => l.startsWith('history:evidence')));
   eq('history: the stage goes on once a copy is complete', 4,
     evidenceRetried.ret && evidenceRetried.ret.raw.history_coverage.coding.valid);
+  const promptRetried = await runAudit({ promptCuts: RELAY_ATTEMPTS - 1 });
+  eq('history: an incomplete prompt index is asked for again',
+    ['history:extract', ...Array.from({ length: RELAY_ATTEMPTS - 1 }, (_, i) => `history:extract-${i + 2}`)],
+    promptRetried.labels.filter((l) => l.startsWith('history:extract')));
+  eq('history: the label agents run on the complete copy, one per batch', ['history:label-1'],
+    promptRetried.labels.filter((l) => l.startsWith('history:label-')));
   truthy('history: the label agent writes with the Write tool',
     deep.prompts.some((p, i) => deep.labels[i].startsWith('history:label-') && p.includes('with the Write tool')));
 
@@ -679,7 +703,13 @@ async function main() {
 
   // A repo nobody has opened in Claude Code has no transcripts. That is a gap in the
   // audit, not a defect in the docs — the stage must skip rather than invent evidence.
-  const noHistory = await runAudit({ level: 'medium', promptIndex: { projects_dir: '/p', batches: [] } });
+  const noHistory = await runAudit({
+    level: 'medium', promptIndex: { projects_dir: '/p', sessions_with_prompts: 0, batches: [], complete: true },
+  });
+  eq('history: an empty prompt index is taken on the first relay', ['history:extract'],
+    noHistory.labels.filter((l) => l.startsWith('history:extract')));
+  truthy('history: no transcripts is a skip, not a failure',
+    noHistory.prompts[noHistory.prompts.length - 1].includes('History stage failure: none'));
   eq('history: no transcripts means no classifier runs', 0,
     noHistory.labels.filter((l) => l.startsWith('history:label-')).length);
   eq('history: no transcripts means no judge runs', 0,
@@ -697,7 +727,7 @@ async function main() {
     pipeline: async () => [],
   });
   truthy('orchestration: an unparseable manifest aborts loudly',
-    badManifest && /manifest parse failed/.test(badManifest.error || ''), `got ${JSON.stringify(badManifest)}`);
+    badManifest && /manifest relay failed/.test(badManifest.error || ''), `got ${JSON.stringify(badManifest)}`);
 
   // ── broken-runtime guard ─────────────────────────────────────────────────────
   let threw = false;

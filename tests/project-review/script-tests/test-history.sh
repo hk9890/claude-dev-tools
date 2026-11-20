@@ -185,6 +185,21 @@ P2=$(python3 "$SCRIPT" prompts "$REPO" --out "$EMPTY/out" --projects-dir "$EMPTY
 rc=$?
 assert_eq "empty: a repo with no transcripts still exits 0" "0" "$rc"
 assert_eq "empty: and reports no batches" "0" "$(json_val "len(d['batches'])" <<< "$P2")"
+
+# ---------------------------------------------------------------------------
+# Relay invariants: review-docs.js takes a relayed copy of this output only where these
+# hold (checkPromptIndex, checkEvidence), so a change here that breaks one loses the
+# history stage on every run.
+# ---------------------------------------------------------------------------
+
+for out in "$P" "$P2"; do
+  assert_eq "relay: a prompt index ends with complete, and batches every session it counts" "True" \
+    "$(json_val "list(d)[-1] == 'complete' and d['complete'] is True and sum(b['sessions'] for b in d['batches']) == d['sessions_with_prompts']" <<< "$out")"
+done
+for out in "$E0" "$E" "$E2" "$E3" "$E4"; do
+  assert_eq "relay: an evidence summary ends with complete, and covers every use case with buckets that add up" "True" \
+    "$(json_val "list(d)[-1] == 'complete' and d['complete'] is True and set(d['coverage']) == set(d['evidence_files']) and all(sum(b['segments'] for b in d['historical'].get(u, [])) == c.get('historical_examined', 0) for u, c in d['coverage'].items())" <<< "$out")"
+done
 rm -rf "$EMPTY"
 
 # ---------------------------------------------------------------------------
