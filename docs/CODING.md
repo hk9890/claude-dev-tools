@@ -93,7 +93,8 @@ A mod is a plugin whose `hooks/hooks.json` names a hooks module under `modules`;
 - **One code path** — a behaviour moves to the module whole: delete the settings hook and its `bin/` script in the same change.
 - **Validate early** — run `claude plugin validate --strict plugins/<plugin>` after every edit ([TESTING.md](TESTING.md#mod-tests--claude-plugin-test)). It refuses an event name that is not a string literal, a `$` call not written in full (`$.ui.status(...)`, never `const ui = $.ui`), and `$` passed anywhere but a top-level function of the same file.
 - **Where nothing draws** — panes and the status line show in the terminal and the desktop app only. Do not settle it at `session.start`: the desktop app joins after it, with a `session.attach` event, and can leave. Read `$.session.surfaces()` when the feature runs: `tasks` does at each `/tasks-board` and answers as text where neither is attached.
-- **Command names** — a name registered with `$.command.register` is global, and `/tasks` is Claude Code's own; the naming and footprint rules are in [REVIEWING.md](REVIEWING.md#quality-rules).
+- **Command names** — a name registered with `$.command.register` is global, and `/tasks` is Claude Code's own.
+- **Footprint and naming** — the rules are in [REVIEWING.md](REVIEWING.md#quality-rules).
 - **Generated files** — a `--plugin-dir` load writes `.claude-plugin/types/` and `tsconfig.json` into the plugin; both are gitignored. After one such load, `npx -p typescript tsc -p plugins/<plugin>` type-checks the module and its tests.
 
 ## SKILL.md conventions

@@ -1,6 +1,6 @@
 # Reviewing
 
-Local review rules for this plugin marketplace. Call the Skill tool with `project-review:project-review-change` for the rules review of a diff, or with `worktree-flow:worktree-review` and `<pr>` for a PR; the user runs `/project-review-codebase` and `/project-review-docs` for the whole-tree and docs audits. **Local delta:** the rules below win where the two conflict.
+Local review rules for this plugin marketplace. The review skills that apply them are `project-review:project-review-change`, the rules review of a diff, and `worktree-flow:worktree-review`, a PR review that pushes its fixes; the user runs `/project-review-codebase` and `/project-review-docs` for the whole-tree and docs audits. **Local delta:** the rules below win where they conflict with those skills.
 
 ## What to prioritise
 
