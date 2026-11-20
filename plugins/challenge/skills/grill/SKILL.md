@@ -81,6 +81,9 @@ A question about the user's goal or situation ends on
 `**My guess: <one option's label, exactly>.** Why I think so: <the evidence, in plain words>.` in
 place of the recommendation.
 
+Word the one-line decision so that "yes" accepts your recommendation, or your guess: "Keep the
+cache in Postgres?".
+
 In a round with both kinds, make the `AskUserQuestion` call first, then write the prose questions
 once it returns.
 
@@ -88,7 +91,8 @@ once it returns.
 
 An answer in the user's own words — typed into the free-text field the tool puts on every
 question, or as a message — settles its decision as firmly as a pick. An answer that hands the
-decision to you ("your call", "go with your recommendation") settles it on your recommendation.
+decision to you ("your call", "go with your recommendation", "yes" to a prose question) settles
+it on your recommendation, or your guess.
 Take it and recompute the frontier from it.
 
 A request for more ("why", "explain", "what does this break", "let's discuss this") is not an
