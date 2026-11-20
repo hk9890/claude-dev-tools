@@ -8,6 +8,6 @@ External plugins this repo does not ship: `commit-commands:commit`, `plugin-dev:
 Colon pairs that are not references at all: `display:none` in CSS, `test:integration` as a task
 name, `github:hk9890` as a mise backend, and `user:pass` in a URL.
 
-A deliberately-wrong name, marked the way `docs/CODING.md` marks one, must stay wrong:
+A deliberately-wrong name, marked the way `docs/REVIEWING.md` marks one, must stay wrong:
 
 - ❌ `tasks:core` — bare noun, shared with no sibling
