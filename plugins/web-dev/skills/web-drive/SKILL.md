@@ -7,7 +7,7 @@ allowed-tools: Bash(web-dev-playwright-guide*)
 
 # web-drive
 
-Use the web app in a browser that nobody sees. The user does not use this browser: you do. The guide of the installed playwright-cli comes first, then the rules of this session, which win where the two disagree.
+Use the web app in a browser that nobody sees. The user does not use this browser: you do. The guide of the installed playwright-cli comes first, then the rules of this session.
 
 !`web-dev-playwright-guide 2>&1 || echo "STOP: web-dev-playwright-guide did not run, so the playwright-cli guide did not print. Tell the user that the web-dev plugin is installed without its bin/ directory on PATH, and give them the error above."`
 
