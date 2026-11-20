@@ -6,6 +6,7 @@
 #   - live: full repo scan exits 0 and resolves at least one real reference
 #   - fail/section: bogus "Phrase section in file.md" reference exits non-zero
 #   - fail/version: desynced plugin.json version exits non-zero
+#   - full scans of Checks A and E read tracked files only, filtered below the root
 set -uo pipefail
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
@@ -355,6 +356,52 @@ test_skill_ref_scans_tracked_only() {
   rm -rf "$tmp_dir"
 }
 
+# 19. Section refs: a full scan reads what git tracks, as Check E does (test 18).
+#     Regression: Check A walked the filesystem, so a stale reference in a
+#     sibling checkout under .claude/worktrees/ failed a check about this tree.
+test_section_ref_scans_tracked_only() {
+  local tmp_dir
+  tmp_dir=$(mktemp -d) || { printf 'FAIL: mktemp -d unavailable — fixture not built\n'; exit 1; }
+  printf '# Guide\n\n## Quick Start\n' > "$tmp_dir/guide.md"
+  printf '# Ref\n\nSee the Quick Start section in guide.md.\n' > "$tmp_dir/tracked.md"
+  git -C "$tmp_dir" init -q
+  git -C "$tmp_dir" add -A
+  # Untracked, in a sibling worktree, and its section does not exist.
+  mkdir -p "$tmp_dir/.claude/worktrees/old"
+  printf '# Ref\n\nSee the Gone Away section in guide.md.\n' > "$tmp_dir/.claude/worktrees/old/stale.md"
+
+  assert_exit "section-ref-tracked: untracked markdown is not scanned" 0 \
+    python3 "$SCRIPT" --repo-root "$tmp_dir" \
+      --skip-versions --skip-descriptions --skip-uniformity --skip-skill-refs
+
+  git -C "$tmp_dir" add -f .claude/worktrees/old/stale.md
+  assert_exit "section-ref-tracked: the same file tracked is scanned and fails" 1 \
+    python3 "$SCRIPT" --repo-root "$tmp_dir" \
+      --skip-versions --skip-descriptions --skip-uniformity --skip-skill-refs
+
+  rm -rf "$tmp_dir"
+}
+
+# 20. Section refs: examples/ and notes/ match on the path below the repo root.
+#     Regression: Check A matched the absolute path, so a clone under a directory
+#     named notes/ scanned no file and passed.
+test_section_ref_under_notes_parent() {
+  local tmp_dir repo
+  tmp_dir=$(mktemp -d) || { printf 'FAIL: mktemp -d unavailable — fixture not built\n'; exit 1; }
+  repo="$tmp_dir/notes/repo"
+  mkdir -p "$repo/docs"
+  printf '# Guide\n\n## Quick Start\n' > "$repo/docs/guide.md"
+  printf '# Ref\n\nSee the Gone Away section in guide.md.\n' > "$repo/docs/ref.md"
+  git -C "$repo" init -q
+  git -C "$repo" add -A
+
+  assert_exit "section-ref-notes-parent: a broken reference still fails" 1 \
+    python3 "$SCRIPT" --repo-root "$repo" \
+      --skip-versions --skip-descriptions --skip-uniformity --skip-skill-refs
+
+  rm -rf "$tmp_dir"
+}
+
 # ── run all tests ─────────────────────────────────────────────────────────────
 
 test_live_repo_passes
@@ -375,6 +422,8 @@ test_skill_ref_message
 test_skill_ref_passes
 test_skill_ref_ignores_foreign
 test_skill_ref_scans_tracked_only
+test_section_ref_scans_tracked_only
+test_section_ref_under_notes_parent
 
 printf '\n'
 printf 'Results: %d passed, %d failed\n' "$PASS" "$FAIL"

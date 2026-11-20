@@ -10,15 +10,15 @@ Usage:
 Exits 0 if all checks pass, non-zero if any check fails.
 
 Check A — section references:
-    Scans markdown files in the repo for anchored prose patterns of the form
+    Scans the markdown files git tracks for anchored prose patterns of the form
     "<Phrase> section in <file>.md" or "<file>.md's <Phrase> section". For each
     match, resolves <file>.md relative to the referencing file (then falls back to
     repo root) and checks whether <Phrase> matches a heading in that file by:
       (a) GitHub heading-slug equality, or
       (b) case-insensitive substring match of <Phrase> against heading text.
     Unresolved reference => FAIL with file:line. Skips content inside fenced code
-    blocks and inline code spans. Skips any file whose path contains an examples/
-    or notes/ directory segment.
+    blocks and inline code spans. Skips any file whose path below the repo root
+    contains an examples/ or notes/ directory segment.
 
     The heading-scan, inline-code, and GitHub heading-slug helpers are imported
     from validate-routes.py (not copied) via importlib.
@@ -291,24 +291,13 @@ def _scan_file_for_section_refs(filepath, vr_mod, repo_root):
 def run_section_check(repo_root, vr_mod, target_files=None):
     """Run Check A — section references.
 
-    If target_files is given, scan only those files. Otherwise discover all
-    .md files in the repo (excluding examples/, notes/, .tasks/, and .git/).
+    If target_files is given, scan only those files. Otherwise scan
+    _repo_markdown(repo_root).
 
     Returns (failures, total_refs_checked).
     """
     if target_files is None:
-        md_files = []
-        for dirpath, dirnames, filenames in os.walk(repo_root):
-            # Prune directories we never descend into
-            dirnames[:] = [
-                d for d in dirnames
-                if d not in ("examples", "notes", ".git", ".tasks")
-            ]
-            for fn in filenames:
-                if fn.endswith(".md"):
-                    full = os.path.join(dirpath, fn)
-                    if not _path_has_excluded_segment(full):
-                        md_files.append(full)
+        md_files = _repo_markdown(repo_root)
     else:
         md_files = list(target_files)
 
@@ -511,11 +500,26 @@ def _walked_markdown(repo_root):
     """Markdown files under repo_root, for a tree git does not track."""
     found = []
     for dirpath, dirnames, filenames in os.walk(repo_root):
-        dirnames[:] = [d for d in dirnames if d not in (".git", "node_modules", "output")]
+        dirnames[:] = [d for d in dirnames if d not in (".git", ".tasks", "node_modules", "output")]
         if _path_has_excluded_segment(os.path.relpath(dirpath, repo_root)):
             continue
         found.extend(os.path.join(dirpath, f) for f in filenames if f.endswith(".md"))
     return found
+
+
+def _repo_markdown(repo_root):
+    """Markdown files of this tree that Checks A and E scan.
+
+    Tracked files only; --repo-root may name a tree git does not track, so fall
+    back to a walk there. examples/ and notes/ are left out, matched on the path
+    below repo_root: a fixture there is deliberately wrong, and a scan that read
+    it would fail on the very file written to prove a check fails.
+    """
+    found = _tracked_markdown(repo_root)
+    if found is None:
+        found = _walked_markdown(repo_root)
+    return [p for p in found
+            if not _path_has_excluded_segment(os.path.relpath(p, repo_root))]
 
 
 def run_skill_ref_check(repo_root, target_files=None):
@@ -525,17 +529,7 @@ def run_skill_ref_check(repo_root, target_files=None):
         return []
 
     if target_files is None:
-        # Tracked files only; --repo-root may name a tree git does not track, so
-        # fall back to a walk there.
-        target_files = _tracked_markdown(repo_root)
-        if target_files is None:
-            target_files = _walked_markdown(repo_root)
-        # examples/ and notes/ are excluded exactly as Check A excludes them: a
-        # fixture there is deliberately wrong, and a scan that read it would fail
-        # on the very file written to prove this check fails.
-        target_files = [
-            p for p in target_files
-            if not _path_has_excluded_segment(os.path.relpath(p, repo_root))]
+        target_files = _repo_markdown(repo_root)
 
     failures = []
     for path in sorted(target_files):
