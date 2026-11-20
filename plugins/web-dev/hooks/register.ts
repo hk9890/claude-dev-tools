@@ -4,6 +4,8 @@ const OPENS_WINDOW =
   "This command opens a browser window on the user's screen, and web-dev runs every browser headless. Where a sign-in needs a visible window, give the user the exact `cd <scratch> && playwright-cli -s=<session> open --headed <url>` to run in their own terminal; once they have signed in, `state-save` the state, `close`, and go on headless with `state-load`."
 const LIGHTHOUSE_HEADED =
   'This Lighthouse run opens a visible Chrome on the user\'s screen. Run it with `--chrome-flags="--headless=new"` and without `--view`.'
+const TEST_WINDOW =
+  'This Playwright Test command opens a browser window or its report on the user\'s screen. Run tests as `CI=1 npx playwright test`, without `--ui`, `--headed` or `--debug`, and read a report or a trace from its files.'
 const CLOSES_OTHERS =
   'This command stops the browsers of every session on this machine, not only the ones of this session. Close your own browser with `playwright-cli -s=<your session> close`.'
 const NO_SESSION =
@@ -42,14 +44,22 @@ const VERSION = String.raw`(?:@[\w.^~-]+)?`
 
 const PLAYWRIGHT = String.raw`${RUN}(?:${PATH}playwright-cli${VERSION}|@playwright/cli${VERSION}|${PATH}playwright\s+cli)`
 const OPENER = String.raw`${PATH}(?:xdg-open|x-www-browser|www-browser|sensible-browser|gio\s+open|python3?\s+-m\s+webbrowser)`
+const TEST_RUNNER = String.raw`${RUN}${PATH}playwright${VERSION}`
 const DEVTOOLS = String.raw`${RUN}${PATH}chrome-devtools${VERSION}`
 const LIGHTHOUSE = String.raw`${RUN}${PATH}lighthouse${VERSION}`
-const WATCHED = new RegExp(String.raw`(?=(${LEAD}(?:${PLAYWRIGHT}|${OPENER}|${DEVTOOLS}|${LIGHTHOUSE})(?![\w-])[^;&|]*))`, 'g')
+const WATCHED = new RegExp(String.raw`(?=(${LEAD}(?:${PLAYWRIGHT}|${TEST_RUNNER}|${OPENER}|${DEVTOOLS}|${LIGHTHOUSE})(?![\w-])[^;&|]*))`, 'g')
 const anchored = (tool: string) => new RegExp(String.raw`^${tool}(?![\w-])`)
 const IS_OPENER = anchored(OPENER)
 const IS_DEVTOOLS = anchored(DEVTOOLS)
 const IS_LIGHTHOUSE = anchored(LIGHTHOUSE)
 const IS_PLAYWRIGHT = anchored(PLAYWRIGHT)
+const IS_TEST_RUNNER = anchored(TEST_RUNNER)
+
+// Playwright Test subcommands that always open a window, and the test flags that do. A config
+// commonly runs headless only where CI is set, so a test run needs CI in its assignments.
+const TEST_WINDOW_SUBCOMMANDS = new Set(['show-report', 'show-trace', 'codegen', 'open', 'cr', 'ff', 'wk'])
+const TEST_WINDOW_FLAG = /^--(?:ui|headed|debug)(?:=(?!false$).*)?$/
+const SETS_CI = /(?:^|\s)CI=(?!(?:0|false)?(?:\s|$))\S/
 
 // --extension, --cdp and --endpoint drive a browser that already runs, the user's too.
 const HEADED = /^--(?:headed(?:=(?!false$).*)?|extension(?:=.*)?|cdp(?:=.*)?|endpoint(?:=.*)?)$/
@@ -103,6 +113,17 @@ function opensLighthouseWindow(words: string) {
   return !/\s--(?:version|help)(?![\w-])/.test(words) && !/\s--chrome-flags(?:=|\s+)\S*--headless(?!=false)(?![\w-])/.test(words)
 }
 
+function testRunnerRefusal(run: string, words: string) {
+  const args = words.replace(IS_TEST_RUNNER, '').trim().split(/\s+/).filter(Boolean)
+  const subcommand = args.find(arg => !arg.startsWith('-')) ?? ''
+
+  if (TEST_WINDOW_SUBCOMMANDS.has(subcommand) || args.some(arg => TEST_WINDOW_FLAG.test(arg))) {
+    return TEST_WINDOW
+  }
+
+  return subcommand === 'test' && !SETS_CI.test(run) ? TEST_WINDOW : undefined
+}
+
 function playwrightRefusal(run: string, words: string) {
   const args = words.replace(IS_PLAYWRIGHT, '').trim().split(/\s+/).filter(Boolean)
   const subcommand = args.find((arg, i) => !arg.startsWith('-') && !SESSION_FLAG.test(args[i - 1] ?? '')) ?? ''
@@ -135,6 +156,10 @@ function refusal(run: string) {
 
   if (IS_LIGHTHOUSE.test(words)) {
     return opensLighthouseWindow(words) ? LIGHTHOUSE_HEADED : undefined
+  }
+
+  if (!IS_PLAYWRIGHT.test(words) && IS_TEST_RUNNER.test(words)) {
+    return testRunnerRefusal(run, words)
   }
 
   return playwrightRefusal(run, words)

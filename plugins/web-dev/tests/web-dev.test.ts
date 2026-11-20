@@ -84,6 +84,19 @@ const OPENS_WINDOW = [
   'python3 -m webbrowser http://localhost:5173',
 ]
 
+const TEST_WINDOWS = [
+  'npx playwright test',
+  'npx playwright test --ui',
+  'CI=1 npx playwright test --headed',
+  'CI=1 npx playwright test --debug e2e/login.spec.ts',
+  'CI=0 npx playwright test',
+  'npx playwright show-report',
+  'npx playwright codegen http://localhost:5173',
+  'pnpm exec playwright show-trace trace.zip',
+  'playwright open http://localhost:5173',
+  './node_modules/.bin/playwright test',
+]
+
 const NO_SESSION = ['playwright-cli close', 'playwright-cli goto http://localhost:5173', 'cd /tmp && playwright-cli delete-data']
 
 const CLOSES_OTHERS = ['playwright-cli close-all', 'playwright-cli -s=claude-s1 kill-all', 'cd /tmp && playwright-cli close-all']
@@ -114,6 +127,12 @@ const ALLOWED = [
   'PLAYWRIGHT_CLI_SESSION=claude-s1 playwright-cli close',
   'playwright-cli -s=claude-s1 fill e3 "show me"',
   'playwright-cli install-browser ffmpeg',
+  'CI=1 npx playwright test',
+  'CI=true npx playwright test e2e/x.spec.ts --reporter=line',
+  'cd web && CI=1 npx playwright test --headed=false',
+  'npx playwright install chromium',
+  'npx playwright --version',
+  'npx playwright cli -s=claude-s1 snapshot',
   'git commit -m "playwright-cli close; xdg-open x"',
   'playwright-cli -s=claude-s1 attach claude-s1-2',
   'git commit -m "deny playwright-cli --headed and xdg-open"',
@@ -133,6 +152,17 @@ for (const command of OPENS_WINDOW) {
     expect(answer.deny).toContain("on the user's screen")
     expect(seen.ran).toEqual([])
     expect(seen.toasts.length).toBe(1)
+  })
+}
+
+for (const command of TEST_WINDOWS) {
+  test(`denies a Playwright Test window: ${command}`, async ($, on) => {
+    const seen = host(on)
+
+    const answer = await $.tool.call({ tool: 'Bash', command })
+
+    expect(answer.deny).toContain('Playwright Test command')
+    expect(seen.ran).toEqual([])
   })
 }
 
