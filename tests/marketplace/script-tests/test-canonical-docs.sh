@@ -51,6 +51,32 @@ print(' '.join(m.CANONICAL_DOCS))
 
 [[ -n "$DOCS" ]] || { printf 'FAIL: CANONICAL_DOCS is empty\n' >&2; exit 1; }
 
+# The docs review sends each batch agent to the ownership block headed by the file's own
+# path (`docs/CODING.md`, `README.md`, `docs/decisions/`), so a block is found by that path.
+# Prints which of the fields named after `$1` the block headed `$1` lacks, or "complete".
+contract_gaps() {
+  python3 - "$SETUP_MD" "$@" <<'PY'
+import re, sys
+setup, heading, required = sys.argv[1], sys.argv[2], sys.argv[3:]
+fields, cur, in_section = set(), None, False
+for ln in open(setup, encoding='utf-8').read().splitlines():
+    if ln.startswith('## '):
+        in_section = ln.startswith('## File ownership boundaries')
+        continue
+    if not in_section:
+        continue
+    m = re.match(r'^###\s+`([^`]+)`', ln)
+    if m:
+        cur = m.group(1)
+        continue
+    f = re.match(r'^-\s+\*\*(Audience|Inside|Not inside)\*\*:\s*\S', ln)
+    if f and cur == heading:
+        fields.add(f.group(1))
+missing = [k for k in required if k not in fields]
+print(','.join(missing) if missing else 'complete')
+PY
+}
+
 # 1. The standard's topic-set code block lists exactly the same names, in the same order,
 #    the tree included.
 SETUP_LIST=$(python3 -c "
@@ -61,23 +87,26 @@ print(' '.join(re.findall(r'^\s+(\S+(?:\.md|/))\s*\$', block.group(1), re.M)) if
 ")
 assert_eq "topic set: project-setup.md lists the same docs as manifest.py" "$DOCS" "$SETUP_LIST"
 
-# 2. Every canonical doc has a parsed ownership contract and a worked example.
+# 2. Every canonical doc has an ownership block headed by its path, and a worked example.
 for name in $DOCS; do
-  CONTRACT=$(python3 -c "
-import importlib.util
-spec = importlib.util.spec_from_file_location('m', '$MANIFEST')
-m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
-c = m.parse_ownership('$SETUP_MD').get('$name') or {}
-missing = [k for k in ('audience', 'inside', 'not_inside') if not c.get(k)]
-print(','.join(missing) if missing else 'complete')
-")
-  assert_eq "contract: docs/$name has Audience, Inside and Not inside" "complete" "$CONTRACT"
+  assert_eq "contract: docs/$name has Audience, Inside and Not inside" "complete" "$(contract_gaps "docs/$name" Audience Inside 'Not inside')"
 
   if [[ "$name" == */ ]]; then
     if compgen -G "$EXAMPLES/${name}[0-9][0-9][0-9][0-9]-*.md" >/dev/null; then ok "example: examples/docs/$name holds a record"
     else fail "example: examples/docs/$name holds no NNNN-slug.md record — every canonical tree carries a worked example"; fi
   elif [[ -f "$EXAMPLES/$name" ]]; then ok "example: examples/docs/$name exists"
   else fail "example: examples/docs/$name is missing — every canonical doc carries a worked example"; fi
+done
+
+ROOT_DOCS=$(python3 -c "
+import importlib.util
+spec = importlib.util.spec_from_file_location('m', '$MANIFEST')
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+# CLAUDE.md is checked by the manifest alone and never reaches a batch agent.
+print(' '.join(n for n in m.CANONICAL_ROOT + m.OPTIONAL_CANONICAL_ROOT if n != 'CLAUDE.md'))
+") || { printf 'FAIL: cannot load the root canonical lists from manifest.py\n' >&2; exit 1; }
+for name in $ROOT_DOCS; do
+  assert_eq "contract: $name has Audience, Inside and Not inside" "complete" "$(contract_gaps "$name" Audience Inside 'Not inside')"
 done
 
 # 2b. Every personal file manifest.py excludes is a file the standard names, with its own
@@ -92,14 +121,8 @@ print(' '.join(m.PERSONAL_LOCAL))
 ") || { printf 'FAIL: cannot load PERSONAL_LOCAL from manifest.py, or a legacy name moves outside it\n' >&2; exit 1; }
 [[ -n "$PERSONAL" ]] || { printf 'FAIL: PERSONAL_LOCAL is empty\n' >&2; exit 1; }
 for name in $PERSONAL; do
-  CONTRACT=$(python3 -c "
-import importlib.util
-spec = importlib.util.spec_from_file_location('m', '$MANIFEST')
-m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
-c = m.parse_ownership('$SETUP_MD').get('$name') or {}
-print('complete' if c.get('inside') and c.get('not_inside') else 'missing')
-")
-  assert_eq "personal file: project-setup.md has an Inside and Not inside block for $name" "complete" "$CONTRACT"
+  assert_eq "personal file: project-setup.md has an Inside and Not inside block for $name" "complete" \
+    "$(contract_gaps "$name" Inside 'Not inside')"
 done
 
 # 3. Every canonical topic file is the target of exactly one review use case, and a tree is
