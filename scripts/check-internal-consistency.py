@@ -52,7 +52,7 @@ Check E — skill and agent references:
     (commit-commands:commit, plugin-dev:skill-reviewer) names something this repo
     does not ship and cannot resolve, and non-reference colon pairs (display:none,
     test:integration, github:hk9890) never match a plugin directory. Lines
-    carrying the counter-example marker U+274C are skipped — docs/CODING.md marks
+    carrying the counter-example marker U+274C are skipped — docs/REVIEWING.md marks
     deliberately-wrong names that way, and they must stay wrong. A full scan skips
     examples/ and notes/ segments for the same reason Check A does; an explicit
     --check-skill-refs reads whatever it is given, which is how the fixtures there
@@ -467,7 +467,7 @@ def run_version_uniformity_check(marketplace):
 # references at all.
 _SKILL_REF_RE = re.compile(r"\b([a-z][a-z0-9]*(?:-[a-z0-9]+)*):([a-z][a-z0-9]*(?:-[a-z0-9]+)*)\b")
 
-# docs/CODING.md marks a deliberately-wrong name with this, and it must stay wrong.
+# docs/REVIEWING.md marks a deliberately-wrong name with this, and it must stay wrong.
 _COUNTEREXAMPLE_MARKER = "❌"
 
 

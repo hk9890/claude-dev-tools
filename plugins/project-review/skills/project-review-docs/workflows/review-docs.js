@@ -57,6 +57,9 @@ const LEVEL_CONFIG = {
 // one agent can still give every file in its batch real attention.
 const BATCH_BYTES = 120000
 
+// How often the manifest agent is asked to relay the manifest before the run gives up.
+const MANIFEST_ATTEMPTS = 3
+
 // A single miss is not a pattern. Below this many valid segments a use case reports
 // coverage only — the floor that stops "no evidence" from being read as "bad doc".
 const MIN_SEGMENTS_FOR_FINDING = 3
@@ -121,9 +124,9 @@ function normalizeArgs(rawArgs) {
     repoRoot,
     scriptsDir,
     standardDir,
-    // Three artifacts of the authoring standard: the doc-set rules every read-review agent
-    // applies, the rules that bind any agent-facing document, and the ownership contracts
-    // manifest.py parses to attach a boundary to each file. The hygiene file climbs out of
+    // Three artifacts of the authoring standard, all on every read-review agent's read list:
+    // the doc-set rules, the rules that bind any agent-facing document, and the ownership
+    // contract of each canonical file. The hygiene file climbs out of
     // the skill to the plugin root because the two instruction-writing skills share it —
     // a review agent is spawned with paths and never loads the skill, so it has to be
     // passed explicitly or the guidelines' redirects to it dead-end.
@@ -151,6 +154,20 @@ function parseManifest(text) {
   const end = t.lastIndexOf('}')
   if (start >= 0 && end > start) t = t.slice(start, end + 1)
   return JSON.parse(t)
+}
+
+// A relayed manifest that parses can still be cut short: a model that stops partway through
+// `files` and closes the brackets drops the docs at the end of the list, and no stage would
+// notice them missing. manifest.py counts every file it lists in summary.total_md.
+function checkManifest(m) {
+  if (!m || typeof m !== 'object') throw new Error(`the relay is ${JSON.stringify(m)}, not a manifest object`)
+  if (!m.summary || !Array.isArray(m.files) || !Array.isArray(m.agents_routes)) {
+    throw new Error('the relay lacks summary, files or agents_routes')
+  }
+  if (m.files.length !== m.summary.total_md) {
+    throw new Error(`the relay lists ${m.files.length} of the ${m.summary.total_md} files manifest.py counted`)
+  }
+  return m
 }
 
 // Split the manifest's reviewable files into use cases and the rest.
@@ -351,9 +368,9 @@ const HISTORY_SCHEMA = {
 // it is reached whichever path that takes.
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    normalizeArgs, parseManifest, splitReviewTargets, orderTargets, packBatches,
+    normalizeArgs, parseManifest, checkManifest, splitReviewTargets, orderTargets, packBatches,
     unreviewedFiles, historyFindingBar,
-    LEVELS, LEVEL_CONFIG, USE_CASES, BATCH_BYTES, MIN_SEGMENTS_FOR_FINDING,
+    LEVELS, LEVEL_CONFIG, USE_CASES, BATCH_BYTES, MIN_SEGMENTS_FOR_FINDING, MANIFEST_ATTEMPTS,
   }
 }
 
@@ -379,19 +396,32 @@ if (typeof agent === 'function') {
   phase('Manifest')
   // --brief: the agent's Bash tool returns only a preview of a large output, and the full
   // manifest of a 45-doc repo is 132KB. Relaying a preview is how two runs died here.
-  const manifestText = await agent(
+  // The agent retypes the JSON, and a retyped copy of 11KB has come back cut short, so an
+  // incomplete copy is asked for again. A null return is a skipped or dead agent: the run
+  // stops there rather than start another.
+  const manifestPrompt =
     `Run this exact command and return ONLY its raw stdout — no prose, no markdown fences:\n\n` +
-    `python3 "${scriptsDir}/manifest.py" "${repoRoot}" --format=json --brief --setup-md="${setupFile}"\n\n` +
-    `Do not summarize, do not edit the output. Return the JSON exactly as printed.`,
-    { label: 'manifest', phase: 'Manifest', model: 'haiku', effort: 'low' }
-  )
-
-  let manifest
-  try {
-    manifest = parseManifest(manifestText)
-  } catch (e) {
-    log('FATAL: could not parse manifest JSON — aborting. ' + String(e))
-    return { error: 'manifest parse failed', raw: (manifestText || '').slice(0, 400) }
+    `python3 "${scriptsDir}/manifest.py" "${repoRoot}" --format=json --brief\n\n` +
+    `Do not summarize, do not edit the output. Return the JSON exactly as printed.`
+  let manifest, manifestText, parseError
+  for (let attempt = 1; attempt <= MANIFEST_ATTEMPTS && !manifest; attempt++) {
+    manifestText = await agent(manifestPrompt, {
+      label: attempt === 1 ? 'manifest' : `manifest-${attempt}`, phase: 'Manifest', model: 'haiku', effort: 'low',
+    })
+    if (manifestText === null) {
+      log(`FATAL: manifest agent ${attempt}/${MANIFEST_ATTEMPTS} returned nothing — aborting.`)
+      return { error: `manifest agent returned nothing on attempt ${attempt}: it was skipped or died` }
+    }
+    try {
+      manifest = checkManifest(parseManifest(manifestText))
+    } catch (e) {
+      parseError = String(e)
+      log(`Manifest attempt ${attempt}/${MANIFEST_ATTEMPTS} is unusable: ${parseError}`)
+    }
+  }
+  if (!manifest) {
+    log(`FATAL: no complete manifest after ${MANIFEST_ATTEMPTS} attempts — aborting.`)
+    return { error: `manifest parse failed after ${MANIFEST_ATTEMPTS} attempts: ${parseError}`, raw: (manifestText || '').slice(0, 400) }
   }
 
   log(`Manifest: ${manifest.summary.total_md} docs, ${manifest.summary.canonical_missing} missing canonical, ` +
@@ -417,13 +447,10 @@ if (typeof agent === 'function') {
 
   const batches = packBatches(orderTargets(manifest.files), BATCH_BYTES)
 
-  const contractLines = (f) => {
-    const c = f.contract || {}
-    return `  Ownership contract (the bar for "belongs here"):\n` +
-      `    Audience: ${c.audience || '(unspecified)'}\n` +
-      `    Inside:   ${c.inside || '(unspecified)'}\n` +
-      `    Not inside: ${c.not_inside || '(unspecified)'}\n`
-  }
+  // The contract text stays in project-setup.md, which every batch agent reads: carried in
+  // the manifest it was half of what the manifest agent has to retype.
+  const contractLines = (heading) =>
+    `  Ownership contract (the bar for "belongs here"): the Audience / Inside / Not inside block headed \`${heading}\` in project-setup.md.\n`
 
   // What is specific to one file: its facts, and the seat it is judged from. Everything
   // shared by every file is stated once in batchPrompt.
@@ -440,7 +467,7 @@ if (typeof agent === 'function') {
         `  Use case "${t.useCase.useCase}": judge this file as an agent that arrives wanting to ${t.useCase.work}, sent here by AGENTS.md. AGENTS.md is always in that agent's context, so treat its route as already read. The route's wording: ${quotedRoute(t.useCase.doc)}\n` +
         `  A. COULD YOU DO THE WORK? Walk the task through the doc. Name every point where you would have to guess, leave the doc, or already know something it never states. A gap that stops the work is a blocker; one that slows it is major.\n` +
         `  B. Does the route deliver you here at the right moment? A route that names a topic rather than a triggering action, or reads as optional, is an Obligation finding against AGENTS.md — report it on this file with routes_to "AGENTS.md".\n` +
-        contractLines(f)
+        contractLines(f.path)
     }
     if (f.path === 'AGENTS.md') {
       // Naming an action is necessary but not sufficient. A route can satisfy every written
@@ -453,10 +480,10 @@ if (typeof agent === 'function') {
         `  - Has an edge: "before creating or editing ANY file under \`src/\`" (the first Edit on that path), "before ANY git operation" (the first git command), "before cutting a release".\n` +
         `  - Has NO edge: "before searching this repository" — searching has no beginning; an agent greps within seconds of starting and never has a moment where "I am now beginning to search" occurs. Likewise "before judging whether a change is verified", or any trigger phrased as a symptom the agent must first diagnose ("when X will not connect"), which fires only after the work is underway.\n` +
         `  An edgeless trigger is an Obligation finding even when the route is a correctly worded MUST: a diligent agent cannot obey it. Severity major. The fix names an action with a detectable first instant — e.g. replace "before searching this repository" with "before your first grep, rg, or Glob in this repo" — and replaces the existing trigger rather than being added beside it.\n` +
-        contractLines(f)
+        contractLines(f.path)
     }
     if (f.classification === 'decision') return head + `  Tree record: judge it against the DOCS/DECISIONS/ TREE contract above.\n`
-    if (f.contract) return head + contractLines(f)
+    if (f.canonical_name) return head + contractLines(f.path)
     return head +
       `  NON-STANDARD doc — not one of the canonical files, so it has no ownership contract. FILED CORRECTLY? If its content belongs to a canonical topic (OVERVIEW / CODING / DOCUMENTING / TESTING / RELEASING / MONITORING / CHANGE-WORKFLOW / RUNNING / REVIEWING / DECISIONS / README / CONTRIBUTING), that is a placement finding: recommend RENAME to docs/<TOPIC>.md when that canonical slot is empty (missing canonical: ${JSON.stringify(manifest.missing_canonical)}), or LINK it from the canonical doc when the slot is filled; for DECISIONS, the DECISION RECORD PLACEMENT rules above replace both. Content of no canonical topic is legitimately project-specific. Also flag it if it is hollow (a stub) or duplicates AGENTS.md routing. Specs and design docs are read as authoritative, so one that contradicts a canonical doc you read is a blocker.\n`
   }
@@ -474,13 +501,14 @@ if (typeof agent === 'function') {
   const decisionContract = (batch) => batch.some(t => t.file.classification === 'decision')
     ? `\nDOCS/DECISIONS/ TREE — every file marked "Tree record" below is one record of the docs/decisions/ tree. ` +
       `A record in another format (a MADR or Nygard ADR with status, date, and sections) is misplaced, not a record to cut down: the DECISION RECORD PLACEMENT rules decide its fix.\n` +
-      contractLines({ contract: manifest.decision_contract })
+      contractLines('docs/decisions/')
     : ''
 
   const batchPrompt = (batch) => {
     const readList = [
       guidelinesFile,
       hygieneFile,
+      setupFile,
       ...(hasDocumenting ? [documentingFile] : []),
       ...batch.map(t => `${repoRoot}/${t.file.path}`),
     ]
@@ -491,9 +519,9 @@ if (typeof agent === 'function') {
         : '') +
       `READ ONCE — your first action is ONE parallel batch of Read calls, one per file in this list. They are the only tool calls you make before you return: no Bash, no Grep, no Glob, no other Read. The audit is judged on these files alone, and what they do not show is outside it. If a Read is refused for size, read that file in parts with offset and limit.\n` +
       readList.map(p => `  ${p}`).join('\n') + '\n\n' +
-      `THE STANDARD — the first file holds the doc-set rules: the six named rules (Ownership, Local delta, Anchors, Command register, Economy, Obligation), the failure modes, and the closing bar every fix you recommend must itself clear. The second binds any document an agent reads: single source of truth, cache, relevance, sediment, no-ops and negation. A finding under either is a finding.\n` +
+      `THE STANDARD — the first file holds the doc-set rules: the six named rules (Ownership, Local delta, Anchors, Command register, Economy, Obligation), the failure modes, and the closing bar every fix you recommend must itself clear. The second binds any document an agent reads: single source of truth, cache, relevance, sediment, no-ops and negation. A finding under either is a finding. The third, project-setup.md, holds under its "File ownership boundaries" section the ownership contract of each canonical file and tree record below; a NON-STANDARD doc has none.\n` +
       (hasDocumenting
-        ? `\nRECORDED DOC DECISIONS — the third file, docs/DOCUMENTING.md, carries this project's own doc conventions and the decisions it has taken about what it documents and what it leaves out on purpose. Treat a gap those decisions settle as answered and leave it out of your findings. They bind GAP findings only: a false or contradictory claim, a dead link, or content outside a file's Inside boundary stays a finding at full severity however the decisions read. A decision that contradicts what the other files show is itself a finding, against docs/DOCUMENTING.md.\n`
+        ? `\nRECORDED DOC DECISIONS — the fourth file, docs/DOCUMENTING.md, carries this project's own doc conventions and the decisions it has taken about what it documents and what it leaves out on purpose. Treat a gap those decisions settle as answered and leave it out of your findings. They bind GAP findings only: a false or contradictory claim, a dead link, or content outside a file's Inside boundary stays a finding at full severity however the decisions read. A decision that contradicts what the other files show is itself a finding, against docs/DOCUMENTING.md.\n`
         : '') +
       // Severity is a required enum on every finding, so leaving the bar unstated does not
       // produce fewer severities — it produces severities assigned from the model's priors,

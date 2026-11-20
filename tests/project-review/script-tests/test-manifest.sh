@@ -4,9 +4,6 @@ set -uo pipefail
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
 [[ -n "$REPO_ROOT" ]] || { printf 'FAIL: cannot resolve repo root from %s\n' "${BASH_SOURCE[0]}" >&2; exit 1; }
 SCRIPT="$REPO_ROOT/plugins/project-review/skills/project-review-docs/scripts/manifest.py"
-# The ownership contracts belong to the authoring standard, which lives in another plugin —
-# manifest.py is handed the path and never guesses it.
-SETUP_MD="$REPO_ROOT/plugins/instruction-writing/skills/writing-project-docs/references/project-setup.md"
 
 PASS=0
 FAIL=0
@@ -215,44 +212,16 @@ test_reachability() {
   rm -rf "$dir"
 }
 
-# 9. ownership contract attached from the real project-setup.md
-test_contract() {
-  local dir; dir=$(make_fixture)
-  local out; out=$("$SCRIPT" "$dir" --setup-md="$SETUP_MD")
-  local ni; ni=$(json_val "$out" "([f['contract'] for f in d['files'] if f['path']=='README.md'][0] or {}).get('not_inside','')")
-  assert_contains "contract: README not_inside mentions dev setup" "dev" "$ni"
-  local aud; aud=$(json_val "$out" "([f['contract'] for f in d['files'] if f['path']=='README.md'][0] or {}).get('audience','')")
-  assert_contains "contract: README audience mentions users" "user" "$aud"
-  # docs/ canonical files head their ownership block as `docs/CODING.md`; the
-  # contract must still attach (regression: basename lookup vs path-prefixed heading).
-  local ci; ci=$(json_val "$out" "([f['contract'] for f in d['files'] if f['path']=='docs/CODING.md'][0] or {}).get('inside','')")
-  assert_contains "contract: docs/CODING.md inside is populated" "build" "$ci"
-  local di; di=$(json_val "$out" "([f['contract'] for f in d['files'] if f['path']=='docs/DOCUMENTING.md'][0] or {}).get('inside','')")
-  assert_contains "contract: docs/DOCUMENTING.md inside is populated" "delta" "$di"
-  # Without the flag the contracts are simply absent — the manifest must still emit its
-  # facts rather than fail, since the standard is another plugin's file and may be absent.
-  local bare; bare=$("$SCRIPT" "$dir")
-  assert_eq "contract: omitted when no --setup-md is given" "None" \
-    "$(json_val "$bare" "[f.get('contract') for f in d['files'] if f['path']=='README.md'][0]")"
-  assert_eq "contract: the manifest still emits its files without --setup-md" "True" \
-    "$(json_val "$bare" "len(d['files']) > 0")"
-  rm -rf "$dir"
-}
-
-# 9b. a decision record carries the tree's contract; a folder link from AGENTS.md reaches
+# 9. a decision record is classified as one; a folder link from AGENTS.md reaches
 #     every record, and an unrouted record is an orphan. A file in the tree without the
 #     NNNN- prefix is an ordinary non-standard doc.
 test_decision_records() {
   local dir; dir=$(make_fixture); mkdir -p "$dir/docs/decisions"
   printf '# 0001: One store\n\nTransactions span rows.\n' > "$dir/docs/decisions/0001-one-store.md"
   printf '# ADR-0002\n\nAnother format.\n' > "$dir/docs/decisions/ADR-0002-other.md"
-  local out; out=$("$SCRIPT" "$dir" --setup-md="$SETUP_MD")
+  local out; out=$("$SCRIPT" "$dir")
   assert_eq "decision: docs/decisions/0001-one-store.md = decision" "decision" \
     "$(json_val "$out" "[f['classification'] for f in d['files'] if f['path']=='docs/decisions/0001-one-store.md'][0]")"
-  assert_contains "decision: the manifest carries the docs/decisions/ contract once" "one file per decision in force" \
-    "$(json_val "$out" "(d.get('decision_contract') or {}).get('inside','')")"
-  assert_eq "decision: a record carries no copy of it" "None" \
-    "$(json_val "$out" "[f['contract'] for f in d['files'] if f['path']=='docs/decisions/0001-one-store.md'][0]")"
   assert_eq "decision: the tree counts once among the present canonical topics" "5" \
     "$(json_val "$out" "d['summary']['optional_canonical_present']")"
   assert_eq "decision: an unnumbered file in the tree = non-standard" "non-standard" \
@@ -343,6 +312,10 @@ test_brief() {
   assert_eq "brief: one line of JSON" "1" "$(printf '%s\n' "$out" | wc -l | tr -d ' ')"
   assert_eq "brief: no per-file links" "False" "$(json_val "$out" "any('links' in f for f in d['files'])")"
   assert_contains "brief: unresolved links kept" "GONE.md" "$(json_val "$out" "[l for f in d['files'] for l in f['unresolved_links']]")"
+  # The workflow judges a file with a canonical_name against its ownership block, and any
+  # other file as non-standard.
+  assert_eq "brief: canonical files keep their canonical_name" "['README.md', 'AGENTS.md', 'CODING.md', None]" \
+    "$(json_val "$out" "[{f['path']: f['canonical_name'] for f in d['files']}[p] for p in ('README.md', 'AGENTS.md', 'docs/CODING.md', 'docs/NOTES.md')]")"
   rm -rf "$dir"
 }
 
@@ -411,7 +384,6 @@ test_missing_canonical
 test_dead_link
 test_dir_link_ok
 test_reachability
-test_contract
 test_decision_records
 test_claude_ok
 test_claude_bad

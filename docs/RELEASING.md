@@ -6,11 +6,11 @@ Requires `gh` (authenticated), `jq`, and `python3` on PATH. Cut releases from a 
 
 ## Gates
 
-Re-run three of the [CHANGE-WORKFLOW.md pre-push checklist](CHANGE-WORKFLOW.md#pre-push-checklist) gates over the whole repo, not just the release commit. Shell-Lint does not apply: a bump changes no shell script, and the CI `shellcheck` job runs it on every PR.
+Re-run three of the [CHANGE-WORKFLOW.md pre-push checklist](CHANGE-WORKFLOW.md#pre-push-checklist) gates over the whole repo, not just the release commit. Shell-Lint does not apply: a bump changes no shell script, and the CI `shellcheck` job runs it on every PR. Consistency-Check runs as step 4, after the bump.
 
 - **Test-Run** — `bash tests/run-all.sh`.
 - **Plugin-Structure-Check** — `plugin-dev:plugin-validator` over **every** plugin, not just recently changed ones, with zero errors. The full sweep is the point: nothing tracks whether it ran on each merged PR, so the release is where a never-validated plugin is caught. Skip it only if `plugin-dev` cannot be installed.
-- **Docs-Route-Check** — `python3 plugins/project-review/skills/project-review-docs/scripts/validate-routes.py . --include-docs`. No CI job runs it, so the release is where a broken route that a PR merged is caught.
+- **Docs-Route-Check** — `validate-routes.py` must exit 0; [TESTING.md](TESTING.md#docs-validation) carries the command. No CI job runs it, so the release is where a broken route that a PR merged is caught.
 
 ## Choosing the number
 
@@ -32,10 +32,10 @@ find plugins -name plugin.json -path "*/.claude-plugin/*"   # every file to bump
 1. Run the three gates above.
 2. Bump `"version"` in every `plugin.json` found above to the same new version.
 3. Bump every `"version"` in `.claude-plugin/marketplace.json` to match. Edit only the version lines: piping these files through `jq` rewrites unrelated compact arrays and buries the bump in churn.
-4. Verify: `python3 scripts/check-internal-consistency.py` must exit 0. It fails on a `plugin.json` that does not match its `marketplace.json` entry, and on more than one distinct version, `metadata.version` included.
+4. Consistency-Check: `python3 scripts/check-internal-consistency.py` must exit 0. It fails on a `plugin.json` that does not match its `marketplace.json` entry, and on more than one distinct version, `metadata.version` included.
 5. Commit as `Bump all plugins to vX.Y.Z` on a `chore/release-X.Y.Z` branch and merge via PR — `master` is protected ([CHANGE-WORKFLOW.md](CHANGE-WORKFLOW.md)), so the bump cannot be pushed to it directly.
 6. Draft the release notes (below) in `<scratchpad>/release-notes-vX.Y.Z.md`, where `<scratchpad>` is the session's scratchpad directory, or `${TMPDIR:-/tmp}` where it has none: the notes are never committed.
-7. Create the release from the merged bump commit: `gh release create vX.Y.Z --title "vX.Y.Z" --notes-file <scratchpad>/release-notes-vX.Y.Z.md --target master`
+7. Create the release from the merged bump commit, whose SHA `gh pr view <bump-pr> --json mergeCommit -q .mergeCommit.oid` prints: `gh release create vX.Y.Z --title "vX.Y.Z" --notes-file <scratchpad>/release-notes-vX.Y.Z.md --target <bump-merge-sha>`. `--target master` tags whatever merged last.
 
 Publish in the same sitting the bump PR merges — a merged bump with no tag leaves `marketplace.json` advertising a version that appears in no release. `vX.Y.Z` must tag the commit whose `plugin.json` files read `X.Y.Z`.
 

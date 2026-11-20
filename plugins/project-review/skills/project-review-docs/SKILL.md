@@ -149,8 +149,7 @@ Inside / Not-inside ownership), `references/project-doc-guidelines.md` (the six 
 rules, the doc-set failure modes, and the bar each suggested fix must clear), and the
 worked `examples/`. Its plugin root owns `references/writing-hygiene.md` — single source
 of truth, cache, relevance, sediment, no-ops, negation — shared with
-`instruction-writing:writing-skills`. `manifest.py` parses the setup file and injects each
-file's contract inline into the read-review agents, which load the other two and apply both.
+`instruction-writing:writing-skills`.
 
 `references/project-doc-review-guidelines.md` describes what this review does — its
 stages, its severity bar, and the read-only contract each stage runs under. It is
