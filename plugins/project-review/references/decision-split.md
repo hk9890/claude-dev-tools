@@ -19,7 +19,7 @@ reviewing agent where none does. Carry each item into the group it came back in.
 ## Relaying
 
 Relay the two groups separately: the settled ones as a batch you can just do, then the
-open ones last, numbered on through two lists that the user answers in one reply:
+open ones last, numbered continuously across two lists that the user answers in one reply:
 
 1. **Done on "go"** — each open item whose recommendation you stand behind, where the
    change stays inside what was reviewed and is easy to undo: one line each, the item

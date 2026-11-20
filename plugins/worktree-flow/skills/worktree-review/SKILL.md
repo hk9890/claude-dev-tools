@@ -55,7 +55,7 @@ Done when, in `gh pr view <pr-number> --json headRefOid,body`, the commit after 
 
 ## 5. Report
 
-Report the PR URL, each review with its outcome, each gate with its result, and the items step 3 kept; for a review step 3 did not run, the **Review** line's open questions. Put the open questions last, numbered on through two lists the user answers in one reply:
+Report the PR URL, each review with its outcome, each gate with its result, and the items step 3 kept; for a review step 3 did not run, the **Review** line's open questions. Put the open questions last, numbered continuously across two lists the user answers in one reply:
 
 1. **Done on "go"** — each question whose recommendation you stand behind, where the change stays inside the PR and is easy to undo: one line each, the question and the option you take. A "go" takes every item of this list; the user names only those they object to.
 2. **Needs you** — each question the user owns: it changes a project rule, a name or interface other people use, or another repository, it rewrites pushed history, it accepts a cost or risk that falls on the user, or it has no recommendation. Lead each with that reason in one sentence, then what is wrong, where, and what each option changes for the user, with its options, the recommended one first.
