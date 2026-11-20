@@ -10,8 +10,7 @@ Inside / Not-inside ownership), `writing-project-docs/references/project-doc-gui
 (the six named authoring rules and the doc-set failure modes), the worked `examples/`, and
 `references/writing-hygiene.md` at that plugin's root (single source of truth, cache,
 relevance, sediment, no-ops, negation — shared with `writing-skills`, which is why the
-workflow reaches it with `../..`). The read-review agents read the guidelines, the hygiene
-rules and the setup file, and each file's prompt names the ownership block headed by its path.
+workflow reaches it with `../..`).
 
 ## Why it is built this way
 

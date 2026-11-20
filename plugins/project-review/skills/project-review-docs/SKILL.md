@@ -144,8 +144,7 @@ Inside / Not-inside ownership), `references/project-doc-guidelines.md` (the six 
 rules, the doc-set failure modes, and the bar each suggested fix must clear), and the
 worked `examples/`. Its plugin root owns `references/writing-hygiene.md` — single source
 of truth, cache, relevance, sediment, no-ops, negation — shared with
-`instruction-writing:writing-skills`. The read-review agents read all three, and each file is
-judged against the ownership block headed by its own path.
+`instruction-writing:writing-skills`.
 
 `references/project-doc-review-guidelines.md` describes what this review does — its
 stages, its severity bar, and the read-only contract each stage runs under. It is
