@@ -89,7 +89,7 @@ A mod is a plugin whose `hooks/hooks.json` names a hooks module under `modules`;
 - **Worked examples** — `keep-awake-linux` (a child process, timers, and a pane a timer refreshes), `worktree-flow` (a `tool.call` guard), `tasks` (a command, a pane, and a `$.state` contract).
 - **Layout** — `hooks/hooks.json` holds `{ "modules": ["./register.ts"] }`, `.tsx` when the module draws. Tests go in `plugins/<plugin>/tests/*.test.ts`, where `claude plugin test` reads them ([TESTING.md](TESTING.md)). A module that keeps `$.state` values declares them in `types/index.d.ts`, named in `plugin.json` as `"types"`.
 - **One code path** — a behaviour moves to the module whole: delete the settings hook and its `bin/` script in the same change.
-- **Validate early** — run `claude plugin validate --strict plugins/<plugin>` after every edit; from Claude Code 2.1.323, `--strict` makes a type error in the module fail, as it does in CI. It refuses an event name that is not a string literal, a `$` call not written in full (`$.ui.status(...)`, never `const ui = $.ui`), and `$` passed anywhere but a top-level function of the same file.
+- **Validate early** — run `claude plugin validate --strict plugins/<plugin>` after every edit ([TESTING.md](TESTING.md#mod-tests--claude-plugin-test)). It refuses an event name that is not a string literal, a `$` call not written in full (`$.ui.status(...)`, never `const ui = $.ui`), and `$` passed anywhere but a top-level function of the same file.
 - **Footprint** — a mod runs unsandboxed, so reach only the `$` namespaces the feature needs; the `calls:` line `claude plugin validate` prints is the footprint a user audits before installing.
 - **Where nothing draws** — panes and the status line show in the terminal and the desktop app only. Do not settle it at `session.start`: the desktop app joins after it, with a `session.attach` event, and can leave. Read `$.session.surfaces()` when the feature runs: `tasks` does at each `/tasks-board` and answers as text where neither is attached.
 - **Command names** — a name registered with `$.command.register` is global. Lead it with the plugin's domain word (`tasks-board`); `/tasks` is Claude Code's own.
@@ -101,12 +101,7 @@ For every `SKILL.md` under `plugins/<plugin-name>/skills/<skill-name>/`. The aut
 
 ### Naming
 
-Directory name and frontmatter `name:` must match. **Sibling skills share one prefix** so they sort and read as a family: the plugin's domain word where it has one (`worktree-`, `html-visualize-`, `project-review-`, `tasks-`), otherwise a word the siblings agree on (`writing-` in `instruction-writing`, `test-` in `project-auto-work`). A "main" skill may take the plugin's own name (`github-releases:github-releases`).
-
-- ✅ `worktree-flow:worktree-ship`, `instruction-writing:writing-skills`
-- ❌ `worktree-flow:ship` — bare verb, shared with no sibling
-
-The exception is a plugin whose names trigger on their own, each a distinct concept rather than a generic operation, where a shared prefix would only dilute them — every skill in `challenge` (`grill`, `kiss`, `are-you-sure`, `what-do-you-mean`).
+Directory name and frontmatter `name:` must match. Choose the name by the naming rule in [REVIEWING.md](REVIEWING.md#quality-rules).
 
 ### Frontmatter
 

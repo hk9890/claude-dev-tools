@@ -18,9 +18,13 @@ How a finished change must look. Each is a condition to check on the diff.
   Review the skill at plugins/my-plugin/skills/my-skill/SKILL.md
   ```
 
-  It is an aid, not a gate: only `plugin-dev:plugin-validator` blocks a PR ([CHANGE-WORKFLOW.md](CHANGE-WORKFLOW.md)). The rubric binds the lines the change wrote: a defect on an older line of the same file is a non-blocking suggestion.
+  It is an aid, not a gate: of the `plugin-dev` tools, only `plugin-dev:plugin-validator` blocks a PR ([CHANGE-WORKFLOW.md](CHANGE-WORKFLOW.md)). The rubric binds the lines the change wrote: a defect on an older line of the same file is a non-blocking suggestion.
 - **`argument-hint` shape.** The hint names the shape in a short bracketed placeholder, because the slash-command picker truncates anything longer, and spells out an enum-valued argument: `[low|medium|high|ultra]`, not `[level]`.
-- **Skill names.** A new or renamed skill follows the naming rule in [CODING.md](CODING.md#naming).
+- **Skill names.** A new or renamed skill shares one prefix with its siblings, so they sort and read as a family: the plugin's domain word where it has one (`worktree-`, `html-visualize-`, `project-review-`, `tasks-`), otherwise a word the siblings agree on (`writing-` in `instruction-writing`, `test-` in `project-auto-work`). A "main" skill may take the plugin's own name (`github-releases:github-releases`).
+  - ✅ `worktree-flow:worktree-ship`, `instruction-writing:writing-skills`
+  - ❌ `worktree-flow:ship` — bare verb, shared with no sibling
+
+  The exception is a plugin whose names trigger on their own, each a distinct concept rather than a generic operation, where a shared prefix would only dilute them — every skill in `challenge` (`grill`, `kiss`, `are-you-sure`, `what-do-you-mean`).
 - **Minimum version of a mod.** The `README.md` row of a mod says "needs Claude Code 2.1.287+".
 
 ## Out of scope / non-blocking
