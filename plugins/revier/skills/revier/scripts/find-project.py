@@ -44,7 +44,7 @@ def matches(word, view):
     project = view["project"]
     fields = {
         "name": project["name"],
-        "dir": os.path.basename(project["path"].rstrip("/")),
+        "dir": os.path.basename((project.get("path") or "").rstrip("/")),
         "repo": repo(project.get("git_url") or ""),
         "host_project": (project.get("remote") or {}).get("project") or "",
     }
@@ -52,13 +52,13 @@ def matches(word, view):
     agents = [
         {
             "address": address(project["name"], agent),
-            "activity": agent["state"].get("activity"),
-            "name": agent["state"].get("name"),
-            "status": agent["state"]["status"],
+            "activity": state.get("activity"),
+            "name": state.get("name"),
+            "status": state.get("status"),
         }
         for agent in view.get("agents") or []
-        if word in (agent["state"].get("activity") or "").lower()
-        or word == (agent["state"].get("name") or "").lower()
+        for state in [agent.get("state") or {}]
+        if word in (state.get("activity") or "").lower() or word == (state.get("name") or "").lower()
     ]
     if agents:
         matched.append("agent")

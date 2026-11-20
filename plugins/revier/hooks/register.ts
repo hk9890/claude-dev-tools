@@ -1,10 +1,11 @@
 import type { Register } from 'claude-code'
 
 const DENY_REASON =
-  'This revier command opens, raises or closes a window and takes the focus from the user: give the user the exact command to run, unless the project documents a run that moves no window. With --dry-run or --help it runs here.'
+  'This revier command opens, raises or closes a window or an agent tab the user may be typing in: give the user the exact command to run, unless the project documents a run that moves no window. With --dry-run or --help it runs here.'
 
 // The guard is best effort, not complete: it reads the command line as written. A command that
-// another program runs passes: `bash -c '...'`, `sh -c '...'`, `eval`, or revier by a path.
+// another program runs passes, such as `bash -c '...'`, `sh -c '...'`, `eval`, or a wrapper not in
+// WRAPPER (`nice`, `stdbuf`, `flock`, `watch`), and so does revier run by a path.
 
 // Text the shell does not run, so a commit message, a heredoc or a grep pattern that mentions the
 // command passes: a heredoc body, then a comment or a quoted string. An escaped character is
@@ -60,14 +61,15 @@ function movesFocus(command: string) {
   return runs.some(run => !CHANGES_NO_WINDOW.test(run) && !OPENS_UNFOCUSED.test(run))
 }
 
+// No .catch: where the guard fails, the engine skips it, so the command runs, and reports the failure.
 export const register: Register = on => {
   on('tool.call', { tool: ['Bash', 'Monitor'] }, ($, e, next) => {
     if (movesFocus(e.command ?? '')) {
-      $.ui.toast('blocked a command that takes the focus')
+      $.ui.toast('blocked a revier command that is the user\'s to run')
 
       return { deny: DENY_REASON }
     }
 
     return next(e)
-  }).catch(($, e, next) => next(e))
+  })
 }

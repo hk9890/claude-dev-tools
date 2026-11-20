@@ -63,11 +63,12 @@ assert_eq "a word that names nothing" '{"word":"nothing","project":null}' "$(jq 
 cat > "$FAKE/list" <<'EOF'
 [{"project": {"name": "bare", "path": "/src/bare", "git_url": null, "remote": null},
   "agents": [{"target": "home", "panel": "1", "state": {"status": "idle", "activity": null, "name": null}}]},
- {"project": {"name": "lone", "path": "/src/lone"}, "agents": null}]
+ {"project": {"name": "lone", "path": "/src/lone"}, "agents": null},
+ {"project": {"name": "void", "path": null}, "agents": [{"target": "home", "panel": "2", "state": null}]}]
 EOF
-out=$(run bare lone 2>&1)
+out=$(run bare lone void 2>&1)
 assert_eq "null fields: exit 0" 0 $?
-assert_eq "null fields: the name still matches" "bare lone" "$(jq -r '.project' <<< "$out" | paste -sd' ')"
+assert_eq "null fields: the name still matches" "bare lone void" "$(jq -r '.project' <<< "$out" | paste -sd' ')"
 
 usage=$(run --help 2>&1)
 assert_eq "--help: exit 0" 0 $?

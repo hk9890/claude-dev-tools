@@ -22,9 +22,10 @@ subject's commits. With `--fix`, step 5 then applies the fixes it settled.
    | a path | the default subject, confined to that path |
 
    A pull request needs `gh`: where `command -v gh` prints nothing, say so and ask for a
-   branch. Take `gh pr view <n> --json baseRefOid,baseRefName,headRefOid`. Where
-   `git cat-file -e '<headRefOid>^{commit}'` succeeds, the head is here: fetch only the
-   base, `git fetch origin +refs/heads/<baseRefName>:refs/remotes/origin/<baseRefName>`.
+   branch. Take `gh pr view <n> --json baseRefOid,baseRefName,headRefOid`, and test each
+   commit with `git cat-file -e '<oid>^{commit}'`. Where both are here, fetch nothing.
+   Where only the base is missing, fetch it,
+   `git fetch origin +refs/heads/<baseRefName>:refs/remotes/origin/<baseRefName>`.
    Where `git cat-file -e` then fails for `<baseRefOid>` or `<headRefOid>`, fetch both
    with gh's token: `git -c credential.helper='!gh auth git-credential' fetch <url>
    <baseRefOid> <headRefOid>`, with `<url>` what `gh repo view --json url -q .url` prints.
@@ -132,7 +133,8 @@ subject's commits. With `--fix`, step 5 then applies the fixes it settled.
    re-derive or re-label them. Then follow `<SKILL_DIR>/../../references/decision-split.md`
    over the actions, in the groups step 3 ended on — "this change" is what was reviewed.
    With `--fix`, say that step 5 applies the settled batch now, in place of the
-   reference's closing line on how the user stops a settled one, and hold back the
+   reference's words on how the user stops a settled one; keep its words on the "go"
+   items, also where **Needs you** is empty. Hold back the
    reviewer's suggestion to file the findings with `/tasks:tasks-create` for step 5.
 
    Keep `## Suggested rule additions` visibly apart from the findings when you relay it.
