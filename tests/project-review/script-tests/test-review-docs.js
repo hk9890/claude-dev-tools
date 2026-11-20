@@ -78,12 +78,12 @@ async function main() {
   });
 
   const {
-    normalizeArgs, parseManifest, splitReviewTargets, orderTargets, packBatches,
+    normalizeArgs, parseManifest, checkManifest, splitReviewTargets, orderTargets, packBatches,
     unreviewedFiles, historyFindingBar,
     LEVEL_CONFIG, USE_CASES, BATCH_BYTES, MIN_SEGMENTS_FOR_FINDING, MANIFEST_ATTEMPTS,
   } = helpers;
 
-  const required = { normalizeArgs, parseManifest, splitReviewTargets, orderTargets, packBatches, unreviewedFiles, historyFindingBar };
+  const required = { normalizeArgs, parseManifest, checkManifest, splitReviewTargets, orderTargets, packBatches, unreviewedFiles, historyFindingBar };
   const missingExport = Object.keys(required).filter((k) => typeof required[k] !== 'function');
   if (missingExport.length) {
     bad('review-docs.js exposes its pure helpers', `missing or not a function: ${missingExport.join(', ')}`);
@@ -190,6 +190,18 @@ async function main() {
   // an uncapped rung spawns agents in proportion to how long the repo has been worked in.
   truthy('level: every rung caps the history sample',
     Object.values(LEVEL_CONFIG).every((c) => c.sessionLimit > 0));
+
+  // ── checkManifest ────────────────────────────────────────────────────────────
+  const throwsWith = (fn, re) => { try { fn(); return false; } catch (e) { return re.test(String(e)); } };
+  const whole = { summary: { total_md: 1 }, files: [{ path: 'README.md' }], agents_routes: [] };
+  eq('checkManifest: a complete manifest passes', whole, checkManifest(whole));
+  truthy('checkManifest: a relay of null is named, not reported as undefined',
+    throwsWith(() => checkManifest(null), /the relay is null/));
+  truthy('checkManifest: a relay without files is rejected',
+    throwsWith(() => checkManifest({ summary: { total_md: 0 }, agents_routes: [] }), /lacks summary, files or agents_routes/));
+  // A model that stops partway through `files` and closes the brackets returns valid JSON.
+  truthy('checkManifest: a relay that lost files from the end is rejected',
+    throwsWith(() => checkManifest({ ...whole, summary: { total_md: 2 } }), /lists 1 of the 2 files/));
 
   // ── parseManifest ────────────────────────────────────────────────────────────
   eq('parseManifest: raw JSON', { a: 1 }, parseManifest('{"a":1}'));
@@ -311,10 +323,11 @@ async function main() {
   // every helper assertion above still passed.
   const metrics = { lines: 10, words: 50, non_heading_lines: 8, bytes: 400 };
   const manifest = {
-    summary: { total_md: 3, canonical_missing: 0, unresolved_links: 0, orphans: 0 },
+    summary: { total_md: 5, canonical_missing: 0, unresolved_links: 0, orphans: 0 },
     files: [
       { path: 'docs/CODING.md', classification: 'canonical', canonical_name: 'CODING.md', metrics },
       { path: 'AGENTS.md', classification: 'canonical-root', canonical_name: 'AGENTS.md', metrics },
+      { path: 'README.md', classification: 'canonical-root', canonical_name: 'README.md', metrics },
       { path: 'docs/A.md', classification: 'non-standard', metrics },
       { path: '.claude.local.md', classification: 'personal-legacy', metrics },
     ],
@@ -349,8 +362,10 @@ async function main() {
 
   const runAudit = async (over = {}) => {
     // promptIndex and manifest are stub overrides for the scripts, not workflow arguments.
-    const { promptIndex: promptOverride, manifest: manifestOverride, evidence: evidenceOverride, labelWrite, dropFile, manifestFailures = 0, ...argOver } = over;
-    const manifestForRun = manifestOverride || manifest;
+    const { promptIndex: promptOverride, manifest: manifestOverride, evidence: evidenceOverride, labelWrite, dropFile, manifestRelays = [], ...argOver } = over;
+    // manifest.py counts every file it lists; an override that adds files keeps that true.
+    const base = manifestOverride || manifest;
+    const manifestForRun = { ...base, summary: { ...base.summary, total_md: base.files.length } };
     const labels = [];
     const prompts = [];
     const calls = [];
@@ -359,10 +374,14 @@ async function main() {
       prompts.push(prompt);
       calls.push(opts);
       if (opts.label.startsWith('manifest')) {
-        // A relay cut short, as a model retyping the JSON returns it.
+        // The relays a model retyping the JSON has returned: cut short mid-string, cut short
+        // with its brackets closed, or no reply at all from a skipped agent.
         const full = JSON.stringify(manifestForRun);
-        const attempt = labels.filter((l) => l.startsWith('manifest')).length;
-        return attempt <= manifestFailures ? full.slice(0, full.length - 20) : '```json\n' + full + '\n```';
+        const relay = manifestRelays[labels.filter((l) => l.startsWith('manifest')).length - 1];
+        if (relay === 'cut') return full.slice(0, full.length - 20);
+        if (relay === 'closed') return JSON.stringify({ ...manifestForRun, files: manifestForRun.files.slice(0, -1) });
+        if (relay === 'null') return null;
+        return '```json\n' + full + '\n```';
       }
       if (opts.label === 'history:extract') return JSON.stringify(promptOverride || promptIndex);
       if (opts.label === 'history:evidence') {
@@ -428,18 +447,25 @@ async function main() {
 
   // A model retyping the manifest has returned it cut short; one bad copy must not end the run.
   truthy('manifest: a failed copy is retried at least once', MANIFEST_ATTEMPTS > 1, `got ${MANIFEST_ATTEMPTS}`);
-  const retried = await runAudit({ manifestFailures: MANIFEST_ATTEMPTS - 1 });
+  const retried = await runAudit({
+    manifestRelays: Array.from({ length: MANIFEST_ATTEMPTS - 1 }, (_, i) => (i % 2 ? 'closed' : 'cut')),
+  });
   eq('manifest: a copy that does not parse is asked for again, up to the attempt limit',
     ['manifest', ...Array.from({ length: MANIFEST_ATTEMPTS - 1 }, (_, i) => `manifest-${i + 2}`)],
     retried.labels.filter((l) => l.startsWith('manifest')));
   eq('manifest: the run goes on once a copy parses', 'minor gaps',
     retried.ret && retried.ret.report && retried.ret.report.verdict);
-  const exhausted = await runAudit({ manifestFailures: MANIFEST_ATTEMPTS });
+  const exhausted = await runAudit({ manifestRelays: Array(MANIFEST_ATTEMPTS).fill('closed') });
   truthy('manifest: the run aborts once every attempt failed, and says how many',
     exhausted.ret && new RegExp(`manifest parse failed after ${MANIFEST_ATTEMPTS} attempts`).test(exhausted.ret.error || ''),
     `got ${JSON.stringify(exhausted.ret)}`);
   eq('manifest: no review agent runs on an aborted manifest', [],
     exhausted.labels.filter((l) => !l.startsWith('manifest')));
+  // A skipped agent is the user stopping the run; starting another would overrule them.
+  const skipped = await runAudit({ manifestRelays: ['null'] });
+  eq('manifest: a skipped or dead agent ends the run without another attempt', ['manifest'], skipped.labels);
+  truthy('manifest: the abort says the agent returned nothing, not that JSON failed to parse',
+    skipped.ret && /returned nothing on attempt 1/.test(skipped.ret.error || ''), `got ${JSON.stringify(skipped.ret)}`);
 
   // ── read-review prompts ──────────────────────────────────────────────────────
   truthy('read-review: the repo root reaches the batch prompt',
@@ -454,7 +480,10 @@ async function main() {
     reviewPrompts.every((p) => p.includes('  /std/references/project-setup.md\n')));
   truthy('read-review: a canonical file is sent to the contract block headed by its path',
     reviewPrompts[0].includes('headed `docs/CODING.md` in project-setup.md') &&
-    reviewPrompts[0].includes('headed `AGENTS.md` in project-setup.md'));
+    reviewPrompts[0].includes('headed `AGENTS.md` in project-setup.md') &&
+    reviewPrompts[0].includes('headed `README.md` in project-setup.md'));
+  truthy('read-review: the standard says a non-standard doc has no contract block',
+    reviewPrompts[0].includes('a NON-STANDARD doc has none'));
   truthy('read-review: a non-standard file is judged for placement, not against a contract',
     reviewPrompts[0].includes('NON-STANDARD doc') && !reviewPrompts[0].includes('headed `docs/A.md`'));
   truthy('read-review: the use-case doc is judged as doing the work, not auditing a file',
@@ -475,7 +504,7 @@ async function main() {
   eq('read-review: the placement rules are stated once per batch, not per non-standard doc',
     1, reviewPrompts[0].split('DECISION RECORD PLACEMENT —').length - 1);
   eq('read-review: findings reach raw', 1, deep.ret.raw.read_findings.length);
-  eq('read-review: the batches are reported', [['AGENTS.md', 'docs/CODING.md', 'docs/A.md']], deep.ret.raw.review_batches);
+  eq('read-review: the batches are reported', [['AGENTS.md', 'README.md', 'docs/CODING.md', 'docs/A.md']], deep.ret.raw.review_batches);
   eq('read-review: a complete run reports no unreviewed file', [], deep.ret.raw.not_reviewed);
 
   truthy('history: a complete classification reports no failure to the synthesis',

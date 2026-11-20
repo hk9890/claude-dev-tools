@@ -156,6 +156,20 @@ function parseManifest(text) {
   return JSON.parse(t)
 }
 
+// A relayed manifest that parses can still be cut short: a model that stops partway through
+// `files` and closes the brackets drops the docs at the end of the list, and no stage would
+// notice them missing. manifest.py counts every file it lists in summary.total_md.
+function checkManifest(m) {
+  if (!m || typeof m !== 'object') throw new Error(`the relay is ${JSON.stringify(m)}, not a manifest object`)
+  if (!m.summary || !Array.isArray(m.files) || !Array.isArray(m.agents_routes)) {
+    throw new Error('the relay lacks summary, files or agents_routes')
+  }
+  if (m.files.length !== m.summary.total_md) {
+    throw new Error(`the relay lists ${m.files.length} of the ${m.summary.total_md} files manifest.py counted`)
+  }
+  return m
+}
+
 // Split the manifest's reviewable files into use cases and the rest.
 //
 // A use case is reviewed only when its doc exists: the standard makes every topic doc
@@ -354,7 +368,7 @@ const HISTORY_SCHEMA = {
 // it is reached whichever path that takes.
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    normalizeArgs, parseManifest, splitReviewTargets, orderTargets, packBatches,
+    normalizeArgs, parseManifest, checkManifest, splitReviewTargets, orderTargets, packBatches,
     unreviewedFiles, historyFindingBar,
     LEVELS, LEVEL_CONFIG, USE_CASES, BATCH_BYTES, MIN_SEGMENTS_FOR_FINDING, MANIFEST_ATTEMPTS,
   }
@@ -382,8 +396,9 @@ if (typeof agent === 'function') {
   phase('Manifest')
   // --brief: the agent's Bash tool returns only a preview of a large output, and the full
   // manifest of a 45-doc repo is 132KB. Relaying a preview is how two runs died here.
-  // The agent retypes the JSON, and a retyped copy of 11KB has come back cut short, so a
-  // copy that does not parse is asked for again.
+  // The agent retypes the JSON, and a retyped copy of 11KB has come back cut short, so an
+  // incomplete copy is asked for again. A null return is a skipped or dead agent: the run
+  // stops there rather than start another.
   const manifestPrompt =
     `Run this exact command and return ONLY its raw stdout — no prose, no markdown fences:\n\n` +
     `python3 "${scriptsDir}/manifest.py" "${repoRoot}" --format=json --brief\n\n` +
@@ -393,15 +408,19 @@ if (typeof agent === 'function') {
     manifestText = await agent(manifestPrompt, {
       label: attempt === 1 ? 'manifest' : `manifest-${attempt}`, phase: 'Manifest', model: 'haiku', effort: 'low',
     })
+    if (manifestText === null) {
+      log(`FATAL: manifest agent ${attempt}/${MANIFEST_ATTEMPTS} returned nothing — aborting.`)
+      return { error: `manifest agent returned nothing on attempt ${attempt}: it was skipped or died` }
+    }
     try {
-      manifest = parseManifest(manifestText)
+      manifest = checkManifest(parseManifest(manifestText))
     } catch (e) {
       parseError = String(e)
-      log(`Manifest attempt ${attempt}/${MANIFEST_ATTEMPTS} did not parse: ${parseError}`)
+      log(`Manifest attempt ${attempt}/${MANIFEST_ATTEMPTS} is unusable: ${parseError}`)
     }
   }
   if (!manifest) {
-    log(`FATAL: no parseable manifest after ${MANIFEST_ATTEMPTS} attempts — aborting.`)
+    log(`FATAL: no complete manifest after ${MANIFEST_ATTEMPTS} attempts — aborting.`)
     return { error: `manifest parse failed after ${MANIFEST_ATTEMPTS} attempts: ${parseError}`, raw: (manifestText || '').slice(0, 400) }
   }
 
@@ -497,7 +516,7 @@ if (typeof agent === 'function') {
       `You audit ${batch.length} documentation file(s) of this repository against an authoring standard.\n\n` +
       `READ ONCE — your first action is ONE parallel batch of Read calls, one per file in this list. They are the only tool calls you make before you return: no Bash, no Grep, no Glob, no other Read. The audit is judged on these files alone, and what they do not show is outside it. If a Read is refused for size, read that file in parts with offset and limit.\n` +
       readList.map(p => `  ${p}`).join('\n') + '\n\n' +
-      `THE STANDARD — the first file holds the doc-set rules: the six named rules (Ownership, Local delta, Anchors, Command register, Economy, Obligation), the failure modes, and the closing bar every fix you recommend must itself clear. The second binds any document an agent reads: single source of truth, cache, relevance, sediment, no-ops and negation. A finding under either is a finding. The third, project-setup.md, holds under its "File ownership boundaries" section the ownership contract each file below is judged against.\n` +
+      `THE STANDARD — the first file holds the doc-set rules: the six named rules (Ownership, Local delta, Anchors, Command register, Economy, Obligation), the failure modes, and the closing bar every fix you recommend must itself clear. The second binds any document an agent reads: single source of truth, cache, relevance, sediment, no-ops and negation. A finding under either is a finding. The third, project-setup.md, holds under its "File ownership boundaries" section the ownership contract of each canonical file and tree record below; a NON-STANDARD doc has none.\n` +
       (hasDocumenting
         ? `\nRECORDED DOC DECISIONS — the fourth file, docs/DOCUMENTING.md, carries this project's own doc conventions and the decisions it has taken about what it documents and what it leaves out on purpose. Treat a gap those decisions settle as answered and leave it out of your findings. They bind GAP findings only: a false or contradictory claim, a dead link, or content outside a file's Inside boundary stays a finding at full severity however the decisions read. A decision that contradicts what the other files show is itself a finding, against docs/DOCUMENTING.md.\n`
         : '') +

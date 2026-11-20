@@ -312,6 +312,10 @@ test_brief() {
   assert_eq "brief: one line of JSON" "1" "$(printf '%s\n' "$out" | wc -l | tr -d ' ')"
   assert_eq "brief: no per-file links" "False" "$(json_val "$out" "any('links' in f for f in d['files'])")"
   assert_contains "brief: unresolved links kept" "GONE.md" "$(json_val "$out" "[l for f in d['files'] for l in f['unresolved_links']]")"
+  # The workflow judges a file with a canonical_name against its ownership block, and any
+  # other file as non-standard.
+  assert_eq "brief: canonical files keep their canonical_name" "['README.md', 'AGENTS.md', 'CODING.md', None]" \
+    "$(json_val "$out" "[{f['path']: f['canonical_name'] for f in d['files']}[p] for p in ('README.md', 'AGENTS.md', 'docs/CODING.md', 'docs/NOTES.md')]")"
   rm -rf "$dir"
 }
 
