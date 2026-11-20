@@ -20,7 +20,7 @@ Make `<scratch>` as `<session scratchpad>/web-perf`, or `${TMPDIR:-/tmp}/web-per
 
 ## 2. Serve a production build
 
-Measure a production build, never the dev server: a dev server sends unbundled, unminified code. Take the build command and the command that serves the build from the project's run docs. Where they name no build or no way to serve it, stop and tell the user which is missing. Run the build and wait for it to exit. Then read `<base directory for this skill>/../../references/start-app.md` and follow it, with the serve command as the start command. The `../..` is the plugin-root layout: `web-drive` reads the same file. `<url>` is the URL of the ready line with the page from the scope appended.
+Measure a production build, never the dev server: a dev server sends unbundled, unminified code. Take the build command and the command that serves the build from the project's run docs. Where they name no build or no way to serve it, stop and tell the user which is missing. Run the build and wait for it to exit. Then read `<base directory for this skill>/../../references/start-app.md` and follow it, with the serve command as the start command. The `../..` is the plugin-root layout: `web-drive` reads the same file. `<url>` is the `<url>` that file prints, with the page from the scope appended.
 
 For `--compare`, build the ref in its own worktree (`git worktree add --detach <scratch>/base <git-ref>`, as the ref may be checked out elsewhere), after the setup the project's docs name for a fresh checkout. Serve one build at a time, take each URL from its own ready line, and put `base-` in front of the file names of the ref's runs.
 

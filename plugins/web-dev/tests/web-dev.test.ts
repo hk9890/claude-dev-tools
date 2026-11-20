@@ -92,6 +92,13 @@ const OPENS_WINDOW = [
   'firefox http://localhost:5173',
   'open http://localhost:5173',
   'open dist/index.html',
+  'chrome-devtools start --isolated --userDataDir=$(mktemp -d) --no-headless',
+  'playwright-cli -s=a open "$(cat url.txt)" --headed',
+  'lighthouse http://localhost:4173 --chrome-flags "--headless=new" --output=json',
+  'lighthouse http://x --chrome-flags="--headless=new" --output-path=/x/lh-$(date +%s).json --view',
+  'playwright-cli -s open show',
+  'PLAYWRIGHT_MCP_HEADLESS=false playwright-cli -s=a open',
+  'PLAYWRIGHT_MCP_CDP_ENDPOINT=http://127.0.0.1:9222 playwright-cli -s=a open',
 ]
 
 const TEST_WINDOWS = [
@@ -110,6 +117,8 @@ const TEST_WINDOWS = [
   'CI=1 npx playwright test --ui-host=127.0.0.1',
   'PWDEBUG=1 CI=1 npx playwright test',
   'CI=1 npx playwright test --debug',
+  'CI=1 npx playwright test --output=$(mktemp -d) --headed',
+  'npx playwright test CI=1',
   'CI=1 npx playwright test --headed',
   'CI=1 npx playwright test --debug e2e/login.spec.ts',
   'CI=0 npx playwright test',
@@ -122,7 +131,7 @@ const TEST_WINDOWS = [
 
 const NO_SESSION = ['playwright-cli close', 'playwright-cli goto http://localhost:5173', 'cd /tmp && playwright-cli delete-data']
 
-const CLOSES_OTHERS = ['x=$(playwright-cli -s=a kill-all)', 'playwright-cli close-all', 'playwright-cli -s=claude-s1 kill-all', 'cd /tmp && playwright-cli close-all']
+const CLOSES_OTHERS = ['x=$(playwright-cli -s=a kill-all)', 'playwright-cli --session close close-all', 'playwright-cli close-all', 'playwright-cli -s=claude-s1 kill-all', 'cd /tmp && playwright-cli close-all']
 
 const ALLOWED = [
   'playwright-cli -s=claude-s1 open --browser=chrome http://localhost:5173',
@@ -164,6 +173,16 @@ const ALLOWED = [
   'google-chrome --headless=new --dump-dom http://localhost:5173',
   'lighthouse http://localhost:4173 --port=0 --chrome-flags="--headless=new"',
   'open -a Calculator',
+  'lighthouse http://x --output-path=$(pwd)/out.json --chrome-flags="--headless=new"',
+  'lighthouse "$(cat url)" --chrome-flags="--headless=new"',
+  './scripts/lighthouse.sh',
+  './lighthouse/run.sh --ci',
+  './chrome/build.sh',
+  'command -v lighthouse',
+  'command -v xdg-open',
+  'playwright-cli -s=a fill e3 "--headed"',
+  'playwright-cli -s=a type "--headed"',
+  "chrome-devtools start --headless='true'",
   'git commit -m "playwright-cli close; xdg-open x"',
   'playwright-cli -s=claude-s1 attach claude-s1-2',
   'git commit -m "deny playwright-cli --headed and xdg-open"',

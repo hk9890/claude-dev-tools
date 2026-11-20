@@ -11,8 +11,8 @@ The video shows the user the feature working before they open the page.
    cd <scratch> && playwright-cli -s=<session> video-show-actions
    ```
 
-   `<feature>` is a short slug of the feature, `<yyyymmdd-hhmm>` the time now.
+   `<feature>` is a short slug of the feature, `<yyyymmdd-hhmm>` the time now. Print the full path: it is `<video>` in the steps below.
 3. **Drive each step.** Before a step, `video-chapter "<step>"`. After it, run its check.
-4. **On a failed check**, run `video-stop`, delete the file, and do not deliver it: a video of a flow that failed shows nothing true. Fix the feature and record again, or report the failure.
-5. **Stop the recording** with `video-stop`. Then `test -s` on the `video-start` path of step 2 must pass. An empty or missing file means the ffmpeg build of playwright-cli is not installed: tell the user to run `playwright-cli install-browser ffmpeg`.
-6. **Deliver the video.** Where the project's docs or the user name a place to keep demos, copy it there. Where `SendUserFile` is in the session's tools, or is a deferred tool (load it with ToolSearch `select:SendUserFile`), send the file with it. In all cases, give the absolute path in your report.
+4. **On a failed check**, run `video-stop`, delete `<video>`, and do not deliver it: a video of a flow that failed shows nothing true. Fix the feature and record again, or report the failure.
+5. **Stop the recording** with `video-stop`. Then `test -s <video>` must pass. An empty or missing file means the ffmpeg build of playwright-cli is not installed: tell the user to run `playwright-cli install-browser ffmpeg`.
+6. **Deliver the video.** Where the project's docs or the user name a place to keep demos, copy it there. Where `SendUserFile` is in the session's tools, or is a deferred tool (load it with ToolSearch `select:SendUserFile`), send `<video>` with it. In all cases, give the absolute path in your report.
