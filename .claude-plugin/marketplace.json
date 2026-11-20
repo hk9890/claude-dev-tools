@@ -185,7 +185,7 @@
       "name": "web-dev",
       "source": "./plugins/web-dev",
       "description": "Web apps in a headless browser through playwright-cli: one skill that makes the model start a web app the way the project documents it, use it in a browser no one sees, and record a video of each feature working, a user-invoked skill that measures page load with chrome-devtools traces and Lighthouse, plus a mod that denies the playwright-cli, Playwright Test, chrome-devtools and Lighthouse commands and the URL openers (xdg-open and its kin) that would open a browser window on the user's screen, and the playwright-cli commands that close the browsers of other sessions or name no session.",
-      "version": "1.54.0",
+      "version": "1.55.0",
       "author": {
         "name": "Hans Kohlreiter",
         "email": "hans.kohlreiter@gmail.com"

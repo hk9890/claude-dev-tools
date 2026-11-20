@@ -13,10 +13,17 @@ const CLOSES_OTHERS =
 const NO_SESSION =
   'This playwright-cli command names no session, so it acts on the shared default browser, which another session or the user may own. Add `-s=<your session>`.'
 
+// The guard is best effort, not complete: it reads the command line as written. A command that
+// another program runs passes, such as `bash -c '...'`, `sh -c '...'`, `eval`, a heredoc fed to a
+// shell, or a wrapper not in WRAPPER (`nice`, `stdbuf`, `flock`, `watch`).
+
+// Copied from revier's guard (plugins/revier/hooks/register.ts), which names this copy:
+// HEREDOC_BODY, NOT_RUN, ESCAPED, SUBSTITUTION, ASSIGNMENT, KEYWORD and the shape of LEAD. A change
+// to them in one is a change to both. revier blanks a quoted string; this guard keeps its text.
+//
 // Text the shell does not run, so a commit message, a heredoc or a grep pattern that mentions the
 // command passes: a heredoc body, then a comment or a quoted string. An escaped character is
-// matched too, so `\'` opens no string. revier's guard blanks a quoted string; this one keeps its
-// text, below.
+// matched too, so `\'` opens no string.
 const HEREDOC_BODY = /((?<!<)<<-?[ \t]*(["']?)([\w-]+)\2.*\n)[\s\S]*?^[ \t]*\3$/gm
 const NOT_RUN = /\\(?:\r?\n|[\s\S])|(?<=^|\s)#.*|'[^']*'|"(?:\\[\s\S]|[^"\\])*"/gm
 const ESCAPED = /\\[\s\S]/g
@@ -29,9 +36,9 @@ const QUOTED_SEPARATORS = /[\s;&|()`]/g
 
 // A command sits in command position: first on a line or after `;`, `&`, `|`, `(` or a backtick,
 // then past any assignment (`A=b cmd`), keyword (`do cmd`) or wrapper that runs its arguments
-// (`timeout 30 cmd`). The match ends at a `;`, `&`, `|`, `)` or backtick, so it holds the arguments of
-// that one command, also in a subshell or a substitution. It is captured in a lookahead: a command substitution in those arguments is a match of
-// its own.
+// (`timeout 30 cmd`). The match ends at a `;`, `&`, `|`, `)` or backtick, so it holds the arguments
+// of that one command, also in a subshell or a substitution. It is captured in a lookahead: a
+// command substitution in those arguments is a match of its own.
 const ASSIGNMENT = String.raw`\w+=\S*`
 const KEYWORD = String.raw`if|then|elif|else|while|until|do|time|!|\{`
 const WRAPPER = String.raw`(?:command|exec|env|nohup|setsid|timeout|xargs)(?:\s+(?:-\S+|\d\S*))*`
