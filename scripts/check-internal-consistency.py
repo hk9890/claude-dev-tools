@@ -479,21 +479,32 @@ def _skill_ref_resolves(repo_root, plugin, name):
 
 
 def _tracked_markdown(repo_root):
-    """Markdown files git tracks, or None when repo_root is not a git checkout.
+    """Markdown files git tracks, or None when repo_root is not the top of a git checkout.
 
     Asking git is what keeps the scan to this tree's own sources. Walking the
     filesystem also reads whatever happens to sit under the root but belongs to
     something else — a sibling checkout under .claude/worktrees/ holding an older
     state, a scratch directory covered by a global gitignore, a build output tree
     — and a stale reference in any of them would fail a check about this tree.
+
+    A root inside a checkout that does not track it is not a checkout of its own,
+    so it gets None and the caller walks it. A tracked file gone from disk is
+    left out, and an unmerged path, which git lists once per stage, is listed once.
     """
     try:
-        result = subprocess.run(
-            ["git", "-C", repo_root, "ls-files", "-z", "*.md"],
-            capture_output=True, text=True, check=True)
+        top = subprocess.run(
+            ["git", "-C", repo_root, "rev-parse", "--show-toplevel"],
+            capture_output=True, text=True, check=True).stdout.strip()
+        listed = subprocess.run(
+            ["git", "-C", repo_root, "ls-files", "-z"],
+            capture_output=True, check=True).stdout
     except (OSError, subprocess.CalledProcessError):
         return None
-    return [os.path.join(repo_root, p) for p in result.stdout.split("\0") if p]
+    if os.path.realpath(top) != os.path.realpath(repo_root):
+        return None
+    paths = {os.path.join(repo_root, os.fsdecode(p))
+             for p in listed.split(b"\0") if p.endswith(b".md")}
+    return sorted(p for p in paths if os.path.isfile(p))
 
 
 def _walked_markdown(repo_root):

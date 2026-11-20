@@ -399,6 +399,47 @@ test_section_ref_under_notes_parent() {
     python3 "$SCRIPT" --repo-root "$repo" \
       --skip-versions --skip-descriptions --skip-uniformity --skip-skill-refs
 
+  # A literal pathspec setting must not empty the file list.
+  assert_exit "section-ref-literal-pathspecs: a broken reference still fails" 1 \
+    env GIT_LITERAL_PATHSPECS=1 python3 "$SCRIPT" --repo-root "$repo" \
+      --skip-versions --skip-descriptions --skip-uniformity --skip-skill-refs
+
+  rm -rf "$tmp_dir"
+}
+
+# 21. Section refs: a tracked file deleted on disk but not staged is skipped,
+#     not reported as unreadable.
+test_section_ref_skips_deleted_tracked() {
+  local tmp_dir
+  tmp_dir=$(mktemp -d) || { printf 'FAIL: mktemp -d unavailable — fixture not built\n'; exit 1; }
+  printf '# Guide\n\n## Quick Start\n' > "$tmp_dir/guide.md"
+  printf '# Ref\n\nSee the Quick Start section in guide.md.\n' > "$tmp_dir/ref.md"
+  printf '# Old\n' > "$tmp_dir/old.md"
+  git -C "$tmp_dir" init -q
+  git -C "$tmp_dir" add -A
+  rm "$tmp_dir/old.md"
+
+  assert_exit "section-ref-deleted: a tracked file gone from disk is skipped" 0 \
+    python3 "$SCRIPT" --repo-root "$tmp_dir" \
+      --skip-versions --skip-descriptions --skip-uniformity --skip-skill-refs
+
+  rm -rf "$tmp_dir"
+}
+
+# 22. Section refs: a root that an enclosing checkout does not track is walked.
+#     Regression: git listed nothing for it, and the scan passed with no file read.
+test_section_ref_walks_untracked_nested_root() {
+  local tmp_dir
+  tmp_dir=$(mktemp -d) || { printf 'FAIL: mktemp -d unavailable — fixture not built\n'; exit 1; }
+  git -C "$tmp_dir" init -q
+  mkdir -p "$tmp_dir/inner"
+  printf '# Guide\n\n## Quick Start\n' > "$tmp_dir/inner/guide.md"
+  printf '# Ref\n\nSee the Gone Away section in guide.md.\n' > "$tmp_dir/inner/ref.md"
+
+  assert_exit "section-ref-nested-root: a broken reference still fails" 1 \
+    python3 "$SCRIPT" --repo-root "$tmp_dir/inner" \
+      --skip-versions --skip-descriptions --skip-uniformity --skip-skill-refs
+
   rm -rf "$tmp_dir"
 }
 
@@ -424,6 +465,8 @@ test_skill_ref_ignores_foreign
 test_skill_ref_scans_tracked_only
 test_section_ref_scans_tracked_only
 test_section_ref_under_notes_parent
+test_section_ref_skips_deleted_tracked
+test_section_ref_walks_untracked_nested_root
 
 printf '\n'
 printf 'Results: %d passed, %d failed\n' "$PASS" "$FAIL"
