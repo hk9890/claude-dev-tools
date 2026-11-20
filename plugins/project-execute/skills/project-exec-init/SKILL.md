@@ -24,7 +24,7 @@ Run the setup script from the directory you are in. `<base directory for this sk
 bash "<base directory for this skill>/scripts/private-setup.sh"
 ```
 
-Where it exits 1, relay its `error:` line and stop. Otherwise relay its lines, and tell the user to start a new session in this checkout, and to approve the external-import dialog where Claude Code shows one: a declined import stays off. Then go on to step 1 for `private write`, or stop.
+Where it exits non-zero, relay its `error:` line, or the shell's message where it prints none, and stop. Otherwise relay its lines, and tell the user to start a new session in this checkout, and to approve the external-import dialog where Claude Code shows one: a declined import stays off. Then go on to step 1 for `private write`, or stop.
 
 **Private mode** changes steps 1–4 in four places:
 
