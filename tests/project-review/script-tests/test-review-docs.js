@@ -78,12 +78,12 @@ async function main() {
   });
 
   const {
-    normalizeArgs, parseManifest, checkManifest, splitReviewTargets, orderTargets, packBatches,
+    normalizeArgs, parseManifest, checkManifest, checkPromptIndex, checkEvidence, splitReviewTargets, orderTargets, packBatches,
     unreviewedFiles, historyFindingBar,
-    LEVEL_CONFIG, USE_CASES, BATCH_BYTES, MIN_SEGMENTS_FOR_FINDING, MANIFEST_ATTEMPTS,
+    LEVEL_CONFIG, USE_CASES, BATCH_BYTES, MIN_SEGMENTS_FOR_FINDING, RELAY_ATTEMPTS,
   } = helpers;
 
-  const required = { normalizeArgs, parseManifest, checkManifest, splitReviewTargets, orderTargets, packBatches, unreviewedFiles, historyFindingBar };
+  const required = { normalizeArgs, parseManifest, checkManifest, checkPromptIndex, checkEvidence, splitReviewTargets, orderTargets, packBatches, unreviewedFiles, historyFindingBar };
   const missingExport = Object.keys(required).filter((k) => typeof required[k] !== 'function');
   if (missingExport.length) {
     bad('review-docs.js exposes its pure helpers', `missing or not a function: ${missingExport.join(', ')}`);
@@ -202,6 +202,26 @@ async function main() {
   // A model that stops partway through `files` and closes the brackets returns valid JSON.
   truthy('checkManifest: a relay that lost files from the end is rejected',
     throwsWith(() => checkManifest({ ...whole, summary: { total_md: 2 } }), /lists 1 of the 2 files/));
+
+  // ── checkPromptIndex / checkEvidence ─────────────────────────────────────────
+  const index = { sessions_with_prompts: 3, batches: [{ sessions: 2 }, { sessions: 1 }] };
+  eq('checkPromptIndex: a complete prompt index passes', index, checkPromptIndex(index));
+  truthy('checkPromptIndex: a relay that lost a batch from the end is rejected',
+    throwsWith(() => checkPromptIndex({ ...index, batches: index.batches.slice(0, 1) }), /batches 2 of the 3 sessions/));
+  truthy('checkPromptIndex: a relay without batches is rejected',
+    throwsWith(() => checkPromptIndex({ sessions_with_prompts: 0 }), /not a prompt index/));
+  const allCases = (v) => Object.fromEntries(Object.keys(USE_CASES).map((u) => [u, v]));
+  const summary = {
+    coverage: { ...allCases({ valid: 0 }), coding: { valid: 1, historical_examined: 3 } },
+    evidence_files: allCases('/f.json'),
+    historical: { coding: [{ segments: 2 }, { segments: 1 }] },
+  };
+  eq('checkEvidence: a complete evidence summary passes', summary, checkEvidence(summary));
+  truthy('checkEvidence: a relay that lost a use case is rejected',
+    throwsWith(() => checkEvidence({ ...summary, evidence_files: { coding: '/f.json' } }), /lacks the use case/));
+  // historical is the summary's last key, so a copy cut short loses its buckets first.
+  truthy('checkEvidence: a relay that lost superseded-route buckets is rejected',
+    throwsWith(() => checkEvidence({ ...summary, historical: { coding: [{ segments: 2 }] } }), /incomplete for coding/));
 
   // ── parseManifest ────────────────────────────────────────────────────────────
   eq('parseManifest: raw JSON', { a: 1 }, parseManifest('{"a":1}'));
@@ -344,25 +364,23 @@ async function main() {
     repo_root: '/repo', projects_dir: '/p', transcripts_found: 2, sessions_with_prompts: 2,
     batches: [{ file: '/tmp/sc/history/prompts-01.json', labels_file: '/tmp/sc/history/labels-01.json', sessions: 2, messages: 10 }],
   };
+  // history.py emits coverage and an evidence file for every use case.
   const evidence = {
     evidence_file: '/tmp/sc/history/evidence.json', sessions_scanned: 2, sessions_labelled: 2,
-    evidence_files: {
-      coding: '/tmp/sc/history/evidence-coding.json',
-      testing: '/tmp/sc/history/evidence-testing.json',
-    },
+    evidence_files: Object.fromEntries(Object.keys(USE_CASES).map((u) => [u, `/tmp/sc/history/evidence-${u}.json`])),
     coverage: {
+      ...Object.fromEntries(Object.keys(USE_CASES).map((u) => [u, { labelled: 0, valid: 0, examined: 0, excluded_route_changed: 0 }])),
       coding: { labelled: 6, valid: 4, examined: 6, excluded_route_changed: 2, historical_examined: 2 },
-      testing: { labelled: 0, valid: 0, examined: 0, excluded_route_changed: 0 },
     },
     historical: {
       coding: [{ route_then: 'Load [docs/CODING.md](docs/CODING.md) for guidance.',
-                 segments: 25, opened_doc: 4, did_work: 25 }],
+                 segments: 2, opened_doc: 0, did_work: 2 }],
     },
   };
 
   const runAudit = async (over = {}) => {
     // promptIndex and manifest are stub overrides for the scripts, not workflow arguments.
-    const { promptIndex: promptOverride, manifest: manifestOverride, evidence: evidenceOverride, labelWrite, dropFile, manifestRelays = [], ...argOver } = over;
+    const { promptIndex: promptOverride, manifest: manifestOverride, evidence: evidenceOverride, labelWrite, dropFile, manifestRelays = [], evidenceCuts = 0, ...argOver } = over;
     // manifest.py counts every file it lists; an override that adds files keeps that true.
     const base = manifestOverride || manifest;
     const manifestForRun = { ...base, summary: { ...base.summary, total_md: base.files.length } };
@@ -384,8 +402,12 @@ async function main() {
         return '```json\n' + full + '\n```';
       }
       if (opts.label === 'history:extract') return JSON.stringify(promptOverride || promptIndex);
-      if (opts.label === 'history:evidence') {
-        return typeof evidenceOverride === 'string' ? evidenceOverride : JSON.stringify(evidenceOverride || evidence);
+      if (opts.label.startsWith('history:evidence')) {
+        if (typeof evidenceOverride === 'string') return evidenceOverride;
+        const relayed = evidenceOverride || evidence;
+        // A relay cut short and closed by the model: the superseded-route buckets are gone.
+        const cut = labels.filter((l) => l.startsWith('history:evidence')).length <= evidenceCuts;
+        return JSON.stringify(cut ? { ...relayed, historical: {} } : relayed);
       }
       if (opts.label.startsWith('history:label-')) {
         return labelWrite || { labels_file: '/tmp/sc/history/labels-01.json', sessions_labelled: 2, messages_labelled: 10 };
@@ -446,18 +468,18 @@ async function main() {
     deep.prompts[0].includes('--brief'));
 
   // A model retyping the manifest has returned it cut short; one bad copy must not end the run.
-  truthy('manifest: a failed copy is retried at least once', MANIFEST_ATTEMPTS > 1, `got ${MANIFEST_ATTEMPTS}`);
+  truthy('manifest: a failed copy is retried at least once', RELAY_ATTEMPTS > 1, `got ${RELAY_ATTEMPTS}`);
   const retried = await runAudit({
-    manifestRelays: Array.from({ length: MANIFEST_ATTEMPTS - 1 }, (_, i) => (i % 2 ? 'closed' : 'cut')),
+    manifestRelays: Array.from({ length: RELAY_ATTEMPTS - 1 }, (_, i) => (i % 2 ? 'closed' : 'cut')),
   });
   eq('manifest: a copy that does not parse is asked for again, up to the attempt limit',
-    ['manifest', ...Array.from({ length: MANIFEST_ATTEMPTS - 1 }, (_, i) => `manifest-${i + 2}`)],
+    ['manifest', ...Array.from({ length: RELAY_ATTEMPTS - 1 }, (_, i) => `manifest-${i + 2}`)],
     retried.labels.filter((l) => l.startsWith('manifest')));
   eq('manifest: the run goes on once a copy parses', 'minor gaps',
     retried.ret && retried.ret.report && retried.ret.report.verdict);
-  const exhausted = await runAudit({ manifestRelays: Array(MANIFEST_ATTEMPTS).fill('closed') });
+  const exhausted = await runAudit({ manifestRelays: Array(RELAY_ATTEMPTS).fill('closed') });
   truthy('manifest: the run aborts once every attempt failed, and says how many',
-    exhausted.ret && new RegExp(`manifest parse failed after ${MANIFEST_ATTEMPTS} attempts`).test(exhausted.ret.error || ''),
+    exhausted.ret && new RegExp(`manifest parse failed after ${RELAY_ATTEMPTS} attempts`).test(exhausted.ret.error || ''),
     `got ${JSON.stringify(exhausted.ret)}`);
   eq('manifest: no review agent runs on an aborted manifest', [],
     exhausted.labels.filter((l) => !l.startsWith('manifest')));
@@ -527,7 +549,13 @@ async function main() {
   const unparsed = await runAudit({ evidence: 'Traceback (most recent call last):' });
   truthy('history: an evidence summary that does not parse reaches the synthesis as a failure',
     unparsed.prompts[unparsed.prompts.length - 1].includes(
-      'History stage failure: the evidence summary from history.py could not be parsed'));
+      `History stage failure: the evidence summary from history.py: parse failed after ${RELAY_ATTEMPTS} attempts`));
+  const evidenceRetried = await runAudit({ evidenceCuts: RELAY_ATTEMPTS - 1 });
+  eq('history: an incomplete evidence summary is asked for again',
+    ['history:evidence', ...Array.from({ length: RELAY_ATTEMPTS - 1 }, (_, i) => `history:evidence-${i + 2}`)],
+    evidenceRetried.labels.filter((l) => l.startsWith('history:evidence')));
+  eq('history: the stage goes on once a copy is complete', 4,
+    evidenceRetried.ret && evidenceRetried.ret.raw.history_coverage.coding.valid);
   truthy('history: the label agent writes with the Write tool',
     deep.prompts.some((p, i) => deep.labels[i].startsWith('history:label-') && p.includes('with the Write tool')));
 
@@ -555,6 +583,8 @@ async function main() {
   const withDocReview = withDoc.prompts.filter((_, i) => withDoc.labels[i].startsWith('review-'));
   truthy('decisions: docs/DOCUMENTING.md is reviewed as the documenting use case',
     withDocReview.some((p) => p.includes('Use case "documenting"')));
+  truthy('decisions: a batch that holds docs/DOCUMENTING.md lists it once',
+    withDocReview.every((p) => p.split('  /repo/docs/DOCUMENTING.md\n').length - 1 === 1));
   truthy('decisions: every batch agent reads it',
     withDocReview.every((p) => p.includes('RECORDED DOC DECISIONS') && p.includes('/repo/docs/DOCUMENTING.md')));
   truthy('decisions: the synthesis stage gets the decisions too',
