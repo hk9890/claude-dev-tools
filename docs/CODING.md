@@ -70,6 +70,10 @@ Every skill is loaded with a `Base directory for this skill: <absolute path>` li
 
 `project-review:project-review-docs` is the worked example: it calls the Skill tool with `instruction-writing:writing-project-docs`, passes the base directory as `standardDir`, and rejects a missing or relative value before spawning an agent.
 
+### Copying another plugin's text
+
+Where a plugin needs text that another plugin owns and cannot reach it, it keeps a copy. Each copy names the other copies and says that a change to one is a change to all. `decision-split.md` in `project-review` and in `project-auto-work` is the worked example: each names the other, and `test-shared-vocabulary.sh` pins their table rows. No test checks a copy in prose, such as the relay lists that `worktree-review` step 5 copies.
+
 ## State across `Bash` calls
 
 Each `Bash` call starts a fresh shell: a variable a skill assigns in one call is empty in the next.

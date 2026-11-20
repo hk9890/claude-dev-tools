@@ -33,9 +33,10 @@ subject's commits. With `--fix`, step 5 then applies the fixes it settled.
 
    A branch, the current one included, is `<head>`. Where `gh pr view <branch> --json
    number,state` prints an `OPEN` pull request (leave out `<branch>` for the current one),
-   the subject is that pull request. Else `<base>` is the `<base branch>` the argument
-   names, taken as it is; else the remote's default branch, the name after `refs/heads/`
-   in `git ls-remote --symref origin HEAD`, fetched with
+   the subject is that pull request; where `command -v gh` prints nothing, skip this test.
+   Else `<base>` is the `<base branch>` the argument names, taken as it is; else the
+   remote's default branch, the name after `refs/heads/` in
+   `git ls-remote --symref origin HEAD`, fetched with
    `git fetch origin +refs/heads/<name>:refs/remotes/origin/<name>` as `origin/<name>`:
    the local ref can lag the remote. Where that fails, ask which branch is the base, and
    take it as it is.
@@ -129,8 +130,9 @@ subject's commits. With `--fix`, step 5 then applies the fixes it settled.
 
 4. **Relay the review.** Surface the agent's verdict and findings as it wrote them; do not
    re-derive or re-label them. Then follow `<SKILL_DIR>/../../references/decision-split.md`
-   over the actions, in the groups step 3 ended on — "this change" is what was reviewed. With `--fix`, say that step 5 applies the settled batch now, in place
-   of the reference's closing line on how the user stops a settled one, and hold back the
+   over the actions, in the groups step 3 ended on — "this change" is what was reviewed.
+   With `--fix`, say that step 5 applies the settled batch now, in place of the
+   reference's closing line on how the user stops a settled one, and hold back the
    reviewer's suggestion to file the findings with `/tasks:tasks-create` for step 5.
 
    Keep `## Suggested rule additions` visibly apart from the findings when you relay it.

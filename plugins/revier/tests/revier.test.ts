@@ -27,6 +27,7 @@ const DENIED = [
   'revier popup',
   'revier agent new -p dt-assist-cli',
   'revier agent focus dt-assist-cli:home:24',
+  'revier agent close dt-assist-cli:home:24',
   'revier shell new -p dt-assist-cli',
   'revier session restore',
   'revier session restore monday',
@@ -114,6 +115,11 @@ const ALLOWED = [
   'address=$(revier agent new -p x --no-focus)',
   'timeout 30 revier agent new -p x --no-focus',
   'revier agent new -p "$(basename "$PWD")" --no-focus',
+  // Best effort: a command that another program runs is not checked.
+  "bash -c 'revier open demo'",
+  'sh -c "revier open demo"',
+  'eval revier open demo',
+  '/usr/local/bin/revier open demo',
 ]
 
 for (const command of DENIED) {
