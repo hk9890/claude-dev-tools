@@ -226,6 +226,7 @@ function refusalOf(command: string) {
 const isModeAsk = (verdict: ToolCheckResult) => verdict.decision === 'ask' && !verdict.rule && !verdict.hook && !verdict.setting
 
 export const register: Register = on => {
+  // No .catch: where the guard fails, the engine skips it, so the command runs, and reports the failure.
   on('tool.call', { tool: ['Bash', 'Monitor'] }, ($, e, next) => {
     const reason = refusalOf(e.command ?? '')
 
