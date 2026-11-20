@@ -2,7 +2,7 @@
 """manifest.py — the deterministic layer of the project-review docs review.
 
 Usage:
-    manifest.py <repo-root> [--format=json|text] [--setup-md=<path>] [--brief]
+    manifest.py <repo-root> [--format=json|text] [--brief]
 
 Emits ONE structured manifest describing every Markdown doc in <repo-root>. This
 is the entire hand-off from the deterministic layer to the review workflow: the
@@ -27,14 +27,6 @@ What is NOT a fact and is deliberately absent: any judgment about whether a doc'
 content is accurate, belongs where it sits, or is well-written. That is the
 workflow's per-file reading agents. Scripts do facts; agents do judgment.
 
-Each file entry also carries its ownership *contract* (audience / inside /
-not-inside), parsed from the project-setup.md handed in via --setup-md so there is
-a single source of truth and the reading agent gets the boundary inline instead
-of having to go find it. That file belongs to the authoring standard, which lives
-in another plugin (the `instruction-writing:writing-project-docs` skill) — hence a
-path in, never a path guessed from here. Without the flag the contracts are simply
-absent; the manifest is still emitted.
-
 Exits 0 on success, 1 on bad invocation. Never non-zero for doc problems — this
 is an inventory, not a gate.
 """
@@ -55,7 +47,6 @@ import sys
 CANONICAL_ROOT = ["README.md", "AGENTS.md", "CLAUDE.md"]  # required at repo root
 OPTIONAL_CANONICAL_ROOT = ["CONTRIBUTING.md"]             # optional at repo root
 # The one canonical tree: docs/decisions/NNNN-slug.md, one file per decision in force.
-# Its contract is keyed by the tree name, as project-setup.md heads its block.
 DECISIONS_TREE = "decisions/"
 DECISION_FILE_RE = re.compile("^" + re.escape("docs/" + DECISIONS_TREE) + r"[0-9]{4}-[^/]+\.md$")
 # Canonical topics under docs/, in topic-set order: the topic files, then the tree.
@@ -92,64 +83,6 @@ def _load_validate_routes():
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
-
-
-# ---------------------------------------------------------------------------
-# Ownership-contract parse (single source of truth: the --setup-md file)
-# ---------------------------------------------------------------------------
-
-def parse_ownership(setup_path):
-    """Parse the 'File ownership boundaries' blocks from project-setup.md.
-
-    Returns {canonical_name: {audience, inside, not_inside}}. Best-effort: if no
-    path is given, or the file is absent or restructured, returns {} and the
-    manifest simply omits the inline contract (the agent can still load the
-    authoring-standard skill and read project-setup.md itself).
-    """
-    if not setup_path:
-        return {}
-    try:
-        with open(setup_path, encoding="utf-8", errors="replace") as fh:
-            lines = fh.read().splitlines()
-    except OSError:
-        return {}
-
-    contracts = {}
-    in_section = False
-    cur_name = None
-    cur = {}
-
-    heading_re = re.compile(r"^###\s+`([^`]+\.md|[^`]+/)`")
-    field_re = re.compile(r"^-\s+\*\*(Audience|Inside|Not inside)\*\*:\s*(.*)$")
-
-    def flush():
-        if cur_name and cur:
-            contracts[cur_name] = dict(cur)
-
-    for ln in lines:
-        if ln.startswith("## File ownership boundaries"):
-            in_section = True
-            continue
-        if in_section and ln.startswith("## ") and "ownership" not in ln.lower():
-            break  # left the ownership section
-        if not in_section:
-            continue
-        m = heading_re.match(ln)
-        if m:
-            flush()
-            # Ownership blocks head docs with a path (`docs/CODING.md`) or a bare
-            # name (`README.md`); key by basename so lookups by canonical name match.
-            # A tree (`docs/decisions/`) keys by its last segment and the slash.
-            head = m.group(1)
-            cur_name = os.path.basename(head.rstrip("/")) + ("/" if head.endswith("/") else "")
-            cur = {}
-            continue
-        fm = field_re.match(ln)
-        if fm and cur_name:
-            key = fm.group(1).lower().replace(" ", "_")  # audience / inside / not_inside
-            cur[key] = fm.group(2).strip()
-    flush()
-    return contracts
 
 
 # ---------------------------------------------------------------------------
@@ -373,9 +306,8 @@ def injected_blocks(abs_path):
 # Build the manifest
 # ---------------------------------------------------------------------------
 
-def build(repo_root, setup_md=None):
+def build(repo_root):
     vr = _load_validate_routes()
-    ownership = parse_ownership(setup_md)
     rels = md_files(repo_root)
 
     # First pass: per-file records + link map for reachability.
@@ -397,9 +329,6 @@ def build(repo_root, setup_md=None):
             "hollow": not personal and bool(m and m["non_heading_lines"] == 0),
             "links": links,
             "unresolved_links": [x for x in links if not x["resolved"]],
-            # Every decision record shares one contract: the manifest carries it once,
-            # as decision_contract, so a tree of many records stays small under --brief.
-            "contract": ownership.get(canon) if canon and cls != "decision" else None,
         }
         if canon:
             present_canonical.add(canon)
@@ -471,7 +400,6 @@ def build(repo_root, setup_md=None):
 
     return {
         "repo_root": os.path.abspath(repo_root),
-        "decision_contract": ownership.get(DECISIONS_TREE),
         "summary": {
             "total_md": len(files),
             "canonical_present": len(present_canonical & set(required)),
@@ -538,14 +466,11 @@ def format_text(data):
 def main():
     args = sys.argv[1:]
     fmt = "json"
-    setup_md = None
     brief = False
     positional = []
     for a in args:
         if a.startswith("--format="):
             fmt = a.split("=", 1)[1]
-        elif a.startswith("--setup-md="):
-            setup_md = a.split("=", 1)[1]
         elif a == "--brief":
             brief = True
         elif a in ("-h", "--help"):
@@ -558,7 +483,7 @@ def main():
             positional.append(a)
     if not positional:
         print(
-            f"Usage: {os.path.basename(sys.argv[0])} <repo-root> [--format=json|text] [--setup-md=<path>] [--brief]",
+            f"Usage: {os.path.basename(sys.argv[0])} <repo-root> [--format=json|text] [--brief]",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -566,7 +491,7 @@ def main():
     if not os.path.isdir(repo_root):
         print(f"Error: {repo_root!r} is not a directory", file=sys.stderr)
         sys.exit(1)
-    data = build(repo_root, setup_md)
+    data = build(repo_root)
     if fmt == "text":
         print(format_text(data))
     elif brief:

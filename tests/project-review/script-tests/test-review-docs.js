@@ -80,7 +80,7 @@ async function main() {
   const {
     normalizeArgs, parseManifest, splitReviewTargets, orderTargets, packBatches,
     unreviewedFiles, historyFindingBar,
-    LEVEL_CONFIG, USE_CASES, BATCH_BYTES, MIN_SEGMENTS_FOR_FINDING,
+    LEVEL_CONFIG, USE_CASES, BATCH_BYTES, MIN_SEGMENTS_FOR_FINDING, MANIFEST_ATTEMPTS,
   } = helpers;
 
   const required = { normalizeArgs, parseManifest, splitReviewTargets, orderTargets, packBatches, unreviewedFiles, historyFindingBar };
@@ -236,7 +236,7 @@ async function main() {
   // The decisions tree has no use case: each record is reviewed on its own, against the
   // tree's contract.
   const withRecord = splitReviewTargets([
-    { path: 'docs/decisions/0001-a.md', classification: 'decision', contract: { inside: 'i' } },
+    { path: 'docs/decisions/0001-a.md', classification: 'decision' },
   ]);
   eq('splitReviewTargets: a decision record is no use case', [], withRecord.useCases.map((u) => u.useCase));
   eq('splitReviewTargets: a decision record is reviewed on its own',
@@ -310,12 +310,11 @@ async function main() {
   // its destructure would throw a ReferenceError only during a real multi-agent run while
   // every helper assertion above still passed.
   const metrics = { lines: 10, words: 50, non_heading_lines: 8, bytes: 400 };
-  const contract = { audience: 'a', inside: 'i', not_inside: 'n' };
   const manifest = {
     summary: { total_md: 3, canonical_missing: 0, unresolved_links: 0, orphans: 0 },
     files: [
-      { path: 'docs/CODING.md', classification: 'canonical', metrics, contract },
-      { path: 'AGENTS.md', classification: 'canonical', metrics, contract },
+      { path: 'docs/CODING.md', classification: 'canonical', canonical_name: 'CODING.md', metrics },
+      { path: 'AGENTS.md', classification: 'canonical-root', canonical_name: 'AGENTS.md', metrics },
       { path: 'docs/A.md', classification: 'non-standard', metrics },
       { path: '.claude.local.md', classification: 'personal-legacy', metrics },
     ],
@@ -350,7 +349,7 @@ async function main() {
 
   const runAudit = async (over = {}) => {
     // promptIndex and manifest are stub overrides for the scripts, not workflow arguments.
-    const { promptIndex: promptOverride, manifest: manifestOverride, evidence: evidenceOverride, labelWrite, dropFile, ...argOver } = over;
+    const { promptIndex: promptOverride, manifest: manifestOverride, evidence: evidenceOverride, labelWrite, dropFile, manifestFailures = 0, ...argOver } = over;
     const manifestForRun = manifestOverride || manifest;
     const labels = [];
     const prompts = [];
@@ -359,7 +358,12 @@ async function main() {
       labels.push(opts.label);
       prompts.push(prompt);
       calls.push(opts);
-      if (opts.label === 'manifest') return '```json\n' + JSON.stringify(manifestForRun) + '\n```';
+      if (opts.label.startsWith('manifest')) {
+        // A relay cut short, as a model retyping the JSON returns it.
+        const full = JSON.stringify(manifestForRun);
+        const attempt = labels.filter((l) => l.startsWith('manifest')).length;
+        return attempt <= manifestFailures ? full.slice(0, full.length - 20) : '```json\n' + full + '\n```';
+      }
       if (opts.label === 'history:extract') return JSON.stringify(promptOverride || promptIndex);
       if (opts.label === 'history:evidence') {
         return typeof evidenceOverride === 'string' ? evidenceOverride : JSON.stringify(evidenceOverride || evidence);
@@ -422,6 +426,21 @@ async function main() {
   truthy('cost: the manifest is requested in its brief form',
     deep.prompts[0].includes('--brief'));
 
+  // A model retyping the manifest has returned it cut short; one bad copy must not end the run.
+  truthy('manifest: a failed copy is retried at least once', MANIFEST_ATTEMPTS > 1, `got ${MANIFEST_ATTEMPTS}`);
+  const retried = await runAudit({ manifestFailures: MANIFEST_ATTEMPTS - 1 });
+  eq('manifest: a copy that does not parse is asked for again, up to the attempt limit',
+    ['manifest', ...Array.from({ length: MANIFEST_ATTEMPTS - 1 }, (_, i) => `manifest-${i + 2}`)],
+    retried.labels.filter((l) => l.startsWith('manifest')));
+  eq('manifest: the run goes on once a copy parses', 'minor gaps',
+    retried.ret && retried.ret.report && retried.ret.report.verdict);
+  const exhausted = await runAudit({ manifestFailures: MANIFEST_ATTEMPTS });
+  truthy('manifest: the run aborts once every attempt failed, and says how many',
+    exhausted.ret && new RegExp(`manifest parse failed after ${MANIFEST_ATTEMPTS} attempts`).test(exhausted.ret.error || ''),
+    `got ${JSON.stringify(exhausted.ret)}`);
+  eq('manifest: no review agent runs on an aborted manifest', [],
+    exhausted.labels.filter((l) => !l.startsWith('manifest')));
+
   // ── read-review prompts ──────────────────────────────────────────────────────
   truthy('read-review: the repo root reaches the batch prompt',
     reviewPrompts[0].includes('Repo root: /repo'));
@@ -430,6 +449,14 @@ async function main() {
   truthy('read-review: the authoring rules and hygiene rules are on the read list',
     reviewPrompts[0].includes('/std/references/project-doc-guidelines.md') &&
     reviewPrompts[0].includes('/std/../../references/writing-hygiene.md'));
+  // The contract text is no longer in the manifest, so the agent must read it itself.
+  truthy('read-review: the ownership contracts are on the read list',
+    reviewPrompts.every((p) => p.includes('  /std/references/project-setup.md\n')));
+  truthy('read-review: a canonical file is sent to the contract block headed by its path',
+    reviewPrompts[0].includes('headed `docs/CODING.md` in project-setup.md') &&
+    reviewPrompts[0].includes('headed `AGENTS.md` in project-setup.md'));
+  truthy('read-review: a non-standard file is judged for placement, not against a contract',
+    reviewPrompts[0].includes('NON-STANDARD doc') && !reviewPrompts[0].includes('headed `docs/A.md`'));
   truthy('read-review: the use-case doc is judged as doing the work, not auditing a file',
     reviewPrompts[0].includes('arrives wanting to create or edit a file in the source tree'));
   truthy('read-review: the route wording reaches the use-case section',
@@ -493,7 +520,7 @@ async function main() {
   const withDoc = await runAudit({
     manifest: {
       ...manifest,
-      files: [...manifest.files, { path: 'docs/DOCUMENTING.md', classification: 'canonical', metrics, contract }],
+      files: [...manifest.files, { path: 'docs/DOCUMENTING.md', classification: 'canonical', canonical_name: 'DOCUMENTING.md', metrics }],
     },
   });
   const withDocReview = withDoc.prompts.filter((_, i) => withDoc.labels[i].startsWith('review-'));
@@ -524,14 +551,13 @@ async function main() {
     manifest: {
       ...manifest,
       files: [...manifest.files,
-        { path: 'docs/decisions/0001-a.md', classification: 'decision', metrics, contract: null },
-        { path: 'docs/decisions/0002-b.md', classification: 'decision', metrics, contract: null }],
-      decision_contract: { audience: 'a', inside: 'one file per decision in force', not_inside: 'n' },
+        { path: 'docs/decisions/0001-a.md', classification: 'decision', canonical_name: 'decisions/', metrics },
+        { path: 'docs/decisions/0002-b.md', classification: 'decision', canonical_name: 'decisions/', metrics }],
     },
   });
   const treeReview = tree.prompts.filter((p, i) => tree.labels[i].startsWith('review-')).join('');
   eq('read-review: a batch states the decision-record contract once, not per record',
-    1, treeReview.split('one file per decision in force').length - 1);
+    1, treeReview.split('headed `docs/decisions/`').length - 1);
   eq('read-review: each record points at that contract',
     2, treeReview.split('Tree record: judge it against').length - 1);
   truthy('read-review: a record in another format is sent out of the tree, not cut down',
@@ -604,7 +630,7 @@ async function main() {
 
   // An unparseable manifest must abort with its own error, not proceed on garbage.
   const { ret: badManifest } = await load({
-    agent: async (_p, o) => (o.label === 'manifest' ? 'no json here' : null),
+    agent: async (_p, o) => (o.label.startsWith('manifest') ? 'no json here' : null),
     args: { repoRoot: '/repo', scriptsDir: '/s/scripts', standardDir: '/std', scratchDir: '/tmp/sc' },
     log: () => {},
     phase: () => {},
