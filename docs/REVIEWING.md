@@ -33,4 +33,4 @@ How a finished change must look. Each is a condition to check on the diff.
 ## Out of scope / non-blocking
 
 - Style-only findings. Shell style belongs to ShellCheck (`mise run lint`); markdown and JSON have no configured formatter, and reviews do not fill that gap by hand.
-- Anything the deterministic checkers already cover: cross-references and version lockstep (`mise run check-consistency`), route resolution (`validate-routes.py`), and the `CLAUDE.md` = `@AGENTS.md` contract and canonical inventory (`manifest.py`). No CI job runs the last two: on a diff that touches docs, run them with the commands in [TESTING.md](TESTING.md#docs-validation) rather than re-check by hand.
+- Anything the deterministic checkers already cover: cross-references and version lockstep (`mise run check-consistency`), route resolution (`validate-routes.py`), and the `CLAUDE.md` = `@AGENTS.md` contract and canonical inventory (`manifest.py`). On a diff that touches docs, run the last two locally ([TESTING.md](TESTING.md#docs-validation)) rather than re-check by hand.
