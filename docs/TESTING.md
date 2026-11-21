@@ -4,7 +4,7 @@ How to run this marketplace's automated suites and validators.
 
 ## mise tasks
 
-`.mise.toml` at the repo root is the single entry point; `mise tasks` lists the tasks and what each runs. `mise run pick-sessions -- <subcommand>` sets `SESSION_REVIEW_DIR` from `mise.local.toml` — the review procedure is in [MONITORING.md](MONITORING.md#run-a-review).
+`.mise.toml` at the repo root is the single entry point; `mise tasks` lists the tasks and what each runs. `mise run test` is the full suite and runs `tests/run-all.sh`; `mise run pick-sessions` serves the session review in [MONITORING.md](MONITORING.md#run-a-review).
 
 `bash`, `perl`, `python3`, `node`, `jq`, `rsync`, and `shellcheck` must already be on PATH: `.mise.toml` declares no `[tools]`, so mise runs the tasks but installs none of them. Absent `node`, the node-backed suites fail rather than skip. The plugin suite alone needs `claude` too ([Suites that skip](#suites-that-skip)).
 
@@ -13,7 +13,7 @@ How to run this marketplace's automated suites and validators.
 Suites live under `tests/` — [tests/README.md](../tests/README.md) has the layout and the path-resolution idiom.
 
 ```bash
-bash tests/run-all.sh                       # every suite, per-plugin and marketplace alike
+mise run test                               # every suite, per-plugin and marketplace alike
 bash tests/run-all.sh <plugin>              # one plugin
 bash tests/<plugin>/script-tests/test-x.sh  # one suite
 ```
@@ -23,7 +23,7 @@ bash tests/<plugin>/script-tests/test-x.sh  # one suite
 A suite is a `test-*.sh` under `tests/<plugin>/script-tests/` or `tests/marketplace/script-tests/`; `run-all.sh` discovers every `test-*.sh` at that depth. A plugin earns one when it ships committed bash, python, or JS helpers worth testing. Exit `0` on pass, `1` on failure, `77` to skip.
 
 - Model a new suite on [`test-manifest.sh`](../tests/project-review/script-tests/test-manifest.sh), resolving the script under test via `git rev-parse --show-toplevel`.
-- For a JS workflow script, write a `test-*.sh` wrapper that guards `node` on PATH and `exec node`s a sibling `test-*.js` — model it on [`test-review-docs.sh`](../tests/project-review/script-tests/test-review-docs.sh).
+- For a JS workflow script, write a `test-*.sh` wrapper that exits `1` where `node` is not on PATH and `exec node`s a sibling `test-*.js` — model it on [`test-review-docs.sh`](../tests/project-review/script-tests/test-review-docs.sh).
 
 ### Suites that skip
 
@@ -90,5 +90,3 @@ The `plugin-dev:plugin-validator` agent checks a plugin's manifest, component fr
 ```
 Validate the plugin at plugins/my-plugin
 ```
-
-The same plugin ships `plugin-dev:skill-reviewer`, a review aid for `SKILL.md` quality rather than a gate — see [REVIEWING.md](REVIEWING.md).

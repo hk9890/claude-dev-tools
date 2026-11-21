@@ -10,6 +10,8 @@ What a change to this plugin marketplace needs in order to work.
 4. Add a row to the plugin table in `README.md`, in `marketplace.json` order.
 5. Add its two-letter monogram to `MONOGRAMS` in `scripts/generate-plugin-icons.py`, and a colour to `CATEGORY_COLORS` for a new category, then run `python3 scripts/generate-plugin-icons.py`. It writes `.claude-plugin/icon.png`, the icon `claude plugin validate` asks for, and stops on a plugin it has no monogram, glyph or colour for.
 
+A plugin with an `output-styles/` directory, new or not, names it in `plugin.json` `"outputStyles"`.
+
 ## Renaming a plugin
 
 The new name obeys step 1 of [Adding a new plugin](#adding-a-new-plugin). Add the old-to-new entry to the top-level `renames` map in `.claude-plugin/marketplace.json`. Claude Code follows it when an installed name is no longer found and migrates the user's `enabledPlugins`; without it every existing install loses the plugin, and no gate catches the omission. Rename every `<old-name>:<skill>` reference and every `dependencies` entry that names the plugin: `mise run check-consistency` checks only references to plugins that exist, and nothing checks `dependencies`. Re-key its `MONOGRAMS` entry in `scripts/generate-plugin-icons.py` and run the generator; `test-plugin-icons.sh` fails on a name the map lacks. The release notes carry the rename ([RELEASING.md](RELEASING.md#release-notes)).
@@ -28,7 +30,7 @@ A canonical tree (`decisions/`) takes the same steps, with three differences. It
 
 ## Portability
 
-A plugin's skills, agents, and workflows run in whatever repository the user installs them into. Write them against what every project has — the working tree, git, the harness's own tools. What this rules out is the undeclared assumption: a skill that greps `plugins/`, hard-codes `mise`, or expects a `docs/` layout it never checks for.
+A plugin's skills, agents, and workflows run in whatever repository the user installs them into. Write them against what every project has — the working tree, git, the harness's own tools — never against a layout or a tool they do not check for, such as `plugins/`, a `docs/` tree, or `mise`.
 
 Depend on a specific technology only where the dependency is declared:
 
@@ -54,8 +56,10 @@ Every skill is loaded with a `Base directory for this skill: <absolute path>` li
 <base directory for this skill>/workflows/<the-file-you-need>
 ```
 
-- Check which of the two layouts holds the file ([OVERVIEW.md](OVERVIEW.md)). A workflow owned by one skill sits under that skill; one that two skills launch sits in the plugin-root `references/`, as `project-auto-work`'s `triage.js` does. Claude Code lists each file of a plugin-root `workflows/` in the skill listing of every session, so that folder holds only a workflow launched by name.
-- One shared beyond a single skill sits at the plugin root, reached with `<base directory for this skill>/../../<dir>/<file>`; say in the skill that the plugin-root layout applies, or the `../..` reads as a mistake. Shared content takes this layout rather than a skill of its own — a skill costs a row in every session's skill index. `html-visualization` is the worked example — its three mode skills all read `references/` and run `bin/server.js` from the plugin root, so each climbs `../..` from its own base directory; `instruction-writing` and `project-review` share `references/` the same way.
+- A file one skill owns sits under that skill; one shared by two or more skills sits at the plugin root ([OVERVIEW.md](OVERVIEW.md)), reached with `<base directory for this skill>/../../<dir>/<file>`. Shared content takes this layout rather than a skill of its own: a skill costs a row in every session's skill index.
+- Say in the skill that the plugin-root layout applies, or the `../..` reads as a mistake.
+- A workflow two skills launch sits in the plugin-root `references/`, as `project-auto-work`'s `triage.js` does. Claude Code lists each file of a plugin-root `workflows/` in the skill listing of every session, so that folder holds only a workflow launched by name.
+- `html-visualization` is the worked example — its three mode skills all read `references/` and run `bin/server.js` from the plugin root, so each climbs `../..` from its own base directory; `instruction-writing` and `project-review` share `references/` the same way.
 - Never `find` the plugin: it can select a stale cached version. Print the path you build ([State across `Bash` calls](#state-across-bash-calls)).
 - `$CLAUDE_PLUGIN_ROOT` is substituted in hook commands and `settings.json` only — it is not in a `Bash` call's environment.
 - Stop and tell the user when a needed file is missing; never improvise a path.
@@ -72,7 +76,7 @@ Every skill is loaded with a `Base directory for this skill: <absolute path>` li
 
 ### Copying another plugin's text
 
-Where a plugin needs text that another plugin owns and cannot reach it, it keeps a copy. Each copy names the other copies and the part they share, and says that a change to that part in one is a change to all; text around it can differ. `decision-split.md` in `project-review` and in `project-auto-work` is the worked example: each names the other, they share the settled/open table, which `test-shared-vocabulary.sh` pins, and each relays in its own way. No test checks a copy in prose, such as the relay lists that `worktree-review` step 5 copies.
+Where a plugin needs text that another plugin owns and cannot reach it, it keeps a copy. Each copy names the other copies and the part they share, and says that a change to that part in one is a change to all; text around it can differ. `decision-split.md` in `project-review` and in `project-auto-work` is the worked example: each names the other, they share the settled/open table, which `test-shared-vocabulary.sh` pins, and each relays in its own way. No test checks a copy in prose, such as the relay lists that the Report step of `worktree-review` copies.
 
 ## State across `Bash` calls
 
@@ -90,9 +94,9 @@ A mod is a plugin whose `hooks/hooks.json` names a hooks module under `modules`;
 - **Layout** — `hooks/hooks.json` holds `{ "modules": ["./register.ts"] }`, `.tsx` when the module draws. Tests go in `plugins/<plugin>/tests/*.test.ts`, where `claude plugin test` reads them ([TESTING.md](TESTING.md)). A module that keeps `$.state` values declares them in `types/index.d.ts`, named in `plugin.json` as `"types"`.
 - **One code path** — a behaviour moves to the module whole: delete the settings hook and its `bin/` script in the same change.
 - **Validate early** — run `claude plugin validate --strict plugins/<plugin>` after every edit ([TESTING.md](TESTING.md#mod-tests--claude-plugin-test)). It refuses an event name that is not a string literal, a `$` call not written in full (`$.ui.status(...)`, never `const ui = $.ui`), and `$` passed anywhere but a top-level function of the same file.
-- **Footprint** — a mod runs unsandboxed, so reach only the `$` namespaces the feature needs; the `calls:` line `claude plugin validate` prints is the footprint a user audits before installing.
 - **Where nothing draws** — panes and the status line show in the terminal and the desktop app only. Do not settle it at `session.start`: the desktop app joins after it, with a `session.attach` event, and can leave. Read `$.session.surfaces()` when the feature runs: `tasks` does at each `/tasks-board` and answers as text where neither is attached.
-- **Command names** — a name registered with `$.command.register` is global. Lead it with the plugin's domain word (`tasks-board`); `/tasks` is Claude Code's own.
+- **Command names** — a name registered with `$.command.register` is global, and `/tasks` is Claude Code's own.
+- **Footprint and naming** — the rules are in [REVIEWING.md](REVIEWING.md#quality-rules).
 - **Generated files** — a `--plugin-dir` load writes `.claude-plugin/types/` and `tsconfig.json` into the plugin; both are gitignored. After one such load, `npx -p typescript tsc -p plugins/<plugin>` type-checks the module and its tests.
 
 ## SKILL.md conventions
@@ -138,4 +142,4 @@ Declare `argument-hint` and consume `$ARGUMENTS` together, or the skill advertis
 argument-hint: "[what-to-review]"
 ```
 
-State what an empty argument does — default it ("with no argument, review the whole test suite") or ask.
+What an empty argument must do is a quality rule in [REVIEWING.md](REVIEWING.md#quality-rules).
