@@ -6,7 +6,8 @@
 #   - live: full repo scan exits 0 and resolves at least one real reference
 #   - fail/section: bogus "Phrase section in file.md" reference exits non-zero
 #   - fail/version: desynced plugin.json version exits non-zero
-#   - full scans of Checks A and E read tracked files only, filtered below the root
+#   - full scans of Checks A and E read the files git lists (tracked, or untracked
+#     and not ignored), filtered below the root
 set -uo pipefail
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
@@ -326,56 +327,65 @@ test_skill_ref_ignores_foreign() {
       --skip-sections --skip-versions --skip-descriptions --skip-uniformity
 }
 
-# 18. Skill refs: a full scan reads what git tracks, not what sits on disk.
+# 18. Skill refs: a full scan reads what git lists, not what sits on disk.
 #     Regression: walking the filesystem also read sibling checkouts under
 #     .claude/worktrees/ and globally-ignored scratch directories, so a stale
 #     reference in either failed a check about this tree. CI never saw it — a
 #     fresh clone has neither.
-test_skill_ref_scans_tracked_only() {
+test_skill_ref_scans_listed_only() {
   local tmp_dir
   tmp_dir=$(mktemp -d) || { printf 'FAIL: mktemp -d unavailable — fixture not built\n'; exit 1; }
   mkdir -p "$tmp_dir/plugins/tasks/skills/tasks-core"
   printf -- '---\nname: tasks-core\n---\n' > "$tmp_dir/plugins/tasks/skills/tasks-core/SKILL.md"
   printf '# tracked\n\nLoad `tasks:tasks-core`.\n' > "$tmp_dir/tracked.md"
+  printf 'scratch/\n' > "$tmp_dir/.gitignore"
   git -C "$tmp_dir" init -q
   git -C "$tmp_dir" add -A
-  # Untracked, and it names a skill that does not exist.
-  printf '# untracked\n\nLoad `tasks:tasks-gone`.\n' > "$tmp_dir/untracked.md"
+  # A nested checkout and an ignored directory, each with a reference that does not resolve.
+  git init -q "$tmp_dir/.claude/worktrees/old"
+  printf '# stale\n\nLoad `tasks:tasks-gone`.\n' > "$tmp_dir/.claude/worktrees/old/stale.md"
+  mkdir -p "$tmp_dir/scratch"
+  printf '# stale\n\nLoad `tasks:tasks-gone`.\n' > "$tmp_dir/scratch/note.md"
 
-  assert_exit "skill-ref-tracked: untracked markdown is not scanned" 0 \
+  assert_exit "skill-ref-listed: nested checkout and ignored markdown are not scanned" 0 \
     python3 "$SCRIPT" --repo-root "$tmp_dir" \
       --skip-sections --skip-versions --skip-descriptions --skip-uniformity
 
-  # Tracking the same file must fail, or the assertion above would also pass
+  # A new doc not yet added must fail, or the assertion above would also pass
   # against a check that scanned nothing at all.
-  git -C "$tmp_dir" add untracked.md
-  assert_exit "skill-ref-tracked: the same file tracked is scanned and fails" 1 \
+  printf '# stale\n\nLoad `tasks:tasks-gone`.\n' > "$tmp_dir/new.md"
+  assert_exit "skill-ref-listed: an untracked doc that is not ignored is scanned and fails" 1 \
     python3 "$SCRIPT" --repo-root "$tmp_dir" \
       --skip-sections --skip-versions --skip-descriptions --skip-uniformity
 
   rm -rf "$tmp_dir"
 }
 
-# 19. Section refs: a full scan reads what git tracks, as Check E does (test 18).
+# 19. Section refs: a full scan reads what git lists, as Check E does (test 18).
 #     Regression: Check A walked the filesystem, so a stale reference in a
 #     sibling checkout under .claude/worktrees/ failed a check about this tree.
-test_section_ref_scans_tracked_only() {
+test_section_ref_scans_listed_only() {
   local tmp_dir
   tmp_dir=$(mktemp -d) || { printf 'FAIL: mktemp -d unavailable — fixture not built\n'; exit 1; }
   printf '# Guide\n\n## Quick Start\n' > "$tmp_dir/guide.md"
   printf '# Ref\n\nSee the Quick Start section in guide.md.\n' > "$tmp_dir/tracked.md"
+  printf 'scratch/\n' > "$tmp_dir/.gitignore"
   git -C "$tmp_dir" init -q
   git -C "$tmp_dir" add -A
-  # Untracked, in a sibling worktree, and its section does not exist.
-  mkdir -p "$tmp_dir/.claude/worktrees/old"
+  # A nested checkout and an ignored directory, each with a reference that does not resolve.
+  git init -q "$tmp_dir/.claude/worktrees/old"
   printf '# Ref\n\nSee the Gone Away section in guide.md.\n' > "$tmp_dir/.claude/worktrees/old/stale.md"
+  mkdir -p "$tmp_dir/scratch"
+  printf '# Ref\n\nSee the Gone Away section in guide.md.\n' > "$tmp_dir/scratch/note.md"
 
-  assert_exit "section-ref-tracked: untracked markdown is not scanned" 0 \
+  assert_exit "section-ref-listed: nested checkout and ignored markdown are not scanned" 0 \
     python3 "$SCRIPT" --repo-root "$tmp_dir" \
       --skip-versions --skip-descriptions --skip-uniformity --skip-skill-refs
 
-  git -C "$tmp_dir" add -f .claude/worktrees/old/stale.md
-  assert_exit "section-ref-tracked: the same file tracked is scanned and fails" 1 \
+  # A new doc not yet added must fail, or the assertion above would also pass
+  # against a check that scanned nothing at all.
+  printf '# Ref\n\nSee the Gone Away section in guide.md.\n' > "$tmp_dir/new.md"
+  assert_exit "section-ref-listed: an untracked doc that is not ignored is scanned and fails" 1 \
     python3 "$SCRIPT" --repo-root "$tmp_dir" \
       --skip-versions --skip-descriptions --skip-uniformity --skip-skill-refs
 
@@ -462,8 +472,8 @@ test_skill_ref_fails
 test_skill_ref_message
 test_skill_ref_passes
 test_skill_ref_ignores_foreign
-test_skill_ref_scans_tracked_only
-test_section_ref_scans_tracked_only
+test_skill_ref_scans_listed_only
+test_section_ref_scans_listed_only
 test_section_ref_under_notes_parent
 test_section_ref_skips_deleted_tracked
 test_section_ref_walks_untracked_nested_root

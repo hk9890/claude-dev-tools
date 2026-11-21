@@ -10,7 +10,8 @@ Usage:
 Exits 0 if all checks pass, non-zero if any check fails.
 
 Check A — section references:
-    Scans the markdown files git tracks for anchored prose patterns of the form
+    Scans the markdown files git lists, tracked or untracked and not ignored, for
+    anchored prose patterns of the form
     "<Phrase> section in <file>.md" or "<file>.md's <Phrase> section". For each
     match, resolves <file>.md relative to the referencing file (then falls back to
     repo root) and checks whether <Phrase> matches a heading in that file by:
@@ -18,7 +19,9 @@ Check A — section references:
       (b) case-insensitive substring match of <Phrase> against heading text.
     Unresolved reference => FAIL with file:line. Skips content inside fenced code
     blocks and inline code spans. Skips any file whose path below the repo root
-    contains an examples/ or notes/ directory segment.
+    contains an examples/ or notes/ directory segment. Where --repo-root is not
+    the top of a git checkout, walks the tree instead, skipping .git, .tasks,
+    node_modules and output directories.
 
     The heading-scan, inline-code, and GitHub heading-slug helpers are imported
     from validate-routes.py (not copied) via importlib.
@@ -478,14 +481,16 @@ def _skill_ref_resolves(repo_root, plugin, name):
     return os.path.isfile(skill) or os.path.isfile(agent)
 
 
-def _tracked_markdown(repo_root):
-    """Markdown files git tracks, or None when repo_root is not the top of a git checkout.
+def _git_markdown(repo_root):
+    """Markdown files git tracks or would track, or None when repo_root is not the top of a git checkout.
 
     Asking git is what keeps the scan to this tree's own sources. Walking the
     filesystem also reads whatever happens to sit under the root but belongs to
     something else — a sibling checkout under .claude/worktrees/ holding an older
     state, a scratch directory covered by a global gitignore, a build output tree
     — and a stale reference in any of them would fail a check about this tree.
+    git lists no file inside a nested checkout and no ignored file, but it does
+    list a new doc not yet added, so a broken reference fails before it is staged.
 
     A root inside a checkout that does not track it is not a checkout of its own,
     so it gets None and the caller walks it. A tracked file gone from disk is
@@ -496,7 +501,8 @@ def _tracked_markdown(repo_root):
             ["git", "-C", repo_root, "rev-parse", "--show-toplevel"],
             capture_output=True, text=True, check=True).stdout.strip()
         listed = subprocess.run(
-            ["git", "-C", repo_root, "ls-files", "-z"],
+            ["git", "-C", repo_root, "ls-files", "-z", "--cached", "--others",
+             "--exclude-standard"],
             capture_output=True, check=True).stdout
     except (OSError, subprocess.CalledProcessError):
         return None
@@ -521,12 +527,12 @@ def _walked_markdown(repo_root):
 def _repo_markdown(repo_root):
     """Markdown files of this tree that Checks A and E scan.
 
-    Tracked files only; --repo-root may name a tree git does not track, so fall
+    The files git lists; --repo-root may name a tree git does not track, so fall
     back to a walk there. examples/ and notes/ are left out, matched on the path
     below repo_root: a fixture there is deliberately wrong, and a scan that read
     it would fail on the very file written to prove a check fails.
     """
-    found = _tracked_markdown(repo_root)
+    found = _git_markdown(repo_root)
     if found is None:
         found = _walked_markdown(repo_root)
     return [p for p in found
