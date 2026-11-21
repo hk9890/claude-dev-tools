@@ -23,6 +23,6 @@ Every applicable gate must pass before each push to a branch. Each is named for 
 Every change lands through a PR:
 
 1. Branch off `master` per the convention above.
-2. Run every applicable gate, then push the branch to `origin` and open a PR.
+2. Push the branch to `origin` and open a PR.
 3. Review it: call the Skill tool with `worktree-flow:worktree-review` and the argument `<pr>`, against [REVIEWING.md](REVIEWING.md); `/worktree-flow:worktree-ship` runs it.
-4. Merge once all five CI jobs are green ([TESTING.md](TESTING.md)), with `gh pr merge <pr> --merge`, or ask the user to run `/worktree-flow:worktree-merge <pr>`, which also removes the worktree and the merged branches.
+4. Stop at the reviewed PR: the user merges it once all five CI jobs are green ([TESTING.md](TESTING.md)), with `/worktree-flow:worktree-merge <pr>`, which also removes the worktree and the merged branches, or with `gh pr merge <pr> --merge --match-head-commit <reviewed-sha>`.

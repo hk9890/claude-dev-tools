@@ -5,10 +5,12 @@ What a change to this plugin marketplace needs in order to work.
 ## Adding a new plugin
 
 1. Create `plugins/<plugin-name>/` with the layout in [OVERVIEW.md](OVERVIEW.md). Name it for what it does: `claude plugin validate` refuses a name that starts with `claude-`, `anthropic-` or `cc-plugin-`.
-2. Write `.claude-plugin/plugin.json` with `name`, `version`, `description`, `author`, and `"outputStyles"` naming an `output-styles/` directory where the plugin has one. Set `version` to whatever `.claude-plugin/marketplace.json` `metadata.version` already carries, not `1.0.0` — all plugins ship in lockstep under one repo tag ([RELEASING.md](RELEASING.md)), and `mise run check-consistency` fails on a second distinct version string.
+2. Write `.claude-plugin/plugin.json` with `name`, `version`, `description`, `author`. Set `version` to whatever `.claude-plugin/marketplace.json` `metadata.version` already carries, not `1.0.0` — all plugins ship in lockstep under one repo tag ([RELEASING.md](RELEASING.md)), and `mise run check-consistency` fails on a second distinct version string.
 3. Register it in `.claude-plugin/marketplace.json` under `plugins` with `name`, `source`, `description`, `version`, `author`, `category`, `keywords`. `description` must be **byte-identical** to `plugin.json`'s and `version` must match it — the CI `consistency` job compares both.
 4. Add a row to the plugin table in `README.md`, in `marketplace.json` order.
 5. Add its two-letter monogram to `MONOGRAMS` in `scripts/generate-plugin-icons.py`, and a colour to `CATEGORY_COLORS` for a new category, then run `python3 scripts/generate-plugin-icons.py`. It writes `.claude-plugin/icon.png`, the icon `claude plugin validate` asks for, and stops on a plugin it has no monogram, glyph or colour for.
+
+A plugin with an `output-styles/` directory, new or not, names it in `plugin.json` `"outputStyles"`.
 
 ## Renaming a plugin
 
@@ -28,7 +30,7 @@ A canonical tree (`decisions/`) takes the same steps, with three differences. It
 
 ## Portability
 
-A plugin's skills, agents, and workflows run in whatever repository the user installs them into. Write them against what every project has — the working tree, git, the harness's own tools — never against a layout they do not check for, such as `plugins/`, `mise` or a `docs/` tree.
+A plugin's skills, agents, and workflows run in whatever repository the user installs them into. Write them against what every project has — the working tree, git, the harness's own tools — never against a layout or a tool they do not check for, such as `plugins/`, a `docs/` tree, or `mise`.
 
 Depend on a specific technology only where the dependency is declared:
 
