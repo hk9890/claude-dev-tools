@@ -29,12 +29,15 @@ Read, in this order:
 A rule binds from whichever of these documents states it: a quality rule that sits in
 `CODING.md` is checked like one in `REVIEWING.md`.
 
+Where `CLAUDE.local.md` imports a private `AGENTS.md`, the documents it routes to are part
+of the standard too, and a finding from them is handled like any other.
+
 A project that names its documents differently gets the same split applied to whatever
 `AGENTS.md` routes to: a document stating rules a change can break is part of the
 standard, a document telling an operator how to run something is not (`docs/RUNNING.md`,
 `docs/MONITORING.md`).
 
-Where no such document exists, or `AGENTS.md` routes to nothing: report that there is no
+Where no such document exists, private ones included, or `AGENTS.md` routes to nothing: report that there is no
 standard to measure against, and stop. Never fall back to the patterns in the code —
 that is the consistency dimension of `project-review-codebase`, not this.
 

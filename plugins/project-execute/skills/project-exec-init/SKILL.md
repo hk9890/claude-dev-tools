@@ -1,13 +1,21 @@
 ---
 name: project-exec-init
-description: "Set up the project's agent-facing doc set: write the steering files plus the topic docs the repo has earned."
+description: "Set up the project's agent-facing doc set: write the steering files plus the topic docs the repo has earned, or set up its private layout for a repo you cannot commit to."
 user-invocable: true
 disable-model-invocation: true
+argument-hint: "[private [write]]"
 ---
 
 **Set up this project's agent-facing docs.** Write the canonical files the project is missing, drafted from what the repo already does.
 
-Write only files that are absent. A file that already exists stays exactly as it is, whatever it contains — step 4 reports it instead.
+Write only files that are absent. A file that already exists stays exactly as it is, whatever it contains — step 4 reports it instead. The one exception is the route lines that private mode adds to `<private>/AGENTS.md`.
+
+**Mode** — from `$ARGUMENTS`:
+
+- With no argument: the repository's own doc set. Run steps 1–4.
+- `private`: the setup of the standard's private layout alone, for a repository the user cannot commit to. Run [Private setup](#private-setup) and stop: write no doc.
+- `private write`: the private setup, then steps 1–4 in [private mode](#private-mode), which write the doc set into the private folder.
+- Any other argument: name these three forms, and stop.
 
 ## 1. Load the standard
 
@@ -55,3 +63,28 @@ A new `AGENTS.md` routes the whole set — the docs you just wrote and the ones 
 - Every decision the evidence earned that step 3 did not write, with the reason: records already in `docs/decisions/`, or the home of records in another format it found.
 - Every new topic doc or `docs/decisions/` folder an existing `AGENTS.md` does not route, with the `MUST read` route line to add.
 - Every existing file whose content breaches its contract in the standard — the file and what is off about it. These were left untouched: say so, and tell the user to run `/project-review:project-review-docs` for the full audit — a separate plugin, so mention it may need installing — and name `instruction-writing:writing-project-docs` for the fix.
+
+## Private setup
+
+Run the setup script from the directory you are in. `<base directory for this skill>` is the line given at the top of this file when the skill loads:
+
+```bash
+bash "<base directory for this skill>/scripts/private-setup.sh"
+```
+
+Where it exits 2, the checkout has no private folder yet, and the user names one. Ask for the folder name, and suggest one: the folder the user's own instructions name for private or scratch files, else `private-docs`. Use only the name the user confirms or gives, and run the script again with it:
+
+```bash
+bash "<base directory for this skill>/scripts/private-setup.sh" <folder>
+```
+
+Where it exits non-zero otherwise, relay its `error:` line, or the shell's message where it prints none, and stop. Otherwise relay its lines, and tell the user to start a new session in this checkout, and to approve the external-import dialog where Claude Code shows one: a declined import stays off. Then go on to step 1 for `private write`, or stop.
+
+## Private mode
+
+Private mode changes steps 1–4 in four places. `<private>` is `<git toplevel>/<folder>`: `<git toplevel>` is what `git rev-parse --show-toplevel` prints, and `<folder>` stands on the setup's last line, `folder  <folder>`:
+
+- The standard's *Private layout* section governs where each file goes.
+- Step 2 reads the repository's own `AGENTS.md`, `CLAUDE.md` and `docs/` as the base, and `<private>/AGENTS.md` and the files under `<private>/docs/` as **Present**, and its decision-record note reads `<private>/docs/decisions/`. A topic is earned only for what the base lacks.
+- Step 3 writes topic docs and decision records into `<private>/docs/` and never `README.md` or `CLAUDE.md`. Add the route of each new doc to `<private>/AGENTS.md`, leave its other lines as they are, and commit the result in the `<private>` repository.
+- Step 4 checks routes in `<private>/AGENTS.md` only, and names `/project-review:project-review-docs <private>` for the full audit.

@@ -56,7 +56,7 @@ Content outside a file's boundary is a defect even when every statement in it is
 
 - **Inside**: personal/local context — Claude preferences, machine-specific paths, scratch notes.
 - **Not inside**: shared/team guidance, routing, anything the canonical doc flows write.
-- Gitignored; never written by canonical doc flows (the user edits it directly). Surfaced by the reviewer's `manifest.py` (classification `personal-local`). A `.claude.local.md` is the same file under a name Claude Code never loads: `manifest.py` classes it `personal-legacy`, and the fix moves its notes into `CLAUDE.local.md` (merged where that file exists) and keeps `CLAUDE.local.md` in `.gitignore`.
+- Gitignored; never written by canonical doc flows (the user edits it directly), except the private layout's import line, which `/project-exec-init private` adds. Surfaced by the reviewer's `manifest.py` (classification `personal-local`). A `.claude.local.md` is the same file under a name Claude Code never loads: `manifest.py` classes it `personal-legacy`, and the fix moves its notes into `CLAUDE.local.md` (merged where that file exists) and keeps `CLAUDE.local.md` in `.gitignore`.
 - Present only in the checkout that holds it, so a git worktree starts without it. List `CLAUDE.local.md` in a committed `.worktreeinclude`: Claude Code then copies it into each worktree it creates with git (a `WorktreeCreate` hook copies it itself). Each copy is a snapshot; for notes that stay the same in every checkout, keep them in a file under your home directory and make `CLAUDE.local.md` the one line `@~/<that file>`, so every copy imports the same notes. Approve the external-import dialog Claude Code shows the first time: a declined import stays off.
 
 ### `README.md`
@@ -79,7 +79,7 @@ Content outside a file's boundary is a defect even when every statement in it is
 - **Stays small.** It routes and nothing else: the summary plus one entry per use case. Anything a route's destination could hold belongs in that destination. A routing file that grows procedures stops being scannable at the moment it is needed most — the first seconds of a task.
 - **Inside**: a 2–3 sentence project summary and task → doc/skill routes, every one of them an obligation.
 - **Not inside**: full procedures, README-style prose, content duplicated from the docs it routes to.
-- **No optional routes** (*Obligation*): a use case with a doc behind it reads `MUST read <doc> before <the action that triggers it>` — a release loads `RELEASING.md` first, touching a source file loads `CODING.md` first, searching the repo loads `OVERVIEW.md` first. A preamble states once that loading afterwards does not count. "Load X to understand Y" is advisory phrasing and is a finding.
+- **No optional routes** (*Obligation*): a use case with a doc behind it reads `MUST read <doc> before <the action that triggers it>` — a release loads `RELEASING.md` first, touching a source file loads `CODING.md` first, searching the repo loads `OVERVIEW.md` first. A preamble states once that loading afterwards does not count; the one in `examples/AGENTS.md` has a copy in `project-execute`'s `project-exec-init/scripts/private-setup.sh`, and a change to one is a change to both. "Load X to understand Y" is advisory phrasing and is a finding.
 - **Conformance** (checked against the example): one `###` section per use case, each naming the doc/skill to load, the action that triggers it, and a one-line reason; skip hollow entries; where no local doc exists, route to an installed skill as `MUST call the Skill tool with <plugin:skill> before <the action that triggers it>`, or, for a skill only the user can start (`disable-model-invocation: true`), as `MUST ask the user to run /<plugin:skill> before <the action that triggers it>`.
 - Example: [../examples/AGENTS.md](../examples/AGENTS.md)
 
@@ -174,3 +174,21 @@ Content outside a file's boundary is a defect even when every statement in it is
 | Topic docs | `docs/` |
 
 - Every route in `AGENTS.md` must point to a real file, the `docs/decisions/` folder, or an installed skill; flag stale routes left behind after merges or deletions.
+
+## Private layout
+
+The same set for a repository the user cannot commit to, kept in files git never sees. `<private>` is a folder the user names; `/project-execute:project-exec-init private` asks for it and sets the layout up. The import in `CLAUDE.local.md` is what makes a folder private, and the only record of its name.
+
+| File | Holds |
+|---|---|
+| `CLAUDE.local.md` | the line `@<absolute path of the checkout>/<private>/AGENTS.md`, beside any personal notes. Absolute, because a worktree gets a copy of this file and a relative import there resolves inside the worktree, which has no `<private>/` |
+| `.worktreeinclude` | the line `CLAUDE.local.md`, so each worktree Claude Code creates gets the import. A committed one that already lists it does the job |
+| `<private>/AGENTS.md` | the routing, under the `AGENTS.md` contract. The one required file |
+| `<private>/docs/<TOPIC>.md` | the topic docs, under the canonical names and contracts |
+| `<private>/docs/decisions/` | the decision records, under the `docs/decisions/` contract, numbered in the `<private>` repository |
+
+- **A delta.** The repository's own `AGENTS.md`, `CLAUDE.md` and `docs/` load or route as they are, and stay unchanged. A private doc holds only what they lack, and links to the repository file it builds on (`[the coding rules](../../docs/CODING.md)`) rather than repeat it.
+- **Links resolve from the file that holds them.** Claude Code shows an imported file with its absolute path, so a link in `<private>/AGENTS.md` reaches the checkout's `<private>/docs/` from a worktree too. A link into the repository reaches the main checkout's copy, so in a worktree read that file in the worktree.
+- **Ignored outside the repository.** `CLAUDE.local.md` and `<private>/` are in the user's global gitignore. `.worktreeinclude` is there or in the checkout's `.git/info/exclude`, where the setup adds it. None of them goes in the repository's `.gitignore`.
+- **Versioned locally.** `<private>/` is its own git repository with no remote.
+- **Scratch beside the set.** Every other file at the top of `<private>/` is outside the set.

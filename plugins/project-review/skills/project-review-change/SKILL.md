@@ -64,8 +64,9 @@ subject's commits. With `--fix`, step 5 then applies the fixes it settled.
    so now, with the reason.
 
    A subject whose tree (the working tree for a subject checked out here, else `<head>`)
-   has neither `AGENTS.md` nor `CLAUDE.md`, or no document they route to, has no standard
-   to measure against: say so and stop.
+   has neither `AGENTS.md` nor `CLAUDE.md`, or no document they route to, and whose
+   `CLAUDE.local.md` imports no private `AGENTS.md`, has no standard to measure against:
+   say so and stop.
 
    Done when you can name the subject in one sentence, list the files it touches, and say
    whether it is checked out here and whether `--fix` still holds.
