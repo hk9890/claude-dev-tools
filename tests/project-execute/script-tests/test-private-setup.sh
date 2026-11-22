@@ -78,11 +78,24 @@ test_existing_notes() {
 
 test_not_ignored() {
   local dir; dir=$(make_repo)
-  printf 'CLAUDE.local.md\nmy-notes/\n' > "$SANDBOX/ignore"
+  printf 'CLAUDE.local.md\n.worktreeinclude\n' > "$SANDBOX/ignore"
   local code=0; run_in "$dir" >/dev/null 2>&1 || code=$?
   printf 'CLAUDE.local.md\n.worktreeinclude\nmy-notes/\n' > "$SANDBOX/ignore"
   assert_eq "not ignored: exit 1" "1" "$code"
   assert_eq "not ignored: nothing written" "no" "$([[ -e "$dir/my-notes" || -e "$dir/CLAUDE.local.md" || -e "$dir/.worktreeinclude" ]] && echo yes || echo no)"
+}
+
+test_worktreeinclude_excluded() {
+  local dir; dir=$(make_repo)
+  printf 'CLAUDE.local.md\nmy-notes/\n' > "$SANDBOX/ignore"
+  local code=0; run_in "$dir" >/dev/null 2>&1 || code=$?
+  run_in "$dir" >/dev/null 2>&1 || code=$?
+  printf 'CLAUDE.local.md\n.worktreeinclude\nmy-notes/\n' > "$SANDBOX/ignore"
+  assert_eq "exclude: setup and rerun succeed" "0" "$code"
+  assert_eq "exclude: one line in .git/info/exclude" "1" "$(grep -c '^\.worktreeinclude$' "$dir/.git/info/exclude")"
+  printf 'CLAUDE.local.md\nmy-notes/\n' > "$SANDBOX/ignore"
+  assert_eq "exclude: the checkout stays clean" "" "$(git -C "$dir" status --porcelain)"
+  printf 'CLAUDE.local.md\n.worktreeinclude\nmy-notes/\n' > "$SANDBOX/ignore"
 }
 
 commit_worktreeinclude() {
@@ -151,6 +164,7 @@ test_setup
 test_name_needed
 test_existing_notes
 test_not_ignored
+test_worktreeinclude_excluded
 test_tracked
 test_tolerant_match
 test_agents_ignored_globally

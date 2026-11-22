@@ -57,12 +57,21 @@ if tracked .worktreeinclude; then
   include_done=yes
 fi
 
-for path in CLAUDE.local.md .worktreeinclude "$folder/AGENTS.md"; do
-  [[ "$path" == .worktreeinclude && "$include_done" == yes ]] && continue
+for path in CLAUDE.local.md "$folder/AGENTS.md"; do
   tracked "$path" && fail "$path is tracked by this repository, so the private layout cannot write it"
   git check-ignore -q --no-index "$path" \
     || fail "git does not ignore $path here: add ${path%%/*}$([[ "$path" == */* ]] && echo /) to your global gitignore (core.excludesFile), never to this repository's .gitignore"
 done
+
+if [[ "$include_done" == no ]] && ! git check-ignore -q --no-index .worktreeinclude; then
+  exclude=$(git rev-parse --git-path info/exclude)
+  mkdir -p "$(dirname "$exclude")"
+  if [[ -s "$exclude" && -n "$(tail -c 1 "$exclude")" ]]; then echo >> "$exclude"; fi
+  printf '.worktreeinclude\n' >> "$exclude"
+  git check-ignore -q --no-index .worktreeinclude \
+    || fail "this repository's .gitignore keeps .worktreeinclude visible to git, so the private layout cannot add it"
+  echo "added   .worktreeinclude to $exclude"
+fi
 
 import="@$top/$folder/AGENTS.md"
 
@@ -70,6 +79,8 @@ mkdir -p "$folder/docs"
 if [[ -f "$folder/AGENTS.md" ]]; then
   echo "kept    $folder/AGENTS.md"
 else
+  # The "Every route below" line copies the one in writing-project-docs' examples/AGENTS.md
+  # (instruction-writing): a change to one is a change to both.
   cat > "$folder/AGENTS.md" <<EOF
 # AGENTS.md — $(basename "$top") private routing
 
