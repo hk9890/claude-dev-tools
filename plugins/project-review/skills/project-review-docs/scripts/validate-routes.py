@@ -459,7 +459,11 @@ def main():
                 docs_dir = os.path.join(repo_root, "docs")
                 if os.path.isdir(docs_dir):
                     md_count = sum(
-                        1 for f in os.listdir(docs_dir) if f.endswith(".md")
+                        1
+                        for d in (docs_dir, os.path.join(docs_dir, "decisions"))
+                        if os.path.isdir(d)
+                        for f in os.listdir(d)
+                        if f.endswith(".md")
                     )
                     if md_count:
                         scanned.append(f"docs/ ({md_count} .md file(s), no refs)")

@@ -341,6 +341,11 @@ test_nothing_to_check_include_docs() {
   assert_contains "nothing-to-check-docs: 'No references found'" "No references found" "$out"
   assert_contains "nothing-to-check-docs: docs/ count shown" "docs/ (2 .md file(s)" "$out"
 
+  mkdir -p "$dir/docs/decisions"
+  printf '# 0001: A\n\nWhy.\n' > "$dir/docs/decisions/0001-a.md"
+  out=$(python3 "$SCRIPT" "$dir" --include-docs 2>&1)
+  assert_contains "nothing-to-check-docs: the count holds the decision records" "docs/ (3 .md file(s)" "$out"
+
   rm -rf "$dir"
 }
 
