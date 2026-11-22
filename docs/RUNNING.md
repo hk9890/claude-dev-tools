@@ -19,7 +19,7 @@ An agent drives the plugins with the first form — `-p` writes the reply to std
 - **Mods** — load the one plugin with `claude -p "<prompt>" --plugin-dir plugins/<plugin> --debug-file <file>`; the debug file has a `hooks module <plugin>@inline loaded` line and a line for every hook the engine skipped. [OVERVIEW.md](OVERVIEW.md) has the expression that lists the mods. Then confirm the effect:
   - `keep-awake-linux` — send any prompt and find `$.process.spawn (keep-awake-linux): systemd-inhibit` in the debug file. `claude -p "/keep-awake-info" --plugin-dir plugins/keep-awake-linux` lists the blocks of the other sessions alone: a command starts no turn, so that run holds none.
   - `tasks` — `claude -p "/tasks-board" --plugin-dir plugins/tasks` prints the board as text — a first line `tasks: In progress (N)`, then the `Ready` and `Blocked` groups — because no pane can draw under `-p`.
-  - `worktree-flow` — launch with `--permission-mode bypassPermissions` and `--output-format stream-json --verbose`: in the default mode the permission layer stops step 3 with `This command requires approval`.
+  - `worktree-flow` — launch with `--plugin-dir <repo root>/plugins/worktree-flow`, `--permission-mode bypassPermissions` and `--output-format stream-json --verbose`: in the default mode the permission layer stops step 3 with `This command requires approval`.
     1. Make two throwaway repositories (`git init` in the scratchpad, with one commit each) and run from the first, so a guard that fails adds nothing to this one.
     2. Ask for `git worktree add ../x`: its `tool_result` starts `Use the EnterWorktree tool for a persistent worktree`.
     3. Ask for `git -C <the second repository> worktree add wt -b <branch>`: its result holds `Preparing worktree`.
