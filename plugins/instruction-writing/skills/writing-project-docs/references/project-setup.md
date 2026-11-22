@@ -185,6 +185,7 @@ The same set for a repository the user cannot commit to, kept in files git never
 | `.worktreeinclude` | the line `CLAUDE.local.md`, so each worktree Claude Code creates gets the import. A committed one that already lists it does the job |
 | `<private>/AGENTS.md` | the routing, under the `AGENTS.md` contract. The one required file |
 | `<private>/docs/<TOPIC>.md` | the topic docs, under the canonical names and contracts |
+| `<private>/docs/decisions/` | the decision records, under the `docs/decisions/` contract, numbered in the `<private>` repository |
 
 - **A delta.** The repository's own `AGENTS.md`, `CLAUDE.md` and `docs/` load or route as they are, and stay unchanged. A private doc holds only what they lack, and links to the repository file it builds on (`[the coding rules](../../docs/CODING.md)`) rather than repeat it.
 - **Links resolve from the file that holds them.** Claude Code shows an imported file with its absolute path, so a link in `<private>/AGENTS.md` reaches the checkout's `<private>/docs/` from a worktree too. A link into the repository reaches the main checkout's copy, so in a worktree read that file in the worktree.

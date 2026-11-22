@@ -85,6 +85,6 @@ Where it exits non-zero otherwise, relay its `error:` line, or the shell's messa
 Private mode changes steps 1–4 in four places. `<private>` is `<git toplevel>/<folder>`: `<git toplevel>` is what `git rev-parse --show-toplevel` prints, and `<folder>` stands on the setup's last line, `folder  <folder>`:
 
 - The standard's *Private layout* section governs where each file goes.
-- Step 2 reads the repository's own `AGENTS.md`, `CLAUDE.md` and `docs/` as the base, and `<private>/AGENTS.md` and the files under `<private>/docs/` as **Present**. A topic is earned only for what the base lacks.
-- Step 3 writes topic docs into `<private>/docs/` and never `README.md` or `CLAUDE.md`. Add the route of each new doc to `<private>/AGENTS.md`, leave its other lines as they are, and commit the result in the `<private>` repository.
-- Step 4 names `/project-review:project-review-docs <private>` for the full audit.
+- Step 2 reads the repository's own `AGENTS.md`, `CLAUDE.md` and `docs/` as the base, and `<private>/AGENTS.md` and the files under `<private>/docs/` as **Present**, and its decision-record note reads `<private>/docs/decisions/`. A topic is earned only for what the base lacks.
+- Step 3 writes topic docs and decision records into `<private>/docs/` and never `README.md` or `CLAUDE.md`. Add the route of each new doc to `<private>/AGENTS.md`, leave its other lines as they are, and commit the result in the `<private>` repository.
+- Step 4 checks routes in `<private>/AGENTS.md` only, and names `/project-review:project-review-docs <private>` for the full audit.
