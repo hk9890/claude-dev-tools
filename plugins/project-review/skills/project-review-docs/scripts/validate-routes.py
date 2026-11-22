@@ -281,7 +281,8 @@ def resolve_reference(ref, repo_root, allow_dir_links=False):
         # still flagged. The rule lives here, in the single resolver, rather than being
         # re-implemented per caller.
         tree_route = (raw_path.endswith("/") and ref["kind"] != "at-import"
-                      and target_path == os.path.join(os.path.abspath(repo_root), "docs", "decisions"))
+                      and os.path.abspath(target_path)
+                      == os.path.join(os.path.abspath(repo_root), "docs", "decisions"))
         if (allow_dir_links or tree_route) and anchor is None and os.path.isdir(target_path):
             return True, "ok (directory target)"
         return False, f"file not found: {target_path}"
@@ -329,11 +330,13 @@ def validate(repo_root, include_docs=False, include_plugins=False):
             files_to_check.append(path)
 
     if include_docs:
-        docs_dir = os.path.join(repo_root, "docs")
-        if os.path.isdir(docs_dir):
-            for entry in sorted(os.listdir(docs_dir)):
-                if entry.endswith(".md"):
-                    files_to_check.append(os.path.join(docs_dir, entry))
+        # The topic docs, then the records of the decisions tree.
+        for docs_dir in (os.path.join(repo_root, "docs"),
+                         os.path.join(repo_root, "docs", "decisions")):
+            if os.path.isdir(docs_dir):
+                for entry in sorted(os.listdir(docs_dir)):
+                    if entry.endswith(".md"):
+                        files_to_check.append(os.path.join(docs_dir, entry))
 
     if include_plugins:
         plugins_dir = os.path.join(repo_root, "plugins")
@@ -456,7 +459,11 @@ def main():
                 docs_dir = os.path.join(repo_root, "docs")
                 if os.path.isdir(docs_dir):
                     md_count = sum(
-                        1 for f in os.listdir(docs_dir) if f.endswith(".md")
+                        1
+                        for d in (docs_dir, os.path.join(docs_dir, "decisions"))
+                        if os.path.isdir(d)
+                        for f in os.listdir(d)
+                        if f.endswith(".md")
                     )
                     if md_count:
                         scanned.append(f"docs/ ({md_count} .md file(s), no refs)")
