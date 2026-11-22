@@ -7,6 +7,10 @@ const DENY_REASON =
 // another program runs passes, such as `bash -c '...'`, `sh -c '...'`, `eval`, or a wrapper not in
 // WRAPPER (`nice`, `stdbuf`, `flock`, `watch`), and so does revier run by a path.
 
+// web-dev's guard (plugins/web-dev/hooks/register.ts) keeps a copy of HEREDOC_BODY, NOT_RUN,
+// ESCAPED, SUBSTITUTION, ASSIGNMENT, KEYWORD and the shape of LEAD. A change to them here is a
+// change to that copy too.
+//
 // Text the shell does not run, so a commit message, a heredoc or a grep pattern that mentions the
 // command passes: a heredoc body, then a comment or a quoted string. An escaped character is
 // matched too, so `\'` opens no string.
