@@ -27,6 +27,9 @@ has_line() {
     { sub(/\r$/, ""); gsub(/^[ \t]+|[ \t]+$/, ""); for (i = 1; i <= n; i++) if ($0 == w[i]) found = 1 }
     END { exit !found }' "$file"
 }
+has_line ../CLAUDE.local.md "@$top/AGENTS.md" \
+  && fail "$top is a private folder: run this in the checkout around it"
+
 # The folder of each import of <top>/<folder>/AGENTS.md that CLAUDE.local.md holds.
 imported_folders() {
   [[ -f CLAUDE.local.md ]] || return 0
@@ -57,21 +60,20 @@ if tracked .worktreeinclude; then
   include_done=yes
 fi
 
-for path in CLAUDE.local.md "$folder/AGENTS.md"; do
-  tracked "$path" && fail "$path is tracked by this repository, so the private layout cannot write it"
-done
+tracked CLAUDE.local.md && fail "CLAUDE.local.md is tracked by this repository, so the private layout cannot write it"
+[[ -z "$(git ls-files -- "$folder")" ]] || fail "$folder holds files this repository tracks, so it cannot be the private folder"
 for path in CLAUDE.local.md "$folder/"; do
   git check-ignore -q --no-index "$path" \
     || fail "git does not ignore $path here: add $path to your global gitignore (core.excludesFile), never to this repository's .gitignore"
 done
 
 if [[ "$include_done" == no ]] && ! git check-ignore -q --no-index .worktreeinclude; then
+  [[ "$(git check-ignore -v --no-index .worktreeinclude || true)" != *:!* ]] \
+    || fail "this repository's .gitignore keeps .worktreeinclude visible to git, so the private layout cannot add it"
   exclude=$(git rev-parse --git-path info/exclude)
   mkdir -p "$(dirname "$exclude")"
   if [[ -s "$exclude" && -n "$(tail -c 1 "$exclude")" ]]; then echo >> "$exclude"; fi
   printf '.worktreeinclude\n' >> "$exclude"
-  git check-ignore -q --no-index .worktreeinclude \
-    || fail "this repository's .gitignore keeps .worktreeinclude visible to git, so the private layout cannot add it"
   echo "added   .worktreeinclude to $exclude"
 fi
 

@@ -37,7 +37,7 @@ A project that names its documents differently gets the same split applied to wh
 standard, a document telling an operator how to run something is not (`docs/RUNNING.md`,
 `docs/MONITORING.md`).
 
-Where no such document exists, or `AGENTS.md` routes to nothing: report that there is no
+Where no such document exists, private ones included, or `AGENTS.md` routes to nothing: report that there is no
 standard to measure against, and stop. Never fall back to the patterns in the code —
 that is the consistency dimension of `project-review-codebase`, not this.
 

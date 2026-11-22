@@ -352,20 +352,14 @@ def private_import(repo_root):
 
 
 def compare_import(abs_path, expected):
-    body = read_stripped(abs_path)
-    if body is None:
-        return {"detail": "unreadable"}
+    try:
+        with open(abs_path, encoding="utf-8", errors="replace") as fh:
+            body = fh.read().strip()
+    except OSError as exc:
+        return {"detail": f"unreadable: {exc}"}
     if body == expected:
         return {"canonical": True, "detail": f"exactly {expected}"}
     return {"detail": f"extra content ({len(body.splitlines())} line(s))"}
-
-
-def read_stripped(abs_path):
-    try:
-        with open(abs_path, encoding="utf-8", errors="replace") as fh:
-            return fh.read().strip()
-    except OSError:
-        return None
 
 
 def build(repo_root):

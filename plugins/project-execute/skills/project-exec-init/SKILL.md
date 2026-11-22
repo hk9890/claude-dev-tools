@@ -15,6 +15,7 @@ Write only files that are absent. A file that already exists stays exactly as it
 - With no argument: the repository's own doc set. Run steps 1–4.
 - `private`: the setup of the standard's private layout alone, for a repository the user cannot commit to. Run [Private setup](#private-setup) and stop: write no doc.
 - `private write`: the private setup, then steps 1–4 in [private mode](#private-mode), which write the doc set into the private folder.
+- Any other argument: name these three forms, and stop.
 
 ## 1. Load the standard
 
@@ -85,5 +86,5 @@ Private mode changes steps 1–4 in four places. `<private>` is `<git toplevel>/
 
 - The standard's *Private layout* section governs where each file goes.
 - Step 2 reads the repository's own `AGENTS.md`, `CLAUDE.md` and `docs/` as the base, and `<private>/AGENTS.md` and the files under `<private>/docs/` as **Present**. A topic is earned only for what the base lacks.
-- Step 3 writes topic docs into `<private>/docs/` and never `README.md` or `CLAUDE.md`. Add the route of each new doc to `<private>/AGENTS.md`, and leave its other lines as they are.
+- Step 3 writes topic docs into `<private>/docs/` and never `README.md` or `CLAUDE.md`. Add the route of each new doc to `<private>/AGENTS.md`, leave its other lines as they are, and commit the result in the `<private>` repository.
 - Step 4 names `/project-review:project-review-docs <private>` for the full audit.

@@ -102,7 +102,7 @@ def read_suffix(repo_root, doc):
     """The end of the path a session reads the doc by. A private doc is read under its
     folder, and the checkout around it can have a doc of the same name."""
     if is_private_root(repo_root):
-        return os.path.join(os.path.basename(os.path.abspath(repo_root)), doc)
+        return os.sep + os.path.join(os.path.basename(os.path.abspath(repo_root)), doc)
     return doc
 
 

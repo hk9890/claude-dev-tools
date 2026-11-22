@@ -103,6 +103,30 @@ test_worktreeinclude_excluded() {
   printf 'CLAUDE.local.md\n.worktreeinclude\nmy-notes/\n' > "$SANDBOX/ignore"
 }
 
+test_refusals() {
+  local dir; dir=$(make_repo)
+  printf 'CLAUDE.local.md\nmy-notes/\n' > "$SANDBOX/ignore"
+  printf '!.worktreeinclude\n' > "$dir/.gitignore"
+  local code=0; run_in "$dir" >/dev/null 2>&1 || code=$?
+  printf 'CLAUDE.local.md\n.worktreeinclude\nmy-notes/\n' > "$SANDBOX/ignore"
+  assert_eq "a repository negation: exit 1" "1" "$code"
+  assert_eq "a repository negation: no exclude line" "0" "$(grep -c worktreeinclude "$dir/.git/info/exclude" || true)"
+
+  dir=$(make_repo)
+  mkdir "$dir/my-notes"; printf 'x' > "$dir/my-notes/keep.txt"
+  git -C "$dir" add -f my-notes/keep.txt
+  git -C "$dir" commit -q -m tracked
+  code=0; run_in "$dir" >/dev/null 2>&1 || code=$?
+  assert_eq "a folder with tracked files: exit 1" "1" "$code"
+  assert_eq "a folder with tracked files: no git init" "no" "$([[ -e "$dir/my-notes/.git" ]] && echo yes || echo no)"
+
+  dir=$(make_repo)
+  run_in "$dir" >/dev/null
+  code=0; (cd "$dir/my-notes" && bash "$SCRIPT" my-notes) >/dev/null 2>&1 || code=$?
+  assert_eq "run inside the private folder: exit 1" "1" "$code"
+  assert_eq "run inside the private folder: nothing nested" "no" "$([[ -e "$dir/my-notes/my-notes" ]] && echo yes || echo no)"
+}
+
 commit_worktreeinclude() {
   printf '%s\n' "$2" > "$1/.worktreeinclude"
   git -C "$1" add -f .worktreeinclude
@@ -170,6 +194,7 @@ test_name_needed
 test_existing_notes
 test_not_ignored
 test_worktreeinclude_excluded
+test_refusals
 test_tracked
 test_tolerant_match
 test_agents_ignored_globally
