@@ -16,10 +16,11 @@ A plugin with an `output-styles/` directory, new or not, names it in `plugin.jso
 
 The new name obeys step 1 of [Adding a new plugin](#adding-a-new-plugin).
 
-1. Add the old-to-new entry to the top-level `renames` map in `.claude-plugin/marketplace.json`. Claude Code follows it to migrate the user's `enabledPlugins`; without it every existing install loses the plugin, and no gate catches the omission.
-2. Rename every `<old-name>:<skill>` reference and every `dependencies` entry that names the plugin. `mise run check-consistency` checks only references to plugins that exist, and nothing checks `dependencies`.
-3. Re-key its `MONOGRAMS` entry in `scripts/generate-plugin-icons.py` and run the generator.
-4. Carry the rename in the release notes ([RELEASING.md](RELEASING.md#release-notes)).
+1. Rename the plugin's directory, `name` in its `plugin.json`, its `name` and `source` in `.claude-plugin/marketplace.json`, and its `README.md` row.
+2. Add the old-to-new entry to the top-level `renames` map in `.claude-plugin/marketplace.json`. Claude Code follows it when an installed name is no longer found and migrates the user's `enabledPlugins`; without it every existing install loses the plugin, and no gate catches the omission.
+3. Rename every `<old-name>:<skill>` reference and every `dependencies` entry that names the plugin. `mise run check-consistency` checks only references to plugins that exist, and nothing checks `dependencies`.
+4. Re-key its `MONOGRAMS` entry in `scripts/generate-plugin-icons.py` and run the generator.
+5. Carry the rename in the release notes ([RELEASING.md](RELEASING.md#release-notes)).
 
 ## Adding a canonical doc
 
