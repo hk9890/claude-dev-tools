@@ -188,6 +188,6 @@ The same set for a repository the user cannot commit to, kept in files git never
 
 - **A delta.** The repository's own `AGENTS.md`, `CLAUDE.md` and `docs/` load or route as they are, and stay unchanged. A private doc holds only what they lack, and links to the repository file it builds on (`[the coding rules](../../docs/CODING.md)`) rather than repeat it.
 - **Links resolve from the file that holds them.** Claude Code shows an imported file with its absolute path, so a link in `<private>/AGENTS.md` reaches the checkout's `<private>/docs/` from a worktree too. A link into the repository reaches the main checkout's copy, so in a worktree read that file in the worktree.
-- **Ignored globally.** `CLAUDE.local.md`, `.worktreeinclude` and `<private>/` are in the user's global gitignore, never in the repository's `.gitignore`.
+- **Ignored outside the repository.** `CLAUDE.local.md` and `<private>/` are in the user's global gitignore. `.worktreeinclude` is there or in the checkout's `.git/info/exclude`, where the setup adds it. None of them goes in the repository's `.gitignore`.
 - **Versioned locally.** `<private>/` is its own git repository with no remote.
 - **Scratch beside the set.** Every other file at the top of `<private>/` is outside the set.
