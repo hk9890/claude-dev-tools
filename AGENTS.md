@@ -24,6 +24,10 @@ Every route below is **mandatory, not advisory**. Load the document BEFORE the f
 
 **MUST call the Skill tool with `instruction-writing:writing-project-docs` before creating or editing `AGENTS.md`, `CLAUDE.md`, `README.md`, or ANY file under `docs/`.** It owns which file may carry what, and the authoring rules `/project-review-docs` audits against.
 
+### Writing skills
+
+**MUST call the Skill tool with `instruction-writing:writing-skills` before creating or editing a `SKILL.md`, a file it bundles or shares, or a file under a plugin's `agents/`, even where it loaded earlier in this session.** It owns the invocation choice, the listing entry, the information hierarchy, and pruning.
+
 ### Testing a plugin
 
 **MUST read [docs/TESTING.md](docs/TESTING.md) before running or writing tests**, or editing ANY file under `tests/` or `.github/workflows/`. It owns the mise tasks, the script-test layout, and the CI gates.

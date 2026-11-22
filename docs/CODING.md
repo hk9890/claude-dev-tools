@@ -8,13 +8,19 @@ What a change to this plugin marketplace needs in order to work.
 2. Write `.claude-plugin/plugin.json` with `name`, `version`, `description`, `author`. Set `version` to whatever `.claude-plugin/marketplace.json` `metadata.version` already carries, not `1.0.0` — all plugins ship in lockstep under one repo tag ([decision 0001](decisions/0001-all-plugins-ship-under-one-version-and-one-repo-tag.md)), and `mise run check-consistency` fails on a second distinct version string.
 3. Register it in `.claude-plugin/marketplace.json` under `plugins` with `name`, `source`, `description`, `version`, `author`, `category`, `keywords`. `description` must be **byte-identical** to `plugin.json`'s and `version` must match it — the CI `consistency` job compares both.
 4. Add a row to the plugin table in `README.md`, in `marketplace.json` order.
-5. Add its two-letter monogram to `MONOGRAMS` in `scripts/generate-plugin-icons.py`, and a colour to `CATEGORY_COLORS` for a new category, then run `python3 scripts/generate-plugin-icons.py`. It writes `.claude-plugin/icon.png`, the icon `claude plugin validate` asks for, and stops on a plugin it has no monogram, glyph or colour for.
+5. Add its two-letter monogram to `MONOGRAMS` in `scripts/generate-plugin-icons.py`, and a colour to `CATEGORY_COLORS` for a new category, then run `python3 scripts/generate-plugin-icons.py`.
 
 A plugin with an `output-styles/` directory, new or not, names it in `plugin.json` `"outputStyles"`.
 
 ## Renaming a plugin
 
-The new name obeys step 1 of [Adding a new plugin](#adding-a-new-plugin). Add the old-to-new entry to the top-level `renames` map in `.claude-plugin/marketplace.json`. Claude Code follows it when an installed name is no longer found and migrates the user's `enabledPlugins`; without it every existing install loses the plugin, and no gate catches the omission. Rename every `<old-name>:<skill>` reference and every `dependencies` entry that names the plugin: `mise run check-consistency` checks only references to plugins that exist, and nothing checks `dependencies`. Re-key its `MONOGRAMS` entry in `scripts/generate-plugin-icons.py` and run the generator; `test-plugin-icons.sh` fails on a name the map lacks. The release notes carry the rename ([RELEASING.md](RELEASING.md#release-notes)).
+The new name obeys step 1 of [Adding a new plugin](#adding-a-new-plugin).
+
+1. Rename the plugin's directory, `name` in its `plugin.json`, its `name` and `source` in `.claude-plugin/marketplace.json`, and its `README.md` row.
+2. Add the old-to-new entry to the top-level `renames` map in `.claude-plugin/marketplace.json`. Claude Code follows it when an installed name is no longer found and migrates the user's `enabledPlugins`; without it every existing install loses the plugin, and no gate catches the omission.
+3. Rename every `<old-name>:<skill>` reference and every `dependencies` entry that names the plugin. `mise run check-consistency` checks only references to plugins that exist, and nothing checks `dependencies`.
+4. Re-key its `MONOGRAMS` entry in `scripts/generate-plugin-icons.py` and run the generator.
+5. Carry the rename in the release notes ([RELEASING.md](RELEASING.md#release-notes)).
 
 ## Adding a canonical doc
 
@@ -26,7 +32,7 @@ Register a new canonical topic doc in three plugins; each keeps its own copy, as
 
 A canonical tree (`decisions/`) takes the same steps, with three differences. It has no use case: its route fires on edits to the paths its records govern, which no history label isolates. Its example is a folder holding at least one `NNNN-slug.md` record. In `scripts/manifest.py` it also needs the pattern that classifies its records (`DECISION_FILE_RE`) and the reach of a link to its folder (`folder_docs`), and in `workflows/review-docs.js` the contract and placement blocks its records are judged by.
 
-`tests/marketplace/script-tests/test-canonical-docs.sh` pins the topic set, the ownership blocks, the examples and `USE_CASE_DOCS` to `CANONICAL_DOCS`, trees left out of `USE_CASE_DOCS`; `tests/project-review/script-tests/test-history.sh` pins `USE_CASES` to `USE_CASE_DOCS`. No test checks the example route, the NON-STANDARD prompt list or the exec-init row.
+No test checks the example route, the NON-STANDARD prompt list or the exec-init row.
 
 ## Portability
 
@@ -101,7 +107,7 @@ A mod is a plugin whose `hooks/hooks.json` names a hooks module under `modules`;
 
 ## SKILL.md conventions
 
-For every `SKILL.md` under `plugins/<plugin-name>/skills/<skill-name>/`. The authoring rubric — invocation choice, the listing entry, information hierarchy, pruning — is [`instruction-writing:writing-skills`](../plugins/instruction-writing/skills/writing-skills/SKILL.md): call the Skill tool with `instruction-writing:writing-skills` before writing or editing a `SKILL.md`, a file it bundles or shares, or a file under a plugin's `agents/`, even where it loaded earlier in this session.
+For every `SKILL.md` under `plugins/<plugin-name>/skills/<skill-name>/`. Load the authoring rubric first, by the [Writing skills route](../AGENTS.md#writing-skills).
 
 ### Naming
 
