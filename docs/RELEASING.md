@@ -2,7 +2,7 @@
 
 All plugins ship together under a single repo-level version tag (per-plugin tags would break the dependency rule in [CODING.md](CODING.md#declaring-plugin-dependencies)). There is no build step.
 
-Requires `gh` (authenticated), `jq`, `mise`, and `python3` on PATH. Cut releases from a clean tree on an up-to-date `master`.
+Requires `gh` (authenticated) and `mise` on PATH, plus the tools in [TESTING.md](TESTING.md#mise-tasks). Cut releases from a clean tree on an up-to-date `master`.
 
 ## Gates
 
@@ -36,7 +36,7 @@ find plugins -name plugin.json -path "*/.claude-plugin/*"   # every file to bump
 4. Commit as `Bump all plugins to vX.Y.Z` on a `chore/release-X.Y.Z` branch.
 5. Run Test-Run, Plugin-Structure-Check and Consistency-Check (above) on that commit, so the bump is pushed with green gates.
 6. Draft the release notes (below) in `<main checkout>/hako-private/release-notes-vX.Y.Z.md`, because the merge can remove a worktree and a draft inside it. The maintainer's global gitignore covers `hako-private/`; never add it to the repo `.gitignore`.
-7. Push the branch, open a PR with the validator's summary line and its commit SHA in the body, or the reason it was skipped, and follow steps 3 and 4 of [Pull requests](CHANGE-WORKFLOW.md#pull-requests): `master` is protected, and the user merges.
+7. Push the branch, open a PR with the validator's summary line and its commit SHA in the body, or the reason it was skipped, and follow steps 3 and 4 of [Pull requests](CHANGE-WORKFLOW.md#pull-requests): `master` is protected, and the user merges. Report that step 8 and Verification remain, and do them once the user confirms the merge.
 8. Once the user has merged, create the release from the merged bump commit, whose SHA `gh pr view <bump-pr> --json mergeCommit -q .mergeCommit.oid` prints: `gh release create vX.Y.Z --title "vX.Y.Z" --notes-file <main checkout>/hako-private/release-notes-vX.Y.Z.md --target <bump-merge-sha>`. `--target master` tags whatever merged last.
 
 Publish in the same sitting the bump PR merges — a merged bump with no tag leaves `marketplace.json` advertising a version that appears in no release. `vX.Y.Z` must tag the commit whose `plugin.json` files read `X.Y.Z`.
