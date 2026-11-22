@@ -20,10 +20,10 @@ An agent drives the plugins with the first form — `-p` writes the reply to std
   - `keep-awake-linux` — send any prompt and find `$.process.spawn (keep-awake-linux): systemd-inhibit` in the debug file. `claude -p "/keep-awake-info" --plugin-dir plugins/keep-awake-linux` lists the blocks of the other sessions alone: a command starts no turn, so that run holds none.
   - `tasks` — `claude -p "/tasks-board" --plugin-dir plugins/tasks` prints the board as text — a first line `tasks: In progress (N)`, then the `Ready` and `Blocked` groups — because no pane can draw under `-p`.
   - `worktree-flow` — launch with `--permission-mode bypassPermissions` and `--output-format stream-json --verbose`: in the default mode the permission layer stops step 3 with `This command requires approval`.
-    1. Make a throwaway repository (`git init` in the scratchpad, with one commit) and run from it, so a guard that fails adds nothing to this one.
+    1. Make two throwaway repositories (`git init` in the scratchpad, with one commit each) and run from the first, so a guard that fails adds nothing to this one.
     2. Ask for `git worktree add ../x`: its `tool_result` starts `Use the EnterWorktree tool for a persistent worktree`.
-    3. Ask for `git -C <the throwaway repository> worktree add <dir> -b <branch>`: its result holds `Preparing worktree`.
-    4. Remove it: `git -C <repo> worktree remove <dir>`, then `git -C <repo> branch -D <branch>`.
+    3. Ask for `git -C <the second repository> worktree add wt -b <branch>`: its result holds `Preparing worktree`.
+    4. Remove it: `git -C <the second repository> worktree remove wt`, then `git -C <the second repository> branch -D <branch>`.
   - `revier` — ask for `revier agent focus no-such-project`: its `tool_result` starts `This revier command opens, raises or closes a window`, in the default mode too; the command moves nothing where the guard fails.
   - `werft` — ask for "Get a VM and run uname -a in it. Keep it running." with `--permission-mode default` and `--output-format stream-json --verbose`. The result event lists no `permission_denials`; after the exit the debug file has `$.process.run (werft): sh with`, and `werft --json leases` lists no lease whose owner is `claude-<session id>`.
   - `web-dev` — ask for `xdg-open https://example.com` and read the refusal, then for `playwright-cli list` and see it run; launch with `--permission-mode bypassPermissions`, or the permission layer stops the second command. Under bypass, a guard that fails opens a browser window on the user's screen.
