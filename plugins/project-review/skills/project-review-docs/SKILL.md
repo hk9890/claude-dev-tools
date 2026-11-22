@@ -19,7 +19,7 @@ docs inline. The workflow returns a structured report; relay it.
    Unlike the other reviewers, what-to-review here must resolve to a **path** —
    `manifest.py` takes a directory, not a free-form description. Default: the repo root.
    If the argument is a description rather than a path, resolve it to a directory or
-   fall back to the root. A request for the private docs resolves to the folder whose
+   fall back to the root. A request for the private docs or the private layout resolves to the folder whose
    `AGENTS.md` the main checkout's `CLAUDE.local.md` imports (`@<checkout>/<folder>/AGENTS.md`),
    also from a worktree: the main checkout is the parent of
    `git rev-parse --path-format=absolute --git-common-dir`. That import makes the folder the
