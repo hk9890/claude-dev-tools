@@ -14,30 +14,7 @@ Write only files that are absent. A file that already exists stays exactly as it
 
 - With no argument: the repository's own doc set. Run steps 1–4.
 - `private`: the setup of the standard's private layout alone, for a repository the user cannot commit to. Run [Private setup](#private-setup) and stop: write no doc.
-- `private write`: the private setup, then steps 1–4 in private mode — the doc set written into the private folder as a delta to the repository's own docs.
-
-## Private setup
-
-Run the setup script from the directory you are in. `<base directory for this skill>` is the line given at the top of this file when the skill loads:
-
-```bash
-bash "<base directory for this skill>/scripts/private-setup.sh"
-```
-
-Where it exits 2, the checkout has no private folder yet, and the user names one. Ask for the folder name, and suggest one: the folder the user's own instructions name for private or scratch files, else `private-docs`. Use only the name the user confirms or gives, and run the script again with it:
-
-```bash
-bash "<base directory for this skill>/scripts/private-setup.sh" <folder>
-```
-
-Where it exits non-zero otherwise, relay its `error:` line, or the shell's message where it prints none, and stop. Otherwise relay its lines, and tell the user to start a new session in this checkout, and to approve the external-import dialog where Claude Code shows one: a declined import stays off. Then go on to step 1 for `private write`, or stop.
-
-**Private mode** changes steps 1–4 in four places. `<private>` is the folder on the setup's last line, `folder  <private>`:
-
-- The standard's *Private layout* section governs where each file goes.
-- Step 2 reads the repository's own `AGENTS.md`, `CLAUDE.md` and `docs/` as the base, and `<private>/AGENTS.md` and the files under `<private>/docs/` as **Present**. A topic is earned only for what the base lacks.
-- Step 3 writes topic docs into `<private>/docs/` and never `README.md` or `CLAUDE.md`. Each doc links to the base files it builds on. Add the route of each new doc to `<private>/AGENTS.md`, and leave its other lines as they are.
-- Step 4 names `/project-review:project-review-docs <private>` for the full audit.
+- `private write`: the private setup, then steps 1–4 in [private mode](#private-mode), which write the doc set into the private folder.
 
 ## 1. Load the standard
 
@@ -85,3 +62,28 @@ A new `AGENTS.md` routes the whole set — the docs you just wrote and the ones 
 - Every decision the evidence earned that step 3 did not write, with the reason: records already in `docs/decisions/`, or the home of records in another format it found.
 - Every new topic doc or `docs/decisions/` folder an existing `AGENTS.md` does not route, with the `MUST read` route line to add.
 - Every existing file whose content breaches its contract in the standard — the file and what is off about it. These were left untouched: say so, and tell the user to run `/project-review:project-review-docs` for the full audit — a separate plugin, so mention it may need installing — and name `instruction-writing:writing-project-docs` for the fix.
+
+## Private setup
+
+Run the setup script from the directory you are in. `<base directory for this skill>` is the line given at the top of this file when the skill loads:
+
+```bash
+bash "<base directory for this skill>/scripts/private-setup.sh"
+```
+
+Where it exits 2, the checkout has no private folder yet, and the user names one. Ask for the folder name, and suggest one: the folder the user's own instructions name for private or scratch files, else `private-docs`. Use only the name the user confirms or gives, and run the script again with it:
+
+```bash
+bash "<base directory for this skill>/scripts/private-setup.sh" <folder>
+```
+
+Where it exits non-zero otherwise, relay its `error:` line, or the shell's message where it prints none, and stop. Otherwise relay its lines, and tell the user to start a new session in this checkout, and to approve the external-import dialog where Claude Code shows one: a declined import stays off. Then go on to step 1 for `private write`, or stop.
+
+## Private mode
+
+Private mode changes steps 1–4 in four places. `<private>` is the folder on the setup's last line, `folder  <private>`:
+
+- The standard's *Private layout* section governs where each file goes.
+- Step 2 reads the repository's own `AGENTS.md`, `CLAUDE.md` and `docs/` as the base, and `<private>/AGENTS.md` and the files under `<private>/docs/` as **Present**. A topic is earned only for what the base lacks.
+- Step 3 writes topic docs into `<private>/docs/` and never `README.md` or `CLAUDE.md`. Add the route of each new doc to `<private>/AGENTS.md`, and leave its other lines as they are.
+- Step 4 names `/project-review:project-review-docs <private>` for the full audit.
