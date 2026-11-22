@@ -43,7 +43,7 @@ Depend on a specific technology only where the dependency is declared:
 
 The harness auto-installs every plugin listed in `plugin.json`'s `dependencies` at the parent's scope, and chains enable/disable ([full behavior](https://code.claude.com/docs/en/plugin-dependencies)).
 
-- **Bare names only** — `"dependencies": ["instruction-writing"]`, with no version constraint ([decision 0001](decisions/0001-all-plugins-ship-under-one-version-and-one-repo-tag.md)). No test, script or CI job reads `dependencies`.
+- **Bare names only** — `"dependencies": ["instruction-writing"]`, with no version constraint ([decision 0001](decisions/0001-all-plugins-ship-under-one-version-and-one-repo-tag.md)). No test, script or CI job rejects a version constraint.
 - **A CLI tool is not a dependency** — `tasks` → `taskmgr`, `html-visualization` → `node`. The harness installs no binaries: check at skill load (Phase 0) and stop with guidance when absent.
 
 ## Locating a plugin's own files at runtime
