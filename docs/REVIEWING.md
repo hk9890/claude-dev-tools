@@ -5,7 +5,7 @@ Local review rules for this plugin marketplace. The review skills that apply the
 ## What to prioritise
 
 - **Quality gates stay green.** Flag any change that breaks, skips, or weakens `mise run test` or `mise run check-consistency` ([TESTING.md](TESTING.md)).
-- **Skill triggering.** For Schema B skills, `when_to_use` is load-bearing: review wording changes for trigger accuracy, sibling overlap, and the bidirectional carve-out ([CODING.md](CODING.md)). Flag a new skill reaching for Schema B where Schema A, the default, would do.
+- **Skill triggering.** For Schema B skills, `when_to_use` is load-bearing: review wording changes for trigger accuracy, sibling overlap, and the bidirectional carve-out ([CODING.md](CODING.md)). Flag a new skill reaching for Schema B where Schema A, the default, would do ([decision 0002](decisions/0002-a-skill-is-user-only-unless-the-skill-tool-must-reach-it.md)).
 - **A new canonical doc lands in three plugins or in none.** Flag a change that skips a step of [Adding a canonical doc](CODING.md#adding-a-canonical-doc), most of all the example route and the `project-exec-init` row, which no test checks.
 
 ## Quality rules
