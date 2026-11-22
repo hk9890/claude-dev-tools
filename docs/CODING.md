@@ -5,7 +5,7 @@ What a change to this plugin marketplace needs in order to work.
 ## Adding a new plugin
 
 1. Create `plugins/<plugin-name>/` with the layout in [OVERVIEW.md](OVERVIEW.md). Name it for what it does: `claude plugin validate` refuses a name that starts with `claude-`, `anthropic-` or `cc-plugin-`.
-2. Write `.claude-plugin/plugin.json` with `name`, `version`, `description`, `author`. Set `version` to whatever `.claude-plugin/marketplace.json` `metadata.version` already carries, not `1.0.0` — all plugins ship in lockstep under one repo tag ([RELEASING.md](RELEASING.md)), and `mise run check-consistency` fails on a second distinct version string.
+2. Write `.claude-plugin/plugin.json` with `name`, `version`, `description`, `author`. Set `version` to whatever `.claude-plugin/marketplace.json` `metadata.version` already carries, not `1.0.0` — all plugins ship in lockstep under one repo tag ([decision 0001](decisions/0001-all-plugins-ship-under-one-version-and-one-repo-tag.md)), and `mise run check-consistency` fails on a second distinct version string.
 3. Register it in `.claude-plugin/marketplace.json` under `plugins` with `name`, `source`, `description`, `version`, `author`, `category`, `keywords`. `description` must be **byte-identical** to `plugin.json`'s and `version` must match it — the CI `consistency` job compares both.
 4. Add a row to the plugin table in `README.md`, in `marketplace.json` order.
 5. Add its two-letter monogram to `MONOGRAMS` in `scripts/generate-plugin-icons.py`, and a colour to `CATEGORY_COLORS` for a new category, then run `python3 scripts/generate-plugin-icons.py`. It writes `.claude-plugin/icon.png`, the icon `claude plugin validate` asks for, and stops on a plugin it has no monogram, glyph or colour for.
@@ -45,7 +45,7 @@ Depend on a specific technology only where the dependency is declared:
 
 The harness auto-installs every plugin listed in `plugin.json`'s `dependencies` at the parent's scope, and chains enable/disable ([full behavior](https://code.claude.com/docs/en/plugin-dependencies)).
 
-- **Bare names only** — `"dependencies": ["instruction-writing"]`. A version constraint resolves against per-plugin `<name>--vX.Y.Z` tags, which the single-repo-tag policy ([RELEASING.md](RELEASING.md)) never creates; nothing in CI catches it and the install fails on the user's machine.
+- **Bare names only** — `"dependencies": ["instruction-writing"]`, with no version constraint ([decision 0001](decisions/0001-all-plugins-ship-under-one-version-and-one-repo-tag.md)). No test, script or CI job rejects a version constraint.
 - **A CLI tool is not a dependency** — `tasks` → `taskmgr`, `html-visualization` → `node`. The harness installs no binaries: check at skill load (Phase 0) and stop with guidance when absent.
 
 ## Locating a plugin's own files at runtime
@@ -56,9 +56,9 @@ Every skill is loaded with a `Base directory for this skill: <absolute path>` li
 <base directory for this skill>/workflows/<the-file-you-need>
 ```
 
-- A file one skill owns sits under that skill; one shared by two or more skills sits at the plugin root ([OVERVIEW.md](OVERVIEW.md)), reached with `<base directory for this skill>/../../<dir>/<file>`. Shared content takes this layout rather than a skill of its own: a skill costs a row in every session's skill index.
+- A file one skill owns sits under that skill; one shared by two or more skills sits at the plugin root ([OVERVIEW.md](OVERVIEW.md)), reached with `<base directory for this skill>/../../<dir>/<file>`. Shared content takes this layout, not a skill of its own ([decision 0003](decisions/0003-files-that-skills-of-one-plugin-share-live-at-the-plugin-root.md)).
 - Say in the skill that the plugin-root layout applies, or the `../..` reads as a mistake.
-- A workflow two skills launch sits in the plugin-root `references/`, as `project-auto-work`'s `triage.js` does. Claude Code lists each file of a plugin-root `workflows/` in the skill listing of every session, so that folder holds only a workflow launched by name.
+- A workflow two skills launch sits in the plugin-root `references/`, as `project-auto-work`'s `triage.js` does. A plugin-root `workflows/` holds only a workflow launched by name ([decision 0003](decisions/0003-files-that-skills-of-one-plugin-share-live-at-the-plugin-root.md)).
 - `html-visualization` is the worked example — its three mode skills all read `references/` and run `bin/server.js` from the plugin root, so each climbs `../..` from its own base directory; `instruction-writing` and `project-review` share `references/` the same way.
 - Never `find` the plugin: it can select a stale cached version. Print the path you build ([State across `Bash` calls](#state-across-bash-calls)).
 - `$CLAUDE_PLUGIN_ROOT` is substituted in hook commands and `settings.json` only — it is not in a `Bash` call's environment.
@@ -130,7 +130,7 @@ when_to_use: "Use when … Triggers on '…', '…'. Also loaded by name when �
 ---
 ```
 
-- Do not take Schema B just because a skill *could* auto-invoke: measured pickup from context is low (the Model-invoked column of a [session review](MONITORING.md#run-a-review) run's `usage.md`), and every skill that takes it pays the cost.
+- A skill that only *could* auto-invoke stays Schema A ([decision 0002](decisions/0002-a-skill-is-user-only-unless-the-skill-tool-must-reach-it.md)).
 - Never mix them — `disable-model-invocation: true` alongside `when_to_use:` is contradictory.
 - Where a Schema B skill's domain overlaps a sibling's, disambiguate in **both** directions in the same change: exclude the sibling here, add the reverse pointer there. A one-sided carve-out still lets shared queries land on the wrong skill.
 

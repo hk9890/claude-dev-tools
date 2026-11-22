@@ -16,6 +16,10 @@ Every route below is **mandatory, not advisory**. Load the document BEFORE the f
 
 **MUST read [docs/CODING.md](docs/CODING.md) before creating or editing ANY file under `plugins/` or `scripts/`, or `.claude-plugin/marketplace.json`.** It owns plugin scaffolding and registration, dependency declarations, runtime path resolution, the mod conventions, and the `SKILL.md` conventions.
 
+### Changing a decided design
+
+**MUST read the records in [docs/decisions/](docs/decisions/) that bear on the change before editing `.claude-plugin/marketplace.json`, a `plugins/*/.claude-plugin/plugin.json`, `scripts/check-internal-consistency.py`, or the frontmatter of a `SKILL.md`, or adding a skill, or adding or moving a file under a plugin-root `references/`, `bin/` or `workflows/`.** Each holds a decision in force, and a change against one is the user's call — name the record and ask.
+
 ### Writing project docs
 
 **MUST call the Skill tool with `instruction-writing:writing-project-docs` before creating or editing `AGENTS.md`, `CLAUDE.md`, `README.md`, or ANY file under `docs/`.** It owns which file may carry what, and the authoring rules `/project-review-docs` audits against.
