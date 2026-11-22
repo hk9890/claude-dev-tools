@@ -22,8 +22,7 @@ docs inline. The workflow returns a structured report; relay it.
    fall back to the root. A request for the private docs or the private layout resolves to the folder whose
    `AGENTS.md` the main checkout's `CLAUDE.local.md` imports (`@<checkout>/<folder>/AGENTS.md`),
    also from a worktree: the main checkout is the parent of
-   `git rev-parse --path-format=absolute --git-common-dir`. That import makes the folder the
-   standard's private layout, and `manifest.py` audits it as one. Where no import names a
+   `git rev-parse --path-format=absolute --git-common-dir`. Where no import names a
    folder, say the checkout has no private docs, and stop.
 
 2. Load the standard. `SKILL_DIR` is the **base directory for this skill**, given at the top

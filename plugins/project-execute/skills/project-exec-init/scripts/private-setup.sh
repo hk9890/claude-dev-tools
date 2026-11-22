@@ -59,8 +59,10 @@ fi
 
 for path in CLAUDE.local.md "$folder/AGENTS.md"; do
   tracked "$path" && fail "$path is tracked by this repository, so the private layout cannot write it"
+done
+for path in CLAUDE.local.md "$folder/"; do
   git check-ignore -q --no-index "$path" \
-    || fail "git does not ignore $path here: add ${path%%/*}$([[ "$path" == */* ]] && echo /) to your global gitignore (core.excludesFile), never to this repository's .gitignore"
+    || fail "git does not ignore $path here: add $path to your global gitignore (core.excludesFile), never to this repository's .gitignore"
 done
 
 if [[ "$include_done" == no ]] && ! git check-ignore -q --no-index .worktreeinclude; then

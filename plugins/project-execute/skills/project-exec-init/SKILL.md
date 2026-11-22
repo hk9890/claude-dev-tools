@@ -81,7 +81,7 @@ Where it exits non-zero otherwise, relay its `error:` line, or the shell's messa
 
 ## Private mode
 
-Private mode changes steps 1–4 in four places. `<private>` is the folder on the setup's last line, `folder  <private>`:
+Private mode changes steps 1–4 in four places. `<private>` is `<git toplevel>/<folder>`: `<git toplevel>` is what `git rev-parse --show-toplevel` prints, and `<folder>` stands on the setup's last line, `folder  <folder>`:
 
 - The standard's *Private layout* section governs where each file goes.
 - Step 2 reads the repository's own `AGENTS.md`, `CLAUDE.md` and `docs/` as the base, and `<private>/AGENTS.md` and the files under `<private>/docs/` as **Present**. A topic is earned only for what the base lacks.

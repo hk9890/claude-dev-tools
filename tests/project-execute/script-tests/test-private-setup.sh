@@ -83,6 +83,11 @@ test_not_ignored() {
   printf 'CLAUDE.local.md\n.worktreeinclude\nmy-notes/\n' > "$SANDBOX/ignore"
   assert_eq "not ignored: exit 1" "1" "$code"
   assert_eq "not ignored: nothing written" "no" "$([[ -e "$dir/my-notes" || -e "$dir/CLAUDE.local.md" || -e "$dir/.worktreeinclude" ]] && echo yes || echo no)"
+  printf 'CLAUDE.local.md\n.worktreeinclude\nAGENTS.md\n' > "$SANDBOX/ignore"
+  code=0; run_in "$dir" >/dev/null 2>&1 || code=$?
+  printf 'CLAUDE.local.md\n.worktreeinclude\nmy-notes/\n' > "$SANDBOX/ignore"
+  assert_eq "only AGENTS.md ignored, not the folder: exit 1" "1" "$code"
+  assert_eq "only AGENTS.md ignored: nothing written" "no" "$([[ -e "$dir/my-notes" ]] && echo yes || echo no)"
 }
 
 test_worktreeinclude_excluded() {
