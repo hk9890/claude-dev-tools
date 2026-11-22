@@ -56,7 +56,7 @@ Neither validator runs in CI — run both locally on any change to `AGENTS.md`, 
 
 ```bash
 SCR=plugins/project-review/skills/project-review-docs/scripts
-python3 "$SCR/validate-routes.py" "$PWD" --include-docs   # hard-fails on broken routes
+python3 "$SCR/validate-routes.py" . --include-docs   # hard-fails on broken routes
 python3 "$SCR/manifest.py" . --format=text           # CLAUDE.md invariant, missing/hollow docs, dead links
 ```
 

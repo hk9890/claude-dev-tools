@@ -44,8 +44,8 @@ Every finding quotes its rule: the file, the line, and the rule's own words. Wit
 that quote it is not a finding. Two kinds, both in scope:
 
 - **Broken rule** — the subject does what a document forbids, or omits what a document
-  requires. Example: `CODING.md` says a version constraint in `dependencies` never
-  resolves, so `"dependencies": ["instruction-writing@^1.0.0"]` is a broken rule.
+  requires. Example: `CODING.md` allows bare names only in `dependencies`, so
+  `"dependencies": ["instruction-writing@^1.0.0"]` is a broken rule.
 - **Unfinished duty** — the subject triggered an obligation a document states and did
   not discharge it. Example: `CODING.md` step 3 requires a new plugin to be registered
   in `.claude-plugin/marketplace.json` with a byte-identical description; a new plugin

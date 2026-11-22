@@ -11,7 +11,7 @@
 #   - ignore: @ in prose (e.g., user@example.com)
 #   - ignore: external URLs (http/https)
 #   - ignore: plugin:skill opaque references
-#   - pass: --include-docs extends validation to docs/*.md
+#   - pass: --include-docs extends validation to docs/*.md and docs/decisions/*.md
 #   - pass: --include-plugins extends validation to plugins/**/*.md
 #   - scope: a directory link (no anchor) resolves in plugins/ but is flagged in steering/docs
 #   - misc: no args → exit 1; bad dir → exit 1
@@ -418,6 +418,8 @@ test_decisions_tree_link_resolves() {
   printf '# 0001: A\n\nWhy.\n' > "$dir/docs/decisions/0001-a.md"
   printf '# Routing\n\nMUST read the records in [docs/decisions/](docs/decisions/) first.\n' > "$dir/AGENTS.md"
   assert_exit "decisions-tree-link: a route to docs/decisions/ resolves" 0 python3 "$SCRIPT" "$dir"
+  assert_exit "decisions-tree-link: the route resolves from a relative root" 0 \
+    bash -c 'cd "$1" && python3 "$2" .' _ "$dir" "$SCRIPT"
   printf '\nSee [other](docs/other/).\n' >> "$dir/AGENTS.md"
   assert_exit "decisions-tree-link: a link to another folder still fails" 1 python3 "$SCRIPT" "$dir"
   printf '# Routing\n\nMUST read the records in [docs/decisions](docs/decisions) first.\n' > "$dir/AGENTS.md"
@@ -425,6 +427,19 @@ test_decisions_tree_link_resolves() {
   printf '# Routing\n\nMUST read the records in [docs/decisions/](docs/decisions/) first.\n' > "$dir/AGENTS.md"
   printf '@docs/decisions/\n' > "$dir/CLAUDE.md"
   assert_exit "decisions-tree-link: an @-import of a folder still fails" 1 python3 "$SCRIPT" "$dir"
+  rm -rf "$dir"
+}
+
+test_include_docs_reads_decision_records() {
+  local dir; dir=$(tmpdir)
+  touch "$dir/CLAUDE.md"
+  mkdir -p "$dir/docs/decisions"
+  printf '# Topic\n\n## Real\n' > "$dir/docs/TOPIC.md"
+  printf '# 0001: A\n\nSee [topic](../TOPIC.md#real).\n' > "$dir/docs/decisions/0001-a.md"
+  assert_exit "include-docs-records: a good link in a record passes" 0 python3 "$SCRIPT" "$dir" --include-docs
+  printf '# 0001: A\n\nSee [topic](../TOPIC.md#gone).\n' > "$dir/docs/decisions/0001-a.md"
+  assert_exit "include-docs-records: a dead anchor in a record fails" 1 python3 "$SCRIPT" "$dir" --include-docs
+  assert_exit "include-docs-records: without the flag the record is not read" 0 python3 "$SCRIPT" "$dir"
   rm -rf "$dir"
 }
 
@@ -457,6 +472,7 @@ test_directory_link_with_anchor_fails
 test_include_plugins
 test_plugins_directory_link_resolves
 test_decisions_tree_link_resolves
+test_include_docs_reads_decision_records
 
 printf '\n'
 printf 'Results: %d passed, %d failed\n' "$PASS" "$FAIL"
