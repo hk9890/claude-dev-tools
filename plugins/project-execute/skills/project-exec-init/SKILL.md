@@ -44,7 +44,7 @@ Read what the project already carries and record two lists.
 | `MONITORING.md` | logs, metrics, traces, or usage data the project produces and someone reads |
 | `decisions/` | a decision the repo states together with its reason — in a code comment or a `git log` message body, or a PR description `gh` can read — that meets the standard's `docs/decisions/` contract |
 
-Where the repo has a git remote, run `gh pr list --state all --limit 1` before you read PR descriptions. Where `gh` is not installed, or this or a later `gh` read fails, take your evidence from the other sources and keep that reason, or gh's error, for step 4.
+Where the repo has a git remote, run `gh pr list --state all --limit 1` before you read PR descriptions; where `gh` is not installed, or this command or a later read of PR descriptions fails, keep what you already read, go on with the other sources, and keep that reason, or gh's error, for step 4.
 
 Keep the evidence you found for each earned topic. It is the material step 3 writes from, and the reason step 4 gives for every topic left out.
 
@@ -63,7 +63,7 @@ A new `AGENTS.md` routes the whole set — the docs you just wrote and the ones 
 - Every file created, one line each on what it carries.
 - Every topic left out, naming the evidence that was absent.
 - Every decision the evidence earned that step 3 did not write, with the reason: records already in `docs/decisions/`, or the home of records in another format it found.
-- Where step 2 kept a `gh` reason: "PR descriptions not read: <the reason>. A decision stated only there is not in this report."
+- Where step 2 kept a `gh` reason: "PR descriptions not read in full: <the reason>. A decision stated only in an unread one is not in this report."
 - Every new topic doc or `docs/decisions/` folder an existing `AGENTS.md` does not route, with the `MUST read` route line to add.
 - Every existing file whose content breaches its contract in the standard — the file and what is off about it. These were left untouched: say so, and tell the user to run `/project-review:project-review-docs` for the full audit — a separate plugin, so mention it may need installing — and name `instruction-writing:writing-project-docs` for the fix.
 
