@@ -1,6 +1,7 @@
 # Stray work
 
 **Stray work** is what the main checkout holds when a run starts there: uncommitted files, and commits its upstream lacks. A session inside a worktree cannot run git on another checkout, so the work leaves the main checkout before `EnterWorktree`, on a branch this run owns: `worktree-ship-stray/<worktree-name>`. That branch is also the mark a stopped run leaves. The **dirty check** is the `git status` command of the skill's step 2.
+
 ## Ask first
 
 Stop and ask the user, with nothing moved yet, and wait for the answer: only the user's answer decides whether the work belongs to the change, a look at the files does not. Ask where:
@@ -13,12 +14,12 @@ With no argument and no change the user stated or approved in this conversation,
 
 ## Move out
 
-In the main checkout, first run `{ [ "$(git config --bool core.sparseCheckout)" = true ] && echo sparse; git diff --raw --ignore-submodules=none HEAD | grep -E '^:(160000|[0-7]{6} 160000) '; }`. Where it prints a line, stop and ask the user with nothing moved: a worktree writes no path outside a sparse cone and holds no submodule content, so **Bring in** would lose that work.
+In the main checkout, on each entry to this section, a continued move included, first run `{ [ "$(git config --bool core.sparseCheckout)" = true ] && echo sparse; git -c diff.relative=false diff --raw HEAD | grep -E '^:(160000|[0-7]{6} 160000) '; git --no-literal-pathspecs status --porcelain --untracked-files=all -- ':/' ':(top,exclude).claude/worktrees' | grep -E '^\?\? .*/"?$'; true; }`. Where it prints a line, stop and ask the user, and move nothing further: a worktree writes no path outside a sparse cone and holds no content of a submodule or a nested repository, so **Bring in** would lose that work.
 
 1. `git switch -c worktree-ship-stray/<worktree-name>`.
 2. Where the dirty check prints a line, `git --no-literal-pathspecs add -A -- ':/' ':(top,exclude,glob)[.]claude/worktrees' ':(top,exclude,glob)[.]claude/worktrees/**'`, then `git -c core.hooksPath=/dev/null -c commit.gpgsign=false commit -m "worktree-ship: uncommitted stray work"`. This **transport** commit is found again by its subject, which no hook may change. The `[.]` keeps `git add` from refusing the excludes where `.claude/` is gitignored.
 3. `git switch <base-branch>`.
-4. Where the branch has an upstream and `git rev-list @{upstream}..HEAD` prints commits: once the dirty check prints nothing, `git ls-files -v | grep '^[a-z]'` prints no assume-unchanged file, whose local edit the reset would overwrite, and `git merge-base --is-ancestor HEAD worktree-ship-stray/<worktree-name>` succeeds, `git reset --hard @{upstream}`.
+4. Where the branch has an upstream and `git rev-list @{upstream}..HEAD` prints commits: once the dirty check prints nothing, `git --no-literal-pathspecs ls-files -v -- ':/' | grep '^[a-z]' || true` prints no assume-unchanged file, whose local edit the reset would overwrite, and `git merge-base --is-ancestor HEAD worktree-ship-stray/<worktree-name>` succeeds, `git -c submodule.recurse=false reset --hard @{upstream}`.
 
 Where git refuses a command or the check of item 4 fails, stop and ask the user: the reset destroys what the branch does not hold.
 
