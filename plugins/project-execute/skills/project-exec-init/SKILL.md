@@ -44,7 +44,7 @@ Read what the project already carries and record two lists.
 | `MONITORING.md` | logs, metrics, traces, or usage data the project produces and someone reads |
 | `decisions/` | a decision the repo states together with its reason — in a code comment or a `git log` message body, or a PR description `gh` can read — that meets the standard's `docs/decisions/` contract |
 
-Where the repo has a git remote, run `gh pr list --state all --limit 1` before you read PR descriptions. Where `gh` is not installed or the command fails, take your evidence from the other sources and keep that reason, or gh's error, for step 4.
+Where the repo has a git remote, run `gh pr list --state all --limit 1` before you read PR descriptions. Where `gh` is not installed, or this or a later `gh` read fails, take your evidence from the other sources and keep that reason, or gh's error, for step 4.
 
 Keep the evidence you found for each earned topic. It is the material step 3 writes from, and the reason step 4 gives for every topic left out.
 
