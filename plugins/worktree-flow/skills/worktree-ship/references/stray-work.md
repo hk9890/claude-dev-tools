@@ -1,6 +1,6 @@
 # Stray work
 
-**Stray work** is what the main checkout holds when a run starts there: uncommitted files, and commits its upstream lacks. A session inside a worktree cannot run git on another checkout, so the work leaves the main checkout before `EnterWorktree`, on a branch this run owns: `worktree-ship-stray/<worktree-name>`. That branch is also the mark a stopped run leaves. The **dirty check** is the `git status` command of the skill's step 2.
+**Stray work** is what the main checkout holds when a run starts there: uncommitted files, and commits its upstream lacks. A session inside a worktree cannot run git on another checkout, so the work leaves the main checkout before `EnterWorktree`, on a branch this run owns: `worktree-ship-stray/<worktree-name>`. That branch is also the mark a stopped run leaves. The **dirty check** is the `git status` command of the skill's step 2. Uncommitted content inside a submodule belongs to the submodule's repository, so the check passes over it and it stays where it is.
 
 ## Ask first
 
@@ -17,7 +17,7 @@ With no argument and no change the user stated or approved in this conversation,
 In the main checkout:
 
 1. `git switch -c worktree-ship-stray/<worktree-name>`.
-2. Where the dirty check prints a line, `git add -A -- ':/' ':(top,exclude,glob)[.]claude/worktrees' ':(top,exclude,glob)[.]claude/worktrees/**'`, then `git -c core.hooksPath=/dev/null -c commit.gpgsign=false commit -m "worktree-ship: uncommitted stray work"`. This **transport** commit is found again by its subject, which no hook may change. The `[.]` keeps `git add` from refusing the excludes where `.claude/` is gitignored.
+2. Where the dirty check prints a line, `git --no-literal-pathspecs add $(git add -h 2>&1 | grep -q sparse && echo --sparse) -A -- ':/' ':(top,exclude,glob)[.]claude/worktrees' ':(top,exclude,glob)[.]claude/worktrees/**'`, then `git -c core.hooksPath=/dev/null -c commit.gpgsign=false commit -m "worktree-ship: uncommitted stray work"`. This **transport** commit is found again by its subject, which no hook may change. The `[.]` keeps `git add` from refusing the excludes where `.claude/` is gitignored, and `--sparse`, which git before 2.34 lacks, keeps it from refusing a path outside a sparse cone.
 3. `git switch <base-branch>`.
 4. Where the branch has an upstream and `git rev-list @{upstream}..HEAD` prints commits: once the dirty check prints nothing and `git merge-base --is-ancestor HEAD worktree-ship-stray/<worktree-name>` succeeds, `git reset --hard @{upstream}`.
 
