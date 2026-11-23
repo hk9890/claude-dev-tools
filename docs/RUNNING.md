@@ -11,7 +11,7 @@ How to launch this marketplace's plugins and drive them by hand to reproduce a b
 ./scripts/claude-dev                                          # interactive TUI (human)
 ```
 
-An agent drives the plugins with the first form: no tool call can drive the bare one.
+An agent drives the plugins with the first form.
 
 ## Drive a plugin to reproduce or verify
 
