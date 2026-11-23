@@ -84,7 +84,7 @@ Every skill is loaded with a `Base directory for this skill: <absolute path>` li
 
 Where a plugin needs text that another plugin owns and cannot reach it, it keeps a copy. Each copy names the other copies and the part they share, and says that a change to that part in one is a change to all; text around it can differ. `decision-split.md` in `project-review` and in `project-auto-work` is the worked example: each names the other, they share the settled/open table, which `test-shared-vocabulary.sh` pins. No test checks a copy in prose, such as the relay lists that the Report step of `worktree-review` copies.
 
-Edit a sentence that skills repeat on purpose, in one plugin or several, in every copy in the same change: `git grep -n 'even where it loaded earlier' -- plugins` finds one such set.
+Edit a sentence that skills repeat on purpose, such as the error paragraphs of `test-app` and `project-review-docs`, in every copy in the same change.
 
 ## State across `Bash` calls
 
