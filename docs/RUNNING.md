@@ -11,11 +11,11 @@ How to launch this marketplace's plugins and drive them by hand to reproduce a b
 ./scripts/claude-dev                                          # interactive TUI (human)
 ```
 
-An agent drives the plugins with the first form — `-p` writes the reply to stdout, which is what the `Bash` tool returns. The bare form is interactive and cannot be driven from a tool call.
+An agent drives the plugins with the first form: no tool call can drive the bare one.
 
 ## Drive a plugin to reproduce or verify
 
-- **Skills** — run a user-only skill (`disable-model-invocation: true`, most of them) by name: `./scripts/claude-dev -p "/<plugin>:<skill> <args>"`. Invoke a model-invoked skill (one with `when_to_use`) by *describing the use case*; confirm it triggers, then check the output.
+- **Skills** — run a user-only skill (`disable-model-invocation: true`, most of them) by name: `./scripts/claude-dev -p "/<plugin>:<skill> <args>"`. Invoke a model-invoked skill (one with `when_to_use`) by *describing the use case*; confirm it triggers, then check the output. For a changed `when_to_use`, also send a negative prompt in a project where the skill's context applies.
 - **Mods** — load the one plugin with `claude -p "<prompt>" --plugin-dir plugins/<plugin> --debug-file <file>`; the debug file has a `hooks module <plugin>@inline loaded` line and a line for every hook the engine skipped. [OVERVIEW.md](OVERVIEW.md) has the expression that lists the mods. Then confirm the effect:
   - `keep-awake-linux` — send any prompt and find `$.process.spawn (keep-awake-linux): systemd-inhibit` in the debug file. `claude -p "/keep-awake-info" --plugin-dir plugins/keep-awake-linux` lists the blocks of the other sessions alone: a command starts no turn, so that run holds none.
   - `tasks` — `claude -p "/tasks-board" --plugin-dir plugins/tasks` prints the board as text — a first line `tasks: In progress (N)`, then the `Ready` and `Blocked` groups — because no pane can draw under `-p`.

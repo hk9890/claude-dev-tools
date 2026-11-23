@@ -56,7 +56,7 @@ The harness auto-installs every plugin listed in `plugin.json`'s `dependencies` 
 
 ## Locating a plugin's own files at runtime
 
-Every skill is loaded with a `Base directory for this skill: <absolute path>` line, correct in every install shape — dev checkout, `--plugin-dir` run, cached install under `$HOME/.claude/plugins/<marketplace>/<plugin>/<version>/`. Build paths from it:
+Every skill is loaded with a `Base directory for this skill: <absolute path>` line, correct in every install shape. Build paths from it:
 
 ```
 <base directory for this skill>/workflows/<the-file-you-need>
@@ -65,7 +65,7 @@ Every skill is loaded with a `Base directory for this skill: <absolute path>` li
 - A file one skill owns sits under that skill; one shared by two or more skills sits at the plugin root ([OVERVIEW.md](OVERVIEW.md)), reached with `<base directory for this skill>/../../<dir>/<file>`. Shared content takes this layout, not a skill of its own ([decision 0003](decisions/0003-files-that-skills-of-one-plugin-share-live-at-the-plugin-root.md)).
 - Say in the skill that the plugin-root layout applies, or the `../..` reads as a mistake.
 - A workflow two skills launch sits in the plugin-root `references/`, as `project-auto-work`'s `triage.js` does. A plugin-root `workflows/` holds only a workflow launched by name ([decision 0003](decisions/0003-files-that-skills-of-one-plugin-share-live-at-the-plugin-root.md)).
-- `html-visualization` is the worked example — its three mode skills all read `references/` and run `bin/server.js` from the plugin root, so each climbs `../..` from its own base directory; `instruction-writing` and `project-review` share `references/` the same way.
+- `html-visualization` is the worked example: its three mode skills climb `../..` to `references/` and `bin/server.js`.
 - Never `find` the plugin: it can select a stale cached version. Print the path you build ([State across `Bash` calls](#state-across-bash-calls)).
 - `$CLAUDE_PLUGIN_ROOT` is substituted in hook commands and `settings.json` only — it is not in a `Bash` call's environment.
 - Stop and tell the user when a needed file is missing; never improvise a path.
@@ -82,7 +82,9 @@ Every skill is loaded with a `Base directory for this skill: <absolute path>` li
 
 ### Copying another plugin's text
 
-Where a plugin needs text that another plugin owns and cannot reach it, it keeps a copy. Each copy names the other copies and the part they share, and says that a change to that part in one is a change to all; text around it can differ. `decision-split.md` in `project-review` and in `project-auto-work` is the worked example: each names the other, they share the settled/open table, which `test-shared-vocabulary.sh` pins, and each relays in its own way. No test checks a copy in prose, such as the relay lists that the Report step of `worktree-review` copies.
+Where a plugin needs text that another plugin owns and cannot reach it, it keeps a copy. Each copy names the other copies and the part they share, and says that a change to that part in one is a change to all; text around it can differ. `decision-split.md` in `project-review` and in `project-auto-work` is the worked example: each names the other, they share the settled/open table, which `test-shared-vocabulary.sh` pins. No test checks a copy in prose, such as the relay lists that the Report step of `worktree-review` copies.
+
+Edit a sentence that skills repeat on purpose, in one plugin or several, in every copy in the same change.
 
 ## State across `Bash` calls
 
@@ -126,7 +128,7 @@ disable-model-invocation: true
 ---
 ```
 
-**Schema B — model-discoverable.** Only where the `Skill` tool must reach the skill: siblings or agents load it by name (`tasks:tasks-core`, `instruction-writing:writing-project-docs`), or the model should fire it unprompted from context (`writing-skills`). A skill another skill only offers to the user stays Schema A ([Portability](#portability)). `when_to_use` carries positive triggers and exclusions; where an argument opens a branch, name that branch in the user's words (`--all` as 'for every package'), not the argument syntax.
+**Schema B — model-discoverable.** Only where the `Skill` tool must reach the skill: siblings or agents load it by name (`tasks:tasks-core`, `instruction-writing:writing-project-docs`), or the model should fire it unprompted from context (`writing-skills`). A skill another skill only offers to the user stays Schema A ([Portability](#portability)). `when_to_use` carries positive triggers and exclusions; where an argument opens a branch, name that branch in the user's words (`--all` as 'for every package'), not the argument syntax. A trigger on an identifier names its shape or a context condition, not one example alone.
 
 ```yaml
 ---
