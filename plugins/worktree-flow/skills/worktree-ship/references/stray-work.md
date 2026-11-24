@@ -19,9 +19,13 @@ In the main checkout, on each entry to this section, a continued move included, 
 1. `git switch -c worktree-ship-stray/<worktree-name>`.
 2. Where the dirty check prints a line, `git --no-literal-pathspecs add -A -- ':/' ':(top,exclude,glob)[.]claude/worktrees' ':(top,exclude,glob)[.]claude/worktrees/**'`, then `git -c core.hooksPath=/dev/null -c commit.gpgsign=false commit -m "worktree-ship: uncommitted stray work"`. This **transport** commit is found again by its subject, which no hook may change. The `[.]` keeps `git add` from refusing the excludes where `.claude/` is gitignored.
 3. `git switch <base-branch>`.
-4. Where the branch has an upstream and `git rev-list @{upstream}..HEAD` prints commits: once the dirty check prints nothing, `git --no-literal-pathspecs ls-files -v -- ':/' | grep '^[a-z]' || true` prints no assume-unchanged file, whose local edit the reset would overwrite, and `git merge-base --is-ancestor HEAD worktree-ship-stray/<worktree-name>` succeeds, `git -c submodule.recurse=false reset --hard @{upstream}`.
+4. Where the branch has an upstream and `git rev-list @{upstream}..HEAD` prints commits, run `git -c submodule.recurse=false reset --hard @{upstream}` once each of these checks holds:
+   - The dirty check prints nothing.
+   - `git --no-literal-pathspecs ls-files -v -- ':/' | grep '^[a-z]' || true` prints no assume-unchanged file, whose local edit the reset would overwrite.
+   - `( git -c diff.relative=false diff --raw --ignore-submodules=none @{upstream} HEAD | grep -E '^:(160000|[0-7]{6} 160000) '; cd "$(git rev-parse --show-toplevel)" && git -c diff.relative=false diff -z --name-only --no-renames --diff-filter=A HEAD @{upstream} | while IFS= read -r -d '' p; do if [ -e "$p" ] || [ -L "$p" ]; then echo "$p"; fi; while [ "$p" != "${p%/*}" ]; do p=${p%/*}; if [ -L "$p" ] || { [ -e "$p" ] && [ ! -d "$p" ]; }; then echo "$p"; fi; done; done; true )` prints no submodule that the reset would leave dirty, and no ignored file that it would overwrite.
+   - `git merge-base --is-ancestor HEAD worktree-ship-stray/<worktree-name>` succeeds.
 
-Where git refuses a command or the check of item 4 fails, stop and ask the user: the reset destroys what the branch does not hold.
+Where git refuses a command or a check of item 4 fails, stop and ask the user: the reset destroys what the branch does not hold.
 
 Done when the main checkout is on `<base-branch>`, the dirty check prints only files the user chose to keep there, and, where `<base-branch>` has an upstream, `git rev-list @{upstream}..HEAD` prints nothing; else the run has stopped and asked the user.
 
