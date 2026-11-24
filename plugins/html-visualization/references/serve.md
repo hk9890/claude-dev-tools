@@ -110,7 +110,7 @@ from a previous invocation.
 > and cached install — so use it.
 
 **Feedback mode only**: this directory is created **once** and reused for every
-Apply round of the same skill invocation. It is deleted only after a final Submit or a refused Write.
+Apply round of the same skill invocation. It is deleted only after a final Submit.
 All per-invocation files — the HTML document, the feedback JSON, and the `.port`
 and `.csrf` files — live here.
 
@@ -126,9 +126,11 @@ inside `$HTML_DIR`.
 > `touch`, or a shell redirect and then Write to it. The temp directory is
 > unique per invocation so the destination path is always new.
 
-Where Write refuses the path, start no server: run `rm -rf "<the printed html dir>"`,
-use the Node pre-flight's chat fallback, and tell the user the reason, naming
+Where Write refuses the **first** file of an invocation, start no server: run
+`rm -rf "<the printed html dir>"`, the one deletion before a Submit, use the Node
+pre-flight's chat fallback, and tell the user the reason, naming
 `permissions.blockWritesOutsideWorkingDirectories` where that setting is the cause.
+Where it refuses a later Apply round, keep the directory and tell the user the reason.
 
 ---
 

@@ -24,7 +24,7 @@ user answers in one pass, with a blocking submit round-trip.
 Fall back to plain chat in only three cases:
 
 - **Node.js is unavailable** — see pre-flight in `references/serve.md`.
-- **Write refuses the page** — see the authoring section of `references/serve.md`.
+- **The page cannot be written** — no temp directory, or Write refuses it: see `references/serve.md`.
 - **The intent does not fit a form** — e.g. it is a single yes/no question, or it
   asks you to annotate existing content (that is feedback mode's shape). Say so
   briefly and handle the request in chat. Where another mode fits, name its

@@ -29,7 +29,7 @@ authored during the conversation (no backing file required).
 Fall back to plain chat in only three cases:
 
 - **Node.js is unavailable** — see pre-flight in `references/serve.md`.
-- **Write refuses the page** — see the authoring section of `references/serve.md`.
+- **The page cannot be written** — no temp directory, or Write refuses it: see `references/serve.md`.
 - **The intent does not fit** — e.g. the user needs structured answers to
   specific questions (that is ask mode). Say so briefly and handle the request
   in chat. Where another mode fits, name its command for the user to run —
