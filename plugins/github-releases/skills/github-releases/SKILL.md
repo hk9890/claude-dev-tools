@@ -35,7 +35,7 @@ Track progress through these phases in the session's task list:
 - [ ] Documentation check: verify version consistency across all project files — [documentation-checklist.md](references/documentation-checklist.md)
 - [ ] Version bump: update version in project files (package.json, Cargo.toml, etc.) — [version-management.md](references/version-management.md)
 - [ ] Commit and push the version bump to the default branch; re-verify clean tree — [release-workflow.md](references/release-workflow.md)
-- [ ] Write release notes: structured format — [release-notes-guide.md](references/release-notes-guide.md)
+- [ ] Write release notes: structured format — [release-notes-guide.md](references/release-notes-guide.md); the notes path — [release-workflow.md — Phase 7](references/release-workflow.md#phase-7--create-github-release)
 - [ ] Create GitHub release: tag, release body, assets — [release-workflow.md](references/release-workflow.md)
 - [ ] Post-release verification: confirm release is live and correct — [release-workflow.md](references/release-workflow.md)
 - [ ] Cleanup: post-release steps the project's `docs/RELEASING.md` specifies (announcements, version-file rollover); skip if it defines none
