@@ -98,7 +98,7 @@ rest (*Economy*). Two exclusions bind every block below without being repeated i
 - **Purpose**: a *findability map* — lets an agent locate things in and outside the repo without duplicating what the repo already contains.
 - **Stays small.** A map, not a survey: it points at where things live and how to search for them. Anything it describes in full is a second copy of the source, stale from the next rename.
 - **Inside**: high-level structure and architecture — the modules or packages, what each owns, and the boundaries between them, one clause per entry, at directory or module depth; important external links; search expressions (`grep`/`rg`) for finding things.
-- **Not inside**: runtime behaviour (what runs when, waits, signal flow — *Code narration*); private symbols (*Anchors*); detailed package/file lists or domain model (those live in source); the layout of an external format the repo follows (link its spec, list only the local deviations); build/test commands, usage, and any re-listing of what `AGENTS.md` already routes to (*Ownership*).
+- **Not inside**: private symbols (*Anchors*); detailed package/file lists or domain model (those live in source); the layout of an external format the repo follows (link its spec, list only the local deviations); build/test commands, usage, and any re-listing of what `AGENTS.md` already routes to (*Ownership*).
 - Example: [../examples/docs/OVERVIEW.md](../examples/docs/OVERVIEW.md)
 
 ### `docs/CODING.md`
@@ -147,7 +147,7 @@ rest (*Economy*). Two exclusions bind every block below without being repeated i
 
 - **Audience**: AI agents, when they need evidence of what the running product already did.
 - **Inside**: how the agent accesses monitoring data (logs, spans, metrics, sessions, usage) — where each kind lands and the command that reads it — and which source answers which question.
-- **Not inside**: a catalogue of log messages and their causes (→ the comment where each is written); how the monitored component behaves at run time (*Code narration*); driving the live product (→`docs/RUNNING.md`), test suites, architecture.
+- **Not inside**: a catalogue of log messages and their causes (→ the comment where each is written); driving the live product (→`docs/RUNNING.md`), test suites, architecture.
 - **Boundary vs `RUNNING.md`**: MONITORING inspects the evidence of what already happened; RUNNING drives the live product to make something happen. Bug reproduction is driven from `RUNNING.md`, which may pull MONITORING data as evidence.
 - Example: [../examples/docs/MONITORING.md](../examples/docs/MONITORING.md)
 
