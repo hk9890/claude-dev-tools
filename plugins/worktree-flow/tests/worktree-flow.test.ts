@@ -83,6 +83,16 @@ const DENIED = [
   'git worktree add /tmp/probe feat > -d',
 ]
 
+// A session whose repository sits below a folder named scratchpad.
+test('denies a detached add into a repository below a scratchpad folder', async ($, on) => {
+  const seen = host(on, '/home/me/scratchpad/proj')
+
+  const answer = await $.tool.call({ tool: 'Bash', command: 'git worktree add --detach /home/me/scratchpad/proj/.claude/worktrees/x HEAD' })
+
+  expect(answer.deny).toContain('EnterWorktree')
+  expect(seen.ran).toEqual([])
+})
+
 // An add that names a directory, by `cd` or `-C`, that is in the session's repository at
 // /home/me/repo, or that the guard cannot place outside it.
 const OWN_REPOSITORY = {
@@ -163,6 +173,7 @@ const OTHER_REPOSITORY = {
   'a line continuation': 'cd /home/me/other && \\\n  git worktree add ../x -b b',
   'a quoted -C with a space': 'git -C "/home/me/my repo" worktree add ../x -b b',
   'a cd through a variable': 'R=/home/me/other; cd $R && git worktree add ../x -b b',
+  'a detached relative scratchpad target': 'git -C /home/me/other worktree add --detach sub/scratchpad/x HEAD',
 }
 
 for (const command of DENIED) {

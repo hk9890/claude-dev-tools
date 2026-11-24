@@ -148,6 +148,7 @@ const VARIABLE = /\$(?:\{([A-Za-z_]\w*)\}|([A-Za-z_]\w*))/g
 // directory the add runs in; a temp directory the shell computes is not.
 const COMPUTED_TMP_TARGET = /^(?:\$\{?TMPDIR\b|\$\(mktemp\b)/
 const SCRATCHPAD = '/scratchpad/'
+const ABSOLUTE = /^(?:\/|~\/|\$\{?HOME\}?\/)/
 const DOT_PART = /(?:^|\/)\.\.?(?:\/|$)/
 
 // A word whose next word is its value, or the target of a redirect.
@@ -217,8 +218,11 @@ function persistentAdds(command: string) {
           return [path]
         }
 
-        if (path.includes(SCRATCHPAD)) {
-          return [path.slice(0, path.indexOf(SCRATCHPAD) + SCRATCHPAD.length - 1)]
+        // A computed part after the scratchpad stays inside it; else the whole target is checked.
+        if (ABSOLUTE.test(path) && path.includes(SCRATCHPAD)) {
+          const end = path.indexOf(SCRATCHPAD) + SCRATCHPAD.length
+
+          return [/[$`]/.test(path.slice(end)) ? path.slice(0, end - 1) : path]
         }
       }
 
