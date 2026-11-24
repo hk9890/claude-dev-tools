@@ -21,9 +21,10 @@ the same file.
 The user typed the slash command for this surface — build the form. Ask mode fits a batch of open questions or approve/reject decisions the
 user answers in one pass, with a blocking submit round-trip.
 
-Fall back to plain chat in only two cases:
+Fall back to plain chat in only three cases:
 
 - **Node.js is unavailable** — see pre-flight in `references/serve.md`.
+- **The page cannot be written** — no temp directory, or Write refuses it: see `references/serve.md`.
 - **The intent does not fit a form** — e.g. it is a single yes/no question, or it
   asks you to annotate existing content (that is feedback mode's shape). Say so
   briefly and handle the request in chat. Where another mode fits, name its
