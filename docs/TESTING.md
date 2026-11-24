@@ -6,7 +6,7 @@ How to run this marketplace's automated suites and validators.
 
 `.mise.toml` at the repo root is the single entry point; `mise tasks` lists the tasks and what each runs. `mise run test` is the full suite and runs `tests/run-all.sh`.
 
-`bash`, `perl`, `python3`, `node`, `jq`, `rsync`, and `shellcheck` must already be on PATH: `.mise.toml` declares no `[tools]`, so mise runs the tasks but installs none of them. Absent `node`, the node-backed suites fail rather than skip. The plugin suite alone needs `claude` too ([Suites that skip](#suites-that-skip)).
+`bash`, `perl`, `python3`, `node`, `jq`, `rsync`, and `shellcheck` must already be on PATH: `.mise.toml` declares no `[tools]`, so mise runs the tasks but installs none of them. Absent `node`, the node-backed suites fail rather than skip. The plugin suite and `mise run eval` also need `claude` ([Suites that skip](#suites-that-skip)).
 
 ## Script tests — `tests/run-all.sh`
 
