@@ -109,8 +109,8 @@ accuracy — it buries the procedure it exists to document, and the next reader 
 that mattered. Judge it by naming the spans you would cut, so the claim is falsifiable rather than a
 verdict on the file's feel.
 
-The test for each line: **an agent acts differently without it, and no code, source comment, test,
-`--help` or task description holds it.** A line that is true and anchored can still fail it. Size
+The test for each line: **an agent acts differently without it, and nothing the agent reads before
+acting — code, source comment, test, `--help`, task-runner description — already tells it.** A line that is true and anchored can still fail it. Size
 is the symptom; the copy is the defect.
 
 Replace a hand-written list of files, functions or tests with the search expression that finds
@@ -152,10 +152,9 @@ set's version of sediment is the routing file swelling into a handbook.
 - **Injected block** — an external tool's `<!-- BEGIN <TOOL> -->` … `<!-- END <TOOL> -->` markers in
   `CLAUDE.md` or `AGENTS.md`. Those two are hand-authored steering surfaces; a generated block
   belongs in a topic doc under `docs/`, or in `CLAUDE.local.md` when it is personal or transient.
-- **Code narration** — the doc tells what the code does at run time: the order things happen in,
-  timing and waits, retries, constants, log text, what a script, suite or helper checks. The
-  source comment beside the code already says it, or should; a refactor updates that comment and
-  leaves the doc wrong. Point at the file, and keep only the rule the agent must act on.
+- **Code narration** — the doc-set form of *Cache*: the doc tells what the code does at run time
+  — the order things happen in, timing and waits, retries, constants, log text, what a script,
+  suite or helper checks. Point at the file, and keep only the rule the agent must act on.
 - **Logbook** — the doc records what happened: an incident story, "verified on X", a dated
   check, the outcome of a past experiment, a milestone status. Git and the PR hold the story; a
   decision record holds a choice it forced. A hard rule keeps one trailing clause of reason.

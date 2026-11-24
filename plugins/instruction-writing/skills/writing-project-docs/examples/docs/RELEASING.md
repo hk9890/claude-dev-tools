@@ -28,7 +28,9 @@ git tag v1.2.3
 git push origin v1.2.3
 ```
 
-The tag triggers `.github/workflows/release.yml`, which builds and publishes the release. Monitor the run at: `https://github.com/acme/widget-service/actions/workflows/release.yml`
+The tag triggers `.github/workflows/release.yml`. It publishes `ghcr.io/acme/widget-service:<tag>` and a GitHub Release; check both before you deploy.
+
+Monitor the run at: `https://github.com/acme/widget-service/actions/workflows/release.yml`
 
 ## Deploy
 

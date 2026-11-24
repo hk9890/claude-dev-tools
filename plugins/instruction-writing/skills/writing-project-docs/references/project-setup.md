@@ -47,7 +47,7 @@ Content outside a file's boundary is a defect even when every statement in it is
 
 Every topic doc under `docs/` is loaded on every task of its kind, so every one **stays small**:
 it holds what an agent cannot get by looking, and points at the code, script or config for the
-rest (*Economy*). Two exclusions bind every block below without being repeated in it:
+rest (*Economy*). Two exclusions bind every `docs/` topic block below, `docs/decisions/` excepted:
 
 - **What the code does at run time** — sequence, timing, retries, constants, log text, what a
   script, suite or helper checks — goes in the source comment beside it (*Code narration*).
@@ -133,14 +133,14 @@ rest (*Economy*). Two exclusions bind every block below without being repeated i
 
 - **Audience**: AI agents, before they commit and whenever they write a test.
 - **Inside**: test layers, commands, fixtures, minimum checks and CI gates; coverage targets and how to run with coverage; when integration tests are required; and how to write tests, with examples pointing to existing tests.
-- **Not inside**: what a suite stubs or asserts, and how a helper works (→ the suite's or helper's header comment: name the suite and when to run it); the task descriptions the task runner already prints; driving the product (→`docs/RUNNING.md`), release steps, architecture.
+- **Not inside**: what a suite stubs or asserts, and how a helper works (→ the suite's or helper's header comment; TESTING names the suite and when to run it); the task descriptions the task runner already prints; driving the product (→`docs/RUNNING.md`), release steps, architecture.
 - Example: [../examples/docs/TESTING.md](../examples/docs/TESTING.md)
 
 ### `docs/RELEASING.md`
 
 - **Audience**: AI agents, when they cut a release or change what the project ships.
 - **Inside**: repo-specific release steps, triggers, entrypoints, and verification commands.
-- **Not inside**: what the release script or workflow does step by step (→ the script: name it, and the steps a human or agent takes around it); routine build/test, end-user usage, architecture.
+- **Not inside**: what the release script or workflow does step by step (→ the script; RELEASING names it and the steps a human or agent takes around it); routine build/test, end-user usage, architecture.
 - Example: [../examples/docs/RELEASING.md](../examples/docs/RELEASING.md)
 
 ### `docs/MONITORING.md`

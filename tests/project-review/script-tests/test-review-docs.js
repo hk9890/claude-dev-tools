@@ -522,6 +522,8 @@ async function main() {
     reviewPrompts[0].includes('headed `docs/CODING.md` in project-setup.md') &&
     reviewPrompts[0].includes('headed `AGENTS.md` in project-setup.md') &&
     reviewPrompts[0].includes('headed `README.md` in project-setup.md'));
+  truthy('read-review: a contract line also names the topic-doc exclusions above the blocks',
+    reviewPrompts[0].includes('the topic-doc exclusions stated above the blocks'));
   truthy('read-review: the standard says a non-standard doc has no contract block',
     reviewPrompts[0].includes('a NON-STANDARD doc has none'));
   truthy('read-review: a non-standard file is judged for placement, not against a contract',

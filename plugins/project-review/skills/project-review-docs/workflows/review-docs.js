@@ -487,7 +487,7 @@ if (typeof agent === 'function') {
   // The contract text stays in project-setup.md, which every batch agent reads: carried in
   // the manifest it was half of what the manifest agent has to retype.
   const contractLines = (heading) =>
-    `  Ownership contract (the bar for "belongs here"): the Audience / Inside / Not inside block headed \`${heading}\` in project-setup.md.\n`
+    `  Ownership contract (the bar for "belongs here"): the Audience / Inside / Not inside block headed \`${heading}\` in project-setup.md, together with the topic-doc exclusions stated above the blocks where they bind it.\n`
 
   // What is specific to one file: its facts, and the seat it is judged from. Everything
   // shared by every file is stated once in batchPrompt.
