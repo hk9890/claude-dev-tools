@@ -101,14 +101,17 @@ Gate 5 ran before the bump, so run [Gate 5](quality-gates.md#gate-5-ci-status) a
 
 Write the release notes first, then create the release from them. Writing them is its own
 tool call, so print the path and substitute it literally afterwards — a variable assigned
-here is gone by the next `Bash` call.
+here is gone by the next `Bash` call. `<session-tmp>` is your scratchpad directory, or
+`${TMPDIR:-/tmp}` where the session has none.
 
 ```bash
 # Reserve a notes path outside the repo, and print it
-mktemp
+mktemp "<session-tmp>/release-notes-XXXXXX"
 ```
 
-Write the structured notes to the printed path, then:
+Write the structured notes to the printed path. Where Write refuses it, stop before the tag
+and tell the user the reason, naming `permissions.blockWritesOutsideWorkingDirectories` where
+that setting is the cause. Then:
 
 ```bash
 # Tag the release
