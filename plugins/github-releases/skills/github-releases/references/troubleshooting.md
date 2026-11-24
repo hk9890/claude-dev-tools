@@ -64,7 +64,7 @@ git rev-parse HEAD
 ```
 
 - No remote tag: the local tag is left over. `git tag -f v1.2.3`, then go on with Phase 7 from `git push origin v1.2.3`.
-- The remote tag is on HEAD: the earlier try pushed it. Skip the tag and the push. Where `gh release view v1.2.3` finds a release, put the notes on it with `gh release edit v1.2.3 --notes-file <the printed notes path>`; else run Phase 7's `gh release create`. Then go on with Phase 8.
+- The remote tag is on HEAD: the earlier try pushed it. Skip the tag and the push. Where `gh release view v1.2.3` finds a release, put the notes on it with `gh release edit v1.2.3 --notes-file "<the printed notes path>"`; else run Phase 7's `gh release create`. Then go on with Phase 8.
 - The remote tag is on another commit: stop and report that commit to the user. Never delete or move a pushed tag.
 
 ### Not on default branch

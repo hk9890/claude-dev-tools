@@ -24,9 +24,10 @@ mode produces a rich page — a dependency graph, metric dashboard, timeline,
 comparison chart, data table, architecture diagram, or any rich visual the user
 opens in a browser.
 
-Fall back to plain chat in only two cases:
+Fall back to plain chat in only three cases:
 
 - **Node.js is unavailable** — see pre-flight in `references/serve.md`.
+- **The page cannot be written** — no temp directory, or Write refuses it: see `references/serve.md`.
 - **The intent does not fit** — e.g. the user needs to answer questions (ask
   mode) or annotate prose (feedback mode). Say so briefly and handle the request
   in chat. Name the command of the mode that fits
