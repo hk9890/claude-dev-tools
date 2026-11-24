@@ -67,6 +67,20 @@ const DENIED = [
   'git worktree add ../x -b b # /tmp/',
   'git worktree add ../x -b mktemp-fix',
   'git worktree add ../x -b b < /tmp/in',
+  'git worktree add -b feat /tmp/probe HEAD',
+  'git worktree add /tmp/probe -b feat',
+  'git worktree add /tmp/probe feat',
+  'git worktree add --detach /tmp/../home/me/repo/feature HEAD',
+  'git worktree add --detach ../x/scratchpad/feature HEAD',
+  'git worktree add --detach /home/me/repo/scratchpad/feature HEAD',
+  'git worktree add --detach //home/me/repo/scratchpad/x HEAD',
+  'git worktree add --detach /home/me//repo/scratchpad/x HEAD',
+  'git worktree add --detach /home/me/re${E}po/scratchpad/x HEAD',
+  'git worktree add --detach /home/me/scratchpad/../repo/x HEAD',
+  'git worktree add --lock --reason -d /tmp/x',
+  'git worktree add --detach --no-detach /tmp/probe feat',
+  'git worktree add -d --no-detach /tmp/probe feat',
+  'git worktree add /tmp/probe feat > -d',
 ]
 
 // An add that names a directory, by `cd` or `-C`, that is in the session's repository at
@@ -122,6 +136,7 @@ const ALLOWED = [
   'W="/tmp/probe dir" && git worktree add --detach "${W}" HEAD',
   'git worktree add --detach $TMPDIR/probe HEAD',
   'git worktree add --detach /tmp/x HEAD > /dev/null 2>&1',
+  'git worktree add -d /tmp/probe HEAD',
   'echo git; worktree add',
   'grep -n "worktree add" docs/CHANGE-WORKFLOW.md',
   'ls .git/worktrees',
