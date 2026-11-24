@@ -59,13 +59,12 @@ Only proceed past this step when `node --version` succeeds.
 
 ## Temp directory
 
-`<session-tmp>` is your scratchpad directory, or `${TMPDIR:-/tmp}` where the
-session has none. Create a unique per-invocation temp directory under it and
-resolve the plugin root in the same Bash call:
+`<session-tmp>` is your scratchpad directory, or
+`$(node -p "require('os').tmpdir()")` where the session has none. Resolve the
+plugin root and create a unique per-invocation temp directory under
+`<session-tmp>` in the same Bash call:
 
 ```bash
-HTML_DIR="<session-tmp>/<mode>-$(date +%s)-$$"
-mkdir -p "$HTML_DIR"
 # Resolve the plugin root once and persist it for server-start commands.
 # Substitute the absolute path the harness printed as "Base directory for this
 # skill:" when it loaded the mode skill (html-visualize-ask, -feedback, or -page).
@@ -73,20 +72,20 @@ mkdir -p "$HTML_DIR"
 # the plugin root, where bin/ and references/ sit — this is the plugin-root
 # layout, not the usual per-skill one.
 PLUGIN_ROOT=$(cd "<base directory for this skill>/../.." 2>/dev/null && pwd)
-if [ -f "$PLUGIN_ROOT/bin/server.js" ]; then
-  echo "$PLUGIN_ROOT" > "$HTML_DIR/.plugin-root"
+if [ -f "$PLUGIN_ROOT/bin/server.js" ] \
+  && HTML_DIR=$(mktemp -d "<session-tmp>/<mode>-XXXXXX") \
+  && echo "$PLUGIN_ROOT" > "$HTML_DIR/.plugin-root"; then
   echo "plugin root: $PLUGIN_ROOT"
   echo "html dir: $HTML_DIR"
 else
-  echo "ERROR: cannot locate the html-visualization plugin root"
+  echo "ERROR: cannot locate the html-visualization plugin root or create the temp directory"
   exit 1
 fi
 ```
 
 If the `ERROR` line prints (the command exits non-zero), stop — do not start a
 server. Fall back to the active mode's chat fallback (as in the Node pre-flight)
-and tell the user the plugin's files could not be located. Never guess a path in
-its place.
+and tell the user what the line says. Never guess a path in its place.
 
 Each `Bash` call starts a fresh shell, so `$HTML_DIR` is empty in every later
 call. Start each later block that uses it with `HTML_DIR="<the printed html dir>"`.
@@ -111,7 +110,7 @@ from a previous invocation.
 > and cached install — so use it.
 
 **Feedback mode only**: this directory is created **once** and reused for every
-Apply round of the same skill invocation. It is deleted only after a final Submit.
+Apply round of the same skill invocation. It is deleted only after a final Submit or a refused Write.
 All per-invocation files — the HTML document, the feedback JSON, and the `.port`
 and `.csrf` files — live here.
 
@@ -127,9 +126,9 @@ inside `$HTML_DIR`.
 > `touch`, or a shell redirect and then Write to it. The temp directory is
 > unique per invocation so the destination path is always new.
 
-Where Write refuses the path under `permissions.blockWritesOutsideWorkingDirectories`,
-start no server: run `rm -rf "<the printed html dir>"`, use the active mode's chat
-fallback, and name that setting to the user.
+Where Write refuses the path, start no server: run `rm -rf "<the printed html dir>"`,
+use the Node pre-flight's chat fallback, and tell the user the reason, naming
+`permissions.blockWritesOutsideWorkingDirectories` where that setting is the cause.
 
 ---
 
