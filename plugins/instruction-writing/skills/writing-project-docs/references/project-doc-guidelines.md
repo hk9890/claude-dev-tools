@@ -40,6 +40,9 @@ The homes most often got wrong:
 | How finished code must look, and what a reviewer must check in this repo | `REVIEWING.md`, never scattered into `CODING.md`, which holds only what a change needs in order to work |
 | How this repository's own docs are written, and what it decided not to document | `DOCUMENTING.md`, never `CODING.md`, which owns the source tree |
 | Driving the built product by hand | `RUNNING.md` — not `TESTING.md`, which owns the automated suites, and not `MONITORING.md`, which owns reading the evidence afterwards |
+| A gate — what it runs and when it must pass | `TESTING.md` defines it; `CHANGE-WORKFLOW.md` and `RELEASING.md` name it and link |
+| A safety rule, such as what the agent must never start or kill | The one file whose action it guards; every other file links to it |
+| "Update the doc in the same change as the code" | `REVIEWING.md`; `CHANGE-WORKFLOW.md` links to it |
 
 ## Local delta
 
@@ -68,6 +71,11 @@ and changes nothing:
 > `.github/workflows/ci.yml`."
 
 Point at a file rather than pasting it; paste only the invariant a reader cannot get by opening it.
+
+Anchor to the repository's **public surface**: a command, a path, a file, an exported entry point,
+a search expression. A private symbol — unexported, underscore-prefixed, a helper that no caller
+outside its file can reach — is no anchor: it names an implementation, and the next refactor
+renames it with no doc check failing. Point at its file instead.
 
 ## Command register
 
@@ -100,6 +108,14 @@ A file that spends more words than its content earns is defective on its own, in
 accuracy — it buries the procedure it exists to document, and the next reader skims past the line
 that mattered. Judge it by naming the spans you would cut, so the claim is falsifiable rather than a
 verdict on the file's feel.
+
+The test for each line: **an agent acts differently without it, and no code, source comment, test,
+`--help` or task description holds it.** A line that is true and anchored can still fail it. Size
+is the symptom; the copy is the defect.
+
+Replace a hand-written list of files, functions or tests with the search expression that finds
+them: the list goes stale when the code grows, the expression does not. Write each expression so
+that it still finds every match when one is added — no fixed line counts.
 
 ## Obligation
 
@@ -136,6 +152,13 @@ set's version of sediment is the routing file swelling into a handbook.
 - **Injected block** — an external tool's `<!-- BEGIN <TOOL> -->` … `<!-- END <TOOL> -->` markers in
   `CLAUDE.md` or `AGENTS.md`. Those two are hand-authored steering surfaces; a generated block
   belongs in a topic doc under `docs/`, or in `CLAUDE.local.md` when it is personal or transient.
+- **Code narration** — the doc tells what the code does at run time: the order things happen in,
+  timing and waits, retries, constants, log text, what a script, suite or helper checks. The
+  source comment beside the code already says it, or should; a refactor updates that comment and
+  leaves the doc wrong. Point at the file, and keep only the rule the agent must act on.
+- **Logbook** — the doc records what happened: an incident story, "verified on X", a dated
+  check, the outcome of a past experiment, a milestone status. Git and the PR hold the story; a
+  decision record holds a choice it forced. A hard rule keeps one trailing clause of reason.
 - **Left-behind commentary** — review notes, TODOs, and "we should probably…" in the body. Land the
   decision or drop the line.
 
@@ -147,4 +170,5 @@ set's version of sediment is the routing file swelling into a handbook.
    nothing is superseded. Rounds of pure addition are each locally reasonable and leave the doc set
    permanently longer.
 4. Every line you added passes the *Cache* rule of
-   [`../../../references/writing-hygiene.md`](../../../references/writing-hygiene.md).
+   [`../../../references/writing-hygiene.md`](../../../references/writing-hygiene.md): before you
+   explain a mechanism, open its source; where a comment there holds it, point at the file.
