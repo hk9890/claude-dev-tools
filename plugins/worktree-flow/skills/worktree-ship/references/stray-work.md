@@ -23,6 +23,8 @@ In the main checkout, on each entry to this section, a continued move included, 
 
 Where git refuses a command or the check of item 4 fails, stop and ask the user: the reset destroys what the branch does not hold.
 
+Done when the main checkout is on `<base-branch>`, the dirty check prints only files the user chose to keep there, and, where `<base-branch>` has an upstream, `git rev-list @{upstream}..HEAD` prints nothing; else the run has stopped and asked the user.
+
 ## Bring in
 
 In the worktree, named by the last path segment of `git rev-parse --show-toplevel`. Where `EnterWorktree` gave it another name than the move's, first `git branch -m worktree-ship-stray/<old-name> worktree-ship-stray/<worktree-name>`.
