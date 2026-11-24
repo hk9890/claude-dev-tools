@@ -128,7 +128,8 @@ inside `$HTML_DIR`.
 > unique per invocation so the destination path is always new.
 
 Where Write refuses the path under `permissions.blockWritesOutsideWorkingDirectories`,
-start no server: use the active mode's chat fallback and name that setting to the user.
+start no server: run `rm -rf "<the printed html dir>"`, use the active mode's chat
+fallback, and name that setting to the user.
 
 ---
 
@@ -153,7 +154,7 @@ On startup the server prints two lines:
 
 ```
 [html-visualization] URL: http://<hostname>:<port>/
-[html-visualization] Feedback file: <html dir>/feedback.feedback.json
+[html-visualization] Feedback file: <the printed html dir>/feedback.feedback.json
 ```
 
 Wait until you see both lines, then surface the URL to the user as a markdown
@@ -230,7 +231,7 @@ On startup the server prints two lines:
 
 ```
 [html-visualization] URL: http://<hostname>:<port>/
-[html-visualization] Feedback file: <html dir>/review.feedback.json
+[html-visualization] Feedback file: <the printed html dir>/review.feedback.json
 ```
 
 **Capture the port immediately** and save it — every subsequent Apply round must
