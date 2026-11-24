@@ -59,12 +59,12 @@ Only proceed past this step when `node --version` succeeds.
 
 ## Temp directory
 
-Create a unique per-invocation temp directory and resolve the plugin root in the
-same Bash call:
+`<session-tmp>` is your scratchpad directory, or `${TMPDIR:-/tmp}` where the
+session has none. Create a unique per-invocation temp directory under it and
+resolve the plugin root in the same Bash call:
 
 ```bash
-TMPDIR_BASE=$(node -e "process.stdout.write(require('os').tmpdir())")
-HTML_DIR="$TMPDIR_BASE/<mode>-$(date +%s)-$$"
+HTML_DIR="<session-tmp>/<mode>-$(date +%s)-$$"
 mkdir -p "$HTML_DIR"
 # Resolve the plugin root once and persist it for server-start commands.
 # Substitute the absolute path the harness printed as "Base directory for this
@@ -127,6 +127,9 @@ inside `$HTML_DIR`.
 > `touch`, or a shell redirect and then Write to it. The temp directory is
 > unique per invocation so the destination path is always new.
 
+Where Write refuses the path under `permissions.blockWritesOutsideWorkingDirectories`,
+start no server: use the active mode's chat fallback and name that setting to the user.
+
 ---
 
 ## Server cycles
@@ -150,7 +153,7 @@ On startup the server prints two lines:
 
 ```
 [html-visualization] URL: http://<hostname>:<port>/
-[html-visualization] Feedback file: /tmp/html-ask-.../feedback.feedback.json
+[html-visualization] Feedback file: <html dir>/feedback.feedback.json
 ```
 
 Wait until you see both lines, then surface the URL to the user as a markdown
@@ -227,7 +230,7 @@ On startup the server prints two lines:
 
 ```
 [html-visualization] URL: http://<hostname>:<port>/
-[html-visualization] Feedback file: /tmp/html-feedback-.../review.feedback.json
+[html-visualization] Feedback file: <html dir>/review.feedback.json
 ```
 
 **Capture the port immediately** and save it — every subsequent Apply round must
