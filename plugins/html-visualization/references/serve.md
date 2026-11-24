@@ -59,13 +59,12 @@ Only proceed past this step when `node --version` succeeds.
 
 ## Temp directory
 
-Create a unique per-invocation temp directory and resolve the plugin root in the
-same Bash call:
+`<session-tmp>` is your scratchpad directory, or
+`$(node -p "require('os').tmpdir()")` where the session has none. Resolve the
+plugin root and create a unique per-invocation temp directory under
+`<session-tmp>` in the same Bash call:
 
 ```bash
-TMPDIR_BASE=$(node -e "process.stdout.write(require('os').tmpdir())")
-HTML_DIR="$TMPDIR_BASE/<mode>-$(date +%s)-$$"
-mkdir -p "$HTML_DIR"
 # Resolve the plugin root once and persist it for server-start commands.
 # Substitute the absolute path the harness printed as "Base directory for this
 # skill:" when it loaded the mode skill (html-visualize-ask, -feedback, or -page).
@@ -73,20 +72,20 @@ mkdir -p "$HTML_DIR"
 # the plugin root, where bin/ and references/ sit — this is the plugin-root
 # layout, not the usual per-skill one.
 PLUGIN_ROOT=$(cd "<base directory for this skill>/../.." 2>/dev/null && pwd)
-if [ -f "$PLUGIN_ROOT/bin/server.js" ]; then
-  echo "$PLUGIN_ROOT" > "$HTML_DIR/.plugin-root"
+if [ -f "$PLUGIN_ROOT/bin/server.js" ] \
+  && HTML_DIR=$(mktemp -d "<session-tmp>/<mode>-XXXXXX") \
+  && echo "$PLUGIN_ROOT" > "$HTML_DIR/.plugin-root"; then
   echo "plugin root: $PLUGIN_ROOT"
   echo "html dir: $HTML_DIR"
 else
-  echo "ERROR: cannot locate the html-visualization plugin root"
+  echo "ERROR: cannot locate the html-visualization plugin root or create the temp directory"
   exit 1
 fi
 ```
 
 If the `ERROR` line prints (the command exits non-zero), stop — do not start a
 server. Fall back to the active mode's chat fallback (as in the Node pre-flight)
-and tell the user the plugin's files could not be located. Never guess a path in
-its place.
+and tell the user what the line says. Never guess a path in its place.
 
 Each `Bash` call starts a fresh shell, so `$HTML_DIR` is empty in every later
 call. Start each later block that uses it with `HTML_DIR="<the printed html dir>"`.
@@ -127,6 +126,13 @@ inside `$HTML_DIR`.
 > `touch`, or a shell redirect and then Write to it. The temp directory is
 > unique per invocation so the destination path is always new.
 
+Where Write refuses the **first** file of an invocation, start no server: run
+`rm -rf "<the printed html dir>"`, the one deletion before a Submit, use the Node
+pre-flight's chat fallback, and tell the user the reason, naming
+`permissions.blockWritesOutsideWorkingDirectories` where that setting is the cause.
+Where it refuses a later Apply round, keep the directory, tell the user the reason,
+and re-serve the existing `review.html` on the same port.
+
 ---
 
 ## Server cycles
@@ -150,7 +156,7 @@ On startup the server prints two lines:
 
 ```
 [html-visualization] URL: http://<hostname>:<port>/
-[html-visualization] Feedback file: /tmp/html-ask-.../feedback.feedback.json
+[html-visualization] Feedback file: <the printed html dir>/feedback.feedback.json
 ```
 
 Wait until you see both lines, then surface the URL to the user as a markdown
@@ -227,7 +233,7 @@ On startup the server prints two lines:
 
 ```
 [html-visualization] URL: http://<hostname>:<port>/
-[html-visualization] Feedback file: /tmp/html-feedback-.../review.feedback.json
+[html-visualization] Feedback file: <the printed html dir>/review.feedback.json
 ```
 
 **Capture the port immediately** and save it — every subsequent Apply round must

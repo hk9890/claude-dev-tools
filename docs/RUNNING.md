@@ -1,21 +1,21 @@
 # Running a Plugin
 
-How to launch this marketplace's plugins and drive them by hand to reproduce a bug or verify a change. For the generic launch-and-drive flow, call the Skill tool with the built-in `run` skill; this file records only the local delta.
+How to launch this marketplace's plugins and drive them by hand to reproduce a bug or verify a change. For the generic launch-and-drive flow, call the Skill tool with the built-in `run` skill.
 
 ## Launch all plugins locally
 
-`scripts/claude-dev` starts Claude Code with every plugin in `plugins/` loaded via `--plugin-dir`, forwarding further arguments to `claude` unchanged.
+`scripts/claude-dev` starts Claude Code with every plugin in `plugins/` loaded via `--plugin-dir`, forwarding further arguments to `claude`.
 
 ```bash
-./scripts/claude-dev -p "<prompt>"                            # headless: one turn, result on stdout
-./scripts/claude-dev                                          # interactive TUI (human)
+./scripts/claude-dev -p "<prompt>"  # headless: one turn, result on stdout
+./scripts/claude-dev                # interactive TUI (human)
 ```
 
-An agent drives the plugins with the first form — `-p` writes the reply to stdout, which is what the `Bash` tool returns. The bare form is interactive and cannot be driven from a tool call.
+An agent uses the first form unless a section below names another.
 
 ## Drive a plugin to reproduce or verify
 
-- **Skills** — run a user-only skill (`disable-model-invocation: true`, most of them) by name: `./scripts/claude-dev -p "/<plugin>:<skill> <args>"`. Invoke a model-invoked skill (one with `when_to_use`) by *describing the use case*; confirm it triggers, then check the output.
+- **Skills** — run a user-only skill (`disable-model-invocation: true`, most of them) by name: `./scripts/claude-dev -p "/<plugin>:<skill> <args>"`. Invoke a model-invoked skill (one with `when_to_use`) by *describing the use case*; confirm it triggers, then check the output. For a changed `when_to_use`, run a negative prompt from a project where the skill's context applies, through `<repo root>/scripts/claude-dev` with `--output-format stream-json --verbose`, and confirm no `Skill` call for it.
 - **Mods** — load the one plugin with `claude -p "<prompt>" --plugin-dir plugins/<plugin> --debug-file <file>`; the debug file has a `hooks module <plugin>@inline loaded` line and a line for every hook the engine skipped. [OVERVIEW.md](OVERVIEW.md) has the expression that lists the mods. Then confirm the effect:
   - `keep-awake-linux` — send any prompt and find `$.process.spawn (keep-awake-linux): systemd-inhibit` in the debug file. `claude -p "/keep-awake-info" --plugin-dir plugins/keep-awake-linux` lists the blocks of the other sessions alone: a command starts no turn, so that run holds none.
   - `tasks` — `claude -p "/tasks-board" --plugin-dir plugins/tasks` prints the board as text — a first line `tasks: In progress (N)`, then the `Ready` and `Blocked` groups — because no pane can draw under `-p`.
