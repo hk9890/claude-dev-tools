@@ -42,7 +42,11 @@ Read what the project already carries and record two lists.
 | `REVIEWING.md` | a review rule or a source-wide convention — comments, naming, error handling — where no tool checks it and a generic reviewer could not guess it |
 | `RUNNING.md` | an entrypoint a human starts by hand — CLI, server, app |
 | `MONITORING.md` | logs, metrics, traces, or usage data the project produces and someone reads |
-| `decisions/` | a decision the repo states together with its reason — in a code comment or a `git log` message body, or a PR description where `gh` is installed — that meets the standard's `docs/decisions/` contract |
+| `decisions/` | a decision the repo states together with its reason — in a code comment or a `git log` message body, or a PR description `gh` can read — that meets the standard's `docs/decisions/` contract |
+
+Where the repo has a git remote, run `gh repo view --json isFork,parent,defaultBranchRef`, then read the PR descriptions with `gh pr list --state merged --limit 200 --json number,title,body`. Keep each `gh` reason that holds for step 4: `gh` is not installed, or a call fails (keep gh's error); the list returns 200 PRs (only the latest 200 merged PRs were read); the repo is a fork (the PRs of its parent were not read). Go on with the other sources.
+
+With a git remote, for the `CHANGE-WORKFLOW.md` row, also read the rules of the default branch: `gh api repos/{owner}/{repo}/branches/<default branch>/protection` and `gh api repos/{owner}/{repo}/rules/branches/<default branch>`. The branch is protected where either shows rules; the error `Branch not protected` and an empty rule list mean none. On any other failure, `gh` missing included, keep "branch protection not read: <the reason>" for step 4.
 
 Keep the evidence you found for each earned topic. It is the material step 3 writes from, and the reason step 4 gives for every topic left out.
 
@@ -61,6 +65,8 @@ A new `AGENTS.md` routes the whole set — the docs you just wrote and the ones 
 - Every file created, one line each on what it carries.
 - Every topic left out, naming the evidence that was absent.
 - Every decision the evidence earned that step 3 did not write, with the reason: records already in `docs/decisions/`, or the home of records in another format it found.
+- Where step 2 kept a `gh` reason: "PR descriptions not read in full: <each reason>. A decision stated only in an unread one is not in this report."
+- Where step 2 kept the branch protection line: that line, and that `CHANGE-WORKFLOW.md` was judged on the other evidence only.
 - Every new topic doc or `docs/decisions/` folder an existing `AGENTS.md` does not route, with the `MUST read` route line to add.
 - Every existing file whose content breaches its contract in the standard — the file and what is off about it. These were left untouched: say so, and tell the user to run `/project-review:project-review-docs` for the full audit — a separate plugin, so mention it may need installing — and name `instruction-writing:writing-project-docs` for the fix.
 
