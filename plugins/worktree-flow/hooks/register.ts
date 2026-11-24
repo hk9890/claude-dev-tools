@@ -253,6 +253,7 @@ function inSessionRepo(dir: string | undefined, root: string | undefined, home: 
   )
 }
 
+// The guard steers a model away from a mistake: a command written to get past it is out of scope.
 // Where the guard fails before the call runs, as where the repository or HOME cannot be read, a
 // command that may add a worktree is denied.
 export const register: Register = on => {
