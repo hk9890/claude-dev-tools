@@ -1,6 +1,6 @@
 # Reviewing
 
-Local review rules for this plugin marketplace. The review skills that apply them are `project-review:project-review-change`, the rules review of a diff, and `worktree-flow:worktree-review`, a PR review that pushes its fixes; the user runs `/project-review-codebase` and `/project-review-docs` for the whole-tree and docs audits. **Local delta:** the rules below win where they conflict with those skills.
+Local review rules. The review skills that apply them are `project-review:project-review-change`, the rules review of a diff, and `worktree-flow:worktree-review`, a PR review that pushes its fixes; the user runs `/project-review-codebase` and `/project-review-docs` for the whole-tree and docs audits. **Local delta:** the rules below win where they conflict with those skills.
 
 ## What to prioritise
 
@@ -10,7 +10,7 @@ Local review rules for this plugin marketplace. The review skills that apply the
 
 ## Quality rules
 
-How a finished change must look. Each is a condition to check on the diff.
+Each is a condition to check on the diff.
 
 - **Skill and agent text.** A changed `SKILL.md`, a file it bundles or shares, or a file under a plugin's `agents/` meets the `instruction-writing:writing-skills` rubric. Call the Skill tool with `instruction-writing:writing-skills` and the changed paths, even where it loaded earlier in this session, and apply every rule of it and of the `writing-hygiene.md` it points to; reading the file is not loading the skill. Then run `plugin-dev:skill-reviewer` on each changed `SKILL.md`; each point it raises that the rubric backs is a finding:
 
@@ -32,5 +32,5 @@ How a finished change must look. Each is a condition to check on the diff.
 
 ## Out of scope / non-blocking
 
-- Style-only findings. Shell style belongs to ShellCheck (`mise run lint`); markdown and JSON have no configured formatter, and reviews do not fill that gap by hand.
-- Anything the deterministic checkers already cover: cross-references and version lockstep (`mise run check-consistency`), route resolution (`validate-routes.py`), and the `CLAUDE.md` = `@AGENTS.md` contract and canonical inventory (`manifest.py`). Run `validate-routes.py` and `manifest.py` as [TESTING.md](TESTING.md#docs-validation) says, rather than re-check by hand.
+- Style-only findings. Shell style belongs to ShellCheck (`mise run lint`); markdown and JSON have no formatter, and reviews do not stand in for one.
+- Anything the deterministic checkers already cover: cross-references and version lockstep (`mise run check-consistency`), route resolution (`validate-routes.py`), and the `CLAUDE.md` = `@AGENTS.md` contract and canonical inventory (`manifest.py`). Run `validate-routes.py` and `manifest.py` per [TESTING.md](TESTING.md#docs-validation), not by hand.
