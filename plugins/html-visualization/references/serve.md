@@ -130,7 +130,8 @@ Where Write refuses the **first** file of an invocation, start no server: run
 `rm -rf "<the printed html dir>"`, the one deletion before a Submit, use the Node
 pre-flight's chat fallback, and tell the user the reason, naming
 `permissions.blockWritesOutsideWorkingDirectories` where that setting is the cause.
-Where it refuses a later Apply round, keep the directory and tell the user the reason.
+Where it refuses a later Apply round, keep the directory, tell the user the reason,
+and re-serve the existing `review.html` on the same port.
 
 ---
 
