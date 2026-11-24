@@ -109,18 +109,17 @@ here is gone by the next `Bash` call. `<session-tmp>` is your scratchpad directo
 mktemp "<session-tmp>/release-notes-XXXXXX"
 ```
 
-Write the structured notes to the printed path. Where Write refuses it, stop before the tag
-and tell the user the reason, naming `permissions.blockWritesOutsideWorkingDirectories` where
-that setting is the cause. Then:
+Write the structured notes to the printed path. Where `mktemp` fails or Write refuses the path,
+remove any printed file and stop before the tag: tell the user the reason, that the version bump
+is already pushed, and that the release resumes at Phase 7 with the same version once a path is
+writable. Once Write succeeds, run:
 
 ```bash
-# Tag the release
-git tag v<version>
-git push origin v<version>
-
-# Create GitHub release
-gh release create v<version> --title "v<version>" --notes-file <the printed notes path>
-rm <the printed notes path>
+# Tag the release and create it from the notes; a failed step stops the chain
+git tag v<version> \
+  && git push origin v<version> \
+  && gh release create v<version> --title "v<version>" --notes-file "<the printed notes path>" \
+  && rm "<the printed notes path>"
 ```
 
 See [release-notes-guide.md](release-notes-guide.md) for the required release notes format.
