@@ -6,7 +6,7 @@ How to run this marketplace's automated suites and validators.
 
 `.mise.toml` at the repo root is the single entry point; `mise tasks` lists the tasks and what each runs. `mise run test` is the full suite and runs `tests/run-all.sh`.
 
-`bash`, `perl`, `python3`, `node`, `jq`, `rsync`, and `shellcheck` must already be on PATH: `.mise.toml` declares no `[tools]`, so mise runs the tasks but installs none of them. Absent `node`, the node-backed suites fail rather than skip. The plugin suite and `mise run eval` also need `claude` ([Suites that skip](#suites-that-skip)).
+`bash`, `perl`, `python3`, `node`, `jq`, `rsync`, and `shellcheck` must already be on PATH: `.mise.toml` declares no `[tools]`, so mise runs the tasks but installs none of them. Absent `node`, the node-backed suites fail rather than skip. The plugin suite and `mise run test-triggers` also need `claude` ([Suites that skip](#suites-that-skip)).
 
 ## Script tests — `tests/run-all.sh`
 
@@ -50,7 +50,7 @@ claude plugin test plugins/<plugin>                # the plugin's tests
 - Drive time with `mock.clock(on)` and `clock.advance(ms)`.
 - Model a new test on the one nearest in shape: [`worktree-flow.test.ts`](../plugins/worktree-flow/tests/worktree-flow.test.ts) (denied tool calls), [`tasks-board.test.tsx`](../plugins/tasks/tests/tasks-board.test.tsx) (a command and a mounted pane), [`keep-awake.test.ts`](../plugins/keep-awake-linux/tests/keep-awake.test.ts) (a spawned child's life, timers, plugin options).
 
-## Skill trigger evals — `mise run eval`
+## Skill trigger evals — `mise run test-triggers`
 
 The `claude plugin eval` cases in `plugins/instruction-writing/evals/` check that `writing-skills` fires on a skill request and not on an `AGENTS.md` request. A run costs about 1.20 USD, so no CI job runs it: [RELEASING.md](RELEASING.md#release-steps) asks the user first.
 

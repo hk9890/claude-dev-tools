@@ -38,5 +38,5 @@ output/
 plugins/*/.claude-plugin/types/
 plugins/*/tsconfig.json
 
-# Written by claude plugin eval (mise run eval)
+# Written by claude plugin eval (mise run test-triggers)
 plugins/*/evals/results/

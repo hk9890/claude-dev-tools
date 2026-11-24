@@ -32,9 +32,9 @@ find plugins -name plugin.json -path "*/.claude-plugin/*"   # every file to bump
 
 1. Docs-Route-Check (above).
 2. Bump `"version"` in every `plugin.json` found above to the same new version.
-3. Bump every `"version"` in `.claude-plugin/marketplace.json` to match. Edit only the version lines: piping these files through `jq` rewrites unrelated compact arrays and buries the bump in churn.
+3. Bump every `"version"` in `.claude-plugin/marketplace.json` to match. Edit only the version lines: `jq` rewrites unrelated compact arrays and buries the bump in churn.
 4. Commit as `Bump all plugins to vX.Y.Z` on a `chore/release-X.Y.Z` branch.
-5. Run Test-Run, Plugin-Structure-Check and Consistency-Check (above) on that commit, so the bump is pushed with green gates. Then ask the user whether to run `mise run eval` ([TESTING.md](TESTING.md#skill-trigger-evals--mise-run-eval)), and run it only on a yes.
+5. Run Test-Run, Plugin-Structure-Check and Consistency-Check (above) on that commit, so the bump is pushed with green gates. Then ask the user whether to run `mise run test-triggers` ([TESTING.md](TESTING.md#skill-trigger-evals--mise-run-test-triggers)); run it on a yes only.
 6. Draft the release notes (below) in `<scratchpad>/release-notes-vX.Y.Z.md`, where `<scratchpad>` is the session's scratchpad directory, or `${TMPDIR:-/tmp}` where it has none: the notes are never committed, and the merge can remove a worktree and a draft inside it.
 7. Push the branch, open a PR with the validator's summary line and its commit SHA in the body, or the reason it was skipped, and follow steps 3 and 4 of [Pull requests](CHANGE-WORKFLOW.md#pull-requests): `master` is protected, and the user merges. Report that step 8 and Verification remain, and do them once the user confirms the merge.
 8. Once the user has merged, create the release from the merged bump commit, whose SHA `gh pr view <bump-pr> --json mergeCommit -q .mergeCommit.oid` prints: `gh release create vX.Y.Z --title "vX.Y.Z" --notes-file <scratchpad>/release-notes-vX.Y.Z.md --target <bump-merge-sha>`. `--target master` tags whatever merged last.

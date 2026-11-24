@@ -28,7 +28,7 @@ plugins/<plugin-name>/
   assets/                # static files the plugin serves or bundles
   bin/                   # bundled executables
   commands/              # slash commands (.md)
-  evals/                 # claude plugin eval cases (mise run eval)
+  evals/                 # plugin eval cases (mise run test-triggers)
   hooks/                 # hooks.json, and the hooks module it names when the plugin is a mod
   output-styles/         # output styles (.md)
   references/            # .md or workflow .js shared by two or more of its skills, reached with ../..
