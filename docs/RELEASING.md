@@ -10,7 +10,7 @@ Re-run four of the [CHANGE-WORKFLOW.md pre-push checklist](CHANGE-WORKFLOW.md#pr
 
 - **Test-Run** — `mise run test`.
 - **Consistency-Check** — `mise run check-consistency` must exit 0. It fails on a `plugin.json` that does not match its `marketplace.json` entry, and on more than one distinct version, `metadata.version` included.
-- **Plugin-Structure-Check** — `plugin-dev:plugin-validator` over **every** plugin, not just recently changed ones, with zero errors. The full sweep is the point: nothing tracks whether it ran on each merged PR, so the release is where a never-validated plugin is caught. Skip it only if `plugin-dev` cannot be installed.
+- **Plugin-Structure-Check** — `plugin-dev:plugin-validator` over **every** plugin, not just recently changed ones, with zero errors. Nothing tracks whether it ran on each merged PR. Skip it only if `plugin-dev` cannot be installed.
 - **Docs-Route-Check** — `validate-routes.py` must exit 0; [TESTING.md](TESTING.md#docs-validation) carries the command. No CI job runs it, so the release is where a broken route that a PR merged is caught.
 
 ## Choosing the number
@@ -34,18 +34,18 @@ find plugins -name plugin.json -path "*/.claude-plugin/*"   # every file to bump
 2. Bump `"version"` in every `plugin.json` found above to the same new version.
 3. Bump every `"version"` in `.claude-plugin/marketplace.json` to match. Edit only the version lines: piping these files through `jq` rewrites unrelated compact arrays and buries the bump in churn.
 4. Commit as `Bump all plugins to vX.Y.Z` on a `chore/release-X.Y.Z` branch.
-5. Run Test-Run, Plugin-Structure-Check and Consistency-Check (above) on that commit, so the bump is pushed with green gates.
+5. Run Test-Run, Plugin-Structure-Check and Consistency-Check (above) on that commit, so the bump is pushed with green gates. Then ask the user whether to run `mise run eval` ([TESTING.md](TESTING.md#skill-trigger-evals--mise-run-eval)), and run it only on a yes.
 6. Draft the release notes (below) in `<scratchpad>/release-notes-vX.Y.Z.md`, where `<scratchpad>` is the session's scratchpad directory, or `${TMPDIR:-/tmp}` where it has none: the notes are never committed, and the merge can remove a worktree and a draft inside it.
 7. Push the branch, open a PR with the validator's summary line and its commit SHA in the body, or the reason it was skipped, and follow steps 3 and 4 of [Pull requests](CHANGE-WORKFLOW.md#pull-requests): `master` is protected, and the user merges. Report that step 8 and Verification remain, and do them once the user confirms the merge.
 8. Once the user has merged, create the release from the merged bump commit, whose SHA `gh pr view <bump-pr> --json mergeCommit -q .mergeCommit.oid` prints: `gh release create vX.Y.Z --title "vX.Y.Z" --notes-file <scratchpad>/release-notes-vX.Y.Z.md --target <bump-merge-sha>`. `--target master` tags whatever merged last.
 
-Publish in the same sitting the bump PR merges — a merged bump with no tag leaves `marketplace.json` advertising a version that appears in no release. `vX.Y.Z` must tag the commit whose `plugin.json` files read `X.Y.Z`.
+Publish in the same sitting the bump PR merges — a merged bump with no tag leaves `marketplace.json` advertising a version no release has. `vX.Y.Z` must tag the commit whose `plugin.json` files read `X.Y.Z`.
 
 ## Release notes
 
 The user-only `/github-releases:github-releases` carries the generic release flow; to use it, ask the user to type it. **Local delta:** its `release-notes-guide.md` structure does not apply — use the structure below, and no emoji.
 
-Write around **what changed for users**, not the PRs that changed it: a reader scanning the release should learn what they can now do, and what will behave differently, without opening a single PR.
+Write around **what changed for users**, not the PRs that changed it: a reader learns what they can now do, and what behaves differently, without opening a PR.
 
 1. **Lede** — one or two sentences naming the headline change, enough for a reader who stops there.
 2. **A section per user-facing feature**, titled by what it *does* (`Every Catppuccin flavour, generated from one source`), not by what delivered it (`catppuccin-themes changes`). Say what it enables, and why it works that way where the design is non-obvious. Collapse several PRs into one section when they built one feature.

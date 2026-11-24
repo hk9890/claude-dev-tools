@@ -37,3 +37,6 @@ output/
 # Written by Claude Code beside a mod it loads with --plugin-dir (docs/CODING.md, Mods)
 plugins/*/.claude-plugin/types/
 plugins/*/tsconfig.json
+
+# Written by claude plugin eval (mise run eval)
+plugins/*/evals/results/

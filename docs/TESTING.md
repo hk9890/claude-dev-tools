@@ -4,7 +4,7 @@ How to run this marketplace's automated suites and validators.
 
 ## mise tasks
 
-`.mise.toml` at the repo root is the single entry point; `mise tasks` lists the tasks and what each runs. `mise run test` is the full suite and runs `tests/run-all.sh`; `mise run pick-sessions` serves the session review in [MONITORING.md](MONITORING.md#run-a-review).
+`.mise.toml` at the repo root is the single entry point; `mise tasks` lists the tasks and what each runs. `mise run test` is the full suite and runs `tests/run-all.sh`.
 
 `bash`, `perl`, `python3`, `node`, `jq`, `rsync`, and `shellcheck` must already be on PATH: `.mise.toml` declares no `[tools]`, so mise runs the tasks but installs none of them. Absent `node`, the node-backed suites fail rather than skip. The plugin suite alone needs `claude` too ([Suites that skip](#suites-that-skip)).
 
@@ -50,6 +50,10 @@ claude plugin test plugins/<plugin>                # the plugin's tests
 - Drive time with `mock.clock(on)` and `clock.advance(ms)`.
 - Model a new test on the one nearest in shape: [`worktree-flow.test.ts`](../plugins/worktree-flow/tests/worktree-flow.test.ts) (denied tool calls), [`tasks-board.test.tsx`](../plugins/tasks/tests/tasks-board.test.tsx) (a command and a mounted pane), [`keep-awake.test.ts`](../plugins/keep-awake-linux/tests/keep-awake.test.ts) (a spawned child's life, timers, plugin options).
 
+## Skill trigger evals — `mise run eval`
+
+The `claude plugin eval` cases in `plugins/instruction-writing/evals/` check that `writing-skills` fires on a skill request and not on an `AGENTS.md` request. A run costs about 1.20 USD, so no CI job runs it: [RELEASING.md](RELEASING.md#release-steps) asks the user first.
+
 ## Docs validation
 
 Neither validator runs in CI — run both locally on any change to `AGENTS.md`, `CLAUDE.md`, `README.md`, or a file under `docs/`, from the repo root:
@@ -60,11 +64,10 @@ python3 "$SCR/validate-routes.py" . --include-docs   # hard-fails on broken rout
 python3 "$SCR/manifest.py" . --format=text           # CLAUDE.md invariant, missing/hollow docs, dead links
 ```
 
-The manifest is informational — check its summary line for a false `claude_md_ok`, missing canonical docs, or unresolved links. For a full content audit, run `/project-review-docs`.
-
+The manifest is informational — check its summary line for a false `claude_md_ok`, missing canonical docs, or unresolved links.
 ## CI — `.github/`
 
-`ci.yml` runs five jobs on every PR against `master` and every push to `master`; all five must be green to merge. Four have a local equivalent, so a clean local run predicts a clean CI run — but not a fully verified change: the doc validators above run in no job.
+`ci.yml` runs five jobs on every PR against `master` and every push to `master`; all five must be green to merge. Four have a local equivalent; the doc validators above run in no job.
 
 | Job | What it checks | Locally |
 |---|---|---|
@@ -78,14 +81,14 @@ The manifest is informational — check its summary line for a false `claude_md_
 
 ## Structural validation — `plugin-dev:plugin-validator`
 
-`plugin-dev` ships in the external `claude-code-plugins` marketplace, not in this repo. Install it inside Claude Code:
+Install the external `plugin-dev` inside Claude Code:
 
 ```
 /plugin marketplace add anthropics/claude-code
 /plugin install plugin-dev@claude-code-plugins
 ```
 
-The `plugin-dev:plugin-validator` agent checks a plugin's manifest, component frontmatter, hook schema, and file organisation. When it must run is the Plugin-Structure-Check gate in [CHANGE-WORKFLOW.md](CHANGE-WORKFLOW.md#pre-push-checklist), and over every plugin before a release per [RELEASING.md](RELEASING.md). Invoke it as:
+The `plugin-dev:plugin-validator` agent checks a plugin's manifest, component frontmatter, hook schema, and file organisation. [CHANGE-WORKFLOW.md](CHANGE-WORKFLOW.md#pre-push-checklist) and [RELEASING.md](RELEASING.md) say when it runs. Invoke it as:
 
 ```
 Validate the plugin at plugins/my-plugin

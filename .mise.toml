@@ -25,6 +25,11 @@ description = "Session review: pick, render or record (pass the subcommand as ex
 dir = "{{config_root}}"
 run = "python3 scripts/pick-sessions.py"
 
+[tasks.eval]
+description = "Skill trigger evals: paid API usage, run only on the user's yes"
+dir = "{{config_root}}"
+run = "claude plugin eval plugins/instruction-writing --ablation none --runs 3 --no-publish --max-cost-usd 2"
+
 [tasks.lint]
 description = "ShellCheck every tracked shell script (reproduces the CI shellcheck job)"
 dir = "{{config_root}}"
