@@ -91,7 +91,7 @@ Change them at the authoritative site. This table is the index, not the source.
 |---|---|
 | The six authoring rules, the doc-set failure modes | `instruction-writing:writing-project-docs`, loaded by each read-review agent |
 | Single source of truth, cache, relevance, sediment, no-ops, negation | `references/writing-hygiene.md` at the `instruction-writing` plugin root, loaded by each read-review agent; which files get the per-unit *Cache* question, and where its fix sends the unit, in `batchPrompt` in `review-docs.js` |
-| Per-file ownership contract | `project-setup.md`, read by each read-review agent; `contractLines` in `review-docs.js` names the block headed by the file's path (the `docs/decisions/` block once per batch) |
+| Per-file ownership contract | `project-setup.md`, read by each read-review agent; `contractLines` in `review-docs.js` names the block headed by the file's path and the topic-doc exclusions above the blocks (the `docs/decisions/` block once per batch) |
 | Severity (`blocker` / `major` / `minor`) and the escalation rule | `batchPrompt` in `review-docs.js` |
 | What a batch agent reads, and how docs are packed | `batchPrompt`, `orderTargets`, `packBatches`, and `BATCH_BYTES` in `review-docs.js` |
 | Use case → doc, and the classifier's label vocabulary | `USE_CASES` in `review-docs.js` and `USE_CASE_DOCS` in `history.py` — two copies, because workflow scripts cannot import; pinned by `test-history.sh` |

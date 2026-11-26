@@ -10,7 +10,7 @@ Every route below is **mandatory, not advisory**. Load the document BEFORE the f
 
 ### Coding and file changes
 
-**MUST read [docs/CODING.md](docs/CODING.md) before creating or editing ANY file under `internal/`, `cmd/`, or `monitoring/`.** It owns the build commands, the package boundaries, the steps that add an endpoint, and the dashboard upload.
+**MUST read [docs/CODING.md](docs/CODING.md) before creating or editing ANY file under `internal/`, `cmd/`, `migrations/`, or `monitoring/`.** It owns the build commands, the package boundaries, the steps that add an endpoint or a migration, and the dashboard upload.
 
 ### Writing project docs
 

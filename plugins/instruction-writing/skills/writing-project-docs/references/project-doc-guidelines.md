@@ -40,7 +40,7 @@ The homes most often got wrong:
 | How finished code must look, and what a reviewer must check in this repo | `REVIEWING.md`, never scattered into `CODING.md`, which holds only what a change needs in order to work |
 | How this repository's own docs are written, and what it decided not to document | `DOCUMENTING.md`, never `CODING.md`, which owns the source tree |
 | Driving the built product by hand | `RUNNING.md` — not `TESTING.md`, which owns the automated suites, and not `MONITORING.md`, which owns reading the evidence afterwards |
-| A gate — what it runs and what it checks | `TESTING.md`. `CHANGE-WORKFLOW.md` and `RELEASING.md` say when it must pass, and link to it |
+| A gate — its name, its command, and what counts as a pass | `TESTING.md`, doc gates excepted (`DOCUMENTING.md`). `CHANGE-WORKFLOW.md` and `RELEASING.md` say when a gate must pass, by name, and link |
 | A safety rule, such as what the agent must never start or kill | The one file whose action it guards; every other file links to it |
 | "Update the doc in the same change as the code" | `REVIEWING.md`; `CHANGE-WORKFLOW.md` links to it |
 
@@ -72,7 +72,7 @@ and changes nothing:
 
 Point at a file rather than pasting it; paste only the invariant a reader cannot get by opening it.
 
-Anchor to the repository's **public surface**: a command, a path, a file, an exported entry point,
+Anchor to the repository's **public surface**: a command, a path, a file, an exported symbol,
 a search expression. A private symbol — unexported, underscore-prefixed, a helper that no caller
 outside its file can reach — is no anchor: it names an implementation, and the next refactor
 renames it with no doc check failing. Point at its file instead.

@@ -22,6 +22,10 @@ To start the service, follow [RUNNING.md](RUNNING.md).
 2. Register the route in `internal/api/router.go`.
 3. If DB access is needed, add a method to `internal/store/store.go`.
 
+## Changing the schema
+
+Add a new file under `migrations/`; never edit an applied one, because the service applies each file once.
+
 ## Code generation
 
 ```bash

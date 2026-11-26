@@ -89,7 +89,7 @@ rest (*Economy*). Two exclusions bind every `docs/` topic block below, `docs/dec
 - **Inside**: a 2–3 sentence project summary and task → doc/skill routes, every one of them an obligation.
 - **Not inside**: full procedures, README-style prose, content duplicated from the docs it routes to.
 - **No optional routes** (*Obligation*): a use case with a doc behind it reads `MUST read <doc> before <the action that triggers it>` — a release loads `RELEASING.md` first, touching a source file loads `CODING.md` first, searching the repo loads `OVERVIEW.md` first. A preamble states once that loading afterwards does not count; the one in `examples/AGENTS.md` has a copy in `project-execute`'s `project-exec-init/scripts/private-setup.sh`, and a change to one is a change to both. "Load X to understand Y" is advisory phrasing and is a finding.
-- **Conformance** (checked against the example): one `###` section per use case, each naming the doc/skill to load, the action that triggers it, and a one-line reason that names what the doc owns for that action — never the rules themselves; skip hollow entries; where no local doc exists, route to an installed skill as `MUST call the Skill tool with <plugin:skill> before <the action that triggers it>`, or, for a skill only the user can start (`disable-model-invocation: true`), as `MUST ask the user to run /<plugin:skill> before <the action that triggers it>`.
+- **Conformance** (checked against the example): one `###` section per use case, each naming the doc/skill to load, the action that triggers it, and a one-line reason that names what the doc owns for that action — never the rules themselves (the `docs/decisions/` route keeps the reason line its block below sets); skip hollow entries; where no local doc exists, route to an installed skill as `MUST call the Skill tool with <plugin:skill> before <the action that triggers it>`, or, for a skill only the user can start (`disable-model-invocation: true`), as `MUST ask the user to run /<plugin:skill> before <the action that triggers it>`.
 - Example: [../examples/AGENTS.md](../examples/AGENTS.md)
 
 ### `docs/OVERVIEW.md`
@@ -97,14 +97,14 @@ rest (*Economy*). Two exclusions bind every `docs/` topic block below, `docs/dec
 - **Audience**: AI agents — read before searching, so they find things in the repo quickly instead of grepping blind.
 - **Purpose**: a *findability map* — lets an agent locate things in and outside the repo without duplicating what the repo already contains.
 - **Stays small.** A map, not a survey: it points at where things live and how to search for them. Anything it describes in full is a second copy of the source, stale from the next rename.
-- **Inside**: high-level structure and architecture — the modules or packages, what each owns, and the boundaries between them, one clause per entry, at directory or module depth; important external links; search expressions (`grep`/`rg`) for finding things.
+- **Inside**: high-level structure and architecture — the modules or packages and what each owns, one clause per entry, at directory or module depth; important external links; search expressions (`grep`/`rg`) for finding things.
 - **Not inside**: private symbols (*Anchors*); detailed package/file lists or domain model (those live in source); the layout of an external format the repo follows (link its spec, list only the local deviations); build/test commands, usage, and any re-listing of what `AGENTS.md` already routes to (*Ownership*).
 - Example: [../examples/docs/OVERVIEW.md](../examples/docs/OVERVIEW.md)
 
 ### `docs/CODING.md`
 
 - **Audience**: AI agents, when they create or change a file in the repo — the implementer, whose one job is a change that works.
-- **Inside**: what a change needs in order to work — build and code-generation commands, where code goes, and which mechanism of this repo a change must use — short, with examples pointing to real files and public entry points.
+- **Inside**: what a change needs in order to work — build and code-generation commands, where code goes, and which mechanism of this repo a change must use — short, with examples pointing to real files and exported symbols.
 - **Not inside**: how finished code must look — style, comments, naming, and every other rule a reviewer can apply to the finished diff as a local edit (→`docs/REVIEWING.md`); the text of a rule a tool checks (→ that tool's configuration; the gate that runs it →`docs/TESTING.md`); test and gate commands (→`docs/TESTING.md`); facts that hold for every repo on the same platform or harness; end-user usage, release process, observability, PR/merge etiquette.
 - **Boundary vs `REVIEWING.md`**: CODING is read before the code exists, REVIEWING once it works. A rule belongs here when breaking it leaves the change not working, or built in the wrong place or on the wrong mechanism, so that the fix is a rewrite. A rule a reviewer can apply to the finished diff as a local edit belongs there: the implementer explores and debugs, and a rule that can wait for the diff costs it attention for nothing.
 - Example: [../examples/docs/CODING.md](../examples/docs/CODING.md)
@@ -146,7 +146,7 @@ rest (*Economy*). Two exclusions bind every `docs/` topic block below, `docs/dec
 ### `docs/MONITORING.md`
 
 - **Audience**: AI agents, when they need evidence of what the running product already did.
-- **Inside**: how the agent accesses monitoring data (logs, spans, metrics, sessions, usage) — where each kind lands and the command that reads it — and which source answers which question.
+- **Inside**: how the agent accesses monitoring data (logs, spans, metrics, sessions, usage) — the store or tenant each kind lands in and the command that reads it — and which source answers which question.
 - **Not inside**: a catalogue of log messages and their causes (→ the comment where each is written); driving the live product (→`docs/RUNNING.md`), test suites, architecture.
 - **Boundary vs `RUNNING.md`**: MONITORING inspects the evidence of what already happened; RUNNING drives the live product to make something happen. Bug reproduction is driven from `RUNNING.md`, which may pull MONITORING data as evidence.
 - Example: [../examples/docs/MONITORING.md](../examples/docs/MONITORING.md)

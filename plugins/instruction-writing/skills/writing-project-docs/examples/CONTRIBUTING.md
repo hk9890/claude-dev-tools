@@ -6,7 +6,7 @@ from [AGENTS.md](AGENTS.md) instead.)
 
 ## Getting started
 
-1. Set up the dev environment and build from source — see [docs/CODING.md](docs/CODING.md#building-from-source).
+1. Start the database with `make dev-db`, then build from source — see [docs/CODING.md](docs/CODING.md#building-from-source).
 2. Run the tests and learn the merge gates — see [docs/TESTING.md](docs/TESTING.md).
 3. Branch, commit, and open a PR — see [docs/CHANGE-WORKFLOW.md](docs/CHANGE-WORKFLOW.md).
 
