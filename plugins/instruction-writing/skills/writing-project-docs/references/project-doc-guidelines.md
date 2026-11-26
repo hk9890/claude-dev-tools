@@ -40,7 +40,7 @@ The homes most often got wrong:
 | How finished code must look, and what a reviewer must check in this repo | `REVIEWING.md`, never scattered into `CODING.md`, which holds only what a change needs in order to work |
 | How this repository's own docs are written, and what it decided not to document | `DOCUMENTING.md`, never `CODING.md`, which owns the source tree |
 | Driving the built product by hand | `RUNNING.md` — not `TESTING.md`, which owns the automated suites, and not `MONITORING.md`, which owns reading the evidence afterwards |
-| A gate — what it runs and when it must pass | `TESTING.md` defines it; `CHANGE-WORKFLOW.md` and `RELEASING.md` name it and link |
+| A gate — what it runs and what it checks | `TESTING.md`. `CHANGE-WORKFLOW.md` and `RELEASING.md` say when it must pass, and link to it |
 | A safety rule, such as what the agent must never start or kill | The one file whose action it guards; every other file links to it |
 | "Update the doc in the same change as the code" | `REVIEWING.md`; `CHANGE-WORKFLOW.md` links to it |
 
@@ -110,8 +110,8 @@ that mattered. Judge it by naming the spans you would cut, so the claim is falsi
 verdict on the file's feel.
 
 The test for each line: **an agent acts differently without it, and nothing the agent reads before
-acting — code, source comment, test, `--help`, task-runner description — already tells it.** A line that is true and anchored can still fail it. Size
-is the symptom; the copy is the defect.
+acting — code, source comment, test, `--help`, task-runner description — already tells it.**
+A line that is true and anchored can still fail it.
 
 Replace a hand-written list of files, functions or tests with the search expression that finds
 them: the list goes stale when the code grows, the expression does not. Write each expression so
@@ -169,5 +169,4 @@ set's version of sediment is the routing file swelling into a handbook.
    nothing is superseded. Rounds of pure addition are each locally reasonable and leave the doc set
    permanently longer.
 4. Every line you added passes the *Cache* rule of
-   [`../../../references/writing-hygiene.md`](../../../references/writing-hygiene.md): before you
-   explain a mechanism, open its source; where a comment there holds it, point at the file.
+   [`../../../references/writing-hygiene.md`](../../../references/writing-hygiene.md).

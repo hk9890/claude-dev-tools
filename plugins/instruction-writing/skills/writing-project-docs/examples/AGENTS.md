@@ -46,4 +46,4 @@ Every route below is **mandatory, not advisory**. Load the document BEFORE the f
 
 ### Analyze metrics and logs
 
-**MUST read [docs/MONITORING.md](docs/MONITORING.md) before interpreting metrics or logs** — where each lands, the DQL for metrics, and the key log fields.
+**MUST read [docs/MONITORING.md](docs/MONITORING.md) before interpreting metrics or logs** — where each lands and the DQL that reads it.

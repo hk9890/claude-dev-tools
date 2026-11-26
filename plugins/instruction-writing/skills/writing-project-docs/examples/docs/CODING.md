@@ -5,11 +5,10 @@ What a change to this repository needs in order to work.
 ## Building from source
 
 ```bash
-git clone https://github.com/acme/widget-service.git
-cd widget-service
-make dev-db    # start Postgres via Docker Compose
-make run       # start server on :8080
+make build     # binary in bin/
 ```
+
+To start the service, follow [RUNNING.md](RUNNING.md).
 
 ## Layer boundaries
 
