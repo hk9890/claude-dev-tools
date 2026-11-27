@@ -60,8 +60,10 @@ DECISION_FILE_RE = re.compile("^" + re.escape("docs/" + DECISIONS_TREE) + r"[0-9
 # The shape the tree's contract gives a record: the heading, then at most this many lines.
 RECORD_BODY_LINES = 8
 _RECORD_HEADING_RE = re.compile(r"^# ([0-9]{4}): \S")
-_RECORD_STATUS_RE = re.compile(r"^(?:[>*_\-\s]*(?:status|date)\b[*_\s]*:|#+\s*(?:status|date)\s*$)", re.IGNORECASE)
-_RECORD_REPLACES_RE = re.compile(r"^Replaces ([0-9]{4})\b")
+# A label at the start of a line, capital first: a wrapped sentence that goes on with
+# "status: ..." is prose. The same markup can stand before a Replaces line.
+_RECORD_STATUS_RE = re.compile(r"^(?:[>*_\-\s]*(?:Status|Date)\b[*_\s]*:|#+\s*(?:Status|Date)\s*$)")
+_RECORD_REPLACES_RE = re.compile(r"^[>*_\-\s]*Replaces\b([^:]*)")
 # Canonical topics under docs/, in topic-set order: the topic files, then the tree.
 # ALL OPTIONAL: create one only when there is real local guidance; none is ever
 # reported missing. The names are canonical — use them if you document the topic —
@@ -183,11 +185,17 @@ def record_facts(abs_path, rel_path):
     its heading, the records it replaces, and a flag for each breach a script can see."""
     number = os.path.basename(rel_path)[:4]
     try:
-        with open(abs_path, encoding="utf-8", errors="replace") as fh:
+        with open(abs_path, encoding="utf-8-sig", errors="replace") as fh:
             lines = fh.read().splitlines()
     except OSError:
         return {"number": number, "body_lines": 0, "replaces": [], "flags": ["unreadable"]}
     filled = [(n, ln.strip()) for n, ln in enumerate(lines, 1) if ln.strip()]
+    fenced, in_fence = set(), False
+    for n, ln in filled:
+        if ln.startswith(("```", "~~~")):
+            in_fence = not in_fence
+        elif in_fence:
+            fenced.add(n)
     flags = []
     heading = _RECORD_HEADING_RE.match(filled[0][1]) if filled else None
     if not heading:
@@ -197,8 +205,10 @@ def record_facts(abs_path, rel_path):
     body = filled[1:]
     if len(body) > RECORD_BODY_LINES:
         flags.append(f"{len(body)} lines under the heading, the contract allows {RECORD_BODY_LINES}")
-    flags.extend(f"line {n} is a status or date line" for n, ln in body if _RECORD_STATUS_RE.match(ln))
-    replaces = [m.group(1) for m in (_RECORD_REPLACES_RE.match(ln) for _, ln in body) if m]
+    prose = [(n, ln) for n, ln in body if n not in fenced]
+    flags.extend(f"line {n} is a status or date line" for n, ln in prose if _RECORD_STATUS_RE.match(ln))
+    replaces = [r for m in (_RECORD_REPLACES_RE.match(ln) for _, ln in prose) if m
+                for r in re.findall(r"\b[0-9]{4}\b", m.group(1)) if r != number]
     return {"number": number, "body_lines": len(body), "replaces": replaces, "flags": flags}
 
 
@@ -210,8 +220,11 @@ def tree_facts(repo_root, files):
     for e in records:
         by_number.setdefault(e["record"]["number"], []).append(e["path"])
     tree = "docs/" + DECISIONS_TREE
+    tree_abs = os.path.join(repo_root, tree)
     try:
-        names = sorted(os.listdir(os.path.join(repo_root, tree)))
+        # A dot-file is the system's or the editor's; a directory shows as one.
+        names = sorted(n + ("/" if os.path.isdir(os.path.join(tree_abs, n)) else "")
+                       for n in os.listdir(tree_abs) if not n.startswith("."))
     except OSError:
         names = []
     return {

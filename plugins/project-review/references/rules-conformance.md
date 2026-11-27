@@ -26,9 +26,10 @@ Read, in this order:
 6. **`docs/OVERVIEW.md`** — read it because `CODING.md` sends you there for where a file
    belongs. It is a map, not a rule set: judge placement against it, nothing else.
 7. **`docs/decisions/`**, where the project has one, or the folder of decision records
-   that `AGENTS.md` routes to under another name — one record per decision in force. The
-   file names are the index: list the folder, and read each record whose name bears on
-   what the subject changes.
+   that `AGENTS.md` routes to under another name. The file names are the index: list the
+   folder, and read each record whose name bears on what the subject changes. Every record
+   in `docs/decisions/` is in force; in a folder under another name, a record binds where
+   its own format marks it as accepted.
 
 A rule binds from whichever of these documents states it: a quality rule that sits in
 `CODING.md` is checked like one in `REVIEWING.md`.

@@ -291,6 +291,23 @@ test_record_facts() {
   assert_eq "tree: a repo without docs/decisions reports no record and no fact" "(0, [], [])" \
     "$(json_val "$("$SCRIPT" "$dir")" "(d['decisions']['records'], d['decisions']['flagged'], d['decisions']['not_records'])")"
   rm -rf "$dir"
+  # What must stay unflagged, and the forms a Replaces line takes.
+  dir=$(make_fixture); t="$dir/docs/decisions"; mkdir -p "$t/img"
+  printf '\xef\xbb\xbf# 0001: A record saved with a byte-order mark\n\nA body.\n' > "$t/0001-bom.md"
+  printf '# 0002: Each order carries one state\n\nThe service reads the order and its\nstatus: the state of its payment.\n\n```\nStatus: ok\n```\n' > "$t/0002-prose.md"
+  printf '# 0003: Three stores became one\n\n- Replaces 0001 and 0002: two stores drifted.\n**Replaces 0004**: so did the third.\nReplaces 0003: a typo for its own number.\n' > "$t/0003-replaces.md"
+  printf '# 0004: The third store\n\nA body.\n' > "$t/0004-third.md"
+  printf 'x' > "$t/.DS_Store"
+  out=$("$SCRIPT" "$dir")
+  assert_eq "record: a byte-order mark before the heading is no breach" "[]" "$(rec 0001-bom.md "['flags']")"
+  assert_eq "record: a wrapped sentence and a fenced line that start with a status word are no status line" "[]" "$(rec 0002-prose.md "['flags']")"
+  assert_eq "record: a Replaces line gives every number on it, behind list or bold markup, and never its own" \
+    "['0001', '0002', '0004']" "$(rec 0003-replaces.md "['replaces']")"
+  assert_eq "tree: each replaced record that is still there is listed" "['0001', '0002', '0004']" \
+    "$(json_val "$out" "[r['replaces'] for r in d['decisions']['replaced_still_present']]")"
+  assert_eq "tree: a dot-file is left out, and a directory shows as one" "['docs/decisions/img/']" \
+    "$(json_val "$out" "d['decisions']['not_records']")"
+  rm -rf "$dir"
 }
 
 # 10. CLAUDE.md invariant

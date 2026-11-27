@@ -195,7 +195,8 @@ async function main() {
 
   // ── checkManifest ────────────────────────────────────────────────────────────
   const throwsWith = (fn, re) => { try { fn(); return false; } catch (e) { return re.test(String(e)); } };
-  const whole = { summary: { total_md: 1 }, files: [{ path: 'README.md' }], agents_routes: [], decisions: { records: 0 } };
+  const noFacts = { records: 0, flagged: [], duplicate_numbers: [], not_records: [], replaced_still_present: [] };
+  const whole = { summary: { total_md: 1, decision_record_facts: 0 }, files: [{ path: 'README.md' }], agents_routes: [], decisions: noFacts };
   eq('checkManifest: a complete manifest passes', whole, checkManifest(whole));
   truthy('checkManifest: a relay of null is named, not reported as undefined',
     throwsWith(() => checkManifest(null), /the relay is null/));
@@ -204,6 +205,16 @@ async function main() {
   const { decisions: _tree, ...noTree } = whole;
   truthy('checkManifest: a relay without the decision-record facts is rejected',
     throwsWith(() => checkManifest(noTree), /lacks summary, files, agents_routes or decisions/));
+  // The records agent counts nothing itself, so a fact the relay dropped is a breach no stage sees.
+  const flaggedOnce = { ...noFacts, flagged: [{ path: 'docs/decisions/0001-a.md', flags: ['f1', 'f2'] }], not_records: ['docs/decisions/README.md'] };
+  eq('checkManifest: a relay with every decision-record fact passes', flaggedOnce,
+    checkManifest({ ...whole, summary: { total_md: 1, decision_record_facts: 3 }, decisions: flaggedOnce }).decisions);
+  truthy('checkManifest: a relay that lost a decision-record fact is rejected',
+    throwsWith(() => checkManifest({ ...whole, summary: { total_md: 1, decision_record_facts: 4 }, decisions: flaggedOnce }),
+      /lists 3 of the 4 decision-record facts/));
+  truthy('checkManifest: a decisions block retyped without a list is rejected, not read as empty',
+    throwsWith(() => checkManifest({ ...whole, decisions: { records: 0 } }), /without its four lists/) &&
+    throwsWith(() => checkManifest({ ...whole, decisions: { ...noFacts, flagged: [{ path: 'p' }] } }), /without its four lists/));
   // A model that stops partway through `files` and closes the brackets returns valid JSON.
   truthy('checkManifest: a relay that lost files from the end is rejected',
     throwsWith(() => checkManifest({ ...whole, summary: { total_md: 2 } }), /lists 1 of the 2 files/));
@@ -400,7 +411,7 @@ async function main() {
   // every helper assertion above still passed.
   const metrics = { lines: 10, words: 50, non_heading_lines: 8, bytes: 400 };
   const manifest = {
-    summary: { total_md: 5, canonical_missing: 0, unresolved_links: 0, orphans: 0 },
+    summary: { total_md: 5, canonical_missing: 0, unresolved_links: 0, orphans: 0, decision_record_facts: 0 },
     files: [
       { path: 'docs/CODING.md', classification: 'canonical', canonical_name: 'CODING.md', metrics },
       { path: 'AGENTS.md', classification: 'canonical-root', canonical_name: 'AGENTS.md', metrics },
@@ -690,9 +701,11 @@ async function main() {
     level: 'ultra',
     manifest: {
       ...manifest,
+      summary: { ...manifest.summary, decision_record_facts: 1 },
       decisions: treeFacts,
       files: [...manifest.files,
-        { path: 'docs/decisions/0001-a.md', classification: 'decision', canonical_name: 'decisions/', metrics },
+        { path: 'docs/decisions/0001-a.md', classification: 'decision', canonical_name: 'decisions/', metrics,
+          unresolved_links: [{ line: 4, ref: '../GONE.md', reason: 'file not found' }] },
         { path: 'docs/decisions/0002-b.md', classification: 'decision', canonical_name: 'decisions/', metrics }],
     },
   });
@@ -704,6 +717,11 @@ async function main() {
   const docRun = tree.prompts[tree.labels.indexOf('review-1/1')];
   truthy('records: the records agent gets the manifest facts',
     recordsRun.includes('docs/decisions/0002-b.md: line 3 is a status or date line'));
+  // A record has no FILE section in a doc batch, so its dead links reach a finding only here.
+  truthy('records: a dead link in a record reaches the records agent as a fact',
+    recordsRun.includes('docs/decisions/0001-a.md: line 4, the link ../GONE.md does not resolve (file not found)'));
+  truthy('records: the records agent may read a file too large for one Read in parts',
+    recordsRun.includes('read that file in parts with offset and limit'));
   truthy('records: the records agent reads no other doc of the repository',
     !recordsRun.includes('/repo/docs/CODING.md') && !recordsRun.includes('/repo/README.md'));
   truthy('records: a doc batch has no section for a record',
@@ -728,7 +746,8 @@ async function main() {
   const treeSynthesis = tree.prompts[tree.prompts.length - 1];
   truthy('records: the synthesis gets the shape and tree facts, and raises one no finding carries',
     treeSynthesis.includes(`shape and tree facts: ${JSON.stringify(treeFacts)}`) &&
-    treeSynthesis.includes('Every decision-record fact listed above that no read-review finding carries is a finding too'));
+    treeSynthesis.includes('Every decision-record fact listed above that no read-review finding carries is a finding too') &&
+    treeSynthesis.includes('deletes it and repoints every citation of it in the same change'));
   truthy('records: a record set against itself, another record or a doc is open, never settled for the record',
     treeSynthesis.includes('OPEN sets a decision record against itself, another record or another doc') &&
     treeSynthesis.includes('being a record does not make it the right side'));

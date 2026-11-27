@@ -453,13 +453,16 @@ function rulesProcedure(rulesFile) {
   return `Dimension: RULES — does the codebase do what the project's own documents say it must?\n\n` +
     `Read the procedure at ${rulesFile} and follow it exactly. It names the documents that form the standard, what ` +
     `counts as a finding, what does not, and which commands you may run. It is written for a review of one CHANGE; ` +
-    `here the subject is THE WHOLE TREE. Two things that scope changes:\n` +
+    `here the subject is THE WHOLE TREE. Three things that scope changes:\n` +
     `1. UNFINISHED DUTIES BECOME STANDING ONES. You are not diffing anything, so you cannot find them by looking for ` +
     `recent edits. Walk each document's stated requirements against the tree instead: a plugin the marketplace file ` +
     `never registered, a rename the alias table never recorded, a committed helper no suite covers.\n` +
     `2. SKIP THE "SUGGESTED RULE ADDITIONS" LIST. Report violations only. Over one change that list is short and ` +
     `immediately actionable; over a whole tree it is unbounded, and whether the documents are complete is already ` +
-    `project-review-docs's question. A gap you would have listed goes in cross_dimension_notes at most.\n\n` +
+    `project-review-docs's question. A gap you would have listed goes in cross_dimension_notes at most.\n` +
+    `3. EVERY DECISION RECORD BEARS. Over one change the procedure reads the records that bear on what the change ` +
+    `touches; over the tree, read every record. Your findings carry no settled-or-open tag, so start the finding of a ` +
+    `tree that goes against a record with "AGAINST A DECISION RECORD": the stage that tags the actions reads that mark.\n\n` +
     `SEVERITY: weight by what the violation costs today, not by the fact that a rule was broken. Old, load-bearing ` +
     `code that contradicts a rule everyone has since ignored is a signal the DOCUMENT is wrong — say so and route it ` +
     `to the docs review rather than demanding the code change.\n\n` +
@@ -663,7 +666,8 @@ if (typeof agent === 'function') {
     `5. Produce recommended_actions: a prioritised list ordered by what the developer should tackle first, each entry's ` +
     `\`action\` referencing its finding(s). Mandatory even when there is only one action — the ordering is itself the ` +
     `deliverable. Then tag every action \`settled\` or \`open\`, leaving none untagged. SETTLED is a plain bug, a typo, ` +
-    `a dead exemption, a doc that contradicts code that is clearly right — one correct answer, nothing to weigh. OPEN changes a public ` +
+    `a dead exemption, a doc that contradicts code that is clearly right — one correct answer, nothing to weigh. OPEN acts on a finding marked ` +
+    `"AGAINST A DECISION RECORD" (the code changes, or a new record replaces the old one: the user's call), changes a public ` +
     `API or a name people type, picks one convention over another the repo also uses, trades one cost against another, ` +
     `or is large enough that "not now" is a real answer. A proven bug with one obvious fix is settled: asking about ` +
     `it wastes the developer's attention. An action is open where a finding it names is marked plausible, or where ` +

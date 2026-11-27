@@ -40,7 +40,8 @@ script deciding what counts as a claim, which is guessing.
 1. **Manifest** — `scripts/manifest.py` emits the deterministic facts: files, present and
    missing canonical docs, the decision records (`docs/decisions/NNNN-*.md`) with each
    record's breaches of the shape its contract gives it and the facts of the tree (a number
-   two records share, a file that is no record, a replaced record that is still there), line/word/byte
+   two records share, an entry that is no record, a replaced record that is still there;
+   the workflow rejects a relayed manifest that lost one of them), line/word/byte
    counts, link and anchor resolution, reachability from `AGENTS.md` (a link to `docs/decisions/`
    reaches its records), the `CLAUDE.md` invariant, hollow docs, location violations, injected
    tool-blocks, the personal files with each legacy name's move, and the route list. Scripts do facts; agents do judgment — nothing here
@@ -75,7 +76,7 @@ script deciding what counts as a claim, which is guessing.
    itself a finding. Repos without the file are told none of those doc decisions.
 
    The decision records are no part of a doc batch. One agent reads all of them with the
-   `docs/decisions/` contract and `AGENTS.md`, and nothing else: among the other docs of a
+   `docs/decisions/` contract, the hygiene rules and `AGENTS.md`, and no other doc of the repo: among the other docs of a
    batch a record got one line of prompt, and two audits of four filed no finding on any
    record. That agent reports the manifest's facts, asks each record the clauses of the
    contract as numbered questions, asks the set whether two records conflict or decide the
@@ -101,7 +102,7 @@ Change them at the authoritative site. This table is the index, not the source.
 
 | Bar | Authoritative site |
 |---|---|
-| The six authoring rules, the doc-set failure modes | `instruction-writing:writing-project-docs`, loaded by each read-review agent |
+| The six authoring rules, the doc-set failure modes | `instruction-writing:writing-project-docs`, loaded by each doc-batch agent; the records agent does not read them |
 | Single source of truth, cache, relevance, sediment, no-ops, negation | `references/writing-hygiene.md` at the `instruction-writing` plugin root, loaded by each read-review agent; which files get the per-unit *Cache* question, and where its fix sends the unit, in `batchPrompt` in `review-docs.js` |
 | Per-file ownership contract | `project-setup.md`, read by each read-review agent; `contractLines` in `review-docs.js` names the block headed by the file's path |
 | What a decision record is asked, the set, the route, and their severity | `recordsPrompt` in `review-docs.js`; the shape checks in `record_facts` and `tree_facts` in `manifest.py` |

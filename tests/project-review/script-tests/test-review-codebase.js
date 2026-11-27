@@ -218,6 +218,10 @@ async function main() {
     /UNFINISHED DUTIES BECOME STANDING ONES/.test(rules));
   truthy('buildDimensions: the suggested-rule-additions list is skipped tree-wide',
     /SKIP THE "SUGGESTED RULE ADDITIONS" LIST/.test(rules));
+  // The rules agent returns no settled-or-open tag, and the stage that tags never reads the
+  // shared procedure: the mark is how "a subject against a record is the user's call" gets there.
+  truthy('buildDimensions: over the tree every decision record bears, and a finding against one is marked',
+    /EVERY DECISION RECORD BEARS/.test(rules) && rules.includes('"AGAINST A DECISION RECORD"'));
 
   const arch = (v) => buildDimensions(v).find((d) => d.key === 'architecture').procedure;
   truthy('buildDimensions: the vocabulary file is cited when supplied',
@@ -374,6 +378,8 @@ async function main() {
   // the tag, so the rule sits there, where it cannot contradict the tag of a merged finding.
   truthy('synthesis: a finding that one dimension reported keeps that dimension',
     /only one dimension reported keeps that dimension/.test(withRules.synthesis.prompt || ''));
+  truthy('synthesis: an action on a finding against a decision record is open',
+    /OPEN acts on a finding marked "AGAINST A DECISION RECORD"/.test(withRules.synthesis.prompt || ''));
 
   // ── the ultra refutation filter ──────────────────────────────────────────────
   // The kept list IS the ultra rung's product: users pay for the extra pass to get findings
