@@ -16,6 +16,8 @@
 //   - parseManifest survives the wrappings a model actually returns JSON in
 //   - orderTargets / packBatches / unreviewedFiles: how docs reach the batch agents, and
 //     that a file no agent reviewed is reported by name
+//   - recordTargets / recordsPrompt: the decision records reach one agent as a set, with
+//     the manifest's facts and one numbered question per clause of their contract
 //   - the orchestration: the cost bounds (a fixed read list per agent, explicit model and
 //     effort on every agent, one history judge) and the prompts each stage receives
 //   - the bad-args bailout returns the diagnostic error object without spawning agents
@@ -79,11 +81,11 @@ async function main() {
 
   const {
     normalizeArgs, parseManifest, checkManifest, checkPromptIndex, checkEvidence, splitReviewTargets, orderTargets, packBatches,
-    unreviewedFiles, historyFindingBar,
+    recordTargets, recordsPrompt, unreviewedFiles, historyFindingBar,
     LEVEL_CONFIG, USE_CASES, BATCH_BYTES, MIN_SEGMENTS_FOR_FINDING, RELAY_ATTEMPTS,
   } = helpers;
 
-  const required = { normalizeArgs, parseManifest, checkManifest, checkPromptIndex, checkEvidence, splitReviewTargets, orderTargets, packBatches, unreviewedFiles, historyFindingBar };
+  const required = { normalizeArgs, parseManifest, checkManifest, checkPromptIndex, checkEvidence, splitReviewTargets, orderTargets, packBatches, recordTargets, recordsPrompt, unreviewedFiles, historyFindingBar };
   const missingExport = Object.keys(required).filter((k) => typeof required[k] !== 'function');
   if (missingExport.length) {
     bad('review-docs.js exposes its pure helpers', `missing or not a function: ${missingExport.join(', ')}`);
@@ -193,12 +195,15 @@ async function main() {
 
   // ── checkManifest ────────────────────────────────────────────────────────────
   const throwsWith = (fn, re) => { try { fn(); return false; } catch (e) { return re.test(String(e)); } };
-  const whole = { summary: { total_md: 1 }, files: [{ path: 'README.md' }], agents_routes: [] };
+  const whole = { summary: { total_md: 1 }, files: [{ path: 'README.md' }], agents_routes: [], decisions: { records: 0 } };
   eq('checkManifest: a complete manifest passes', whole, checkManifest(whole));
   truthy('checkManifest: a relay of null is named, not reported as undefined',
     throwsWith(() => checkManifest(null), /the relay is null/));
   truthy('checkManifest: a relay without files is rejected',
-    throwsWith(() => checkManifest({ summary: { total_md: 0 }, agents_routes: [] }), /lacks summary, files or agents_routes/));
+    throwsWith(() => checkManifest({ summary: { total_md: 0 }, agents_routes: [] }), /lacks summary, files, agents_routes or decisions/));
+  const { decisions: _tree, ...noTree } = whole;
+  truthy('checkManifest: a relay without the decision-record facts is rejected',
+    throwsWith(() => checkManifest(noTree), /lacks summary, files, agents_routes or decisions/));
   // A model that stops partway through `files` and closes the brackets returns valid JSON.
   truthy('checkManifest: a relay that lost files from the end is rejected',
     throwsWith(() => checkManifest({ ...whole, summary: { total_md: 2 } }), /lists 1 of the 2 files/));
@@ -274,14 +279,57 @@ async function main() {
     { useCases: [], residual: [] }, splitReviewTargets([]));
   eq('splitReviewTargets: every use case maps to a docs/ topic file',
     [], Object.keys(USE_CASES).filter((u) => !/^docs\/[A-Z-]+\.md$/.test(USE_CASES[u].doc)));
-  // The decisions tree has no use case: each record is reviewed on its own, against the
-  // tree's contract.
-  const withRecord = splitReviewTargets([
+  // The decision records leave the doc batches: one agent judges them as a set.
+  const recordFiles = [
+    { path: 'docs/decisions/0002-b.md', classification: 'decision' },
+    { path: 'docs/A.md', classification: 'non-standard' },
     { path: 'docs/decisions/0001-a.md', classification: 'decision' },
-  ]);
+  ];
+  const withRecord = splitReviewTargets(recordFiles);
   eq('splitReviewTargets: a decision record is no use case', [], withRecord.useCases.map((u) => u.useCase));
-  eq('splitReviewTargets: a decision record is reviewed on its own',
-    ['docs/decisions/0001-a.md'], withRecord.residual.map((f) => f.path));
+  eq('splitReviewTargets: a decision record is no doc-batch target', ['docs/A.md'], withRecord.residual.map((f) => f.path));
+  eq('recordTargets: the records alone, by path',
+    ['docs/decisions/0001-a.md', 'docs/decisions/0002-b.md'], recordTargets(recordFiles).map((t) => t.file.path));
+  eq('recordTargets: a repo without records has none', [], recordTargets([{ path: 'docs/A.md', classification: 'non-standard' }]));
+
+  // ── recordsPrompt ────────────────────────────────────────────────────────────
+  const recordsAsk = recordsPrompt({
+    repoRoot: '/repo', setupFile: '/std/references/project-setup.md', hygieneFile: '/std/../../references/writing-hygiene.md',
+    records: recordTargets(recordFiles), hasAgents: true, privateLayout: false,
+    tree: {
+      flagged: [{ path: 'docs/decisions/0001-a.md', flags: ['11 lines under the heading, the contract allows 8'] }],
+      duplicate_numbers: [{ number: '0002', paths: ['docs/decisions/0002-b.md', 'docs/decisions/0002-c.md'] }],
+      replaced_still_present: [{ path: 'docs/decisions/0002-b.md', replaces: '0001', still_present: ['docs/decisions/0001-a.md'] }],
+      not_records: [],
+    },
+  });
+  eq('recordsPrompt: the read list is the contract, the hygiene rules, AGENTS.md and every record — no other doc',
+    ['/std/references/project-setup.md', '/std/../../references/writing-hygiene.md', '/repo/AGENTS.md',
+      '/repo/docs/decisions/0001-a.md', '/repo/docs/decisions/0002-b.md'],
+    [...recordsAsk.matchAll(/^ {2}(\/\S+)$/gm)].map((m) => m[1]));
+  truthy('recordsPrompt: the agent reads once and does not open the code',
+    recordsAsk.includes('ONE parallel batch of Read calls') && recordsAsk.includes('no Bash, no Grep, no Glob, no other Read') &&
+    recordsAsk.includes('You do not open the code'));
+  truthy('recordsPrompt: the contract is read from its block, not from memory',
+    recordsAsk.includes('headed `docs/decisions/`') && recordsAsk.includes('from the file rather than memory'));
+  truthy('recordsPrompt: every manifest fact reaches the agent as a finding to report',
+    recordsAsk.includes('docs/decisions/0001-a.md: 11 lines under the heading') &&
+    recordsAsk.includes('number 0002 is on docs/decisions/0002-b.md and docs/decisions/0002-c.md') &&
+    recordsAsk.includes('docs/decisions/0002-b.md replaces 0001, and docs/decisions/0001-a.md is still in the tree'));
+  eq('recordsPrompt: each record is asked the seven clauses of the contract, the set two, the route one',
+    ['1. HEADING AND BODY', '2. ONE DECISION', '3. FORCE', '4. REJECTED', '5. EARNS A FILE', '6. READS ON ITS OWN',
+      '7. NOT INSIDE', '8. CONFLICT', '9. TWICE', '10. Find that route'],
+    [...recordsAsk.matchAll(/^ {2}(\d+\. (?:[A-Z ]+(?= —)|Find that route))/gm)].map((m) => m[1]));
+  truthy('recordsPrompt: a conflict between two records names no winner',
+    recordsAsk.includes("is the user's call") && recordsAsk.includes('recommend no winner'));
+  truthy('recordsPrompt: a record that misleads an agent that obeys it is major',
+    /major: the record misleads[^\n]*two records in conflict[^\n]*a route that misses a path/.test(recordsAsk));
+  const bare = recordsPrompt({ repoRoot: '/repo', setupFile: '/s', hygieneFile: '/h', records: recordTargets(recordFiles), hasAgents: false, privateLayout: false,
+    tree: { flagged: [], duplicate_numbers: [], replaced_still_present: [], not_records: [] } });
+  truthy('recordsPrompt: without manifest facts the block says none',
+    bare.includes('count no lines yourself:\n  none\n'));
+  truthy('recordsPrompt: a repo without AGENTS.md reads none and reports the missing route once',
+    !bare.includes('/repo/AGENTS.md') && bare.includes('has no AGENTS.md'));
 
   // ── orderTargets ─────────────────────────────────────────────────────────────
   const ordered = orderTargets([
@@ -366,6 +414,7 @@ async function main() {
       { kind: 'file', target: 'docs/B.md', text: 'See [docs/B.md](docs/B.md) for details.' },
     ],
     missing_canonical: [], orphans: [], location_violations: [], injected_blocks: [],
+    decisions: { records: 0, flagged: [], duplicate_numbers: [], not_records: [], replaced_still_present: [] },
   };
 
   // The history stage's script output, stubbed at the two points it shells out.
@@ -438,7 +487,11 @@ async function main() {
         }] };
       }
       if (opts.label.startsWith('review-')) {
-        const paths = [...prompt.matchAll(/── FILE \d+: (\S+)/g)].map((m) => m[1]).filter((p) => p !== dropFile);
+        // A doc batch names its files in FILE sections; the records agent has only a read list.
+        const listed = opts.label === 'review-records'
+          ? [...prompt.matchAll(/^ {2}\/repo\/(docs\/decisions\/\S+)$/gm)]
+          : [...prompt.matchAll(/── FILE \d+: (\S+)/g)];
+        const paths = listed.map((m) => m[1]).filter((p) => p !== dropFile);
         return { files_reviewed: paths, findings: [{ file: paths[0], category: 'accuracy', severity: 'major', observation: 'o', evidence: 'e', recommended_action: 'r' }] };
       }
       return { verdict: 'minor gaps', headline: 'h', findings: [] };
@@ -628,23 +681,59 @@ async function main() {
   eq('history: verdicts reach raw', 4, deep.ret && deep.ret.raw.history[0].segments_judged);
   eq('history: coverage reaches raw', 4, deep.ret && deep.ret.raw.history_coverage.coding.valid);
 
-  // Every decision record shares one contract: a batch states it once.
+  // ── the decision records ─────────────────────────────────────────────────────
+  // One agent holds the whole set and nothing else; the doc batches read the records as
+  // context, so a doc that states the opposite of a record is seen in whatever batch it sits.
+  const treeFacts = { ...manifest.decisions, records: 2,
+    flagged: [{ path: 'docs/decisions/0002-b.md', flags: ['line 3 is a status or date line'] }] };
   const tree = await runAudit({
     level: 'ultra',
     manifest: {
       ...manifest,
+      decisions: treeFacts,
       files: [...manifest.files,
         { path: 'docs/decisions/0001-a.md', classification: 'decision', canonical_name: 'decisions/', metrics },
         { path: 'docs/decisions/0002-b.md', classification: 'decision', canonical_name: 'decisions/', metrics }],
     },
   });
-  const treeReview = tree.prompts.filter((p, i) => tree.labels[i].startsWith('review-')).join('');
-  eq('read-review: a batch states the decision-record contract once, not per record',
-    1, treeReview.split('headed `docs/decisions/`').length - 1);
-  eq('read-review: each record points at that contract',
-    2, treeReview.split('Tree record: judge it against').length - 1);
-  truthy('read-review: a record in another format is sent out of the tree, not cut down',
-    treeReview.includes('is misplaced, not a record to cut down'));
+  eq('records: one more read-review agent, after the doc batches',
+    ['review-1/1', 'review-records'], tree.labels.filter((l) => l.startsWith('review-')));
+  eq('records: that agent runs at the level model and effort',
+    ['opus', 'xhigh'], tree.calls.filter((c) => c.label === 'review-records').map((c) => [c.model, c.effort])[0]);
+  const recordsRun = tree.prompts[tree.labels.indexOf('review-records')];
+  const docRun = tree.prompts[tree.labels.indexOf('review-1/1')];
+  truthy('records: the records agent gets the manifest facts',
+    recordsRun.includes('docs/decisions/0002-b.md: line 3 is a status or date line'));
+  truthy('records: the records agent reads no other doc of the repository',
+    !recordsRun.includes('/repo/docs/CODING.md') && !recordsRun.includes('/repo/README.md'));
+  truthy('records: a doc batch has no section for a record',
+    !/── FILE \d+: docs\/decisions\//.test(docRun));
+  truthy('records: a doc batch reads the records as context and leaves their wording to the records agent',
+    docRun.includes('  /repo/docs/decisions/0001-a.md\n') && docRun.includes('DECISIONS IN FORCE') &&
+    docRun.includes("file no finding on a record's own wording"));
+  truthy('records: a doc that states the opposite of a record is a finding that names no winner',
+    docRun.includes('leave open which side holds the decision in force'));
+  eq('records: the records are reported as a batch of their own',
+    ['docs/decisions/0001-a.md', 'docs/decisions/0002-b.md'], tree.ret.raw.review_batches[1]);
+  eq('records: a complete run reports no unreviewed record', [], tree.ret.raw.not_reviewed);
+  const lostRecord = await runAudit({
+    dropFile: 'docs/decisions/0002-b.md',
+    manifest: { ...manifest, files: [...manifest.files,
+      { path: 'docs/decisions/0001-a.md', classification: 'decision', canonical_name: 'decisions/', metrics },
+      { path: 'docs/decisions/0002-b.md', classification: 'decision', canonical_name: 'decisions/', metrics }] },
+  });
+  eq('records: a record the agent did not judge is reported by name', ['docs/decisions/0002-b.md'], lostRecord.ret.raw.not_reviewed);
+  truthy('records: a repo without records gets no records agent and no context block',
+    !deep.labels.includes('review-records') && !reviewPrompts[0].includes('DECISIONS IN FORCE'));
+  const treeSynthesis = tree.prompts[tree.prompts.length - 1];
+  truthy('records: the synthesis gets the shape and tree facts, and raises one no finding carries',
+    treeSynthesis.includes(`shape and tree facts: ${JSON.stringify(treeFacts)}`) &&
+    treeSynthesis.includes('Every decision-record fact listed above that no read-review finding carries is a finding too'));
+  truthy('records: a record set against itself, another record or a doc is open, never settled for the record',
+    treeSynthesis.includes('OPEN sets a decision record against itself, another record or another doc') &&
+    treeSynthesis.includes('being a record does not make it the right side'));
+  truthy('records: a record that contradicts itself or another record stays major or above',
+    treeSynthesis.includes('a record contradicts itself or another record stays at major or above'));
   truthy('history: the judge is told AGENTS.md is never Read, so its absence proves nothing',
     judgePrompt.includes('AGENTS.md is always in an agent') && judgePrompt.includes('never Read'));
   truthy('history: a well-edged obligation route that is skipped accuses the agent, not the doc',

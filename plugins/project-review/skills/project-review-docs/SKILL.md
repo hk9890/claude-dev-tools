@@ -81,7 +81,8 @@ docs inline. The workflow returns a structured report; relay it.
    - `args`: `{ "repoRoot": "<the step-1 path, made absolute>", "scriptsDir": "<SKILL_DIR>/scripts", "standardDir": "<STANDARD_DIR>", "level": "<the step-1 level>", "scratchDir": "<the absolute path printed above>" }`
    - `level` rungs. Every rung runs the same stages: the docs are packed into a few
      batches, and each batch agent reads its docs and the standard once, then judges them
-     (`docs/CODING.md` judged as by an agent that arrives wanting to code). A rung buys the
+     (`docs/CODING.md` judged as by an agent that arrives wanting to code). The decision
+     records under `docs/decisions/` go to one more agent, which judges them as a set. A rung buys the
      model, the effort, and the history sample, never more agents or turns:
      `low` = sonnet read-review, history over ~15 sessions reports coverage only;
      `medium` = opus at medium effort, history over ~40 sessions;

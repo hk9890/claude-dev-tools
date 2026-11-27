@@ -13,6 +13,8 @@ What is a *fact* here (and therefore lives in this script, never in an agent):
   - which Markdown files exist (root + docs/ recursively)
   - which canonical/standard files are present or missing, and which are decision
     records (docs/decisions/NNNN-*.md)
+  - per-record shape flags and the tree's own facts: a number two records share, a
+    file in the tree that is no record, a replaced record that is still there
   - per-file metrics: line, byte, word, and non-heading-line counts
   - per-file link/reference resolution (file exists, anchor resolves) — a link to
     an existing directory with no anchor resolves OK (valid GitHub navigation)
@@ -55,6 +57,11 @@ PRIVATE_REQUIRED = ["AGENTS.md"]
 # The one canonical tree: docs/decisions/NNNN-slug.md, one file per decision in force.
 DECISIONS_TREE = "decisions/"
 DECISION_FILE_RE = re.compile("^" + re.escape("docs/" + DECISIONS_TREE) + r"[0-9]{4}-[^/]+\.md$")
+# The shape the tree's contract gives a record: the heading, then at most this many lines.
+RECORD_BODY_LINES = 8
+_RECORD_HEADING_RE = re.compile(r"^# ([0-9]{4}): \S")
+_RECORD_STATUS_RE = re.compile(r"^(?:[>*_\-\s]*(?:status|date)\b[*_\s]*:|#+\s*(?:status|date)\s*$)", re.IGNORECASE)
+_RECORD_REPLACES_RE = re.compile(r"^Replaces ([0-9]{4})\b")
 # Canonical topics under docs/, in topic-set order: the topic files, then the tree.
 # ALL OPTIONAL: create one only when there is real local guidance; none is ever
 # reported missing. The names are canonical — use them if you document the topic —
@@ -165,6 +172,56 @@ def classify(rel_path):
     if DECISION_FILE_RE.match(posix):
         return "decision", DECISIONS_TREE
     return "non-standard", None
+
+
+# ---------------------------------------------------------------------------
+# Decision records
+# ---------------------------------------------------------------------------
+
+def record_facts(abs_path, rel_path):
+    """The shape of one record against the tree's contract: its number, the lines under
+    its heading, the records it replaces, and a flag for each breach a script can see."""
+    number = os.path.basename(rel_path)[:4]
+    try:
+        with open(abs_path, encoding="utf-8", errors="replace") as fh:
+            lines = fh.read().splitlines()
+    except OSError:
+        return {"number": number, "body_lines": 0, "replaces": [], "flags": ["unreadable"]}
+    filled = [(n, ln.strip()) for n, ln in enumerate(lines, 1) if ln.strip()]
+    flags = []
+    heading = _RECORD_HEADING_RE.match(filled[0][1]) if filled else None
+    if not heading:
+        flags.append(f"line {filled[0][0] if filled else 1} is not the heading `# {number}: <the decision>`")
+    elif heading.group(1) != number:
+        flags.append(f"the heading carries {heading.group(1)}, the file name {number}")
+    body = filled[1:]
+    if len(body) > RECORD_BODY_LINES:
+        flags.append(f"{len(body)} lines under the heading, the contract allows {RECORD_BODY_LINES}")
+    flags.extend(f"line {n} is a status or date line" for n, ln in body if _RECORD_STATUS_RE.match(ln))
+    replaces = [m.group(1) for m in (_RECORD_REPLACES_RE.match(ln) for _, ln in body) if m]
+    return {"number": number, "body_lines": len(body), "replaces": replaces, "flags": flags}
+
+
+def tree_facts(repo_root, files):
+    """What only the tree as a whole shows. A file in it that is no record is an index or
+    a record in another format; a replaced record that is still there is still in force."""
+    records = [e for e in files if e["classification"] == "decision"]
+    by_number = {}
+    for e in records:
+        by_number.setdefault(e["record"]["number"], []).append(e["path"])
+    tree = "docs/" + DECISIONS_TREE
+    try:
+        names = sorted(os.listdir(os.path.join(repo_root, tree)))
+    except OSError:
+        names = []
+    return {
+        "records": len(records),
+        "flagged": [{"path": e["path"], "flags": e["record"]["flags"]} for e in records if e["record"]["flags"]],
+        "duplicate_numbers": [{"number": n, "paths": p} for n, p in sorted(by_number.items()) if len(p) > 1],
+        "not_records": [tree + n for n in names if not DECISION_FILE_RE.match(tree + n)],
+        "replaced_still_present": [{"path": e["path"], "replaces": n, "still_present": by_number[n]}
+                                   for e in records for n in e["record"]["replaces"] if n in by_number],
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -386,6 +443,8 @@ def build(repo_root):
             "links": links,
             "unresolved_links": [x for x in links if not x["resolved"]],
         }
+        if cls == "decision":
+            entry["record"] = record_facts(abs_path, rel)
         if canon:
             present_canonical.add(canon)
         files.append(entry)
@@ -427,6 +486,7 @@ def build(repo_root):
                 injected.append(b)
 
     routes = agents_routes(vr, repo_root)
+    decisions = tree_facts(repo_root, files)
 
     non_standard = [e for e in files if e["classification"] == "non-standard"]
     legacy_personal = []
@@ -456,6 +516,9 @@ def build(repo_root):
             "location_violations": len(location_violations),
             "injected_blocks": len(injected),
             "legacy_personal": len(legacy_personal),
+            "decision_records": decisions["records"],
+            "decision_record_facts": sum(len(f["flags"]) for f in decisions["flagged"]) + len(decisions["duplicate_numbers"])
+                                     + len(decisions["not_records"]) + len(decisions["replaced_still_present"]),
             "claude_md_ok": claude["canonical"],
         },
         "claude_md": claude,
@@ -464,6 +527,7 @@ def build(repo_root):
         "injected_blocks": injected,
         "legacy_personal": legacy_personal,
         "orphans": orphans,
+        "decisions": decisions,
         "agents_routes": routes,
         "files": files,
     }
@@ -481,6 +545,7 @@ def format_text(data):
     out.append(f"  non-standard: {s['non_standard']}  |  unresolved links: {s['unresolved_links']}  orphans: {s['orphans']}  hollow: {s['hollow']}")
     c = data["claude_md"]
     out.append(f"  {c['file']} == {c['expected']}: {s['claude_md_ok']}  |  location violations: {s['location_violations']}  injected blocks: {s['injected_blocks']}")
+    out.append(f"  decision records: {s['decision_records']}  |  shape and tree facts against the contract: {s['decision_record_facts']}")
     if data["missing_canonical"]:
         out.append(f"  MISSING canonical: {', '.join(data['missing_canonical'])}")
     for l in data["legacy_personal"]:
@@ -499,8 +564,16 @@ def format_text(data):
             flags.append(f"{len(e['unresolved_links'])} dead-link")
         if e["path"] in orphan_set:
             flags.append("ORPHAN")
+        flags.extend((e.get("record") or {}).get("flags", []))
         flagstr = ("  [" + ", ".join(flags) + "]") if flags else ""
         out.append(f"  {e['path']:<34} {tag:<16} lines={m.get('lines','?'):<4} words={m.get('words','?'):<5}{flagstr}")
+    t = data["decisions"]
+    for d in t["duplicate_numbers"]:
+        out.append(f"  DECISIONS: number {d['number']} is on {', '.join(d['paths'])}")
+    for p in t["not_records"]:
+        out.append(f"  DECISIONS: {p} is in the tree and is no NNNN-slug.md record")
+    for r in t["replaced_still_present"]:
+        out.append(f"  DECISIONS: {r['path']} replaces {r['replaces']}, and {', '.join(r['still_present'])} is still there")
     out.append("")
     out.append(f"--- AGENTS.md routes ({len(data['agents_routes'])}) ---")
     for r in data["agents_routes"]:

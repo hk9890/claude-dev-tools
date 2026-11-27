@@ -4,7 +4,7 @@ export const meta = {
   whenToUse: 'Launched by the /project-review-docs skill. Audits a project\'s docs for accuracy, boundary/belonging, form, and whether agents actually use them.',
   phases: [
     { title: 'Manifest', detail: 'deterministic facts: files, metrics, links, routes' },
-    { title: 'Read-review', detail: 'docs packed into a few batches; each agent reads its batch once, then judges' },
+    { title: 'Read-review', detail: 'docs packed into a few batches, the decision records as one set; each agent reads its files once, then judges' },
     { title: 'History', detail: 'did past sessions open the doc their route points at?' },
     { title: 'Synthesis', detail: 'dedupe + cross-file reconciliation + report' },
   ],
@@ -161,8 +161,8 @@ function parseManifest(text) {
 // notice them missing. manifest.py counts every file it lists in summary.total_md.
 function checkManifest(m) {
   if (!m || typeof m !== 'object') throw new Error(`the relay is ${JSON.stringify(m)}, not a manifest object`)
-  if (!m.summary || !Array.isArray(m.files) || !Array.isArray(m.agents_routes)) {
-    throw new Error('the relay lacks summary, files or agents_routes')
+  if (!m.summary || !Array.isArray(m.files) || !Array.isArray(m.agents_routes) || !m.decisions) {
+    throw new Error('the relay lacks summary, files, agents_routes or decisions')
   }
   if (m.files.length !== m.summary.total_md) {
     throw new Error(`the relay lists ${m.files.length} of the ${m.summary.total_md} files manifest.py counted`)
@@ -209,11 +209,12 @@ function checkEvidence(m) {
 // optional and never reports one missing, so an absent doc is a choice rather than a gap.
 // Everything else is still reviewed, just not as a use case — README and CONTRIBUTING
 // serve humans rather than working agents, AGENTS.md is the router rather than any
-// route's destination, and a non-standard doc is judged for placement. The decisions tree
-// has no use case: each record is reviewed on its own against the tree's contract.
+// route's destination, and a non-standard doc is judged for placement. The decision
+// records are no target here: recordTargets hands them to one agent as a set.
 function splitReviewTargets(manifestFiles) {
   const files = (manifestFiles || []).filter(f =>
     f && f.classification !== 'meta' &&
+    f.classification !== 'decision' &&
     f.classification !== 'personal-local' &&
     f.classification !== 'personal-legacy' &&
     f.path !== 'CLAUDE.md') // mechanically checked in the manifest
@@ -240,6 +241,58 @@ function orderTargets(manifestFiles) {
     ...useCases.map(uc => ({ file: uc.file, useCase: uc })),
     ...rest.map(file => ({ file, useCase: null })),
   ]
+}
+
+// The decision records, by path. One agent judges all of them and nothing else: two
+// records in conflict, or a route that misses a path a record governs, shows only to a
+// reader that holds the whole set, and among the other docs of a batch the records got
+// one line of prompt and, in two audits of four, no finding at all.
+function recordTargets(manifestFiles) {
+  return (manifestFiles || []).filter(f => f && f.classification === 'decision')
+    .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))
+    .map(file => ({ file, useCase: null }))
+}
+
+// What the records agent reads, and the questions it answers. Every question is a clause of
+// the docs/decisions/ contract in project-setup.md turned into something to check: asked
+// only to "judge the record against the contract", an agent reports what it happens to see.
+function recordsPrompt({ repoRoot, setupFile, hygieneFile, records, tree, hasAgents, privateLayout }) {
+  const readList = [setupFile, hygieneFile, ...(hasAgents ? [`${repoRoot}/AGENTS.md`] : []), ...records.map(t => `${repoRoot}/${t.file.path}`)]
+  const facts = [
+    ...(tree.flagged || []).flatMap(f => f.flags.map(flag => `${f.path}: ${flag}`)),
+    ...(tree.duplicate_numbers || []).map(d => `number ${d.number} is on ${d.paths.join(' and ')}`),
+    ...(tree.replaced_still_present || []).map(r => `${r.path} replaces ${r.replaces}, and ${r.still_present.join(', ')} is still in the tree`),
+  ]
+  return `Repo root: ${repoRoot}\n` +
+    `You audit the ${records.length} decision record(s) of this repository as one set. A record is read as authority: an agent that finds one obeys it and does not check the code first, so a record that states the wrong rule misleads with confidence.\n\n` +
+    (privateLayout
+      ? `PRIVATE LAYOUT — this root is the private folder of a repository the user cannot commit to. Its records and its AGENTS.md are a delta to that repository's own docs, and the paths they name are paths of that repository.\n\n`
+      : '') +
+    `READ ONCE — your first action is ONE parallel batch of Read calls, one per file in this list. They are the only tool calls you make before you return: no Bash, no Grep, no Glob, no other Read. You do not open the code, so whether the project follows a record is outside this audit.\n` +
+    readList.map(p => `  ${p}\n`).join('') +
+    `\nTHE CONTRACT — in the first file, the block headed \`docs/decisions/\` under "File ownership boundaries": its Inside, Not inside, Lifecycle and Route lines. The second file holds the Cache rule that Not inside names. Hold every record against that block, from the file rather than memory.\n\n` +
+    `FACTS FROM THE MANIFEST — a script checked each record's shape and the tree. Report each line below as a finding on the file it names, and count no lines yourself:\n` +
+    (facts.length ? facts.map(f => `  ${f}\n`).join('') : `  none\n`) +
+    `\nEACH RECORD — answer all seven for every record:\n` +
+    `  1. HEADING AND BODY — name the decision the body argues for. Does the heading state that same decision as a sentence? A heading that is wider, narrower or other than what the body supports is a finding: quote both.\n` +
+    `  2. ONE DECISION — does the record decide one thing? A rule in the body that the heading does not state is a second decision.\n` +
+    `  3. FORCE — does the body name the force or constraint that decides it? A body that only states the result has none.\n` +
+    `  4. REJECTED — is the reason of each \`Rejected:\` line a force that holds today? A label ("it is simpler"), the decision said again, or an event told in the past tense is none. Is an option that would plainly be proposed again left without a line? A record with no \`Rejected:\` line is otherwise within the contract.\n` +
+    `  5. EARNS A FILE — is the decision hard to reverse, surprising without context, and the result of a real trade-off, all three, or an explicit "no" that would be proposed again?\n` +
+    `  6. READS ON ITS OWN — does it use a term it does not define, or need another record to be understood?\n` +
+    `  7. NOT INSIDE — does it hold a status or a date, what the code or config already states (names, values, lists), an open question or a proposal, history, or a decision about what the project documents?\n\n` +
+    `THE SET — what no single record shows:\n` +
+    `  8. CONFLICT — take the records in pairs. Does an agent that obeys one break the other? Does one record make the heading of another false? Quote both sides. File the finding on one record and name the other in routes_to. Which of the two holds the decision in force is the user's call: say what each side says, and recommend no winner.\n` +
+    `  9. TWICE — do two records decide the same thing?\n\n` +
+    `THE ROUTE — the contract's Route and Lifecycle lines: AGENTS.md sends an agent to the records before it edits the paths they govern.\n` +
+    (hasAgents
+      ? `  10. Find that route in AGENTS.md and list the paths it names. For each record, take the paths, files or kinds of file that its text names as what it governs. One that the route does not cover is a finding on AGENTS.md that names the record and the path to add. Judge from the text of the records: a record that names no path adds none. No route to docs/decisions/ at all is one finding on AGENTS.md.\n`
+      : `  10. This repository has no AGENTS.md, so nothing routes an agent to the records: report that once, on the first record.\n`) +
+    `\nSEVERITY — assign every finding against this bar:\n` +
+    `  major: the record misleads an agent that obeys it — a heading that states another decision than its body, two records in conflict, a record with no force, a record that does not earn a file, a route that misses a path a record governs.\n` +
+    `  minor: a line to fix in a record that still states its decision correctly.\n` +
+    `  blocker stays unused here: no record can be shown wrong from its text alone.\n\n` +
+    `Return files_reviewed listing the repo-relative path of every record you read and judged, and findings, each naming its file. Quote the offending lines as evidence, and give each fix in the contract's own terms: a correction is an edit, a changed decision is a new record that replaces the old one. A clean record gets no findings — do not invent problems.`
 }
 
 // Pack targets, in order, into batches of at most maxBytes of doc text. A file larger
@@ -402,7 +455,7 @@ const HISTORY_SCHEMA = {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     normalizeArgs, parseManifest, checkManifest, checkPromptIndex, checkEvidence, splitReviewTargets, orderTargets, packBatches,
-    unreviewedFiles, historyFindingBar,
+    recordTargets, recordsPrompt, unreviewedFiles, historyFindingBar,
     LEVELS, LEVEL_CONFIG, USE_CASES, BATCH_BYTES, MIN_SEGMENTS_FOR_FINDING, RELAY_ATTEMPTS,
   }
 }
@@ -482,7 +535,10 @@ if (typeof agent === 'function') {
 
   phase('Read-review')
 
-  const batches = packBatches(orderTargets(manifest.files), BATCH_BYTES)
+  const docBatches = packBatches(orderTargets(manifest.files), BATCH_BYTES)
+  const records = recordTargets(manifest.files)
+  const batches = records.length ? [...docBatches, records] : docBatches
+  const recordFiles = records.map(t => `${repoRoot}/${t.file.path}`)
 
   // The contract text stays in project-setup.md, which every batch agent reads: carried in
   // the manifest it was half of what the manifest agent has to retype.
@@ -519,26 +575,25 @@ if (typeof agent === 'function') {
         `  An edgeless trigger is an Obligation finding even when the route is a correctly worded MUST: a diligent agent cannot obey it. Severity major. The fix names an action with a detectable first instant — e.g. replace "before searching this repository" with "before your first grep, rg, or Glob in this repo" — and replaces the existing trigger rather than being added beside it.\n` +
         contractLines(f.path)
     }
-    if (f.classification === 'decision') return head + `  Tree record: judge it against the DOCS/DECISIONS/ TREE contract above.\n`
     if (f.canonical_name) return head + contractLines(f.path)
     return head +
       `  NON-STANDARD doc — not one of the canonical files, so it has no ownership contract. FILED CORRECTLY? If its content belongs to a canonical topic (OVERVIEW / CODING / DOCUMENTING / TESTING / RELEASING / MONITORING / CHANGE-WORKFLOW / RUNNING / REVIEWING / DECISIONS / README / CONTRIBUTING), that is a placement finding: recommend RENAME to docs/<TOPIC>.md when that canonical slot is empty (missing canonical: ${JSON.stringify(manifest.missing_canonical)}), or LINK it from the canonical doc when the slot is filled; for DECISIONS, the DECISION RECORD PLACEMENT rules above replace both. Content of no canonical topic is legitimately project-specific. Also flag it if it is hollow (a stub) or duplicates AGENTS.md routing. Specs and design docs are read as authoritative, so one that contradicts a canonical doc you read is a blocker.\n`
   }
 
   // Where a decision record not in the tree's shape belongs. Stated once per batch that
-  // holds a non-standard doc or a tree record, since it reads the same for each.
-  const decisionPlacement = (batch) => batch.some(t => ['non-standard', 'decision'].includes(t.file.classification))
-    ? `\nDECISION RECORD PLACEMENT — for a NON-STANDARD doc or a Tree record below that holds decisions:\n` +
+  // holds a non-standard doc, since it reads the same for each.
+  const decisionPlacement = (batch) => batch.some(t => t.file.classification === 'non-standard')
+    ? `\nDECISION RECORD PLACEMENT — for a NON-STANDARD doc below that holds decisions:\n` +
       `  - A NON-STANDARD doc holding records in the tree's shape (one decision each, at most 8 lines under its heading, no status or date) belongs in docs/decisions/NNNN-slug.md where that tree exists: recommend that move.\n` +
       `  - Records in another format (a MADR or Nygard ADR, say) live in a folder outside docs/decisions/ that docs/DOCUMENTING.md registers. One inside docs/decisions/ is misplaced even where docs/DOCUMENTING.md names that folder: recommend moving it out and registering its new folder. One outside whose folder is not registered: recommend registering it. One outside whose folder docs/DOCUMENTING.md registers is filed correctly.\n` +
       `  - An index in docs/decisions/ (README.md, say) breaches the tree's contract, since the file names are the index: recommend deleting it.\n`
     : ''
 
-  // Every decision record shares one contract, so a batch states it once, not per record.
-  const decisionContract = (batch) => batch.some(t => t.file.classification === 'decision')
-    ? `\nDOCS/DECISIONS/ TREE — every file marked "Tree record" below is one record of the docs/decisions/ tree. ` +
-      `A record in another format (a MADR or Nygard ADR with status, date, and sections) is misplaced, not a record to cut down: the DECISION RECORD PLACEMENT rules decide its fix.\n` +
-      contractLines('docs/decisions/')
+  // The records reach every doc batch as context. A doc that states the opposite of a record
+  // shows only to an agent that read both, and before this block that took the luck of the
+  // two sharing a batch.
+  const recordsInForce = recordFiles.length
+    ? `\nDECISIONS IN FORCE — the files under docs/decisions/ on the read list are this project's decision records, read here as context. Another agent judges the records themselves, so file no finding on a record's own wording. A file below that states the opposite of a record is an accuracy finding on that file: quote both, name the record in routes_to, and leave open which side holds the decision in force.\n`
     : ''
 
   const batchPrompt = (batch) => {
@@ -549,6 +604,7 @@ if (typeof agent === 'function') {
       ...(hasDocumenting ? [documentingFile] : []),
       // docs/DOCUMENTING.md can also be one of the batch's own files; one Read covers both.
       ...batch.map(t => `${repoRoot}/${t.file.path}`).filter(p => !(hasDocumenting && p === documentingFile)),
+      ...recordFiles,
     ]
     return `Repo root: ${repoRoot}\n` +
       `You audit ${batch.length} documentation file(s) of this repository against an authoring standard.\n\n` +
@@ -557,7 +613,7 @@ if (typeof agent === 'function') {
         : '') +
       `READ ONCE — your first action is ONE parallel batch of Read calls, one per file in this list. They are the only tool calls you make before you return: no Bash, no Grep, no Glob, no other Read. The audit is judged on these files alone, and what they do not show is outside it. If a Read is refused for size, read that file in parts with offset and limit.\n` +
       readList.map(p => `  ${p}`).join('\n') + '\n\n' +
-      `THE STANDARD — the first file holds the doc-set rules: the six named rules (Ownership, Local delta, Anchors, Command register, Economy, Obligation), the failure modes, and the closing bar every fix you recommend must itself clear. The second binds any document an agent reads: single source of truth, cache, relevance, sediment, no-ops and negation. A finding under either is a finding. The third, project-setup.md, holds under its "File ownership boundaries" section the ownership contract of each canonical file and tree record below; a NON-STANDARD doc has none.\n` +
+      `THE STANDARD — the first file holds the doc-set rules: the six named rules (Ownership, Local delta, Anchors, Command register, Economy, Obligation), the failure modes, and the closing bar every fix you recommend must itself clear. The second binds any document an agent reads: single source of truth, cache, relevance, sediment, no-ops and negation. A finding under either is a finding. The third, project-setup.md, holds under its "File ownership boundaries" section the ownership contract of each canonical file below; a NON-STANDARD doc has none.\n` +
       (hasDocumenting
         ? `\nRECORDED DOC DECISIONS — the fourth file, docs/DOCUMENTING.md, carries this project's own doc conventions and the decisions it has taken about what it documents and what it leaves out on purpose. Treat a gap those decisions settle as answered and leave it out of your findings. They bind GAP findings only: a false or contradictory claim, a dead link, or content outside a file's Inside boundary stays a finding at full severity however the decisions read. A decision that contradicts what the other files show is itself a finding, against docs/DOCUMENTING.md.\n`
         : '') +
@@ -574,15 +630,19 @@ if (typeof agent === 'function') {
       // has read so far.
       `ACCURACY FROM THE TEXT — you do not open the code, so you cannot confirm that a command, path, or flag still exists, and you do not raise a finding that only says a claim is unverified. Raise an accuracy finding on what the files show: two docs that contradict each other, a doc that contradicts itself, a procedure whose steps cannot all be true, an unresolved link listed below.\n\n` +
       `FOR EVERY FILE — for each unit of content (claim, command, path, table, section) ask whether it BELONGS HERE. Content that matches the file's Not-inside boundary is a belonging finding even when accurate (the Ownership rule); its fix routes the content to the owning file, never "keep it as a subsection here". In a file written for agents, also ask whether the unit fails the hygiene Cache rule — most often a description of what the code already declares: what a function does, what a log line means, where a file is written. Raise it as a form finding whose fix moves it to that code's doc comment or cuts it; this fix also replaces a belonging fix on the same unit, because a cache moved to another doc is still a cache. Then judge the file as a whole against the Economy rule, from the rules file rather than memory, and raise what fails it as a form finding naming the spans you would cut.\n` +
-      decisionContract(batch) +
+      recordsInForce +
       decisionPlacement(batch) +
       batch.map((t, i) => fileSection(t, i + 1)).join('') +
       `\nReturn files_reviewed listing the repo-relative path of every file above that you read and judged, and findings, each naming its file. Quote the offending lines as evidence. A clean file gets no findings — do not invent problems.`
   }
 
+  const recordsAgentPrompt = () => recordsPrompt({
+    repoRoot, setupFile, hygieneFile, records, tree: manifest.decisions,
+    hasAgents: manifest.files.some(f => f && f.path === 'AGENTS.md'), privateLayout: manifest.private,
+  })
   const reviewResults = await parallel(batches.map((batch, i) => () =>
-    agent(batchPrompt(batch), {
-      label: `review-${i + 1}/${batches.length}`,
+    agent(batch === records ? recordsAgentPrompt() : batchPrompt(batch), {
+      label: batch === records ? 'review-records' : `review-${i + 1}/${docBatches.length}`,
       phase: 'Read-review',
       model: levelConfig.reviewModel,
       effort: levelConfig.reviewEffort,
@@ -739,7 +799,8 @@ if (typeof agent === 'function') {
     // telling this stage to raise it — the manifest detects it and the report never says so.
     `CLAUDE.md: ${JSON.stringify(manifest.claude_md)}\n` +
     `Injected tool-blocks in steering docs: ${JSON.stringify(manifest.injected_blocks)}\n` +
-    `Personal files under a name Claude Code never loads: ${JSON.stringify(manifest.legacy_personal || [])}\n\n` +
+    `Personal files under a name Claude Code never loads: ${JSON.stringify(manifest.legacy_personal || [])}\n` +
+    `Decision records (docs/decisions/), shape and tree facts: ${JSON.stringify(manifest.decisions)}\n\n` +
     `READ-REVIEW FINDINGS (batch agents that read each doc and the standard, and did NOT check claims against the code):\n${JSON.stringify(readFindings)}\n` +
     `Files the read-review did not cover: ${JSON.stringify(notReviewed)}\n\n` +
     `HISTORY VERDICTS (behavioural: did past sessions in this repo actually open the doc their route points at?):\n${JSON.stringify(historyEntries)}\n` +
@@ -749,13 +810,14 @@ if (typeof agent === 'function') {
     `Do all of the following:\n` +
     `1. Merge and DEDUPE findings (the same defect surfaced twice is ONE finding — cite the strongest evidence).\n` +
     `   When merging, PRESERVE what each recommended_action says it replaces, cuts, or supersedes — the lines it names are the fix, not decoration. A recommended_action that only adds text must say why nothing existing is superseded. Never compress a specific replacement into a general instruction to improve the section.\n` +
-    `2. Cross-file reconciliation the batch agents could not see, since each saw only its own batch: sibling contradictions on shared facts; and match any missing canonical doc to a non-standard doc whose content actually IS that topic (rename/link).\n` +
-    `3. Raise the mechanical facts no read-review agent covered. CLAUDE.md is excluded from the read-review because the manifest checks it, so a false claude_md_ok is yours to report: CLAUDE.md must be exactly the one-line @AGENTS.md import, and the fix names a destination for each displaced piece — routing to AGENTS.md, topic procedures to docs/<TOPIC>.md, personal or transient notes to CLAUDE.local.md. Where its detail names a symlink to AGENTS.md, nothing is displaced: the fix replaces the link with the one-line file. ${manifest.private ? `This root is a PRIVATE layout, so the CLAUDE.md entry above describes the file it names, the parent's CLAUDE.local.md: it must hold its expected absolute import as a line, beside any personal notes, and the fix adds that line, because a relative import fails in a git worktree. ` : ''}Every injected tool-block listed above is a finding against the doc holding it, under the same destination rule. Every personal file listed above under a name Claude Code never loads is a finding against that file: the fix moves its content to its rename_to path — merged into that file where rename_to_exists is true, so neither file's notes are lost — and adds rename_to to .gitignore where no pattern there covers it yet, so the personal notes stay out of commits. The content itself stays as it is.\n` +
+    `   A decision record is read as authority, so a finding that a record contradicts itself or another record stays at major or above.\n` +
+    `2. Cross-file reconciliation the batch agents could not see, since each saw only its own batch, and the agent that judged the decision records saw no other doc: sibling contradictions on shared facts; and match any missing canonical doc to a non-standard doc whose content actually IS that topic (rename/link).\n` +
+    `3. Raise the mechanical facts no read-review agent covered. CLAUDE.md is excluded from the read-review because the manifest checks it, so a false claude_md_ok is yours to report: CLAUDE.md must be exactly the one-line @AGENTS.md import, and the fix names a destination for each displaced piece — routing to AGENTS.md, topic procedures to docs/<TOPIC>.md, personal or transient notes to CLAUDE.local.md. Where its detail names a symlink to AGENTS.md, nothing is displaced: the fix replaces the link with the one-line file. ${manifest.private ? `This root is a PRIVATE layout, so the CLAUDE.md entry above describes the file it names, the parent's CLAUDE.local.md: it must hold its expected absolute import as a line, beside any personal notes, and the fix adds that line, because a relative import fails in a git worktree. ` : ''}Every injected tool-block listed above is a finding against the doc holding it, under the same destination rule. Every personal file listed above under a name Claude Code never loads is a finding against that file: the fix moves its content to its rename_to path — merged into that file where rename_to_exists is true, so neither file's notes are lost — and adds rename_to to .gitignore where no pattern there covers it yet, so the personal notes stay out of commits. The content itself stays as it is. Every decision-record fact listed above that no read-review finding carries is a finding too: a flag against the record it names, a number that two records share against the later file, a replaced record that is still in the tree against that replaced record, whose fix deletes it. A file under not_records is a finding only where no read-review finding places it.\n` +
     `4. Fold the behavioural evidence in. From history: only entries with attribution "doc" are doc findings — an "agent" attribution means the route was written correctly and skipped anyway, which belongs in evidence_summary as an observation, never as a defect in the file. An "insufficient-evidence" attribution is not a finding of any kind.\n` +
     `5. Write evidence_summary. State that the read-review judged the docs from their text and did not check documented commands, paths, or flags against the code, so a doc that has drifted from the code without contradicting another doc is not caught by this audit. Name any file the read-review did not cover. Then state the evidence per use case: how many valid segments history had and which use cases had none. A use case with no evidence is a gap in THIS AUDIT, never a defect in the doc — say so in those words rather than implying the doc is unused. Where a history stage failure is given above, say that the history evidence is missing because of that failure, not because the repository has no sessions.\n` +
     `   Report the superseded-route evidence too, in its own short paragraph, and label it as being about wording that no longer exists. Quote the old route and give the ratio of segments that did the work to segments that opened the doc. Where a route has since been rewritten, say whether that evidence supports the rewrite. Never let it change a verdict or a finding about current text — but never drop it either: a route that was ignored under its old wording is the reason the new wording exists.\n` +
     `6. Assign an overall verdict: accurate / minor gaps / significant gaps / misleading. A clean 'accurate' requires no blocker/major AND positive coverage — not merely absence of findings.\n` +
-    `7. Tag every finding \`settled\` or \`open\`, leaving none untagged. SETTLED is a doc contradicting another doc or itself where the evidence above shows which side is right, a stale command, a dead link, a missing or misnamed route, CLAUDE.md carrying anything but the one-line import, an injected tool-block — one correct answer, nothing to weigh. OPEN moves content from one file to another (who owns a topic is a judgement), moves a personal file (the user edits those, and only the user knows what each holds), deletes a section someone may be relying on, rewords a route people's habits are built on, adopts a convention the repo has not committed to, or is large enough that "not now" is a real answer. Asking permission for a settled fix wastes the maintainer's attention. A finding the evidence above does not settle, or that a competent person could answer differently, is open. For every OPEN finding also fill \`question\` (what is being decided, in ASD-STE100 Simplified Technical English — one idea per sentence, every identifier and abbreviation expanded — naming the file and what it currently says, so a reader outside this audit understands it), \`options\` (the real alternatives, including "leave it as is" wherever that is one), and \`recommendation\` (which option you would pick and the tradeoff that decided it).\n\n` +
+    `7. Tag every finding \`settled\` or \`open\`, leaving none untagged. SETTLED is a doc contradicting another doc or itself where the evidence above shows which side is right, a stale command, a dead link, a missing or misnamed route, CLAUDE.md carrying anything but the one-line import, an injected tool-block — one correct answer, nothing to weigh. OPEN sets a decision record against itself, another record or another doc (being a record does not make it the right side: the user says which one holds the decision in force, and the options name the edit on each side), moves content from one file to another (who owns a topic is a judgement), moves a personal file (the user edits those, and only the user knows what each holds), deletes a section someone may be relying on, rewords a route people's habits are built on, adopts a convention the repo has not committed to, or is large enough that "not now" is a real answer. Asking permission for a settled fix wastes the maintainer's attention. A finding the evidence above does not settle, or that a competent person could answer differently, is open. For every OPEN finding also fill \`question\` (what is being decided, in ASD-STE100 Simplified Technical English — one idea per sentence, every identifier and abbreviation expanded — naming the file and what it currently says, so a reader outside this audit understands it), \`options\` (the real alternatives, including "leave it as is" wherever that is one), and \`recommendation\` (which option you would pick and the tradeoff that decided it).\n\n` +
     (hasDocumenting
       ? `RECORDED DOC DECISIONS — read ${documentingFile} in full before you settle the findings list; it is the only file you read. It carries this project's doc conventions and what it has decided to leave undocumented. Drop any finding those decisions already settle, including one a read-review agent raised, and say in cross_file_notes which findings you dropped and which decision covered each. A decision binds GAP findings only: a false claim, a stale command, a dead link, or a broken CLAUDE.md stays a finding at full severity. A decision that contradicts the repo is a finding against docs/DOCUMENTING.md.\n\n`
       : `Everything you need is above; make no tool calls.\n\n`) +
