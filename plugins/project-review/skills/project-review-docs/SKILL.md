@@ -132,8 +132,8 @@ docs inline. The workflow returns a structured report; relay it.
    Where the user's reply declines an open item about where content sits or how much of it
    a doc holds, give one line for the decisions of `docs/DOCUMENTING.md`: the file, the
    content that stays, and why. A declined gap gets one line too: what stays undocumented,
-   and why. The next audit raises the item again without its line. A declined false claim,
-   stale command or dead link gets no line: no decision settles it.
+   and why. The next audit raises the item again without its line. Any other declined item gets
+   no line, because no decision settles it: say that the next audit raises it again.
 
    Done when every open item has been put to the user, the settled batch has been named,
    and each declined item about placement, size or a gap has its line.

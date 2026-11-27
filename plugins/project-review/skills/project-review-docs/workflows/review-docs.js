@@ -487,7 +487,8 @@ if (typeof agent === 'function') {
   // The contract text stays in project-setup.md, which every batch agent reads: carried in
   // the manifest it was half of what the manifest agent has to retype.
   const contractLines = (heading) =>
-    `  Ownership contract (the bar for "belongs here"): the Audience / Inside / Not inside block headed \`${heading}\` in project-setup.md, together with the topic-doc exclusions stated above the blocks where they bind it.\n`
+    `  Ownership contract (the bar for "belongs here"): the Audience / Inside / Not inside block headed \`${heading}\` in project-setup.md` +
+    (/^docs\/[^/]+\.md$/.test(heading) ? ', together with the topic-doc exclusions stated above the blocks' : '') + '.\n'
 
   // What is specific to one file: its facts, and the seat it is judged from. Everything
   // shared by every file is stated once in batchPrompt.
@@ -502,7 +503,7 @@ if (typeof agent === 'function') {
       // defect this framing catches and a file audit does not.
       return head +
         `  Use case "${t.useCase.useCase}": judge this file as an agent that arrives wanting to ${t.useCase.work}, sent here by AGENTS.md. AGENTS.md is always in that agent's context, so treat its route as already read. The route's wording: ${quotedRoute(t.useCase.doc)}\n` +
-        `  A. COULD YOU DO THE WORK? Walk the task through the doc. Name every point where you would have to guess, leave the doc, or already know something it never states. A gap that stops the work is a blocker; one that slows it is major.\n` +
+        `  A. COULD YOU DO THE WORK? Walk the task through the doc. Name every point where you would have to guess, leave the doc, or already know something it never states. A pointer to a named file, script or command that holds the rest is an answer, not a gap: the standard tells a topic doc to point there. A gap that stops the work is a blocker; one that slows it is major.\n` +
         `  B. Does the route deliver you here at the right moment? A route that names a topic rather than a triggering action, or reads as optional, is an Obligation finding against AGENTS.md — report it on this file with routes_to "AGENTS.md".\n` +
         contractLines(f.path)
     }
@@ -573,7 +574,7 @@ if (typeof agent === 'function') {
       // claims against the code spends one turn per claim, and each turn re-sends all it
       // has read so far.
       `ACCURACY FROM THE TEXT — you do not open the code, so you cannot confirm that a command, path, or flag still exists, and you do not raise a finding that only says a claim is unverified. Raise an accuracy finding on what the files show: two docs that contradict each other, a doc that contradicts itself, a procedure whose steps cannot all be true, an unresolved link listed below.\n\n` +
-      `FOR EVERY FILE — for each unit of content (claim, command, path, table, section) ask whether it BELONGS HERE. Content that matches the file's Not-inside boundary is a belonging finding even when accurate (the Ownership rule); its fix routes the content to the owning file, never "keep it as a subsection here". In a file written for agents, also ask whether the unit fails the hygiene Cache rule — most often a description of what the code already declares: what a function does, what a log line means, where a file is written. Raise it as a form finding whose fix moves it to that code's doc comment, and cuts it only where the files you read show that the code already holds it; this fix also replaces a belonging fix on the same unit, because a cache moved to another doc is still a cache. Then judge the file as a whole against the Economy rule, from the rules file rather than memory, and raise what fails it as a form finding naming the spans you would cut.\n` +
+      `FOR EVERY FILE — for each unit of content (claim, command, path, table, section) ask whether it BELONGS HERE. Content that matches the file's Not-inside boundary is a belonging finding even when accurate (the Ownership rule); its fix routes the content to the owning file, never "keep it as a subsection here". In a file written for agents, also ask whether the unit fails the hygiene Cache rule — most often a description of what the code already declares: what a function does, what a log line means, where a file is written. Raise it as a form finding whose fix moves it to that code's doc comment, and cuts it only where the files you read show that the code already holds it; this fix also replaces a belonging fix on the same unit, because a cache moved to another doc is still a cache. Then judge the file as a whole against the Economy rule, from the rules file rather than memory, and raise what fails it as a form finding naming the spans. An Economy or Code narration fix points at the code or moves the span there, and cuts it only where the files you read show that the code or another doc already holds it: you do not open the code, so a rule that reads as code behaviour can be the only copy.\n` +
       decisionContract(batch) +
       decisionPlacement(batch) +
       batch.map((t, i) => fileSection(t, i + 1)).join('') +
