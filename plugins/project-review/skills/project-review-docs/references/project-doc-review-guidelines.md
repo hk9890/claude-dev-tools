@@ -99,7 +99,7 @@ Change them at the authoritative site. This table is the index, not the source.
 | Use case → doc, and the classifier's label vocabulary | `USE_CASES` in `review-docs.js` and `USE_CASE_DOCS` in `history.py` — two copies, because workflow scripts cannot import; pinned by `test-history.sh` |
 | What each level buys | `LEVEL_CONFIG` in `review-docs.js` |
 | History finding floor | `MIN_SEGMENTS_FOR_FINDING` in `review-docs.js` |
-| What a repo's recorded doc decisions may suppress | the decisions blocks in `batchPrompt` and in the synthesis prompt, `review-docs.js`; the *Recorded decisions* bullet of `docs/DOCUMENTING.md` in `project-setup.md` states the contract |
+| What a repo's recorded doc decisions may suppress | the decisions blocks in `batchPrompt` and in the synthesis prompt, `review-docs.js`; the *Recorded decisions* and *Declined findings* bullets of `docs/DOCUMENTING.md` in `project-setup.md` state the contract |
 | Overall verdict (`accurate` / `minor gaps` / `significant gaps` / `misleading`) | `REPORT_SCHEMA` and the synthesis prompt |
 
 ## The history stage

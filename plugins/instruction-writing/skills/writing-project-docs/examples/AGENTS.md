@@ -14,7 +14,7 @@ Every route below is **mandatory, not advisory**. Load the document BEFORE the f
 
 ### Writing project docs
 
-**MUST read [docs/DOCUMENTING.md](docs/DOCUMENTING.md) before creating or editing ANY Markdown file under `docs/`, or `AGENTS.md`, `README.md`, or `CONTRIBUTING.md`.** It owns the doc gates, the citation convention, and what this service has decided not to document.
+**MUST read [docs/DOCUMENTING.md](docs/DOCUMENTING.md) before creating or editing ANY Markdown file under `docs/`, or `AGENTS.md`, `README.md`, or `CONTRIBUTING.md`.** It owns the doc gates, the citation convention, what this service has decided not to document, and the audit findings it declined.
 
 ### Changing a decided design
 

@@ -131,12 +131,12 @@ docs inline. The workflow returns a structured report; relay it.
 
    Where the user's reply declines an open item about where content sits or how much of it
    a doc holds, give one line for the decisions of `docs/DOCUMENTING.md`: the file, the
-   content that stays, and why. The next audit raises the item again without it. A declined
-   item of another kind (a false claim, a stale command, a dead link) gets no line: no
-   decision settles it.
+   content that stays, and why. A declined gap gets one line too: what stays undocumented,
+   and why. The next audit raises the item again without its line. A declined false claim,
+   stale command or dead link gets no line: no decision settles it.
 
    Done when every open item has been put to the user, the settled batch has been named,
-   and each declined item of that kind has its line.
+   and each declined item about placement, size or a gap has its line.
 
 If `python3` is missing or the workflow cannot launch, read every doc in full by
 hand against all three parts of the standard — `<STANDARD_DIR>/references/project-setup.md`
