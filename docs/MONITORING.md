@@ -24,17 +24,17 @@ Set the variable in `mise.local.toml` at the repo root, which git ignores:
 SESSION_REVIEW_DIR = "/home/<you>/dev/github/session-data"
 ```
 
-`git pull` in the store before a run: a session that another machine reviewed is skipped only once its run is here.
+`git pull` in the store before a run: the pick reads the earlier runs there. A session that another machine reviewed is skipped only once its run is here, and the changed bucket starts from the release of the host's last run.
 
 ## Run a review
 
 `git fetch --tags` first: the pick finds the last release in the local tags only. Then call the Workflow tool with `name` `review-sessions` and `args` as a JSON object, `{perBucket, sinceDays, host}`, not a string: the sessions each bucket takes, the window in days, and the ssh host ([Another machine](#another-machine)). The head of its script ([`.claude/workflows/review-sessions.js`](../.claude/workflows/review-sessions.js)) sets the defaults of the first two, and its `meta.phases` names what each phase does; the run commits and pushes itself to the store. `scripts/pick-sessions.py` lists what a run folder holds where it writes the folder.
 
-Quote a transcript line from the run's copy under `transcripts/`: it stays after Claude Code deletes the original.
+Quote a transcript line from the run's copy under `transcripts/`: it stays after Claude Code deletes the original. The copy holds no image data.
 
 What a pick, a version label and the report sections mean is printed with the output itself: the `legend` of the pick, kept in the run's `picks.json`, and the headers of `usage.md` and `context.md`.
 
-File each finding of the run's `findings.json` in the tracker by hand, with its version. When its fix ships, a finding that a later run reports again for a newer version is a regression.
+The run files each finding that still stands in the tracker. File each finding it returns as `not filed` by hand, with its version: the run files none without `taskmgr` or the `tasks` plugin, or where its record failed. When its fix ships, a finding that a later run reports again for a newer version is a regression.
 
 `mise run pick-sessions -- context` prints the context cost of each file over the runs of the store.
 

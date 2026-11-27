@@ -2,14 +2,16 @@
 """Pick Claude Code sessions worth a review, and keep each review run.
 
 pick    starts a run folder in the review store: picks the sessions that used a plugin of
-        this marketplace and that no earlier run reviewed, a few from each bucket (most
-        user pushback, most tool errors, most output tokens, a plugin the last release
-        changed, random), and copies their transcripts into the run. With --host it
+        this marketplace and that no earlier run reviewed to its end, a few from each
+        bucket (most user pushback, most tool errors, most output tokens, a plugin that
+        a release since the host's last run changed, random), and copies their
+        transcripts into the run, less the image data. With --host it
         picks the sessions of another machine: it mirrors that machine's transcripts
         over ssh with rsync first.
         It also writes what this repository put into the context of every session in the
         window, with the reads and the trouble that followed (context.json, context.md).
-render  prints one transcript as text an agent can read in parts.
+render  prints one transcript as text an agent can read in parts, with a mark where an
+        earlier review ended.
 record  writes the findings of a review into its run folder.
 context prints the context cost of each file over the runs of the review store.
 
@@ -61,23 +63,28 @@ RANKED_BUCKETS = ("pushback", "errors", "output_tokens")
 
 # Printed with the picks: what a pick, a count and a version label mean.
 PICK_LEGEND = {
-    "candidate": "a session modified in the window, with a turn attributed to a plugin under plugins/, that no run reviewed to its end. "
+    "candidate": "a session modified in the window, with a turn attributed to a plugin under plugins/ that no run reviewed. "
     "A session that only a plugin's hook acted in is none: a hook leaves no attributed turn",
+    "reviewed_until": "on a session that went on after an earlier run reviewed it: the time of the last record that run saw. "
+    "Its skill_versions, pushback, errors and output_tokens count the records after that time only, and so do its changed_files",
     "buckets": {
         "pushback": "seconds in which the user interrupted the agent or rejected a tool call; one interrupt counts once",
         "errors": "failed tool results; a call that never ran is left out: a denial, a worktree-isolation refusal, the cancelled siblings of an interrupted batch",
         "output_tokens": "output tokens, each API message once; ranks long sessions first, whatever their quality",
-        "changed": "ran, at the last release's version, a plugin that release changed; sessions that ran a changed skill first, a random draw inside each group",
+        "changed": "ran, at a version after release.previous, a plugin that changed since release.previous; sessions that ran a changed skill first, a random draw inside each group",
         "random": "a random draw from the candidates no other bucket took; --seed repeats it",
     },
     "order": "the buckets fill in the order above, each with up to --per-bucket candidates (a ranked bucket takes the highest non-zero counts); "
     "a session lands in one bucket only",
-    "signals": "every count includes the subagent transcripts. A refusal by a plugin's own guard is a permission-rule denial and counts in no signal",
-    "large_transcripts": "an unreviewed session that holds a file of 50 MB or more; refused, and no candidate, from 100 MB, as GitHub rejects the push",
-    "release": "the newest v<x.y.z> tag of this checkout, the tag before it, the plugins with a file that differs between them (plugin.json and tests/ do not count), "
-    "and the count of candidates that ran a changed plugin at the release version; null with fewer than two tags. "
-    "The changed bucket stays empty until a session loads a skill from the new install; a dev@ session never counts",
-    "changed_files": "on a picked session, whatever its bucket, that ran a changed plugin at the release version: the files of that plugin the release changed",
+    "signals": "every count includes the subagent transcripts, and leaves out the records an earlier run reviewed (reviewed_until). A refusal by a plugin's own guard is a permission-rule denial and counts in no signal",
+    "large_transcripts": "an unreviewed session that holds a file of 50 MB or more; refused, and no candidate, from 100 MB, as GitHub rejects the push. "
+    "The size is that of the session's own files: the copy in the run holds no image data and can be smaller",
+    "release": "version is the newest v<x.y.z> tag of this checkout. previous is the release of the last run of the same host, so that no release "
+    "between two runs is skipped; a run counts once it recorded a review, and where none has an older release, previous is the tag before the newest. plugins are those with a file "
+    "that differs between the two (plugin.json and tests/ do not count), candidates the count of candidates with changed_files; null with fewer than two tags. "
+    "The changed bucket stays empty until a session loads a skill from an install after previous; a dev@ session never counts",
+    "changed_files": "on a picked session, whatever its bucket, that ran a changed plugin at a version after release.previous: the files of the plugins it ran at "
+    "changed_version that differ between release.previous and changed_version. changed_version is the newest version at which it ran a changed plugin",
     "skill_versions": {
         "x.y.z": "a cached install of that version",
         "dev@<name>": "the worktree .claude/worktrees/<name> of a checkout of this repository, not a commit: no record holds the commit",
@@ -88,7 +95,12 @@ PICK_LEGEND = {
     "a subagent turn with no banner of its own takes the label its session had loaded last before the turn's timestamp: an inference",
 }
 
-# GitHub refuses a file above 100 MB, so a session that holds one is not picked.
+# What render prints before the first record that no earlier run reviewed, or at the end of a transcript with none.
+REVIEWED_MARK = "=== AN EARLIER RUN REVIEWED THE SESSION UP TO HERE ==="
+REVIEWED_WHOLE = "=== AN EARLIER RUN REVIEWED ALL OF THIS TRANSCRIPT ==="
+
+# GitHub refuses a file above 100 MB, so a session that holds one is not picked. The limit is on the
+# session's own files: the size of a copy without its image data is known only once the copy is made.
 REFUSED_TRANSCRIPT_MB = 100
 LARGE_TRANSCRIPT_MB = 50
 
@@ -177,14 +189,23 @@ def skill_load(text, plugins):
     return f"{plugin}:{banner[2]}", plugin, label
 
 
-def summarize(session_file, plugins):
-    """One session with its subagent transcripts: the pick record, and the use of each skill."""
+def summarize(session_file, plugins, reviewed_until=""):
+    """One session with its subagent transcripts: the pick record, and the use of each skill.
+
+    The skill versions, pushback, errors and output tokens of the pick record count the records
+    after `reviewed_until` only; the use of each skill counts every record.
+    """
     subagents = subagent_files(session_file)
     copied = [session_file, *(f for f in (session_file.with_suffix("") / "subagents").rglob("*") if f.is_file())]
     pushback_seconds = set()
     tokens_by_message = {}
     errors = 0
     started = ended = None
+    unreviewed_versions = defaultdict(set)
+
+    def unreviewed(timestamp):
+        return not reviewed_until or timestamp > reviewed_until
+
     # The skill loads of the main transcript, for the label of a subagent turn with no banner.
     session_loads = []
     usage = defaultdict(lambda: {
@@ -220,6 +241,8 @@ def summarize(session_file, plugins):
                     prefix = "" if direct else "inherited_"
                     trouble = usage[skill]["by_version"][label]
                     usage[skill]["versions"].add(label)
+                    if unreviewed(timestamp):
+                        unreviewed_versions[skill].add(label)
                     usage[skill]["turns"] += 1
                     trouble[prefix + "turns"] += 1
                 for block in blocks(record):
@@ -232,14 +255,16 @@ def summarize(session_file, plugins):
                 message = record.get("message") or {}
                 message_id = message.get("id")
                 tokens = (message.get("usage") or {}).get("output_tokens", 0)
-                tokens_by_message[message_id] = max(tokens_by_message.get(message_id, 0), tokens)
+                if unreviewed(timestamp):
+                    tokens_by_message[message_id] = max(tokens_by_message.get(message_id, 0), tokens)
             elif record.get("type") == "user":
                 denial = record.get("toolDenialKind")
                 second = timestamp[:TIMESTAMP_SECOND]
+                counts = unreviewed(timestamp)
                 for block in blocks(record):
                     text = block_text(block)
                     if block.get("type") == "text":
-                        if text.startswith(INTERRUPT):
+                        if text.startswith(INTERRUPT) and counts:
                             pushback_seconds.add(second)
                         # The user types in the session only: a workflow subagent repeats the request that started it.
                         if path == session_file:
@@ -255,7 +280,8 @@ def summarize(session_file, plugins):
                     elif block.get("type") == "tool_result" and block.get("is_error"):
                         trouble, prefix = call_owner.get(block.get("tool_use_id"), (None, None))
                         if denial == "user-rejected":
-                            pushback_seconds.add(second)
+                            if counts:
+                                pushback_seconds.add(second)
                             if trouble is not None:
                                 trouble[prefix + "rejected"] += 1
                         elif not (
@@ -263,11 +289,12 @@ def summarize(session_file, plugins):
                             or ISOLATION_REFUSAL in text.lower()
                             or text.removeprefix(ERROR_TAG).startswith(CANCELLED_SIBLING)
                         ):
-                            errors += 1
+                            if counts:
+                                errors += 1
                             if trouble is not None:
                                 trouble[prefix + "failed"] += 1
 
-    skill_versions = {skill: sorted(use["versions"]) for skill, use in sorted(usage.items()) if use["turns"]}
+    skill_versions = {skill: sorted(labels) for skill, labels in sorted(unreviewed_versions.items())}
     session = {
         "session_id": session_file.stem,
         "session": str(session_file),
@@ -275,7 +302,7 @@ def summarize(session_file, plugins):
         "started": started,
         "ended": ended,
         "largest_file_mb": max(map(size, copied)) >> 20,
-        "skills": list(skill_versions),
+        "skills": sorted(skill for skill, use in usage.items() if use["turns"]),
         "versions": sorted({label for labels in skill_versions.values() for label in labels}),
         "skill_versions": skill_versions,
         "subagents": len(subagents),
@@ -283,11 +310,13 @@ def summarize(session_file, plugins):
         "errors": errors,
         "output_tokens": sum(tokens_by_message.values()),
     }
+    if reviewed_until:
+        session["reviewed_until"] = reviewed_until
     return session, usage
 
 
-def last_release(plugins_dir):
-    """The newest release tag, the one before it, and the files that differ between them, by plugin."""
+def last_release(plugins_dir, review_dir, host):
+    """The newest release tag, the release of the host's last run, and the diff from that release to a later tag."""
 
     def git(*argv, check=False):
         done = subprocess.run(["git", "-C", str(plugins_dir.parent), *argv], capture_output=True, text=True, check=check)
@@ -296,24 +325,37 @@ def last_release(plugins_dir):
     # --no-column, core.quotePath and --no-renames pin what user config changes: tags in
     # columns, a non-ASCII path in quotes, and a file that moved to another plugin listed
     # under the new plugin only.
-    tags = [tag for tag in git("tag", "--list", "--no-column", "--sort=-version:refname") if RELEASE_TAG_RE.fullmatch(tag)]
+    tags = [tag[1:] for tag in git("tag", "--list", "--no-column", "--sort=-version:refname") if RELEASE_TAG_RE.fullmatch(tag)]
     if len(tags) < 2:
         return None
     version, previous = tags[:2]
-    changed = defaultdict(list)
-    # A diff that failed must stop the pick: no output reads as a release that changed no plugin.
-    paths = git("-c", "core.quotePath=false", "diff", "--name-only", "--no-renames", previous, version, "--", plugins_dir.name, check=True)
-    for path in paths:
-        plugin, *rest = Path(path).parts[1:]
-        # A release bumps the version in every plugin.json, and no session runs a test.
-        if rest and rest[0] != "tests" and rest != [".claude-plugin", "plugin.json"]:
-            changed[plugin].append(path)
-    return {"version": version[1:], "previous": previous[1:], "changed": dict(changed)}
+    # The tag before the newest skips each release tagged between it and the host's last run.
+    # A run counts once it recorded a review: a pick that no review followed checked no release.
+    runs = [json.loads(path.read_text(encoding="utf-8")) for path in sorted(review_dir.glob("runs/*/run.json")) if any(path.parent.glob("sessions/*.json"))]
+    reviewed = [run["release"]["version"] for run in runs if run.get("host") == host and run.get("release")]
+    if reviewed and reviewed[-1] in tags[2:]:
+        previous = reviewed[-1]
+    changed = {}
+
+    def changed_at(tag):
+        """The files that differ between the previous release and `tag`, by plugin."""
+        if tag not in changed:
+            changed[tag] = defaultdict(list)
+            # A diff that failed must stop the pick: no output reads as a release that changed no plugin.
+            paths = git("-c", "core.quotePath=false", "diff", "--name-only", "--no-renames", f"v{previous}", f"v{tag}", "--", plugins_dir.name, check=True)
+            for path in paths:
+                plugin, *rest = Path(path).parts[1:]
+                # A release bumps the version in every plugin.json, and no session runs a test.
+                if rest and rest[0] != "tests" and rest != [".claude-plugin", "plugin.json"]:
+                    changed[tag][plugin].append(path)
+        return changed[tag]
+
+    return {"version": version, "previous": previous, "since": tags[: tags.index(previous)], "changed_at": changed_at}
 
 
-def released_skills(session, release):
-    """The skills this session ran at the release version."""
-    return [skill for skill, labels in session["skill_versions"].items() if release["version"] in labels]
+def skills_at(session, version):
+    """The skills this session ran at the version."""
+    return [skill for skill, labels in session["skill_versions"].items() if version in labels]
 
 
 def usage_table(usages, plugins_dir, since_days):
@@ -672,14 +714,47 @@ def write_json(path, value):
     path.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
+def blank_image_data(value):
+    """Empty each base64 payload of a record: an image in a message, and the file of a tool result."""
+    if isinstance(value, dict):
+        if value.get("type") == "base64" and isinstance(value.get("data"), str):
+            value["data"] = ""
+        if isinstance(value.get("base64"), str):
+            value["base64"] = ""
+        for child in value.values():
+            blank_image_data(child)
+    elif isinstance(value, list):
+        for child in value:
+            blank_image_data(child)
+
+
+def copy_transcript(source, target):
+    """Copy one file of a session. A transcript loses its image data: no reviewer reads it, and GitHub refuses a large file."""
+    if Path(source).suffix != ".jsonl":
+        return shutil.copy2(source, target)
+    with open(source, "rb") as lines, open(target, "wb") as copy:
+        for line in lines:
+            if b'"base64"' in line:
+                try:
+                    record = json.loads(line)
+                except ValueError:
+                    record = None
+                if isinstance(record, dict):
+                    blank_image_data(record)
+                    line = json.dumps(record, ensure_ascii=False, separators=(",", ":")).encode("utf-8", "surrogatepass") + b"\n"
+            copy.write(line)
+    shutil.copystat(source, target)
+    return target
+
+
 def copy_transcripts(session_file, transcripts_dir):
     """Copy a session and its subagent transcripts, in the layout Claude Code keeps them in."""
     copy = transcripts_dir / session_file.name
     transcripts_dir.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(session_file, copy)
+    copy_transcript(session_file, copy)
     subagents = session_file.with_suffix("") / "subagents"
     if subagents.is_dir():
-        shutil.copytree(subagents, copy.with_suffix("") / "subagents")
+        shutil.copytree(subagents, copy.with_suffix("") / "subagents", copy_function=copy_transcript)
     return copy
 
 
@@ -702,7 +777,7 @@ def mirror(host):
     return target
 
 
-def window_summaries(session_files, cutoff, plugins):
+def window_summaries(session_files, cutoff, plugins, reviewed_until):
     """The summary of each session written since `cutoff`, less those Claude Code deleted after the glob."""
     for session_file in session_files:
         try:
@@ -711,7 +786,7 @@ def window_summaries(session_files, cutoff, plugins):
             print(f"warning: {session_file} was deleted while the pick ran; the pick leaves it out", file=sys.stderr)
             continue
         if written >= cutoff:
-            yield summarize(session_file, plugins)
+            yield summarize(session_file, plugins, reviewed_until.get(session_file.stem, ""))
 
 
 def latest_copies(summaries):
@@ -739,14 +814,10 @@ def pick(args):
         reviewed_until[path.stem] = max(reviewed_until.get(path.stem, ""), ended)
     cutoff = time.time() - args.since_days * 86400
     # Every session of the window: context.md covers each.
-    latest = latest_copies(list(window_summaries(sorted(projects_dir.glob("*/*.jsonl")), cutoff, plugins)))
+    latest = latest_copies(list(window_summaries(sorted(projects_dir.glob("*/*.jsonl")), cutoff, plugins, reviewed_until)))
     summaries = [(session, usage) for session, usage in latest if session["skills"]]
-    # A session that went on after its review is picked again, and reviewed whole.
-    unreviewed = [
-        session
-        for session, _ in summaries
-        if session["session_id"] not in reviewed_until or session["ended"] > reviewed_until[session["session_id"]]
-    ]
+    # A session that used a plugin after its review is a candidate again, for the part after that review.
+    unreviewed = [session for session, _ in summaries if session["skill_versions"]]
     large = [
         {"session_id": s["session_id"], "largest_file_mb": s["largest_file_mb"], "refused": s["largest_file_mb"] >= REFUSED_TRANSCRIPT_MB}
         for s in unreviewed
@@ -763,19 +834,23 @@ def pick(args):
         for session in sorted(unpicked, key=lambda s: -s[bucket])[: args.per_bucket]:
             session["bucket"] = bucket
             picked.append(session)
-    last = last_release(plugins_dir)
+    last = last_release(plugins_dir, args.review_dir, host)
     release = None
     if last:
         for session in candidates:
-            plugins_run = sorted({skill.split(":")[0] for skill in released_skills(session, last)})
-            files = [path for plugin in plugins_run for path in last["changed"].get(plugin, [])]
-            if files:
-                session["changed_files"] = files
+            # The newest version at which the session ran a changed plugin: it can run an unchanged one at a newer.
+            for version in last["since"]:
+                plugins_run = sorted({skill.split(":")[0] for skill in skills_at(session, version)})
+                files = [path for plugin in plugins_run for path in last["changed_at"](version).get(plugin, [])]
+                if files:
+                    session["changed_version"] = version
+                    session["changed_files"] = files
+                    break
         unpicked = [s for s in candidates if "changed_files" in s and "bucket" not in s]
         random.Random(args.seed).shuffle(unpicked)
 
         def runs_no_changed_skill(session):
-            folders = [f"/{skill.replace(':', '/skills/')}/" for skill in released_skills(session, last)]
+            folders = [f"/{skill.replace(':', '/skills/')}/" for skill in skills_at(session, session["changed_version"])]
             return not any(folder in path for folder in folders for path in session["changed_files"])
 
         for session in sorted(unpicked, key=runs_no_changed_skill)[: args.per_bucket]:
@@ -784,7 +859,7 @@ def pick(args):
         release = {
             "version": last["version"],
             "previous": last["previous"],
-            "plugins": sorted(last["changed"]),
+            "plugins": sorted(last["changed_at"](last["version"])),
             "candidates": sum("changed_files" in s for s in candidates),
         }
     unpicked = [s for s in candidates if "bucket" not in s]
@@ -900,7 +975,11 @@ def render(args):
         if text:
             print(f"{label}: {text}\n")
 
+    marked = not args.reviewed_until
     for record in records(args.transcript):
+        if not marked and (record.get("timestamp") or "") > args.reviewed_until:
+            print(f"{REVIEWED_MARK}\n")
+            marked = True
         if record.get("type") == "assistant":
             skill = record.get("attributionSkill")
             speaker = f"ASSISTANT [{skill}]" if skill else "ASSISTANT"
@@ -920,6 +999,8 @@ def render(args):
             attachment = record.get("attachment") or {}
             if attachment.get("type") == "queued_command" and (attachment.get("origin") or {}).get("kind") == "human":
                 emit("USER (queued)", block_text({"content": attachment.get("prompt")}))
+    if not marked:
+        print(REVIEWED_WHOLE)
 
 
 def main():
@@ -940,6 +1021,7 @@ def main():
     render_parser = commands.add_parser("render", help="print one transcript as text")
     render_parser.add_argument("transcript", help="a session .jsonl, or one of its subagent transcripts")
     render_parser.add_argument("--max-chars", type=int, default=600, help="characters kept per message or tool result (default: 600)")
+    render_parser.add_argument("--reviewed-until", default="", help=f"the reviewed_until of the pick: print '{REVIEWED_MARK}' before the first record after it, or '{REVIEWED_WHOLE}' at the end where there is none")
     render_parser.set_defaults(run=render)
 
     record_parser = commands.add_parser("record", help="write the findings of a review into its run folder")
