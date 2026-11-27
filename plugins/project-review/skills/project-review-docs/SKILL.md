@@ -82,8 +82,8 @@ docs inline. The workflow returns a structured report; relay it.
    - `level` rungs. Every rung runs the same stages: the docs are packed into a few
      batches, and each batch agent reads its docs and the standard once, then judges them
      (`docs/CODING.md` judged as by an agent that arrives wanting to code). The decision
-     records under `docs/decisions/` go to one more agent, which judges them as a set. A rung buys the
-     model, the effort, and the history sample, never more agents or turns:
+     records under `docs/decisions/` go to one more agent, which judges them as a set. A rung changes the
+     model, the effort, and the history sample; the agents and their turns are the same at every rung:
      `low` = sonnet read-review, history over ~15 sessions reports coverage only;
      `medium` = opus at medium effort, history over ~40 sessions;
      `high` = opus at high effort, history over ~100 sessions;
@@ -105,7 +105,7 @@ docs inline. The workflow returns a structured report; relay it.
 
 5. Relay the report. The workflow returns `{ report: { verdict, headline, findings[], … }, raw, … }`,
    under `result` in its task output file — surface `.report`, and do not re-derive it.
-   `raw.not_reviewed` names any file no batch agent reported back on; when it is
+   `raw.not_reviewed` names any file no review agent reported back on; when it is
    non-empty, say which files went unreviewed, whatever the report says. Each finding is tagged `settled`
    or `open` — read `<SKILL_DIR>/../../references/decision-split.md`
    for what those mean and how to relay them (the plugin-root layout applies, so
@@ -121,7 +121,7 @@ docs inline. The workflow returns a structured report; relay it.
      `got.keys` lists the arguments that actually arrived — surface it, since that
      is what shows a misspelled key.
    - a null or absent `report` with no `error` — the synthesis stage died. Say so
-     and offer to re-run; `raw.read_findings` holds one flat list of every batch
+     and offer to re-run; `raw.read_findings` holds one flat list of every review
      agent's findings, unmerged and each naming its own file, so relay it only as
      raw material, never as the report.
 
