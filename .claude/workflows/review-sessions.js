@@ -56,6 +56,7 @@ const PICKS = {
           bucket: { type: 'string', enum: BUCKETS },
           changed_files: { type: 'array', items: { type: 'string' }, description: 'absent where the session ran no changed plugin at a version after release.previous' },
           changed_version: { type: 'string', description: 'the version the changed_files are of; absent with them' },
+          reviewed_until: { type: 'string', description: 'absent where no earlier run reviewed the session' },
           skill_versions: { type: 'object', additionalProperties: { type: 'array', items: { type: 'string' } } },
           subagents: { type: 'number' },
           pushback: { type: 'number' },
@@ -157,13 +158,17 @@ const VERDICTS = {
   required: ['verdicts', 'context_verdicts'],
 }
 
+// The time goes into a shell command: the pick prints a transcript timestamp only.
+const reviewedUntil = pick => /^[0-9T:.Z+-]+$/.test(pick.reviewed_until ?? '') ? pick.reviewed_until : undefined
+
 const READ_TRANSCRIPT = pick => `
 Render the transcript to the file ${pick.session_id}.txt in your scratchpad directory and read that file in parts:
-  python3 scripts/pick-sessions.py render ${pick.transcript}
+  python3 scripts/pick-sessions.py render${reviewedUntil(pick) ? ` --reviewed-until ${reviewedUntil(pick)}` : ''} ${pick.transcript}
 Keep to that file name: other agents render other sessions into the same directory at the same time.
 An ASSISTANT [<skill>] tag runs from the skill load to the next load or the end of the user turn, so work after the skill carries its tag too; a forked skill changes no tag. USER (queued) is a prompt the user typed while the agent worked.
 Its subagent transcripts are the agent-*.jsonl files below the directory of the same name without ".jsonl"; render one, to a file named after it, where the main transcript leaves a question open.
-Change no file in the repository.`
+Change no file in the repository.${reviewedUntil(pick) ? `
+An earlier run reviewed this session up to ${reviewedUntil(pick)}. The render prints "AN EARLIER RUN REVIEWED THE SESSION UP TO HERE" at that point, or "AN EARLIER RUN REVIEWED ALL OF THIS TRANSCRIPT" at the end of a transcript with nothing after it; give the same option to the render of a subagent transcript. What is above the first mark, and all of a transcript with the second, is context: a problem counts only where it shows below the first mark.` : ''}`
 
 phase('Pick')
 const picks = await agent(
@@ -192,7 +197,10 @@ const changes = pick => pick.changed_files?.length && VERSION.test(pick.changed_
   : ''
 
 // The scripts count what a file cost and which reads followed it; whether the session needed it is a judgment.
-const judgeContext = pick => pick.context_files.length
+// The earlier run of a session that went on judged its files: a second judgment of the same loads counts them twice.
+const judgeContext = pick => reviewedUntil(pick)
+  ? '\nAn earlier run judged the files this session loaded: return an empty context list.'
+  : pick.context_files.length
   ? `
 Then judge each file of this repository that the session or one of its subagents loaded: ${pick.context_files.join(', ')}. Open each one. A file the main transcript does not show was loaded in a subagent transcript: render that transcript to judge it. For each, say whether the session needed it for what it did, which sections the agent acted on and how, which sections it carried and did not need, and what the agent had to find out, or got wrong, that the file could have said. A rule the agent obeyed leaves no trace of its own: count it as used where the session came to the action it governs. Give one context judgment per file.`
   : '\nThe session loaded no file of this repository: return an empty context list.'
@@ -229,7 +237,7 @@ Transcript: ${pick.transcript}
 Version labels: ${labels}.
 ${READ_TRANSCRIPT(pick)}
 
-Refute a finding where the quote is not in the transcript, the plugin file does not say what the finding claims, the cause is outside the plugin, or the proposed fix would not have prevented the problem. Give one verdict for each number, with the reason; when in doubt, refute.
+Refute a finding where the quote is not in the transcript${reviewedUntil(pick) ? ' or is in a part the earlier run reviewed' : ''}, the plugin file does not say what the finding claims, the cause is outside the plugin, or the proposed fix would not have prevented the problem. Give one verdict for each number, with the reason; when in doubt, refute.
 
 ${review.findings.map((finding, i) => `Finding ${i + 1}:\n${JSON.stringify(finding, null, 1)}`).join('\n\n') || 'No findings: return an empty verdicts list.'}
 

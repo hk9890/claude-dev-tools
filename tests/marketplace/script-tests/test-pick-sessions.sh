@@ -6,10 +6,10 @@
 #   - pick, in a checkout with release tags: what changed since the release of the
 #     host's last run, and which sessions the changed bucket takes
 #   - record: the files of a reviewed run, and that a later pick skips its sessions
-#     until one of them goes on
+#     until one of them goes on, and then counts only what came after the review
 #   - the copy of a transcript in the run: the same lines, less the image data
-#   - render: the labels of the text form, the per-event cap, and the prompts the user
-#     typed while the agent worked
+#   - render: the labels of the text form, the per-event cap, the prompts the user
+#     typed while the agent worked, and the mark where an earlier review ended
 #   - pick --host: the mirror of another machine over ssh, the run named for it, and one
 #     candidate for a session that two project folders hold
 #   - the context scan: what each file of the checkout put into context, by channel, its
@@ -188,6 +188,7 @@ with tempfile.TemporaryDirectory() as tmp:
     pushback = by_name.get("pushback", {})
     check("pushback counts an interrupt once: its rejections, its markers and the subagent it stopped", 2, pushback.get("pushback"))
     check("errors skip refusals, cancelled siblings and denials, and include subagents", 2, pushback.get("errors"))
+    check("a session that no run reviewed carries no reviewed_until", False, "reviewed_until" in pushback)
     check("output tokens take the full usage of a message, subagents included", 16, pushback.get("output_tokens"))
     check("subagent transcripts are counted", 1, pushback.get("subagents"))
     check("a skill takes the version of each banner that served it; a subagent turn takes its session's at that time",
@@ -268,10 +269,18 @@ with tempfile.TemporaryDirectory() as tmp:
 
     with open(project / "pushback" / "subagents" / "workflows" / "wf_1" / "agent-1.jsonl", "a") as subagent:
         subagent.write(json.dumps(assistant("m10", 1, skill="other", at="2026-01-02T00:00:00.000Z")) + "\n")
+        subagent.write(json.dumps(user_text("[Request interrupted by user]", at="2026-01-02T00:00:01.000Z")) + "\n")
     time.sleep(1.1)
     third = json.loads(run(*pick_args).stdout or "{}")
+    again = next((s for s in third.get("sessions", []) if s["session_id"] == "pushback"), {})
     check("a reviewed session that went on, in a subagent alone, is picked again",
-          (1, True), (third.get("already_reviewed"), "pushback" in {s["session_id"] for s in third.get("sessions", [])}))
+          (1, "pushback"), (third.get("already_reviewed"), again.get("bucket")))
+    check("it carries the end of its review, and its signals count the records after it only",
+          ("2026-01-01T00:03:05.000Z", 1, 0, 1),
+          tuple(again.get(key) for key in ("reviewed_until", "pushback", "errors", "output_tokens")))
+    check("its skill versions are those of the records after the review", {"demo:other": ["1.3.0"]}, again.get("skill_versions"))
+    check("the legend says what reviewed_until does to the signals", (True, True),
+          ("after that time only" in third.get("legend", {}).get("reviewed_until", ""), "reviewed_until" in third.get("legend", {}).get("signals", "")))
 
     review.write_text(json.dumps([{"session_id": "pushback", "findings": []}]))
     run("record", third.get("run_dir", tmp), str(review))
@@ -280,6 +289,13 @@ with tempfile.TemporaryDirectory() as tmp:
     check("after its second review it is skipped again, with a record in both runs",
           (2, False, 2),
           (fourth.get("already_reviewed"), "pushback" in {s["session_id"] for s in fourth.get("sessions", [])}, len(list(store.glob("runs/*/sessions/pushback.json")))))
+
+    with open(project / "pushback.jsonl", "a") as session_file:
+        session_file.write(json.dumps(user_text("thanks", at="2026-01-03T00:00:00.000Z")) + "\n")
+    time.sleep(1.1)
+    fifth = json.loads(run(*pick_args).stdout or "{}")
+    check("a reviewed session that went on with no plugin turn stays reviewed",
+          (2, False), (fifth.get("already_reviewed"), "pushback" in {s["session_id"] for s in fifth.get("sessions", [])}))
 
     no_store = run("pick", "--review-dir", str(Path(tmp, "missing")), "--projects-dir", str(projects), "--plugins-dir", str(plugins))
     check("pick stops with no review store, and names the variable", (2, True), (no_store.returncode, "SESSION_REVIEW_DIR" in no_store.stderr))
@@ -299,6 +315,14 @@ with tempfile.TemporaryDirectory() as tmp:
     ]:
         check(label, True, needle in rendered)
     check("render leaves out a queued task notification", False, "a task finished" in rendered)
+    check("render prints no review mark unless asked", False, "AN EARLIER RUN REVIEWED" in rendered)
+    marked = run("render", str(project / "pushback.jsonl"), "--reviewed-until", "2026-01-01T00:02:30.000Z").stdout
+    mark = "=== AN EARLIER RUN REVIEWED THE SESSION UP TO HERE ==="
+    check("render marks once where the earlier review ended: the queued prompts before the mark, the next skill load after it",
+          (1, True), (marked.count(mark), marked.find("USER (queued): and keep the tests") < marked.find(mark) < marked.find("1.3.0/skills/skill")))
+    whole = run("render", str(project / "errors.jsonl"), "--reviewed-until", "2026-01-01T00:00:06.000Z").stdout
+    check("render says at the end that the earlier run reviewed all of a transcript with no later record",
+          (True, False), (whole.rstrip().endswith("=== AN EARLIER RUN REVIEWED ALL OF THIS TRANSCRIPT ==="), mark in whole))
 
 with tempfile.TemporaryDirectory() as tmp:
     projects, plugins = Path(tmp, "projects"), Path(tmp, "plugins")
