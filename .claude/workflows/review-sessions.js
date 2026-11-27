@@ -1,12 +1,13 @@
 export const meta = {
   name: 'review-sessions',
-  description: 'Pick the sessions of this machine, or of an ssh host, that used this marketplace\'s plugins, review each for plugin problems and judge the context its files cost, and keep the run in the review store',
-  whenToUse: 'To find what to improve in the plugins from real sessions. args: {perBucket, sinceDays, host}; host is an ssh host whose sessions to review, this machine where absent; one agent for the pick, at most two per picked session, one for the record.',
+  description: 'Pick the sessions of this machine, or of an ssh host, that used this marketplace\'s plugins, review each for plugin problems and judge the context its files cost, keep the run in the review store, and file the findings that still stand',
+  whenToUse: 'To find what to improve in the plugins from real sessions. args: {perBucket, sinceDays, host}; host is an ssh host whose sessions to review, this machine where absent; one agent for the pick, at most two per picked session, one for the record, one for the tracker issues.',
   phases: [
     { title: 'Pick', detail: 'scripts/pick-sessions.py pick' },
     { title: 'Review', detail: 'one reviewer per picked session' },
     { title: 'Verify', detail: 'one skeptic per session that has findings or context judgments' },
     { title: 'Record', detail: 'scripts/pick-sessions.py record, then commit and push the run' },
+    { title: 'File', detail: 'a tracker issue for each finding that still stands at HEAD' },
   ],
 }
 
@@ -264,6 +265,14 @@ const result = picks.sessions.map((pick, i) => ({
 }))
 
 phase('Record')
+const RECORDED = {
+  type: 'object',
+  properties: {
+    pushed: { type: 'boolean', description: 'true only where each of the three steps succeeded' },
+    report: { type: 'string', description: 'the output of each command, and the error of a step that failed' },
+  },
+  required: ['pushed', 'report'],
+}
 const recorded = await agent(
   `Record a session review run. Do these steps in order and report the output of each command.
 1. Write the JSON below, unchanged, to the file review-result.json in your scratchpad directory.
@@ -271,7 +280,60 @@ const recorded = await agent(
 3. The run folder is in a git repository of its own, the review store. With \`git -C\` on the run folder: add the run folder, commit it with the message "Add review run ${picks.run_dir.split('/').pop()}", and push. Where a step fails, stop and report the error; do not force anything.
 
 ${JSON.stringify(result, null, 1)}`,
-  { label: 'record', phase: 'Record', effort: 'low' },
-)
+  { label: 'record', phase: 'Record', schema: RECORDED, effort: 'low' },
+) ?? { pushed: false, report: 'the record agent returned nothing' }
 
-return { run_dir: picks.run_dir, large_transcripts: picks.large_transcripts, recorded, sessions: result }
+const OUTCOMES = ['filed', 'covered', 'fixed']
+const FILED = {
+  type: 'object',
+  properties: {
+    error: { type: 'string', description: 'why a finding has no outcome; absent where each has one' },
+    filed: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          number: { type: 'number', description: 'the number of the finding in the prompt' },
+          outcome: { type: 'string', enum: OUTCOMES, description: 'filed: a new issue; covered: an open issue holds the problem already; fixed: the artifact at HEAD no longer has it' },
+          issue: { type: 'string', description: 'the id of the new issue or of the one that covers the finding; empty for fixed' },
+          reason: { type: 'string' },
+        },
+        required: ['number', 'outcome', 'issue', 'reason'],
+      },
+    },
+  },
+  required: ['filed'],
+}
+
+// A finding that only the private store holds is lost to whoever plans the next change.
+// The quote stays in the store: the filing agent gets what an issue may hold.
+const standing = result.flatMap(session => (session.findings ?? []).filter(finding => !finding.refuted)
+  .map(({ artifact, version, problem, fix }) => ({ session_id: session.session_id, artifact, version, problem, fix })))
+let filed = []
+if (standing.length && !recorded.pushed) {
+  log(`no finding filed: the record of the run failed, so no issue can name it. ${standing.length} findings stand in the result of this run`)
+  filed = standing.map(({ session_id, artifact, version }) => ({ session_id, artifact, version, outcome: 'not filed', issue: '', reason: 'the record of the run failed' }))
+} else if (standing.length) {
+  phase('File')
+  const answer = await agent(
+    `A session review run found the numbered plugin problems below. File each one that still stands in the taskmgr tracker of this repository.
+Call the Skill tool with \`tasks:tasks-core\` first, and follow it. Where that skill or taskmgr is absent, or a step fails, stop: return the outcome of each finding done so far, and the reason in \`error\`.
+For each finding, in order:
+1. Open its artifact at HEAD. The finding is of the version it names, and a later change can have fixed it: where the artifact no longer has the problem, the outcome is fixed.
+2. Search the open issues for one that holds the same problem of the same artifact. Where one does, add a comment to it that names this run and the finding's version: the outcome is covered.
+3. Else file one issue with the labels \`plugin:<the plugin of the artifact>\` and \`source:session-review\`: the outcome is filed. Its body names the run ${picks.run_dir.split('/').pop()}, the session id and the version, then the problem and the fix in terms of the plugin file.
+The review store is private: name no project, person or file of the session the finding came from.
+Change no file in the repository.
+
+${standing.map((finding, i) => `Finding ${i + 1}:\n${JSON.stringify(finding, null, 1)}`).join('\n\n')}`,
+    { label: 'file', phase: 'File', schema: FILED },
+  ) ?? { filed: [], error: 'the filing agent returned nothing' }
+  // A finding with no outcome was not filed, and the run says so.
+  filed = standing.map(({ session_id, artifact, version }, i) => {
+    const done = answer.filed.find(f => f.number === i + 1 && OUTCOMES.includes(f.outcome))
+    return { session_id, artifact, version, outcome: done?.outcome ?? 'not filed', issue: done?.issue ?? '', reason: done?.reason ?? answer.error ?? 'the filing agent gave no outcome' }
+  })
+  log(`${standing.length} findings: ${filed.map(f => `${f.artifact} ${f.outcome}${f.issue ? ` ${f.issue}` : ''}`).join(', ')}${answer.error ? `. The filing stopped: ${answer.error}` : ''}`)
+}
+
+return { run_dir: picks.run_dir, large_transcripts: picks.large_transcripts, recorded, filed, sessions: result }

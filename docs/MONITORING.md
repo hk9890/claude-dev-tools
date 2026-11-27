@@ -34,7 +34,7 @@ Quote a transcript line from the run's copy under `transcripts/`: it stays after
 
 What a pick, a version label and the report sections mean is printed with the output itself: the `legend` of the pick, kept in the run's `picks.json`, and the headers of `usage.md` and `context.md`.
 
-File each finding of the run's `findings.json` in the tracker by hand, with its version. When its fix ships, a finding that a later run reports again for a newer version is a regression.
+The run files each finding that still stands in the tracker. File each finding it returns as `not filed` by hand, with its version: the run files none without `taskmgr` or the `tasks` plugin, or where its record failed. When its fix ships, a finding that a later run reports again for a newer version is a regression.
 
 `mise run pick-sessions -- context` prints the context cost of each file over the runs of the store.
 
