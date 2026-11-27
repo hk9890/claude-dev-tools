@@ -24,7 +24,7 @@ Set the variable in `mise.local.toml` at the repo root, which git ignores:
 SESSION_REVIEW_DIR = "/home/<you>/dev/github/session-data"
 ```
 
-`git pull` in the store before a run: a session that another machine reviewed is skipped only once its run is here.
+`git pull` in the store before a run: the pick reads the earlier runs there. A session that another machine reviewed is skipped only once its run is here, and the changed bucket starts from the release of the host's last run.
 
 ## Run a review
 

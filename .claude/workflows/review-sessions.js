@@ -54,7 +54,8 @@ const PICKS = {
           session_id: { type: 'string' },
           transcript: { type: 'string' },
           bucket: { type: 'string', enum: BUCKETS },
-          changed_files: { type: 'array', items: { type: 'string' }, description: 'absent where the session ran no plugin the release changed, at the release version' },
+          changed_files: { type: 'array', items: { type: 'string' }, description: 'absent where the session ran no changed plugin at a version after release.previous' },
+          changed_version: { type: 'string', description: 'the version the changed_files are of; absent with them' },
           skill_versions: { type: 'object', additionalProperties: { type: 'array', items: { type: 'string' } } },
           subagents: { type: 'number' },
           pushback: { type: 'number' },
@@ -180,12 +181,14 @@ for (const large of picks.large_transcripts) {
 
 const release = picks.release
 log(release
-  ? `release ${release.version} changed ${release.plugins.join(', ') || 'no plugin'}: ${release.candidates} candidate sessions ran one of them at that version`
+  ? `since release ${release.previous}, up to ${release.version}, ${release.plugins.join(', ') || 'no plugin'} changed: ${release.candidates} candidate sessions ran one of them at a later version`
   : 'no last release: the checkout has fewer than two release tags, so the changed bucket is empty')
 
 // The pick agent relays the JSON, and can return an empty list where the pick printed none.
-const changes = pick => pick.changed_files?.length
-  ? `\nRelease ${release.version} changed these files of the plugins the session ran at that version: ${pick.changed_files.join(', ')}. Read \`git diff v${release.previous} v${release.version} -- <files>\` first, and look for a problem that this change caused.`
+// The versions go into a git command of the prompt.
+const VERSION = /^\d+\.\d+\.\d+$/
+const changes = pick => pick.changed_files?.length && VERSION.test(pick.changed_version ?? '') && VERSION.test(release?.previous ?? '')
+  ? `\nBetween release ${release.previous} and ${pick.changed_version}, these files of the plugins the session ran at ${pick.changed_version} changed: ${pick.changed_files.join(', ')}. Read \`git diff v${release.previous} v${pick.changed_version} -- <files>\` first, and look for a problem that this change caused.`
   : ''
 
 // The scripts count what a file cost and which reads followed it; whether the session needed it is a judgment.

@@ -3,8 +3,8 @@
 # review store:
 #   - pick: which sessions are candidates, what each signal counts, which bucket takes
 #     which session, the version label of each skill use, and the run folder it starts
-#   - pick, in a checkout with two release tags: what the release changed, and which
-#     sessions the changed bucket takes
+#   - pick, in a checkout with release tags: what changed since the release of the
+#     host's last run, and which sessions the changed bucket takes
 #   - record: the files of a reviewed run, and that a later pick skips its sessions
 #     until one of them goes on
 #   - the copy of a transcript in the run: the same lines, less the image data
@@ -369,6 +369,53 @@ with tempfile.TemporaryDirectory() as tmp:
           (by_bucket["errors"]["session_id"], by_bucket["errors"].get("changed_files")))
     check("the random bucket takes one of the sessions left",
           True, by_bucket["random"]["session_id"] in {"other-skill-a", "other-skill-b", "checkout", "bumped-only"})
+
+    release("v1.11.0", {"plugins/demo/.claude-plugin/plugin.json": "1.11.0", "plugins/demo/skills/other/SKILL.md": "b"})
+    session("newest-version", 5, f"{cache}/demo/1.11.0/skills/other", skill="other")
+    # The install updated in the session: the changed plugin at 1.10.0, then one that no release changed at 1.11.0.
+    session("two-versions", 5, f"{cache}/demo/1.10.0/skills/skill",
+            then=[banner(f"{cache}/bumped/1.11.0/skills/skill"), assistant("two-versions-b", 5, plugin="bumped")])
+    host = __import__("socket").gethostname()
+
+    def pick_after(name, earlier_runs):
+        store = Path(tmp, name)
+        for run_name, run_record in earlier_runs.items():
+            # A run that recorded a review holds a sessions/ file; "picked-only" stands for a pick no review followed.
+            (store / "runs" / run_name / "sessions").mkdir(parents=True)
+            (store / "runs" / run_name / "run.json").write_text(json.dumps(run_record))
+            if "picked-only" not in run_name:
+                (store / "runs" / run_name / "sessions" / "reviewed-elsewhere.json").write_text(json.dumps({"ended": "2026-01-01T00:00:00.000Z"}))
+        store.mkdir(exist_ok=True)
+        out = run("pick", "--review-dir", str(store), "--projects-dir", str(projects), "--plugins-dir", str(plugins), "--per-bucket", "9", "--seed", "0")
+        result = json.loads(out.stdout or "{}")
+        return result.get("release"), {s["session_id"]: (s.get("changed_version"), s.get("changed_files")) for s in result.get("sessions", [])}
+
+    both = ["plugins/demo/skills/other/SKILL.md", "plugins/demo/skills/skill/SKILL.md"]
+    skipped, changed = pick_after("store-skipped", {
+        "2026-01-01T000000-other-v1.10.0": {"host": "other-host", "release": {"version": "1.10.0"}},
+        "2026-01-02T000000-here-v1.9.0": {"host": host, "release": {"version": "1.9.0"}},
+        "2026-01-03T000000-here-picked-only": {"host": host, "release": {"version": "1.10.0"}},
+        "2026-01-04T000000-here-no-release": {"host": host, "release": None},
+    })
+    check("the release reaches back to the release of the host's last recorded run, over a tag between the two; "
+          "another host's run, a pick that no review followed and a run with no release do not count",
+          {"version": "1.11.0", "previous": "1.9.0", "plugins": ["demo"], "candidates": 6}, skipped)
+    check("a session that ran an unchanged plugin at the newest release carries the changed plugin of the version before",
+          ("1.10.0", ["plugins/demo/skills/skill/SKILL.md"]), changed.get("two-versions"))
+    check("a session at the release between the runs carries what changed up to its own version",
+          ("1.10.0", ["plugins/demo/skills/skill/SKILL.md"]), changed.get("changed-skill"))
+    check("a session at the newest release carries what changed over both", ("1.11.0", both), changed.get("newest-version"))
+    check("a session at the release of the last run carries no changed files", (None, None), changed.get("old-version"))
+
+    fresh, changed = pick_after("store-fresh", {})
+    check("with no earlier run of the host, the release is the newest tag against the one before it",
+          ({"version": "1.11.0", "previous": "1.10.0", "plugins": ["demo"], "candidates": 1}, (None, None), ("1.11.0", ["plugins/demo/skills/other/SKILL.md"])),
+          (fresh, changed.get("changed-skill"), changed.get("newest-version")))
+    current, _ = pick_after("store-current", {
+        "2026-01-01T000000-here-v1.9.0": {"host": host, "release": {"version": "1.9.0"}},
+        "2026-01-02T000000-here-v1.11.0": {"host": host, "release": {"version": "1.11.0"}},
+    })
+    check("a last run at the newest release leaves the tag before the newest", "1.10.0", (current or {}).get("previous"))
 
 with tempfile.TemporaryDirectory() as tmp:
     plugins, store, home, cache = (Path(tmp, name) for name in ("plugins", "store", "home", "cache"))

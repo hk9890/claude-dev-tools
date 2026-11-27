@@ -3,9 +3,9 @@
 
 pick    starts a run folder in the review store: picks the sessions that used a plugin of
         this marketplace and that no earlier run reviewed, a few from each bucket (most
-        user pushback, most tool errors, most output tokens, a plugin the last release
-        changed, random), and copies their transcripts into the run, less the image
-        data. With --host it
+        user pushback, most tool errors, most output tokens, a plugin that a release
+        since the host's last run changed, random), and copies their transcripts into
+        the run, less the image data. With --host it
         picks the sessions of another machine: it mirrors that machine's transcripts
         over ssh with rsync first.
         It also writes what this repository put into the context of every session in the
@@ -68,7 +68,7 @@ PICK_LEGEND = {
         "pushback": "seconds in which the user interrupted the agent or rejected a tool call; one interrupt counts once",
         "errors": "failed tool results; a call that never ran is left out: a denial, a worktree-isolation refusal, the cancelled siblings of an interrupted batch",
         "output_tokens": "output tokens, each API message once; ranks long sessions first, whatever their quality",
-        "changed": "ran, at the last release's version, a plugin that release changed; sessions that ran a changed skill first, a random draw inside each group",
+        "changed": "ran, at a version after release.previous, a plugin that changed since release.previous; sessions that ran a changed skill first, a random draw inside each group",
         "random": "a random draw from the candidates no other bucket took; --seed repeats it",
     },
     "order": "the buckets fill in the order above, each with up to --per-bucket candidates (a ranked bucket takes the highest non-zero counts); "
@@ -76,10 +76,12 @@ PICK_LEGEND = {
     "signals": "every count includes the subagent transcripts. A refusal by a plugin's own guard is a permission-rule denial and counts in no signal",
     "large_transcripts": "an unreviewed session that holds a file of 50 MB or more; refused, and no candidate, from 100 MB, as GitHub rejects the push. "
     "The size is that of the session's own files: the copy in the run holds no image data and can be smaller",
-    "release": "the newest v<x.y.z> tag of this checkout, the tag before it, the plugins with a file that differs between them (plugin.json and tests/ do not count), "
-    "and the count of candidates that ran a changed plugin at the release version; null with fewer than two tags. "
-    "The changed bucket stays empty until a session loads a skill from the new install; a dev@ session never counts",
-    "changed_files": "on a picked session, whatever its bucket, that ran a changed plugin at the release version: the files of that plugin the release changed",
+    "release": "version is the newest v<x.y.z> tag of this checkout. previous is the release of the last run of the same host, so that no release "
+    "between two runs is skipped; a run counts once it recorded a review, and where none has an older release, previous is the tag before the newest. plugins are those with a file "
+    "that differs between the two (plugin.json and tests/ do not count), candidates the count of candidates with changed_files; null with fewer than two tags. "
+    "The changed bucket stays empty until a session loads a skill from an install after previous; a dev@ session never counts",
+    "changed_files": "on a picked session, whatever its bucket, that ran a changed plugin at a version after release.previous: the files of the plugins it ran at "
+    "changed_version that differ between release.previous and changed_version. changed_version is the newest version at which it ran a changed plugin",
     "skill_versions": {
         "x.y.z": "a cached install of that version",
         "dev@<name>": "the worktree .claude/worktrees/<name> of a checkout of this repository, not a commit: no record holds the commit",
@@ -289,8 +291,8 @@ def summarize(session_file, plugins):
     return session, usage
 
 
-def last_release(plugins_dir):
-    """The newest release tag, the one before it, and the files that differ between them, by plugin."""
+def last_release(plugins_dir, review_dir, host):
+    """The newest release tag, the release of the host's last run, and the diff from that release to a later tag."""
 
     def git(*argv, check=False):
         done = subprocess.run(["git", "-C", str(plugins_dir.parent), *argv], capture_output=True, text=True, check=check)
@@ -299,24 +301,37 @@ def last_release(plugins_dir):
     # --no-column, core.quotePath and --no-renames pin what user config changes: tags in
     # columns, a non-ASCII path in quotes, and a file that moved to another plugin listed
     # under the new plugin only.
-    tags = [tag for tag in git("tag", "--list", "--no-column", "--sort=-version:refname") if RELEASE_TAG_RE.fullmatch(tag)]
+    tags = [tag[1:] for tag in git("tag", "--list", "--no-column", "--sort=-version:refname") if RELEASE_TAG_RE.fullmatch(tag)]
     if len(tags) < 2:
         return None
     version, previous = tags[:2]
-    changed = defaultdict(list)
-    # A diff that failed must stop the pick: no output reads as a release that changed no plugin.
-    paths = git("-c", "core.quotePath=false", "diff", "--name-only", "--no-renames", previous, version, "--", plugins_dir.name, check=True)
-    for path in paths:
-        plugin, *rest = Path(path).parts[1:]
-        # A release bumps the version in every plugin.json, and no session runs a test.
-        if rest and rest[0] != "tests" and rest != [".claude-plugin", "plugin.json"]:
-            changed[plugin].append(path)
-    return {"version": version[1:], "previous": previous[1:], "changed": dict(changed)}
+    # The tag before the newest skips each release tagged between it and the host's last run.
+    # A run counts once it recorded a review: a pick that no review followed checked no release.
+    runs = [json.loads(path.read_text(encoding="utf-8")) for path in sorted(review_dir.glob("runs/*/run.json")) if any(path.parent.glob("sessions/*.json"))]
+    reviewed = [run["release"]["version"] for run in runs if run.get("host") == host and run.get("release")]
+    if reviewed and reviewed[-1] in tags[2:]:
+        previous = reviewed[-1]
+    changed = {}
+
+    def changed_at(tag):
+        """The files that differ between the previous release and `tag`, by plugin."""
+        if tag not in changed:
+            changed[tag] = defaultdict(list)
+            # A diff that failed must stop the pick: no output reads as a release that changed no plugin.
+            paths = git("-c", "core.quotePath=false", "diff", "--name-only", "--no-renames", f"v{previous}", f"v{tag}", "--", plugins_dir.name, check=True)
+            for path in paths:
+                plugin, *rest = Path(path).parts[1:]
+                # A release bumps the version in every plugin.json, and no session runs a test.
+                if rest and rest[0] != "tests" and rest != [".claude-plugin", "plugin.json"]:
+                    changed[tag][plugin].append(path)
+        return changed[tag]
+
+    return {"version": version, "previous": previous, "since": tags[: tags.index(previous)], "changed_at": changed_at}
 
 
-def released_skills(session, release):
-    """The skills this session ran at the release version."""
-    return [skill for skill, labels in session["skill_versions"].items() if release["version"] in labels]
+def skills_at(session, version):
+    """The skills this session ran at the version."""
+    return [skill for skill, labels in session["skill_versions"].items() if version in labels]
 
 
 def usage_table(usages, plugins_dir, since_days):
@@ -799,19 +814,23 @@ def pick(args):
         for session in sorted(unpicked, key=lambda s: -s[bucket])[: args.per_bucket]:
             session["bucket"] = bucket
             picked.append(session)
-    last = last_release(plugins_dir)
+    last = last_release(plugins_dir, args.review_dir, host)
     release = None
     if last:
         for session in candidates:
-            plugins_run = sorted({skill.split(":")[0] for skill in released_skills(session, last)})
-            files = [path for plugin in plugins_run for path in last["changed"].get(plugin, [])]
-            if files:
-                session["changed_files"] = files
+            # The newest version at which the session ran a changed plugin: it can run an unchanged one at a newer.
+            for version in last["since"]:
+                plugins_run = sorted({skill.split(":")[0] for skill in skills_at(session, version)})
+                files = [path for plugin in plugins_run for path in last["changed_at"](version).get(plugin, [])]
+                if files:
+                    session["changed_version"] = version
+                    session["changed_files"] = files
+                    break
         unpicked = [s for s in candidates if "changed_files" in s and "bucket" not in s]
         random.Random(args.seed).shuffle(unpicked)
 
         def runs_no_changed_skill(session):
-            folders = [f"/{skill.replace(':', '/skills/')}/" for skill in released_skills(session, last)]
+            folders = [f"/{skill.replace(':', '/skills/')}/" for skill in skills_at(session, session["changed_version"])]
             return not any(folder in path for folder in folders for path in session["changed_files"])
 
         for session in sorted(unpicked, key=runs_no_changed_skill)[: args.per_bucket]:
@@ -820,7 +839,7 @@ def pick(args):
         release = {
             "version": last["version"],
             "previous": last["previous"],
-            "plugins": sorted(last["changed"]),
+            "plugins": sorted(last["changed_at"](last["version"])),
             "candidates": sum("changed_files" in s for s in candidates),
         }
     unpicked = [s for s in candidates if "bucket" not in s]
