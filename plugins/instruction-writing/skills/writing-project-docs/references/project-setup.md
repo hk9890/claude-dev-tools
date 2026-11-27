@@ -112,11 +112,12 @@ rest (*Economy*). Two exclusions bind every `docs/` topic block below, `docs/dec
 ### `docs/DOCUMENTING.md`
 
 - **Audience**: AI agents, when they create or change a Markdown file in this repository.
-- **Inside**: the local delta of this standard — doc gates and lint, citation and link conventions, any doc tree beyond the canonical set and what each owns, and the decisions taken about what the project documents and what it leaves out.
+- **Inside**: the local delta of this standard — doc gates and lint, citation and link conventions, any doc tree beyond the canonical set and what each owns, and the decisions taken about what the project documents and what it leaves out, a declined audit finding included.
 - **Not inside**: the standard itself (→ the `instruction-writing:writing-project-docs` skill), source-tree rules (→`docs/CODING.md`, `docs/REVIEWING.md`), and the content of the docs themselves.
 - **Boundary vs `CODING.md`**: CODING owns a change to the source tree, DOCUMENTING a change to the doc tree.
 - **Precedence**: where a local rule conflicts with the standard, the local rule wins.
-- **Recorded decisions**: prose, in whatever shape the project keeps them. `project-review:project-review-docs` reads them and leaves out a gap a decision settles; a decision never makes a false claim acceptable.
+- **Recorded decisions**: prose, in whatever shape the project keeps them. `project-review:project-review-docs` reads them and leaves out a gap a decision settles; a decision never makes a false claim, a stale command or a dead link acceptable.
+- **Declined findings**: an audit finding about where content sits, or how much of it a doc holds, that the project declines is one line among the decisions: the file, the content that stays, and why. The audit then leaves that finding out. Delete the line when the content it names goes.
 - Example: [../examples/docs/DOCUMENTING.md](../examples/docs/DOCUMENTING.md)
 
 ### `docs/decisions/`

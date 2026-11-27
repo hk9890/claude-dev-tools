@@ -19,8 +19,8 @@ file records only the local delta, and wins where the two conflict.
 
 ## Decisions
 
-What this service has decided not to document, and why. Re-open one here rather than filling the
-gap somewhere else.
+What this service has decided not to document, and which audit findings it declined, and why.
+Re-open one here rather than filling the gap somewhere else.
 
 - **No prose architecture doc.** `docs/OVERVIEW.md` maps the packages and stops. The layer
   boundaries are stated in `docs/CODING.md` and blocking at review ([REVIEWING.md](REVIEWING.md));
@@ -30,3 +30,5 @@ gap somewhere else.
 - **The hotfix release path stays undocumented.** [RELEASING.md](RELEASING.md) covers the normal
   release. The hotfix path is rare, and on-call
   pages the maintainer for it.
+- **`docs/RUNNING.md` keeps the seed-and-read `curl` pair.** An audit read it as a copy of
+  `api/openapi.yaml`; the spec does not say which two requests prove that a launch works.

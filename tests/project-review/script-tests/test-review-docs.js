@@ -593,8 +593,9 @@ async function main() {
   // ── recorded doc decisions (docs/DOCUMENTING.md) ─────────────────────────────
   // The decisions are freeform prose, so the workflow hands the agents the file rather than
   // extracting anything. Two things must hold: the block only appears where the repo has
-  // the file, and it scopes the suppression to gap findings — a project may decide not to
-  // document something, never that a false statement is true.
+  // the file, and it scopes the suppression to gap and declined findings — a project may
+  // decide not to document something, or to keep content where it is, never that a false
+  // statement is true.
   truthy('decisions: no DOCUMENTING.md in the repo means no decisions block anywhere',
     !deep.prompts.some((p) => p.includes('RECORDED DOC DECISIONS')));
   truthy('decisions: without the file the synthesis makes no tool calls',
@@ -615,8 +616,10 @@ async function main() {
     withDocReview.every((p) => p.includes('RECORDED DOC DECISIONS') && p.includes('/repo/docs/DOCUMENTING.md')));
   truthy('decisions: the synthesis stage gets the decisions too',
     withDoc.prompts.some((p) => p.includes('RECORDED DOC DECISIONS') && p.includes('cross_file_notes')));
-  truthy('decisions: the suppression is scoped to gap findings',
-    withDocReview.some((p) => /GAP findings only/.test(p) && /stays a finding at full severity/.test(p)));
+  const decisionsBlocks = withDoc.prompts.filter((p) => p.includes('RECORDED DOC DECISIONS'));
+  truthy('decisions: the suppression is scoped to gap and declined findings, in every stage',
+    decisionsBlocks.every((p) => /DECLINED finding/.test(p) && /settles? nothing else/.test(p)
+      && /stays a finding at full severity/.test(p)));
 
   // ── history ──────────────────────────────────────────────────────────────────
   const judgePrompt = deep.prompts[deep.labels.indexOf('history:judge')];

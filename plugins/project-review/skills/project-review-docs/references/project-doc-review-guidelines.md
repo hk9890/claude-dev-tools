@@ -68,8 +68,10 @@ script deciding what counts as a claim, which is guessing.
    reviewed, and a file no agent lists is named in the log and the report.
 
    Where the repo has a `docs/DOCUMENTING.md`, every batch agent also reads it and is told to
-   drop gap findings its recorded decisions already settle. The suppression is scoped to gaps
-   by name: a false claim, a stale command, a dead link, or out-of-boundary content stays at
+   drop the findings its recorded decisions already settle: a gap, and a declined finding about
+   where content sits or how much of it a file holds, where a decision names that file and
+   that content as staying. The suppression is scoped to those two by name: a false claim, a
+   stale command, a dead link, or out-of-boundary content that no decision names stays at
    full severity whatever the decisions say, and a decision that contradicts the repo is
    itself a finding. Repos without the file are told none of those doc decisions.
 3. **History** — the docs were used or they were not, and past sessions say which.
