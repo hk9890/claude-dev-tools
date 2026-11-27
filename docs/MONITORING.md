@@ -30,7 +30,7 @@ SESSION_REVIEW_DIR = "/home/<you>/dev/github/session-data"
 
 `git fetch --tags` first: the pick finds the last release in the local tags only. Then call the Workflow tool with `name` `review-sessions` and `args` as a JSON object, `{perBucket, sinceDays, host}`, not a string: the sessions each bucket takes, the window in days, and the ssh host ([Another machine](#another-machine)). The head of its script ([`.claude/workflows/review-sessions.js`](../.claude/workflows/review-sessions.js)) sets the defaults of the first two, and its `meta.phases` names what each phase does; the run commits and pushes itself to the store. `scripts/pick-sessions.py` lists what a run folder holds where it writes the folder.
 
-Quote a transcript line from the run's copy under `transcripts/`: it stays after Claude Code deletes the original.
+Quote a transcript line from the run's copy under `transcripts/`: it stays after Claude Code deletes the original. The copy holds no image data.
 
 What a pick, a version label and the report sections mean is printed with the output itself: the `legend` of the pick, kept in the run's `picks.json`, and the headers of `usage.md` and `context.md`.
 

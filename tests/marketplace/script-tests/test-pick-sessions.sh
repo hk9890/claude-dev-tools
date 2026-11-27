@@ -7,6 +7,7 @@
 #     sessions the changed bucket takes
 #   - record: the files of a reviewed run, and that a later pick skips its sessions
 #     until one of them goes on
+#   - the copy of a transcript in the run: the same lines, less the image data
 #   - render: the labels of the text form, the per-event cap, and the prompts the user
 #     typed while the agent worked
 #   - pick --host: the mirror of another machine over ssh, the run named for it, and one
@@ -131,7 +132,11 @@ with tempfile.TemporaryDirectory() as tmp:
         error("This agent is isolated in the worktree /w, refusing"),
         error("exit status 2"),
     ])
-    write(project / "errors.jsonl", [assistant("m3", 1), error("a"), error("b"), error("c")])
+    image = {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": "QUJD" * 50}}
+    screenshot = {"type": "user", "timestamp": "2026-01-01T00:00:06.000Z", "toolUseResult": {"type": "image", "file": {"base64": "QUJD" * 50, "type": "image/png"}},
+                  "message": {"content": [{"type": "tool_result", "content": [image, {"type": "text", "text": "a screenshot of für"}]}]}}
+    write(project / "errors.jsonl", [assistant("m3", 1), error("a"), error("b"), error("c"), screenshot])
+    write(project / "errors" / "subagents" / "agent-1.jsonl", [{"type": "user", "timestamp": "2026-01-01T00:00:07.000Z", "message": {"content": [image]}}])
     write(project / "tokens.jsonl", [
         banner("/repo/plugins/demo/skills/skill"),
         assistant("m4", 1000, content=[{"type": "tool_use", "name": "Skill", "input": {"skill": "demo:skill"}}]),
@@ -203,6 +208,14 @@ with tempfile.TemporaryDirectory() as tmp:
     check("the copy holds the session and its subagents", True,
           (run_dir / "transcripts" / "pushback.jsonl").read_text() == (project / "pushback.jsonl").read_text()
           and (run_dir / "transcripts" / "pushback" / "subagents" / "workflows" / "wf_1" / "agent-1.jsonl").is_file())
+    copied = [json.loads(line) for line in (run_dir / "transcripts" / "errors.jsonl").read_text().splitlines()]
+    blank = {**screenshot, "toolUseResult": {"type": "image", "file": {"base64": "", "type": "image/png"}},
+             "message": {"content": [{"type": "tool_result", "content": [{**image, "source": {**image["source"], "data": ""}}, {"type": "text", "text": "a screenshot of für"}]}]}}
+    check("the copy of a transcript holds each record, with the image data of a message and of a tool result left out",
+          [assistant("m3", 1), error("a"), error("b"), error("c"), blank], copied)
+    check("the copy of a subagent transcript holds no image data, and the session keeps its own", ("", "QUJD" * 50),
+          (json.loads((run_dir / "transcripts" / "errors" / "subagents" / "agent-1.jsonl").read_text())["message"]["content"][0]["source"]["data"],
+           json.loads((project / "errors.jsonl").read_text().splitlines()[-1])["toolUseResult"]["file"]["base64"]))
 
     usage = (run_dir / "usage.md").read_text()
     check("usage counts sessions, turns, Skill calls and the slash commands the user typed per skill", True,

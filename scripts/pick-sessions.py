@@ -4,7 +4,8 @@
 pick    starts a run folder in the review store: picks the sessions that used a plugin of
         this marketplace and that no earlier run reviewed, a few from each bucket (most
         user pushback, most tool errors, most output tokens, a plugin the last release
-        changed, random), and copies their transcripts into the run. With --host it
+        changed, random), and copies their transcripts into the run, less the image
+        data. With --host it
         picks the sessions of another machine: it mirrors that machine's transcripts
         over ssh with rsync first.
         It also writes what this repository put into the context of every session in the
@@ -73,7 +74,8 @@ PICK_LEGEND = {
     "order": "the buckets fill in the order above, each with up to --per-bucket candidates (a ranked bucket takes the highest non-zero counts); "
     "a session lands in one bucket only",
     "signals": "every count includes the subagent transcripts. A refusal by a plugin's own guard is a permission-rule denial and counts in no signal",
-    "large_transcripts": "an unreviewed session that holds a file of 50 MB or more; refused, and no candidate, from 100 MB, as GitHub rejects the push",
+    "large_transcripts": "an unreviewed session that holds a file of 50 MB or more; refused, and no candidate, from 100 MB, as GitHub rejects the push. "
+    "The size is that of the session's own files: the copy in the run holds no image data and can be smaller",
     "release": "the newest v<x.y.z> tag of this checkout, the tag before it, the plugins with a file that differs between them (plugin.json and tests/ do not count), "
     "and the count of candidates that ran a changed plugin at the release version; null with fewer than two tags. "
     "The changed bucket stays empty until a session loads a skill from the new install; a dev@ session never counts",
@@ -88,7 +90,8 @@ PICK_LEGEND = {
     "a subagent turn with no banner of its own takes the label its session had loaded last before the turn's timestamp: an inference",
 }
 
-# GitHub refuses a file above 100 MB, so a session that holds one is not picked.
+# GitHub refuses a file above 100 MB, so a session that holds one is not picked. The limit is on the
+# session's own files: the size of a copy without its image data is known only once the copy is made.
 REFUSED_TRANSCRIPT_MB = 100
 LARGE_TRANSCRIPT_MB = 50
 
@@ -672,14 +675,47 @@ def write_json(path, value):
     path.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
+def blank_image_data(value):
+    """Empty each base64 payload of a record: an image in a message, and the file of a tool result."""
+    if isinstance(value, dict):
+        if value.get("type") == "base64" and isinstance(value.get("data"), str):
+            value["data"] = ""
+        if isinstance(value.get("base64"), str):
+            value["base64"] = ""
+        for child in value.values():
+            blank_image_data(child)
+    elif isinstance(value, list):
+        for child in value:
+            blank_image_data(child)
+
+
+def copy_transcript(source, target):
+    """Copy one file of a session. A transcript loses its image data: no reviewer reads it, and GitHub refuses a large file."""
+    if Path(source).suffix != ".jsonl":
+        return shutil.copy2(source, target)
+    with open(source, "rb") as lines, open(target, "wb") as copy:
+        for line in lines:
+            if b'"base64"' in line:
+                try:
+                    record = json.loads(line)
+                except ValueError:
+                    record = None
+                if isinstance(record, dict):
+                    blank_image_data(record)
+                    line = json.dumps(record, ensure_ascii=False, separators=(",", ":")).encode("utf-8", "surrogatepass") + b"\n"
+            copy.write(line)
+    shutil.copystat(source, target)
+    return target
+
+
 def copy_transcripts(session_file, transcripts_dir):
     """Copy a session and its subagent transcripts, in the layout Claude Code keeps them in."""
     copy = transcripts_dir / session_file.name
     transcripts_dir.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(session_file, copy)
+    copy_transcript(session_file, copy)
     subagents = session_file.with_suffix("") / "subagents"
     if subagents.is_dir():
-        shutil.copytree(subagents, copy.with_suffix("") / "subagents")
+        shutil.copytree(subagents, copy.with_suffix("") / "subagents", copy_function=copy_transcript)
     return copy
 
 
