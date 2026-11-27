@@ -25,6 +25,10 @@ Read, in this order:
    change that adds or edits Markdown is judged against it.
 6. **`docs/OVERVIEW.md`** — read it because `CODING.md` sends you there for where a file
    belongs. It is a map, not a rule set: judge placement against it, nothing else.
+7. **`docs/decisions/`**, where the project has one, or the folder of decision records
+   that `AGENTS.md` routes to under another name — one record per decision in force. The
+   file names are the index: list the folder, and read each record whose name bears on
+   what the subject changes.
 
 A rule binds from whichever of these documents states it: a quality rule that sits in
 `CODING.md` is checked like one in `REVIEWING.md`.
@@ -53,6 +57,17 @@ that quote it is not a finding. Two kinds, both in scope:
   not discharge it. Example: `CODING.md` step 3 requires a new plugin to be registered
   in `.claude-plugin/marketplace.json` with a byte-identical description; a new plugin
   without that entry is a finding even though nothing inside the plugin is wrong.
+
+A decision record binds like any other rule, and its quote is its heading with the line
+the subject goes against. Two things are particular to it:
+
+- **A subject against a record is the user's call.** Report it as a broken rule, and tag
+  its recommended action `open` whatever its grade. The options are to change the subject,
+  or to replace the record with one that states the new decision.
+- **A changed decision needs its record.** A subject that changes what a record decides
+  and leaves the record as it was has an unfinished duty: the folder holds the decisions
+  in force, so the change replaces the record. Where the project states how its records
+  change, that procedure is the duty.
 
 Walk the documents for duties deliberately. A duty is discharged somewhere the subject
 does not touch, so nothing in the code under review points at it — this is the half a
