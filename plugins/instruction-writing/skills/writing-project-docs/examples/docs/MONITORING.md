@@ -15,18 +15,15 @@ timeseries sum(widget.requests.count), by:{status}, from:-1h
 
 ## Logs
 
-Structured JSON via `slog`. Level controlled by `LOG_LEVEL` env var (default: `info`).
-
-Key fields: `trace_id`, `widget_id`, `method`, `path`, `duration_ms`.
-
-## Health check
+Structured JSON on each pod's stdout, collected by the OneAgent. Read them in DQL:
 
 ```
-GET /healthz   → 200 OK when DB connection is live
-               → 503 Service Unavailable otherwise
+fetch logs | filter k8s.deployment.name == "widget-service" | filter loglevel == "ERROR"
 ```
+
+Filter by `trace_id` to follow one request.
 
 ## Dashboards
 
-The `widget-service` dashboard in `https://abc12345.apps.dynatrace.com` shows request rate, error
-rate, and DB latency tiles. Its source is `monitoring/dynatrace/widget-service.json`.
+The `widget-service` dashboard is in `https://abc12345.apps.dynatrace.com`. Its source is
+`monitoring/dynatrace/widget-service.json`.

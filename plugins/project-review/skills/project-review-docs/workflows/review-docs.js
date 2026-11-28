@@ -378,6 +378,7 @@ const FINDINGS_SCHEMA = {
           evidence: { type: 'string' },
           recommended_action: { type: 'string' },
           routes_to: { type: 'string' },
+          covered_by: { type: 'string' },
         },
         required: ['file', 'category', 'severity', 'observation', 'evidence', 'recommended_action'],
       },
@@ -544,7 +545,7 @@ if (typeof agent === 'function') {
   const quotedRoute = (doc) => routeText[doc] ? JSON.stringify(routeText[doc]) : '(no route to this doc found in AGENTS.md)'
 
   // The project's own doc conventions, and the decisions it has already taken about what
-  // it documents and what it leaves out. Most repos have no such file, and then no agent
+  // it documents, what it leaves out, and which audit findings it declined. Most repos have no such file, and then no agent
   // is told any of those doc decisions.
   const hasDocumenting = (manifest.files || []).some(f => f && f.path === 'docs/DOCUMENTING.md')
   const documentingFile = repoRoot + '/docs/DOCUMENTING.md'
@@ -566,7 +567,8 @@ if (typeof agent === 'function') {
   // The contract text stays in project-setup.md, which every batch agent reads: carried in
   // the manifest it was half of what the manifest agent has to retype.
   const contractLines = (heading) =>
-    `  Ownership contract (the bar for "belongs here"): the Audience / Inside / Not inside block headed \`${heading}\` in project-setup.md.\n`
+    `  Ownership contract (the bar for "belongs here"): the Audience / Inside / Not inside block headed \`${heading}\` in project-setup.md` +
+    (/^docs\/[^/]+\.md$/.test(heading) ? ', together with the topic-doc exclusions stated above the blocks' : '') + '.\n'
 
   // What is specific to one file: its facts, and the seat it is judged from. Everything
   // shared by every file is stated once in batchPrompt.
@@ -581,7 +583,7 @@ if (typeof agent === 'function') {
       // defect this framing catches and a file audit does not.
       return head +
         `  Use case "${t.useCase.useCase}": judge this file as an agent that arrives wanting to ${t.useCase.work}, sent here by AGENTS.md. AGENTS.md is always in that agent's context, so treat its route as already read. The route's wording: ${quotedRoute(t.useCase.doc)}\n` +
-        `  A. COULD YOU DO THE WORK? Walk the task through the doc. Name every point where you would have to guess, leave the doc, or already know something it never states. A gap that stops the work is a blocker; one that slows it is major.\n` +
+        `  A. COULD YOU DO THE WORK? Walk the task through the doc. Name every point where you would have to guess, leave the doc with no pointer to follow, or already know something it never states. A pointer to a named file, script or command that holds the rest is an answer, not a gap: the standard tells a topic doc to point there. A gap that stops the work is a blocker; one that slows it is major.\n` +
         `  B. Does the route deliver you here at the right moment? A route that names a topic rather than a triggering action, or reads as optional, is an Obligation finding against AGENTS.md — report it on this file with routes_to "AGENTS.md".\n` +
         contractLines(f.path)
     }
@@ -638,7 +640,7 @@ if (typeof agent === 'function') {
       readList.map(p => `  ${p}`).join('\n') + '\n\n' +
       `THE STANDARD — the first file holds the doc-set rules: the six named rules (Ownership, Local delta, Anchors, Command register, Economy, Obligation), the failure modes, and the closing bar every fix you recommend must itself clear. The second binds any document an agent reads: single source of truth, cache, relevance, sediment, no-ops and negation. A finding under either is a finding. The third, project-setup.md, holds under its "File ownership boundaries" section the ownership contract of each canonical file below; a NON-STANDARD doc has none.\n` +
       (hasDocumenting
-        ? `\nRECORDED DOC DECISIONS — the fourth file, docs/DOCUMENTING.md, carries this project's own doc conventions and the decisions it has taken about what it documents and what it leaves out on purpose. Treat a gap those decisions settle as answered and leave it out of your findings. They bind GAP findings only: a false or contradictory claim, a dead link, or content outside a file's Inside boundary stays a finding at full severity however the decisions read. A decision that contradicts what the other files show is itself a finding, against docs/DOCUMENTING.md.\n`
+        ? `\nRECORDED DOC DECISIONS — the fourth file, docs/DOCUMENTING.md, carries this project's own doc conventions and the decisions it has taken about what it documents and what it leaves out on purpose. A decision settles a gap it answers, and a DECLINED finding: where a decision names a file and content that stays in it, a finding about where that content sits or how much of it the file holds. Return a settled finding all the same, with covered_by quoting the decision that settles it: the synthesis stage drops it and names it in the report, so a decision that no longer fits the doc stays visible. The decisions settle nothing else: a false or contradictory claim, a stale command, a dead link, or out-of-boundary content that no decision names stays a finding at full severity however the decisions read. A decision that contradicts what the other files show is itself a finding, against docs/DOCUMENTING.md.\n`
         : '') +
       // Severity is a required enum on every finding, so leaving the bar unstated does not
       // produce fewer severities — it produces severities assigned from the model's priors,
@@ -652,7 +654,7 @@ if (typeof agent === 'function') {
       // claims against the code spends one turn per claim, and each turn re-sends all it
       // has read so far.
       `ACCURACY FROM THE TEXT — you do not open the code, so you cannot confirm that a command, path, or flag still exists, and you do not raise a finding that only says a claim is unverified. Raise an accuracy finding on what the files show: two docs that contradict each other, a doc that contradicts itself, a procedure whose steps cannot all be true, an unresolved link listed below.\n\n` +
-      `FOR EVERY FILE — for each unit of content (claim, command, path, table, section) ask whether it BELONGS HERE. Content that matches the file's Not-inside boundary is a belonging finding even when accurate (the Ownership rule); its fix routes the content to the owning file, never "keep it as a subsection here". In a file written for agents, also ask whether the unit fails the hygiene Cache rule — most often a description of what the code already declares: what a function does, what a log line means, where a file is written. Raise it as a form finding whose fix moves it to that code's doc comment or cuts it; this fix also replaces a belonging fix on the same unit, because a cache moved to another doc is still a cache. Then judge the file as a whole against the Economy rule, from the rules file rather than memory, and raise what fails it as a form finding naming the spans you would cut.\n` +
+      `FOR EVERY FILE — for each unit of content (claim, command, path, table, section) ask whether it BELONGS HERE. Content that matches the file's Not-inside boundary is a belonging finding even when accurate (the Ownership rule); its fix routes the content to the owning file, never "keep it as a subsection here". In a file written for agents, also ask whether the unit fails the hygiene Cache rule — most often a description of what the code already declares: what a function does, what a log line means, where a file is written. Raise it as a form finding whose fix replaces it with a pointer to that code, and keeps in the doc any rule the agent must act on; this fix also replaces a belonging fix on the same unit, because a cache moved to another doc is still a cache. Then judge the file as a whole against the Economy rule, from the rules file rather than memory, and raise what fails it as a form finding naming the spans you would cut. A Code narration fix is a Cache fix: a pointer to the code, and the doc keeps the rule the agent must act on, such as a wait before driving, because you do not open the code and that rule can be the only copy.\n` +
       recordsInForce +
       decisionPlacement(batch) +
       batch.map((t, i) => fileSection(t, i + 1)).join('') +
@@ -843,7 +845,7 @@ if (typeof agent === 'function') {
     `6. Assign an overall verdict: accurate / minor gaps / significant gaps / misleading. A clean 'accurate' requires no blocker/major AND positive coverage — not merely absence of findings.\n` +
     `7. Tag every finding \`settled\` or \`open\`, leaving none untagged. SETTLED is a doc contradicting another doc or itself where the evidence above shows which side is right, a stale command, a dead link, a missing or misnamed route, CLAUDE.md carrying anything but the one-line import, an injected tool-block — one correct answer, nothing to weigh. OPEN sets a decision record against itself, another record or another doc (being a record does not make it the right side: the user says which one holds the decision in force, and the options name the edit on each side), moves content from one file to another (who owns a topic is a judgement), moves a personal file (the user edits those, and only the user knows what each holds), deletes a section someone may be relying on, rewords a route people's habits are built on, adopts a convention the repo has not committed to, or is large enough that "not now" is a real answer. Asking permission for a settled fix wastes the maintainer's attention. A finding the evidence above does not settle, or that a competent person could answer differently, is open. For every OPEN finding also fill \`question\` (what is being decided, in ASD-STE100 Simplified Technical English — one idea per sentence, every identifier and abbreviation expanded — naming the file and what it currently says, so a reader outside this audit understands it), \`options\` (the real alternatives, including "leave it as is" wherever that is one), and \`recommendation\` (which option you would pick and the tradeoff that decided it).\n\n` +
     (hasDocumenting
-      ? `RECORDED DOC DECISIONS — read ${documentingFile} in full before you settle the findings list; it is the only file you read. It carries this project's doc conventions and what it has decided to leave undocumented. Drop any finding those decisions already settle, including one a read-review agent raised, and say in cross_file_notes which findings you dropped and which decision covered each. A decision binds GAP findings only: a false claim, a stale command, a dead link, or a broken CLAUDE.md stays a finding at full severity. A decision that contradicts the repo is a finding against docs/DOCUMENTING.md.\n\n`
+      ? `RECORDED DOC DECISIONS — read ${documentingFile} in full before you settle the findings list; it is the only file you read. It carries this project's doc conventions, what it has decided to leave undocumented, and the audit findings it declined. Drop any finding those decisions already settle, and say in cross_file_notes which findings you dropped and which decision covered each. A read-review finding with covered_by names the decision its agent judged to settle it: drop it where that decision does settle it, and keep it, without covered_by, where it does not. A decision settles a GAP finding, and a DECLINED finding: one about where content sits or how much of it a file holds, where the decision names that file and that content as staying. It settles nothing else: a false claim, a stale command, a dead link, or a broken CLAUDE.md stays a finding at full severity. A decision that contradicts the repo is a finding against docs/DOCUMENTING.md.\n\n`
       : `Everything you need is above; make no tool calls.\n\n`) +
     `Return the structured object with fields verdict, headline, findings[], cross_file_notes, evidence_summary. ` +
     `Each finding's why_it_matters states the concrete cost, risk, or trap the defect creates for someone relying on the doc — not a restatement of the observation. ` +

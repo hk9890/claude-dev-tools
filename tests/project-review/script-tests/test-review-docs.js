@@ -456,7 +456,7 @@ async function main() {
 
   const runAudit = async (over = {}) => {
     // promptIndex and manifest are stub overrides for the scripts, not workflow arguments.
-    const { promptIndex: promptOverride, manifest: manifestOverride, evidence: evidenceOverride, labelWrite, dropFile, manifestRelays = [], evidenceCuts = 0, promptCuts = 0, ...argOver } = over;
+    const { promptIndex: promptOverride, manifest: manifestOverride, evidence: evidenceOverride, labelWrite, dropFile, coveredBy, manifestRelays = [], evidenceCuts = 0, promptCuts = 0, ...argOver } = over;
     // manifest.py counts every file it lists; an override that adds files keeps that true.
     const base = manifestOverride || manifest;
     const manifestForRun = { ...base, summary: { ...base.summary, total_md: base.files.length } };
@@ -508,7 +508,7 @@ async function main() {
           ? [...prompt.matchAll(/^ {2}\/repo\/(docs\/decisions\/\S+)$/gm)]
           : [...prompt.matchAll(/── FILE \d+: (\S+)/g)];
         const paths = listed.map((m) => m[1]).filter((p) => p !== dropFile);
-        return { files_reviewed: paths, findings: [{ file: paths[0], category: 'accuracy', severity: 'major', observation: 'o', evidence: 'e', recommended_action: 'r' }] };
+        return { files_reviewed: paths, findings: [{ file: paths[0], category: 'accuracy', severity: 'major', observation: 'o', evidence: 'e', recommended_action: 'r', ...(coveredBy ? { covered_by: coveredBy } : {}) }] };
       }
       return { verdict: 'minor gaps', headline: 'h', findings: [] };
     };
@@ -591,6 +591,11 @@ async function main() {
     reviewPrompts[0].includes('headed `docs/CODING.md` in project-setup.md') &&
     reviewPrompts[0].includes('headed `AGENTS.md` in project-setup.md') &&
     reviewPrompts[0].includes('headed `README.md` in project-setup.md'));
+  truthy('read-review: a contract line also names the topic-doc exclusions above the blocks',
+    reviewPrompts[0].includes('headed `docs/CODING.md` in project-setup.md, together with the topic-doc exclusions stated above the blocks'));
+  truthy('read-review: the root steering docs get no topic-doc exclusions',
+    reviewPrompts[0].includes('headed `AGENTS.md` in project-setup.md.\n') &&
+    reviewPrompts[0].includes('headed `README.md` in project-setup.md.\n'));
   truthy('read-review: the standard says a non-standard doc has no contract block',
     reviewPrompts[0].includes('a NON-STANDARD doc has none'));
   truthy('read-review: a non-standard file is judged for placement, not against a contract',
@@ -660,8 +665,9 @@ async function main() {
   // ── recorded doc decisions (docs/DOCUMENTING.md) ─────────────────────────────
   // The decisions are freeform prose, so the workflow hands the agents the file rather than
   // extracting anything. Two things must hold: the block only appears where the repo has
-  // the file, and it scopes the suppression to gap findings — a project may decide not to
-  // document something, never that a false statement is true.
+  // the file, and it scopes the suppression to gap and declined findings — a project may
+  // decide not to document something, or to keep content where it is, never that a false
+  // statement is true.
   truthy('decisions: no DOCUMENTING.md in the repo means no decisions block anywhere',
     !deep.prompts.some((p) => p.includes('RECORDED DOC DECISIONS')));
   truthy('decisions: without the file the synthesis makes no tool calls',
@@ -682,8 +688,31 @@ async function main() {
     withDocReview.every((p) => p.includes('RECORDED DOC DECISIONS') && p.includes('/repo/docs/DOCUMENTING.md')));
   truthy('decisions: the synthesis stage gets the decisions too',
     withDoc.prompts.some((p) => p.includes('RECORDED DOC DECISIONS') && p.includes('cross_file_notes')));
-  truthy('decisions: the suppression is scoped to gap findings',
-    withDocReview.some((p) => /GAP findings only/.test(p) && /stays a finding at full severity/.test(p)));
+  const decisionsBlocks = withDoc.prompts.filter((p) => p.includes('RECORDED DOC DECISIONS'));
+  truthy('decisions: the suppression is scoped to gap and declined findings, in every stage',
+    decisionsBlocks.every((p) => /DECLINED finding/.test(p) && /settles? nothing else/.test(p)
+      && /stays a finding at full severity/.test(p)));
+
+  // A batch agent that drops a settled finding itself leaves the report no trace of it, so
+  // a decision that no longer fits the doc is never seen. It returns the finding marked
+  // instead, and the synthesis stage, the only one that writes cross_file_notes, drops it.
+  truthy('decisions: a batch agent returns a settled finding with covered_by, not omits it',
+    withDocReview.every((p) => /Return a settled finding all the same, with covered_by/.test(p)));
+  const covered = await runAudit({
+    manifest: {
+      ...manifest,
+      files: [...manifest.files, { path: 'docs/DOCUMENTING.md', classification: 'canonical', canonical_name: 'DOCUMENTING.md', metrics }],
+    },
+    coveredBy: 'docs/OVERVIEW.md keeps the module tree',
+  });
+  const coveredSynth = covered.prompts[covered.labels.indexOf('synthesis')];
+  truthy('decisions: a covered_by finding reaches the synthesis stage with its decision',
+    coveredSynth.includes('"covered_by":"docs/OVERVIEW.md keeps the module tree"'));
+  truthy('decisions: the synthesis stage drops a covered_by finding only where the decision settles it',
+    /covered_by[^\n]*drop it where that decision does settle it, and keep it/.test(coveredSynth));
+  truthy('decisions: FINDINGS_SCHEMA carries covered_by',
+    covered.calls.some((c) => c.schema && c.schema.properties.findings
+      && c.schema.properties.findings.items.properties.covered_by));
 
   // ── history ──────────────────────────────────────────────────────────────────
   const judgePrompt = deep.prompts[deep.labels.indexOf('history:judge')];

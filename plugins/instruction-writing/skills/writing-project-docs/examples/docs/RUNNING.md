@@ -9,12 +9,11 @@ with `run` — this file records only what is specific to this service.
 ## Launch locally
 
 ```bash
-make dev-db                    # Postgres on :5432
-make run                       # service on :8080, reads DATABASE_URL from .env
+make dev-db
+make run
 ```
 
-Wait for `GET /healthz` to return `200` before driving — it returns `503` until the DB
-connection is live.
+Wait for `GET /healthz` to return `200` before driving.
 
 ## Drive it
 

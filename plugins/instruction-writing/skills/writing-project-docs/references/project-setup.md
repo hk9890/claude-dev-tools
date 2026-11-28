@@ -45,6 +45,16 @@ that clarifies more. `CLAUDE.md`, fixed to a single line, and the personal `CLAU
 Content outside a file's boundary is a defect even when every statement in it is true — see
 *Ownership* in [project-doc-guidelines.md](project-doc-guidelines.md).
 
+Every topic doc under `docs/` is loaded on every task of its kind, so every one **stays small**:
+it holds what an agent cannot get by looking, and points at the code, script or config for the
+rest (*Economy*). Two exclusions bind every `docs/` topic block below, `docs/decisions/` excepted:
+
+- **What the code does at run time** — sequence, timing, retries, constants, log text, what a
+  script, suite or helper checks — is a pointer to that code; the doc keeps only the rule the
+  agent must act on (*Code narration*).
+- **What happened** — incidents, verification records, past experiments, project status — goes
+  to git or the PR; a decision record holds only the choice an event forced (*Logbook*).
+
 ### `CLAUDE.md`
 
 - **Inside**: exactly `@AGENTS.md` (one line, optional trailing newline).
@@ -79,8 +89,8 @@ Content outside a file's boundary is a defect even when every statement in it is
 - **Stays small.** It routes and nothing else: the summary plus one entry per use case. Anything a route's destination could hold belongs in that destination. A routing file that grows procedures stops being scannable at the moment it is needed most — the first seconds of a task.
 - **Inside**: a 2–3 sentence project summary and task → doc/skill routes, every one of them an obligation.
 - **Not inside**: full procedures, README-style prose, content duplicated from the docs it routes to.
-- **No optional routes** (*Obligation*): a use case with a doc behind it reads `MUST read <doc> before <the action that triggers it>` — a release loads `RELEASING.md` first, touching a source file loads `CODING.md` first, searching the repo loads `OVERVIEW.md` first. A preamble states once that loading afterwards does not count; the one in `examples/AGENTS.md` has a copy in `project-execute`'s `project-exec-init/scripts/private-setup.sh`, and a change to one is a change to both. "Load X to understand Y" is advisory phrasing and is a finding.
-- **Conformance** (checked against the example): one `###` section per use case, each naming the doc/skill to load, the action that triggers it, and a one-line reason; skip hollow entries; where no local doc exists, route to an installed skill as `MUST call the Skill tool with <plugin:skill> before <the action that triggers it>`, or, for a skill only the user can start (`disable-model-invocation: true`), as `MUST ask the user to run /<plugin:skill> before <the action that triggers it>`.
+- **No optional routes** (*Obligation*): a use case with a doc behind it reads `MUST read <doc> before <the action that triggers it>` — a release loads `RELEASING.md` first, touching a source file loads `CODING.md` first, a first `grep`, `rg` or `Glob` in the repo loads `OVERVIEW.md` first. A preamble states once that loading afterwards does not count; the one in `examples/AGENTS.md` has a copy in `project-execute`'s `project-exec-init/scripts/private-setup.sh`, and a change to one is a change to both. "Load X to understand Y" is advisory phrasing and is a finding.
+- **Conformance** (checked against the example): one `###` section per use case, each naming the doc/skill to load, the action that triggers it, and a one-line reason that names what the doc owns for that action — never the rules themselves (the `docs/decisions/` route keeps the reason line its block below sets); skip hollow entries; where no local doc exists, route to an installed skill as `MUST call the Skill tool with <plugin:skill> before <the action that triggers it>`, or, for a skill only the user can start (`disable-model-invocation: true`), as `MUST ask the user to run /<plugin:skill> before <the action that triggers it>`.
 - Example: [../examples/AGENTS.md](../examples/AGENTS.md)
 
 ### `docs/OVERVIEW.md`
@@ -88,26 +98,27 @@ Content outside a file's boundary is a defect even when every statement in it is
 - **Audience**: AI agents — read before searching, so they find things in the repo quickly instead of grepping blind.
 - **Purpose**: a *findability map* — lets an agent locate things in and outside the repo without duplicating what the repo already contains.
 - **Stays small.** A map, not a survey: it points at where things live and how to search for them. Anything it describes in full is a second copy of the source, stale from the next rename.
-- **Inside**: high-level structure and architecture (not per-file detail); important external links; search expressions (`grep`/`rg`) for finding things.
-- **Not inside**: detailed package/file lists or domain model (those live in source), build/test commands, usage, and any re-listing of what `AGENTS.md` already routes to (*Ownership*).
+- **Inside**: high-level structure and architecture — the modules or packages and what each owns, one clause per entry, at directory or module depth; important external links; search expressions (`grep`/`rg`) for finding things.
+- **Not inside**: private symbols (*Anchors*); detailed package/file lists or domain model (those live in source); the layout of an external format the repo follows (link its spec, list only the local deviations); build/test commands, usage, and any re-listing of what `AGENTS.md` already routes to (*Ownership*).
 - Example: [../examples/docs/OVERVIEW.md](../examples/docs/OVERVIEW.md)
 
 ### `docs/CODING.md`
 
 - **Audience**: AI agents, when they create or change a file in the repo — the implementer, whose one job is a change that works.
-- **Inside**: what a change needs in order to work — build and code-generation commands, where code goes, and which mechanism of this repo a change must use — short, with examples pointing to real classes/files.
-- **Not inside**: how finished code must look — style, comments, naming, and every other rule a reviewer can apply to the finished diff as a local edit (→`docs/REVIEWING.md`); the text of a rule a tool checks (→ that tool's configuration; the gate that runs it →`docs/TESTING.md`); end-user usage, release process, observability, PR/merge etiquette.
+- **Inside**: what a change needs in order to work — build and code-generation commands, where code goes, and which mechanism of this repo a change must use — short, with examples pointing to real files and exported symbols.
+- **Not inside**: how finished code must look — style, comments, naming, and every other rule a reviewer can apply to the finished diff as a local edit (→`docs/REVIEWING.md`); the text of a rule a tool checks (→ that tool's configuration; the gate that runs it →`docs/TESTING.md`); test and gate commands (→`docs/TESTING.md`); facts that hold for every repo on the same platform or harness; end-user usage, release process, observability, PR/merge etiquette.
 - **Boundary vs `REVIEWING.md`**: CODING is read before the code exists, REVIEWING once it works. A rule belongs here when breaking it leaves the change not working, or built in the wrong place or on the wrong mechanism, so that the fix is a rewrite. A rule a reviewer can apply to the finished diff as a local edit belongs there: the implementer explores and debugs, and a rule that can wait for the diff costs it attention for nothing.
 - Example: [../examples/docs/CODING.md](../examples/docs/CODING.md)
 
 ### `docs/DOCUMENTING.md`
 
 - **Audience**: AI agents, when they create or change a Markdown file in this repository.
-- **Inside**: the local delta of this standard — doc gates and lint, citation and link conventions, any doc tree beyond the canonical set and what each owns, and the decisions taken about what the project documents and what it leaves out.
+- **Inside**: the local delta of this standard — doc gates and lint, citation and link conventions, any doc tree beyond the canonical set and what each owns, and the decisions taken about what the project documents and what it leaves out, a declined audit finding included.
 - **Not inside**: the standard itself (→ the `instruction-writing:writing-project-docs` skill), source-tree rules (→`docs/CODING.md`, `docs/REVIEWING.md`), and the content of the docs themselves.
 - **Boundary vs `CODING.md`**: CODING owns a change to the source tree, DOCUMENTING a change to the doc tree.
 - **Precedence**: where a local rule conflicts with the standard, the local rule wins.
-- **Recorded decisions**: prose, in whatever shape the project keeps them. `project-review:project-review-docs` reads them and leaves out a gap a decision settles; a decision never makes a false claim acceptable.
+- **Recorded decisions**: prose, in whatever shape the project keeps them. `project-review:project-review-docs` reads them and leaves out a gap a decision settles; a decision never makes a false claim, a stale command or a dead link acceptable.
+- **Declined findings**: an audit finding about where content sits, or how much of it a doc holds, that the project declines is one line among the decisions: the file, the content that stays, and why. The audit then leaves that finding out. Delete the line when the content it names goes.
 - Example: [../examples/docs/DOCUMENTING.md](../examples/docs/DOCUMENTING.md)
 
 ### `docs/decisions/`
@@ -124,28 +135,28 @@ Content outside a file's boundary is a defect even when every statement in it is
 
 - **Audience**: AI agents, before they commit and whenever they write a test.
 - **Inside**: test layers, commands, fixtures, minimum checks and CI gates; coverage targets and how to run with coverage; when integration tests are required; and how to write tests, with examples pointing to existing tests.
-- **Not inside**: driving the product (→`docs/RUNNING.md`), release steps, architecture.
+- **Not inside**: what a suite stubs or asserts, and how a helper works (→ the suite's or helper's header comment; TESTING names the suite and when to run it); the task descriptions the task runner already prints; driving the product (→`docs/RUNNING.md`), release steps, architecture.
 - Example: [../examples/docs/TESTING.md](../examples/docs/TESTING.md)
 
 ### `docs/RELEASING.md`
 
 - **Audience**: AI agents, when they cut a release or change what the project ships.
-- **Inside**: repo-specific release steps, triggers, entrypoints, and verification commands.
-- **Not inside**: routine build/test, end-user usage, architecture.
+- **Inside**: repo-specific release steps, triggers, entrypoints, a link to the gates a release needs, and the commands that verify the published release.
+- **Not inside**: what the release script or workflow does step by step (→ the script; RELEASING names it and the steps a human or agent takes around it); routine build/test, end-user usage, architecture.
 - Example: [../examples/docs/RELEASING.md](../examples/docs/RELEASING.md)
 
 ### `docs/MONITORING.md`
 
 - **Audience**: AI agents, when they need evidence of what the running product already did.
-- **Inside**: how the agent accesses monitoring data (logs, spans, metrics, sessions, usage) and how to interpret it.
-- **Not inside**: driving the live product (→`docs/RUNNING.md`), test suites, architecture.
+- **Inside**: how the agent accesses monitoring data (logs, spans, metrics, sessions, usage) — the store or tenant each kind lands in and the command that reads it — and which source answers which question.
+- **Not inside**: a catalogue of log messages and their causes (→ the comment where each is written); driving the live product (→`docs/RUNNING.md`), test suites, architecture.
 - **Boundary vs `RUNNING.md`**: MONITORING inspects the evidence of what already happened; RUNNING drives the live product to make something happen. Bug reproduction is driven from `RUNNING.md`, which may pull MONITORING data as evidence.
 - Example: [../examples/docs/MONITORING.md](../examples/docs/MONITORING.md)
 
 ### `docs/CHANGE-WORKFLOW.md`
 
 - **Audience**: AI agents, before any git operation — commit, branch, worktree, push, PR.
-- **Inside**: commit/branch/push/PR/review/merge expectations and pre-handoff gates.
+- **Inside**: commit/branch/push/PR/review/merge expectations, and a link to the gates a PR needs before handoff.
 - **Not inside**: build/test command reference (→`docs/CODING.md`/`docs/TESTING.md`), usage, architecture.
 - Example: [../examples/docs/CHANGE-WORKFLOW.md](../examples/docs/CHANGE-WORKFLOW.md)
 
@@ -162,7 +173,7 @@ Content outside a file's boundary is a defect even when every statement in it is
 
 - **Audience**: AI agents, when they run the product by hand to reproduce a bug or verify a change.
 - **Inside**: how the *agent* builds, starts, and drives the product by hand (start the webapp and inspect pages, run the CLI/TUI) to reproduce a bug or verify a change — the local delta (launch command, entrypoints, how to reach a state, where output lands). State only what is local and hand off to the `run` skill with a Skill tool call (*Local delta*).
-- **Not inside**: automated test suites (→`docs/TESTING.md`), coding/implementation (→`docs/CODING.md`), log inspection (→`docs/MONITORING.md`).
+- **Not inside**: what a driver or setup script checks or does inside (→ the script); automated test suites (→`docs/TESTING.md`), coding/implementation (→`docs/CODING.md`), log inspection (→`docs/MONITORING.md`).
 - **Precedence**: where a local instruction conflicts with the generic `run` flow, the local instruction wins. (Boundary vs `MONITORING.md`: see that block.)
 - Example: [../examples/docs/RUNNING.md](../examples/docs/RUNNING.md)
 

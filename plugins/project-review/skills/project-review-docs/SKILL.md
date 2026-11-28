@@ -1,13 +1,13 @@
 ---
 name: project-review-docs
-description: "Read-only audit of a project's docs for gaps, misplaced content, contradictions, dead links, and whether agents can and do actually use them; judges the docs as documents and never opens the code; reports fixes, never edits."
+description: "Audit of a project's docs for gaps, misplaced content, contradictions, dead links, and whether agents can and do actually use them; judges the docs as documents, and the audit never opens the code; reports fixes, applies the ones the user approves, and records each placement, size or gap finding the user declines as a decision."
 user-invocable: true
 disable-model-invocation: true
 argument-hint: "[low|medium|high|ultra] [path]"
 ---
 
-Read-only documentation audit. Launch the review workflow — do **not** review the
-docs inline. The workflow returns a structured report; relay it.
+Documentation audit. Launch the review workflow — do **not** review the docs inline. The
+workflow returns a structured report; relay it, then apply what the user approves.
 
 ## Run the workflow
 
@@ -123,13 +123,47 @@ docs inline. The workflow returns a structured report; relay it.
    - a null or absent `report` with no `error` — the synthesis stage died. Say so
      and offer to re-run; `raw.read_findings` holds one flat list of every review
      agent's findings, unmerged and each naming its own file, so relay it only as
-     raw material, never as the report.
+     raw material, never as the report. List each entry with `covered_by` apart, as
+     covered by its decision and not verified, because the synthesis stage that checks that claim did not run.
+
+   On either path, stop: steps 6 and 7 do not run.
 
    Once relayed, follow `<SKILL_DIR>/../../references/decision-split.md`
-   over the open findings.
-   "the docs audit" is what was
-   reviewed. Done when every open item has been put to the user and the settled batch
-   has been named.
+   over the open findings. "The docs audit" is what was reviewed.
+
+   Done when every open item has been put to the user and the settled batch has been named.
+
+6. Apply what the user approved. After the user's reply, call the Skill tool with
+   `instruction-writing:writing-project-docs`, even where it loaded earlier in this session,
+   and make the fixes in the docs under the step-1 path, and in each other file a fix
+   names, such as a source comment or `.gitignore`: the settled batch and each
+   **Done on "go"** item, each except where the user stopped it, and the option the user
+   picked for each **Needs you** item. Where the reply does not show whether it takes an
+   item, ask. For the private docs, write only under the step-1 path: report each fix that
+   names a file of the repository as not applied, because the user cannot commit there.
+
+   Done when every fix the user approved is made.
+
+7. Record what the user declined. Skip this step where the step-1 path holds no `AGENTS.md`:
+   a decision line there routes nowhere, so say that the declined items come back in the
+   next audit. Take each declined item: an open item about where content
+   sits, how much of it a doc holds, or a gap, that step 6 did not apply. Show the line it gets among the
+   decisions of `docs/DOCUMENTING.md` under the step-1 path: the file, the content that
+   stays or what stays undocumented, and why it stays. The why is the reason the user gave,
+   else the tradeoff of the option the user picked; where neither exists, ask for it. It
+   states why the content stays, never what the audit said. Ask a yes or no for each line.
+   Where the file is missing, or `AGENTS.md` does not route to it, say in the same question
+   that a yes also creates the file, or the route. Write each "yes" line among the file's
+   decisions. Where the file is missing, create it in the form of
+   `<STANDARD_DIR>/examples/docs/DOCUMENTING.md`: its opener names the standard's skill, and
+   its Decisions section holds the lines. Where `AGENTS.md` does not route to it, add the
+   route in the form of `<STANDARD_DIR>/examples/AGENTS.md`, in place of a route for the same
+   use case to `instruction-writing:writing-project-docs`. Each other open item that step 6
+   did not apply gets no line, because no decision settles it: say that it comes back in the
+   next audit.
+
+   Done when each line the user said yes to is in that file, and `AGENTS.md` routes to the
+   file wherever a line was written. With no yes, the step is done with nothing written.
 
 If `python3` is missing or the workflow cannot launch, read every doc in full by
 hand against all three parts of the standard — `<STANDARD_DIR>/references/project-setup.md`
@@ -167,4 +201,5 @@ empirical test-suite strength →
 `project-review-session`. Challenging a single design decision
 interactively → `challenge:kiss`. **Writing or fixing the docs** — the file set,
 where a piece of content belongs, the worked examples →
-`instruction-writing:writing-project-docs`; this skill only audits what is there.
+`instruction-writing:writing-project-docs`; this skill audits what is there, and writes only
+what the user approves in steps 6 and 7.
