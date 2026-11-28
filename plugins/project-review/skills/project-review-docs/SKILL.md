@@ -1,6 +1,6 @@
 ---
 name: project-review-docs
-description: "Audit of a project's docs for gaps, misplaced content, contradictions, dead links, and whether agents can and do actually use them; judges the docs as documents and never opens the code; reports fixes, applies the ones the user approves, and records each finding the user keeps as a decision."
+description: "Audit of a project's docs for gaps, misplaced content, contradictions, dead links, and whether agents can and do actually use them; judges the docs as documents, and the audit never opens the code; reports fixes, applies the ones the user approves, and records each finding the user keeps as a decision."
 user-invocable: true
 disable-model-invocation: true
 argument-hint: "[low|medium|high|ultra] [path]"
@@ -123,8 +123,8 @@ workflow returns a structured report; relay it, then apply what the user approve
    - a null or absent `report` with no `error` — the synthesis stage died. Say so
      and offer to re-run; `raw.read_findings` holds one flat list of every review
      agent's findings, unmerged and each naming its own file, so relay it only as
-     raw material, never as the report. Leave out each entry with `covered_by`, a
-     finding a recorded decision settles, and say how many you left out.
+     raw material, never as the report. List each entry with `covered_by` apart, as
+     covered by its decision and not verified, because the synthesis stage checks that claim.
 
    On either path, stop: steps 6 and 7 do not run.
 
@@ -135,14 +135,16 @@ workflow returns a structured report; relay it, then apply what the user approve
 
 6. Apply what the user approved. After the user's reply, call the Skill tool with
    `instruction-writing:writing-project-docs`, even where it loaded earlier in this session,
-   and make the fixes in the docs under the step-1 path: the settled batch and each
+   and make the fixes in the docs under the step-1 path, and in each other file a fix
+   names, such as a source comment or `.gitignore`: the settled batch and each
    **Done on "go"** item, each except where the user stopped it, and the option the user
    picked for each **Needs you** item. Where the reply does not show whether it takes an
    item, ask.
 
    Done when every fix the user approved is made.
 
-7. Record what the user kept. Take each open item about where content sits, how much
+7. Record what the user kept. Skip this step where the step-1 path holds no `AGENTS.md`:
+   a decision line there routes nowhere. Take each open item about where content sits, how much
    of it a doc holds, or a gap, that step 6 did not apply. Show the line it gets among the
    decisions of `docs/DOCUMENTING.md` under the step-1 path: the file, the content that
    stays or what stays undocumented, and why it stays. The why is the reason the user gave,

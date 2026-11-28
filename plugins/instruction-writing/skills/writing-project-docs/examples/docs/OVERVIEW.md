@@ -18,7 +18,7 @@ docs/runbooks/          operational runbooks for on-call
 ## Finding things
 
 ```bash
-rg -n '\br\.(Get|Post|Put|Patch|Delete|Head|Options|Method(Func)?|Handle(Func)?|Mount)\(' -g '!*_test.go' internal/api/   # every endpoint the service serves
+rg -n '\.(Get|Post|Put|Patch|Delete|Head|Options|Connect|Trace|Handle|HandleFunc)\("/|\.Method(Func)?\("[A-Z]+", "/' -g '!*_test.go' internal/api/   # every endpoint the service serves
 rg -n 'func \(s \*Store\)' internal/store/                   # every database operation
 rg -n 'type \w+ struct' internal/model/                     # the domain types
 rg -n '<column-name>' migrations/                           # when a column was added, and by which migration

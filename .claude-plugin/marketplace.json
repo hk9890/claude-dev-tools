@@ -28,7 +28,7 @@
     {
       "name": "project-review",
       "source": "./plugins/project-review",
-      "description": "Adversarial reviews against the project's own standards, read-only by default: the codebase (consistency, structure, architecture, rules), one change against the project's written rules (--fix applies the settled fixes), and the docs (applies the fixes the user approves), each returning a prioritized action list, plus a retrospective on one coding session.",
+      "description": "Adversarial reviews against the project's own standards: the codebase (consistency, structure, architecture, rules), one change against the project's written rules (--fix applies the settled fixes), and the docs (applies the fixes the user approves), each returning a prioritized action list, plus a retrospective on one coding session.",
       "version": "1.56.0",
       "author": {
         "name": "Hans Kohlreiter",

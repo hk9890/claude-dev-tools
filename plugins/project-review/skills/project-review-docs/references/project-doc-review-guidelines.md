@@ -169,9 +169,10 @@ decided intent would quietly decide the findings too.
 
 ## Read-only contract
 
-The reviewer never edits: every finding carries a recommended fix. The workflow writes nothing. The skill writes after the report, and
-only what the user approves: the fixes, and each decision line the user says yes to, into
-`docs/DOCUMENTING.md` (`SKILL.md`, steps 6 and 7). The contract is **not** uniform across stages, deliberately —
+The reviewer never edits: every finding carries a recommended fix. The workflow writes only into
+its scratch dir. The skill writes after the report, and only what the user approves: the fixes,
+and each decision line the user says yes to, which can create `docs/DOCUMENTING.md` and its
+`AGENTS.md` route (`SKILL.md`, steps 6 and 7). The contract is **not** uniform across stages, deliberately —
 `tests/project-review/script-tests/test-readonly-contract.sh` pins the codebase reviewer's
 wording and exempts this workflow on those grounds.
 

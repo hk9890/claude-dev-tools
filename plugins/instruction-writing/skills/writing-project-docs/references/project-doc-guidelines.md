@@ -36,11 +36,11 @@ The homes most often got wrong:
 | Fact | Home |
 |---|---|
 | Routing — which doc to load for which task | `AGENTS.md`, alone. No topic doc re-lists the files, docs or skills it routes to, or restates its summary. Binds `OVERVIEW.md` hardest, which is next to it in subject. |
-| How a change lands — commit, branch, PR, merge, and which gates must pass before handoff, by name | `CHANGE-WORKFLOW.md` |
+| How a change lands — commit, branch, PR, merge, and a link to the gates a PR needs | `CHANGE-WORKFLOW.md` |
 | How finished code must look, and what a reviewer must check in this repo | `REVIEWING.md`, never scattered into `CODING.md`, which holds only what a change needs in order to work |
 | How this repository's own docs are written, what it decided not to document, and the audit findings it declined | `DOCUMENTING.md`, never `CODING.md`, which owns the source tree |
 | Driving the built product by hand | `RUNNING.md` — not `TESTING.md`, which owns the automated suites, and not `MONITORING.md`, which owns reading the evidence afterwards |
-| A gate — its name, its command, and what counts as a pass: the exit status or the report to read, not what the script checks | `TESTING.md`, doc gates excepted (`DOCUMENTING.md`). `CHANGE-WORKFLOW.md` and `RELEASING.md` say when a gate must pass, by name, and link |
+| A gate — its name, its command, what counts as a pass (the exit status or the report to read, not what the script checks), and the lists of gates a PR and a release need | `TESTING.md`, doc gates excepted (`DOCUMENTING.md`). `CHANGE-WORKFLOW.md` and `RELEASING.md` link to the list they need |
 | A safety rule, such as what the agent must never start or kill | The one file whose action it guards; every other file links to it |
 | "Update the doc in the same change as the code" | `REVIEWING.md`; `CHANGE-WORKFLOW.md` links to it |
 

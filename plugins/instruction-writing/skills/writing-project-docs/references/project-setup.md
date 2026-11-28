@@ -140,7 +140,7 @@ rest (*Economy*). Two exclusions bind every `docs/` topic block below, `docs/dec
 ### `docs/RELEASING.md`
 
 - **Audience**: AI agents, when they cut a release or change what the project ships.
-- **Inside**: repo-specific release steps, triggers, entrypoints, which gates must pass, by name, and the commands that verify the published release.
+- **Inside**: repo-specific release steps, triggers, entrypoints, a link to the gates a release needs, and the commands that verify the published release.
 - **Not inside**: what the release script or workflow does step by step (→ the script; RELEASING names it and the steps a human or agent takes around it); routine build/test, end-user usage, architecture.
 - Example: [../examples/docs/RELEASING.md](../examples/docs/RELEASING.md)
 
@@ -155,7 +155,7 @@ rest (*Economy*). Two exclusions bind every `docs/` topic block below, `docs/dec
 ### `docs/CHANGE-WORKFLOW.md`
 
 - **Audience**: AI agents, before any git operation — commit, branch, worktree, push, PR.
-- **Inside**: commit/branch/push/PR/review/merge expectations, and which gates must pass before handoff, by name.
+- **Inside**: commit/branch/push/PR/review/merge expectations, and a link to the gates a PR needs before handoff.
 - **Not inside**: build/test command reference (→`docs/CODING.md`/`docs/TESTING.md`), usage, architecture.
 - Example: [../examples/docs/CHANGE-WORKFLOW.md](../examples/docs/CHANGE-WORKFLOW.md)
 
