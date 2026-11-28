@@ -82,7 +82,7 @@ async function main() {
   const {
     normalizeArgs, parseManifest, checkManifest, checkPromptIndex, checkEvidence, splitReviewTargets, orderTargets, packBatches,
     recordTargets, recordsPrompt, unreviewedFiles, historyFindingBar,
-    LEVEL_CONFIG, USE_CASES, BATCH_BYTES, MIN_SEGMENTS_FOR_FINDING, RELAY_ATTEMPTS,
+    LEVEL_CONFIG, USE_CASES, BATCH_BYTES, RECORDS_CONTEXT_BYTES, MIN_SEGMENTS_FOR_FINDING, RELAY_ATTEMPTS,
   } = helpers;
 
   const required = { normalizeArgs, parseManifest, checkManifest, checkPromptIndex, checkEvidence, splitReviewTargets, orderTargets, packBatches, recordTargets, recordsPrompt, unreviewedFiles, historyFindingBar };
@@ -333,6 +333,11 @@ async function main() {
     [...recordsAsk.matchAll(/^ {2}(\d+\. (?:[A-Z ]+(?= —)|Find that route))/gm)].map((m) => m[1]));
   truthy('recordsPrompt: a conflict between two records names no winner',
     recordsAsk.includes("is the user's call") && recordsAsk.includes('recommend no winner'));
+  // The manifest flags a MADR file in the tree on each status line and on its length; read
+  // as a record, those flags ask for every ADR to be cut down to 8 lines.
+  truthy('recordsPrompt: a record in another format is sent out of the tree, not cut down',
+    recordsAsk.includes('Lifecycle, Route and Precedence lines') &&
+    recordsAsk.includes('is misplaced, not a record to cut down') && recordsAsk.includes('skip questions 1 to 7 for it'));
   truthy('recordsPrompt: a record that misleads an agent that obeys it is major',
     /major: the record misleads[^\n]*two records in conflict[^\n]*a route that misses a path/.test(recordsAsk));
   const bare = recordsPrompt({ repoRoot: '/repo', setupFile: '/s', hygieneFile: '/h', records: recordTargets(recordFiles), hasAgents: false, privateLayout: false,
@@ -752,7 +757,25 @@ async function main() {
     treeSynthesis.includes('OPEN sets a decision record against itself, another record or another doc') &&
     treeSynthesis.includes('being a record does not make it the right side'));
   truthy('records: a record that contradicts itself or another record stays major or above',
-    treeSynthesis.includes('a record contradicts itself or another record stays at major or above'));
+    treeSynthesis.includes('a record contradicts itself, another record or another doc stays at major or above'));
+  eq('records: a set under the context budget is read by the doc batches, and raw says so', true, tree.ret.raw.records_as_context);
+  truthy('records: under the budget the synthesis is told of no unchecked conflict',
+    !treeSynthesis.includes('was not checked this run'));
+
+  // Long records in another format would multiply what every doc batch reads: over the
+  // budget the batches go without them, and the report says what that leaves unchecked.
+  const bigRecord = (n) => ({ path: `docs/decisions/000${n}-long.md`, classification: 'decision', canonical_name: 'decisions/',
+    metrics: { ...metrics, bytes: Math.ceil(RECORDS_CONTEXT_BYTES / 2) + 1 } });
+  const overBudget = await runAudit({ manifest: { ...manifest, files: [...manifest.files, bigRecord(1), bigRecord(2)] } });
+  const overDoc = overBudget.prompts[overBudget.labels.indexOf('review-1/1')];
+  truthy('records: over the context budget no doc batch reads a record or gets the context block',
+    !overDoc.includes('/repo/docs/decisions/') && !overDoc.includes('DECISIONS IN FORCE'));
+  truthy('records: over the budget the records agent still judges the whole set',
+    overBudget.labels.includes('review-records') &&
+    overBudget.prompts[overBudget.labels.indexOf('review-records')].includes('  /repo/docs/decisions/0002-long.md\n'));
+  eq('records: over the budget raw says the doc batches went without them', false, overBudget.ret.raw.records_as_context);
+  truthy('records: over the budget the synthesis states that a doc against a record went unchecked',
+    overBudget.prompts[overBudget.prompts.length - 1].includes('a doc that states the opposite of a record was not checked this run'));
   truthy('history: the judge is told AGENTS.md is never Read, so its absence proves nothing',
     judgePrompt.includes('AGENTS.md is always in an agent') && judgePrompt.includes('never Read'));
   truthy('history: a well-edged obligation route that is skipped accuses the agent, not the doc',

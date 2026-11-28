@@ -57,6 +57,11 @@ const LEVEL_CONFIG = {
 // one agent can still give every file in its batch real attention.
 const BATCH_BYTES = 120000
 
+// Record bytes every doc batch reads on top of its own docs. Records in the tree's shape
+// are under 1KB each, so 100 of them fit; a set of long records in another format would
+// multiply what every batch reads, and is left out of the batches instead.
+const RECORDS_CONTEXT_BYTES = 60000
+
 // How often a relay agent is asked to return a script's JSON before the stage gives up.
 const RELAY_ATTEMPTS = 3
 
@@ -282,7 +287,8 @@ function recordsPrompt({ repoRoot, setupFile, hygieneFile, records, tree, hasAge
       : '') +
     `READ ONCE — your first action is ONE parallel batch of Read calls, one per file in this list. They are the only tool calls you make before you return: no Bash, no Grep, no Glob, no other Read. If a Read is refused for size, read that file in parts with offset and limit. You do not open the code, so whether the project follows a record is outside this audit.\n` +
     readList.map(p => `  ${p}\n`).join('') +
-    `\nTHE CONTRACT — in the first file, the block headed \`docs/decisions/\` under "File ownership boundaries": its Inside, Not inside, Lifecycle and Route lines. The second file holds the Cache rule that Not inside names. Hold every record against that block, from the file rather than memory.\n\n` +
+    `\nTHE CONTRACT — in the first file, the block headed \`docs/decisions/\` under "File ownership boundaries": its Inside, Not inside, Lifecycle, Route and Precedence lines. The second file holds the Cache rule that Not inside names. Hold every record against that block, from the file rather than memory.\n\n` +
+    `ANOTHER FORMAT — a record in another format (a MADR or Nygard ADR, with a status, a date and sections) is misplaced, not a record to cut down: the Precedence line sends it to a folder outside docs/decisions/ that docs/DOCUMENTING.md registers. File one placement finding on it that recommends that move and the registration, take the manifest facts on it into that finding, and skip questions 1 to 7 for it.\n\n` +
     `FACTS FROM THE MANIFEST — a script checked each record's shape, its links and the tree. Report each line below as a finding on the file it names, and count no lines yourself:\n` +
     (facts.length ? facts.map(f => `  ${f}\n`).join('') : `  none\n`) +
     `\nEACH RECORD — answer all seven for every record:\n` +
@@ -468,7 +474,7 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     normalizeArgs, parseManifest, checkManifest, checkPromptIndex, checkEvidence, splitReviewTargets, orderTargets, packBatches,
     recordTargets, recordsPrompt, unreviewedFiles, historyFindingBar,
-    LEVELS, LEVEL_CONFIG, USE_CASES, BATCH_BYTES, MIN_SEGMENTS_FOR_FINDING, RELAY_ATTEMPTS,
+    LEVELS, LEVEL_CONFIG, USE_CASES, BATCH_BYTES, RECORDS_CONTEXT_BYTES, MIN_SEGMENTS_FOR_FINDING, RELAY_ATTEMPTS,
   }
 }
 
@@ -550,7 +556,12 @@ if (typeof agent === 'function') {
   const docBatches = packBatches(orderTargets(manifest.files), BATCH_BYTES)
   const records = recordTargets(manifest.files)
   const batches = records.length ? [...docBatches, records] : docBatches
-  const recordFiles = records.map(t => `${repoRoot}/${t.file.path}`)
+  const recordBytes = records.reduce((n, t) => n + ((t.file.metrics && t.file.metrics.bytes) || 0), 0)
+  const recordsAsContext = recordBytes <= RECORDS_CONTEXT_BYTES
+  const recordFiles = recordsAsContext ? records.map(t => `${repoRoot}/${t.file.path}`) : []
+  if (!recordsAsContext) {
+    log(`Read-review: the ${records.length} decision records hold ${recordBytes} bytes, over the ${RECORDS_CONTEXT_BYTES} the doc batches read as context — no doc batch reads them, so a doc that states the opposite of a record is not checked this run`)
+  }
 
   // The contract text stays in project-setup.md, which every batch agent reads: carried in
   // the manifest it was half of what the manifest agent has to retype.
@@ -822,10 +833,11 @@ if (typeof agent === 'function') {
     `Do all of the following:\n` +
     `1. Merge and DEDUPE findings (the same defect surfaced twice is ONE finding — cite the strongest evidence).\n` +
     `   When merging, PRESERVE what each recommended_action says it replaces, cuts, or supersedes — the lines it names are the fix, not decoration. A recommended_action that only adds text must say why nothing existing is superseded. Never compress a specific replacement into a general instruction to improve the section.\n` +
-    `   A decision record is read as authority, so a finding that a record contradicts itself or another record stays at major or above.\n` +
+    `   A decision record is read as authority, so a finding that a record contradicts itself, another record or another doc stays at major or above.\n` +
     `2. Cross-file reconciliation the batch agents could not see, since each saw only its own batch, and the agent that judged the decision records saw no other doc: sibling contradictions on shared facts; and match any missing canonical doc to a non-standard doc whose content actually IS that topic (rename/link).\n` +
     `3. Raise the mechanical facts no read-review agent covered. CLAUDE.md is excluded from the read-review because the manifest checks it, so a false claude_md_ok is yours to report: CLAUDE.md must be exactly the one-line @AGENTS.md import, and the fix names a destination for each displaced piece — routing to AGENTS.md, topic procedures to docs/<TOPIC>.md, personal or transient notes to CLAUDE.local.md. Where its detail names a symlink to AGENTS.md, nothing is displaced: the fix replaces the link with the one-line file. ${manifest.private ? `This root is a PRIVATE layout, so the CLAUDE.md entry above describes the file it names, the parent's CLAUDE.local.md: it must hold its expected absolute import as a line, beside any personal notes, and the fix adds that line, because a relative import fails in a git worktree. ` : ''}Every injected tool-block listed above is a finding against the doc holding it, under the same destination rule. Every personal file listed above under a name Claude Code never loads is a finding against that file: the fix moves its content to its rename_to path — merged into that file where rename_to_exists is true, so neither file's notes are lost — and adds rename_to to .gitignore where no pattern there covers it yet, so the personal notes stay out of commits. The content itself stays as it is. Every decision-record fact listed above that no read-review finding carries is a finding too: a flag against the record it names, a number that two records share against the later file, a replaced record that is still in the tree against that replaced record, whose fix deletes it and repoints every citation of it in the same change. A file under not_records is a finding only where no read-review finding places it.\n` +
     `4. Fold the behavioural evidence in. From history: only entries with attribution "doc" are doc findings — an "agent" attribution means the route was written correctly and skipped anyway, which belongs in evidence_summary as an observation, never as a defect in the file. An "insufficient-evidence" attribution is not a finding of any kind.\n` +
+    (recordsAsContext ? '' : `   The ${records.length} decision records hold ${recordBytes} bytes, over the ${RECORDS_CONTEXT_BYTES} the doc batches read as context, so no doc batch read them: state in evidence_summary that a doc that states the opposite of a record was not checked this run.\n`) +
     `5. Write evidence_summary. State that the read-review judged the docs from their text and did not check documented commands, paths, or flags against the code, so a doc that has drifted from the code without contradicting another doc is not caught by this audit. Name any file the read-review did not cover. Then state the evidence per use case: how many valid segments history had and which use cases had none. A use case with no evidence is a gap in THIS AUDIT, never a defect in the doc — say so in those words rather than implying the doc is unused. Where a history stage failure is given above, say that the history evidence is missing because of that failure, not because the repository has no sessions.\n` +
     `   Report the superseded-route evidence too, in its own short paragraph, and label it as being about wording that no longer exists. Quote the old route and give the ratio of segments that did the work to segments that opened the doc. Where a route has since been rewritten, say whether that evidence supports the rewrite. Never let it change a verdict or a finding about current text — but never drop it either: a route that was ignored under its old wording is the reason the new wording exists.\n` +
     `6. Assign an overall verdict: accurate / minor gaps / significant gaps / misleading. A clean 'accurate' requires no blocker/major AND positive coverage — not merely absence of findings.\n` +
@@ -848,6 +860,7 @@ if (typeof agent === 'function') {
       level,
       read_findings: readFindings,
       review_batches: batches.map(b => b.map(t => t.file.path)),
+      records_as_context: recordsAsContext,
       not_reviewed: notReviewed,
       history: historyEntries,
       history_coverage: (historySummary && historySummary.coverage) || null,

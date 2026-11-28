@@ -81,8 +81,12 @@ script deciding what counts as a claim, which is guessing.
    record. That agent reports the manifest's facts, asks each record the clauses of the
    contract as numbered questions, asks the set whether two records conflict or decide the
    same thing, and asks whether the `AGENTS.md` route names the paths the records govern.
-   Every doc batch also reads the records as context, so a doc that states the opposite of
-   a record is a finding whatever batch the doc sits in.
+   A record in another format inside the tree gets one placement finding that sends it out
+   of the tree, never a list of cuts. Every doc batch also reads the records as context, so
+   a doc that states the opposite of a record is a finding whatever batch the doc sits in.
+   Over `RECORDS_CONTEXT_BYTES` of records the batches go without them, the records agent
+   still reads the whole set, and the report says that a doc against a record went
+   unchecked.
 3. **History** — the docs were used or they were not, and past sessions say which.
    `scripts/history.py` extracts the user messages of this repo's transcripts; a small model
    labels each with a use case; the script then filters, stratifies, and projects into one
