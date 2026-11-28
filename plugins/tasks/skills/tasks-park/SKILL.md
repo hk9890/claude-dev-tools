@@ -16,17 +16,17 @@ A park is a task with the label `kind:park`: an agent that picks it brings this 
 2. Run `taskmgr hook list`. Where it lists no `pkg:task-writing:park-body`, tell the user that this store does not check a park body, and write the body of step 5 all the same.
 3. The `<id>` is `${CLAUDE_SESSION_ID}`.
 4. Find the start directory and the project:
-   - `<dir>` is the first `cwd` of the transcript, not `$PWD`, which moves with each `cd`:
+   - `<dir>` is the directory that `claude --resume` finds the transcript from: the first `cwd` of the transcript whose name, with each character other than a letter or a digit made `-`, is the name of the folder that holds the transcript. A session that entered a worktree moved its transcript to the worktree's folder, so its first `cwd` is the wrong one, and so is `$PWD`, which moves with each `cd`:
 
      ```bash
-     find ~/.claude/projects -maxdepth 2 -name '${CLAUDE_SESSION_ID}.jsonl' -exec jq -r 'select(.cwd) | .cwd' {} + | head -1
+     f=$(find ~/.claude/projects -maxdepth 2 -name '${CLAUDE_SESSION_ID}.jsonl'); jq -r --arg s "$(basename "$(dirname "$f")")" 'select(.cwd) | .cwd | select(gsub("[^A-Za-z0-9]"; "-") == $s)' "$f" | head -1
      ```
 
-     Where `<dir>` is under `.claude/worktrees/`, tell the user that the park can resume only while that worktree exists.
-   - `<project>` is the revier project whose `.project.path` holds `<dir>`. Where several do, take the longest path; where none does, ask the user:
+     Where it prints nothing, ask the user for the directory. Where `<dir>` is under `/tmp/`, stop: the gate refuses a park that names `/tmp/`, so offer the user `/tasks:tasks-handover`. Where `<dir>` is under `.claude/worktrees/`, tell the user that the park can resume only while that worktree exists.
+   - `<project>` is the revier project whose `.project.path` holds `<dir>`, the deepest one where several do. Where this prints nothing, ask the user:
 
      ```bash
-     revier list --json | jq -r --arg d '<dir>' '.[] | select(.project.remote == null) | .project | select(($d + "/") | startswith(.path + "/")) | "\(.name) \(.path)"'
+     revier list --json | jq -r --arg d '<dir>' '[.[] | select(.project.remote == null) | .project | select(.path as $p | $d + "/" | startswith($p + "/"))] | max_by(.path | length) // empty | "\(.name) \(.path)"'
      ```
 
 5. Write the body. A new agent continues from the summary when the transcript is gone, so name only durable paths: a path under `/tmp/`, the session scratchpad included, is gone by then, and the gate refuses it. Add `--dir <dir>` to the command only where `<dir>` is not the project path.

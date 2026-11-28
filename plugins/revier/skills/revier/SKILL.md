@@ -34,7 +34,7 @@ The rest of the CLI is outside this skill. Most of it opens, raises or closes a 
 
 ## Projects and agents
 
-`revier list` is the overview. Name the projects on every `--json` call: without a name it prints every project in full, thousands of lines. A `name@host` row is a link to a project on another machine, and its name is the part before the `@`.
+`revier list` is the overview. Name the projects on every `--json` call you read: without a name it prints every project in full, thousands of lines. A search across every project pipes the unnamed call into `jq`. A `name@host` row is a link to a project on another machine, and its name is the part before the `@`.
 
 One unknown name fails the whole `--json` call with `no project named`, so keep its stderr. Where the user names a project by a word that is not its name, such as its repository, its directory or the activity of an agent, find it with the script of this skill, unless the Scripts line above shows no python3:
 
