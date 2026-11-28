@@ -50,19 +50,19 @@ An agent at `attention` shows a dialog, often a permission question, so the answ
 
 ## Resume a session
 
-To bring back a Claude Code conversation in a new agent tab, as a `kind:park` task asks, take its session `<id>`, its `<project>`, and its start `<dir>` where it names one. The step needs revier 0.28.0 or later, for `agent wait --json`: on an older one, tell the user to update revier and stop here. `find`, `test`, `jq` and `claude agents` are outside the tools this skill runs without a prompt, so steps 1 to 3 ask the user for permission.
+To bring back a Claude Code conversation in a new agent tab, as a `kind:park` task asks, take its session `<id>`, its `<project>`, and its start `<dir>` where it names one. The step needs revier 0.28.0 or later, for `agent wait --json`: on an older one, tell the user to update revier and stop here. `find`, `test`, `jq` and `claude agents` are outside the tools this skill runs without a prompt, so steps 1 to 3 ask the user for permission. Step 3 needs `jq` and the `claude` CLI: where `command -v` prints nothing for one, report that the live check cannot run, name the tool, and stop here.
 
 0. Where `<id>` equals `$CLAUDE_CODE_SESSION_ID`, the conversation is this one and it already runs: report that and stop here.
 1. The transcript: `find ~/.claude/projects -maxdepth 2 -name '<id>.jsonl'`. Where it prints nothing, the result is "conversation gone": report it and stop here.
-2. The directory, where `<dir>` is given: `test -d <dir>`. Where it fails, the result is "directory gone": report it and stop here.
-3. The conversation is not live. A live conversation resumed a second time runs twice, so each check must print `false`:
+2. The directory, where `<dir>` is given: `test -d '<dir>'`. Where it fails, the result is "directory gone": report it and stop here.
+3. The conversation is not live. A live conversation resumed a second time runs twice, so each check must print nothing:
 
    ```bash
-   revier list --json | jq --arg id <id> 'any(.[].agents[]?; .state.session == $id)'
-   claude agents --json | jq --arg id <id> 'any(.[]; .sessionId == $id)'
+   revier list --json | jq -r --arg id <id> '.[] | .project.name as $n | .agents[]? | select(.state.session == $id) | "\($n):\(.target):\(.panel)"'
+   claude agents --json | jq -r --arg id <id> '.[] | select(.sessionId == $id) | "\(.name) in \(.cwd)"'
    ```
 
-   The default `claude agents --json` lists the live sessions, the set this check needs. Where one prints `true`, report which agent holds it and stop here.
+   The default `claude agents --json` lists the live sessions, the set this check needs. Where one prints a line, report it as the agent that holds the conversation and stop here.
 4. `revier list --json <project>` has `.home`. Where it has none, give the user `revier open <project>` and stop here.
 5. Resume it, with `--no-focus` directly after `agent new`, and keep stdout, the `<agent>` address, apart from stderr:
 
@@ -71,7 +71,9 @@ To bring back a Claude Code conversation in a new agent tab, as a `kind:park` ta
    ```
 
 6. A stderr line with "was not resumed" or "has written no transcript" is a failed resume, also with exit 0: the tab holds an empty agent. Report the line, tell the user to close that tab, because a hook of this plugin refuses `agent close`, and stop here.
-7. Confirm the conversation with `revier agent wait <agent> --until idle --timeout 30 --json`, and handle an error as the `wait` of step 2 does. It ends in one of three ways:
+7. Confirm the conversation with `revier agent wait <agent> --until idle --timeout 30 --json`. It ends in one of these ways:
    - It prints `idle` with a `.session` equal to `<id>`: the resume holds. Report the address.
    - It prints `idle` with another `.session`: the resume failed. Report both ids and the address, tell the user to close that tab as in step 6, and stop here.
    - It prints `attention` or `unknown`, or exits 2 with the agent at one of them in `revier list --json <project>`: the tab can show a dialog of the harness, such as a trust question for the directory. Read it with `revier agent read <agent> --screen`, ask the user to answer it in that tab, then run the `wait` again.
+   - It exits 2 with the agent at `running`: the harness still loads the conversation, so run the `wait` again.
+   - It fails with another error: the harness has not started, so run the `wait` again. After one minute of that error, report the message of revier and stop here.
