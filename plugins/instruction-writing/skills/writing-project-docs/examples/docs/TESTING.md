@@ -12,8 +12,8 @@
 Integration tests require a running PostgreSQL instance:
 
 ```bash
-make dev-db             # start Postgres via Docker Compose
-make test-integration   # run integration tests against it
+make dev-db
+make test-integration
 ```
 
 Set `DATABASE_URL` to run them against another database.

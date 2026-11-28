@@ -122,7 +122,7 @@ that it still finds every match when one is added — no fixed line counts.
 An `AGENTS.md` route exists because the doc behind it holds something the agent needs for that kind
 of work. State it that way: **`MUST read <doc> before <the action that triggers it>`** — cutting a
 release loads `RELEASING.md` first, touching a file in the source tree loads `CODING.md` first,
-searching the repository loads `OVERVIEW.md` first. There are no optional routes.
+a first `grep`, `rg` or `Glob` in the repository loads `OVERVIEW.md` first. There are no optional routes.
 
 Two things make the obligation fire:
 

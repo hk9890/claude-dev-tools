@@ -29,7 +29,7 @@ Add a new file under `migrations/`; never edit an applied one, because the servi
 ## Code generation
 
 ```bash
-make generate   # regenerates mocks under internal/mocks/
+make generate
 ```
 
 Re-run after changing any interface in `internal/store/` or `internal/api/`.

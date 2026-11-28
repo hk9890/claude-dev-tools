@@ -1,6 +1,6 @@
 ---
 name: project-review-docs
-description: "Audit of a project's docs for gaps, misplaced content, contradictions, dead links, and whether agents can and do actually use them; judges the docs as documents, and the audit never opens the code; reports fixes, applies the ones the user approves, and records each finding the user declines as a decision."
+description: "Audit of a project's docs for gaps, misplaced content, contradictions, dead links, and whether agents can and do actually use them; judges the docs as documents, and the audit never opens the code; reports fixes, applies the ones the user approves, and records each placement, size or gap finding the user declines as a decision."
 user-invocable: true
 disable-model-invocation: true
 argument-hint: "[low|medium|high|ultra] [path]"
@@ -124,7 +124,7 @@ workflow returns a structured report; relay it, then apply what the user approve
      and offer to re-run; `raw.read_findings` holds one flat list of every review
      agent's findings, unmerged and each naming its own file, so relay it only as
      raw material, never as the report. List each entry with `covered_by` apart, as
-     covered by its decision and not verified, because the synthesis stage checks that claim.
+     covered by its decision and not verified, because the synthesis stage that checks that claim did not run.
 
    On either path, stop: steps 6 and 7 do not run.
 
@@ -144,7 +144,8 @@ workflow returns a structured report; relay it, then apply what the user approve
    Done when every fix the user approved is made.
 
 7. Record what the user declined. Skip this step where the step-1 path holds no `AGENTS.md`:
-   a decision line there routes nowhere. Take each declined item: an open item about where content
+   a decision line there routes nowhere, so say that the declined items come back in the
+   next audit. Take each declined item: an open item about where content
    sits, how much of it a doc holds, or a gap, that step 6 did not apply. Show the line it gets among the
    decisions of `docs/DOCUMENTING.md` under the step-1 path: the file, the content that
    stays or what stays undocumented, and why it stays. The why is the reason the user gave,
@@ -157,7 +158,7 @@ workflow returns a structured report; relay it, then apply what the user approve
    its Decisions section holds the lines. Where `AGENTS.md` does not route to it, add the
    route in the form of `<STANDARD_DIR>/examples/AGENTS.md`, in place of a route for the same
    use case to `instruction-writing:writing-project-docs`. Each other open item that step 6
-   did not apply is declined too, and gets no line, because no decision settles it: say that it comes back in the
+   did not apply gets no line, because no decision settles it: say that it comes back in the
    next audit.
 
    Done when each line the user said yes to is in that file, and `AGENTS.md` routes to the
