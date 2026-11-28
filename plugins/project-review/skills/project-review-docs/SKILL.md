@@ -126,6 +126,8 @@ workflow returns a structured report; relay it, then apply what the user approve
      raw material, never as the report. Leave out each entry with `covered_by`, a
      finding a recorded decision settles, and say how many you left out.
 
+   On either path, stop: steps 6 and 7 do not run.
+
    Once relayed, follow `<SKILL_DIR>/../../references/decision-split.md`
    over the open findings. "The docs audit" is what was reviewed.
 
@@ -146,12 +148,18 @@ workflow returns a structured report; relay it, then apply what the user approve
    stays or what stays undocumented, and why it stays. The why is the reason the user gave,
    else the tradeoff of the option the user picked; where neither exists, ask for it. It
    states why the content stays, never what the audit said. Ask a yes or no for each line.
-   Write each "yes" line under the file's Decisions heading. Where the file is missing,
-   create it with that heading, and add its route to `AGENTS.md` in the form of
-   `<STANDARD_DIR>/examples/AGENTS.md`. Each other open item that step 6 did not apply gets
-   no line, because no decision settles it: say that it comes back in the next audit.
+   Where the file is missing, or `AGENTS.md` does not route to it, say in the same question
+   that a yes also creates the file, or the route. Write each "yes" line among the file's
+   decisions. Where the file is missing, create it in the form of
+   `<STANDARD_DIR>/examples/docs/DOCUMENTING.md`: its opener names the standard's skill, and
+   its Decisions section holds the lines. Where `AGENTS.md` does not route to it, add the
+   route in the form of `<STANDARD_DIR>/examples/AGENTS.md`, in place of a route for the same
+   use case to `instruction-writing:writing-project-docs`. Each other open item that step 6
+   did not apply gets no line, because no decision settles it: say that it comes back in the
+   next audit.
 
-   Done when each line the user said yes to is in that file, and `AGENTS.md` routes to it.
+   Done when each line the user said yes to is in that file, and `AGENTS.md` routes to the
+   file wherever a line was written. With no yes, the step is done with nothing written.
 
 If `python3` is missing or the workflow cannot launch, read every doc in full by
 hand against all three parts of the standard — `<STANDARD_DIR>/references/project-setup.md`
