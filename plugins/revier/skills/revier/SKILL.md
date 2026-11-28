@@ -1,7 +1,7 @@
 ---
 name: revier
 description: "revier: other projects on this machine, their agents, and their source."
-when_to_use: "Use when a task needs another project or another agent the user runs: its checkout, its agents and their state, prompting one, or the projects worked in lately. Triggers on 'revier', 'the agent in <project>', 'other Claude instances in this project', 'the projects I worked on', and on another app or repo the user names that is not this checkout ('do you see the <name> app'), before any file search for it. Not for subagents this session spawns. ListAgents shows every session, not which agents work in a project."
+when_to_use: "Use when a task needs another project on this machine (an app or repo the user names that is not this checkout or a directory in it) or another agent the user runs: its checkout, its agents and their state, prompting one, or the projects worked in lately. Triggers on 'revier', 'the agent in <project>', 'other Claude instances in this project', 'the projects I worked on', 'is the <name> repo on this machine'. Not for subagents this session spawns. ListAgents shows every session, not which agents work in a project."
 allowed-tools: Bash(revier version*), Bash(revier --help*), Bash(revier status*), Bash(revier list*), Bash(revier events*), Bash(revier agent --help*), Bash(revier agent wait*), Bash(revier agent read*), Bash(revier agent prompt*), Bash(revier agent new --no-focus*), Bash(python3 --version*), Bash(python3 */skills/revier/scripts/past-use.py*), Bash(python3 */skills/revier/scripts/find-project.py*)
 ---
 
