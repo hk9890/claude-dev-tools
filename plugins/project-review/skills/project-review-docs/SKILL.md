@@ -1,12 +1,12 @@
 ---
 name: project-review-docs
-description: "Read-only audit of a project's docs for gaps, misplaced content, contradictions, dead links, and whether agents can and do actually use them; judges the docs as documents and never opens the code; reports fixes, never edits."
+description: "Read-only audit of a project's docs for gaps, misplaced content, contradictions, dead links, and whether agents can and do actually use them; judges the docs as documents and never opens the code; reports fixes, and edits only the decision lines the user approves."
 user-invocable: true
 disable-model-invocation: true
 argument-hint: "[low|medium|high|ultra] [path]"
 ---
 
-Read-only documentation audit. Launch the review workflow — do **not** review the
+Documentation audit, read-only up to the decision lines of step 5. Launch the review workflow — do **not** review the
 docs inline. The workflow returns a structured report; relay it.
 
 ## Run the workflow
@@ -129,14 +129,15 @@ docs inline. The workflow returns a structured report; relay it.
    "the docs audit" is what was
    reviewed.
 
-   Where the user's reply declines an open item about where content sits or how much of it
-   a doc holds, give one line for the decisions of `docs/DOCUMENTING.md`: the file, the
-   content that stays, and why. A declined gap gets one line too: what stays undocumented,
-   and why. The next audit raises the item again without its line. Any other declined item gets
-   no line, because no decision settles it: say that the next audit raises it again.
+   After the user's reply, take each declined item about where content sits, how much of it
+   a doc holds, or a gap. Show the line it gets among the decisions of
+   `docs/DOCUMENTING.md`: the file, the content that stays or what stays undocumented, and
+   why. Ask a yes or no for each line. Write each "yes" line into that file, and nothing for
+   a "no": without its line the next audit raises the item again. Any other declined item
+   gets no line, because no decision settles it: say that the next audit raises it again.
 
    Done when every open item has been put to the user, the settled batch has been named,
-   and each declined item about placement, size or a gap has its line.
+   and each line the user said yes to is in `docs/DOCUMENTING.md`.
 
 If `python3` is missing or the workflow cannot launch, read every doc in full by
 hand against all three parts of the standard — `<STANDARD_DIR>/references/project-setup.md`
