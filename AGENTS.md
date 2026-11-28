@@ -2,7 +2,7 @@
 
 ## Repository purpose
 
-Plugin marketplace for Claude Code. Each subdirectory under `plugins/` is one independently installable plugin.
+Plugin marketplace for Claude Code. Each subdirectory under `plugins/` is one independently installable plugin. Other projects install the plugins and use nothing else of this repository.
 
 ## Use-case routing
 
