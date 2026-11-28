@@ -58,6 +58,14 @@ Walk the documents for duties deliberately. A duty is discharged somewhere the s
 does not touch, so nothing in the code under review points at it — this is the half a
 general code review cannot see, and it is not found by waiting to trip over it.
 
+A broken rule is **mechanical** where a fixed pattern, a banned API, an import shape or a
+file location decides it. Where no linter rule or test of the project checks it, the
+finding's action names the check to build in the project's own linter or test suite, which
+then holds the rule in place of the document's sentence. The check prints the rule's
+document and section and the fix when it fails, takes an exemption only as a list entry
+with its reason, and fails when its file set is empty. The action is `open`: building the
+check is the user's call.
+
 ## What is not a finding
 
 **A problem no document states.** You will see them, and they are real. They are not
