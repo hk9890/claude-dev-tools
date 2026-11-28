@@ -245,20 +245,68 @@ test_decision_records() {
   rm -rf "$dir"
 }
 
-# 9b. a number two records share is listed with both records; distinct numbers are not.
-test_duplicate_decision_numbers() {
-  local dir; dir=$(make_fixture); mkdir -p "$dir/docs/decisions"
-  printf '# 0001: One store\n\nText.\n' > "$dir/docs/decisions/0001-one-store.md"
-  printf '# 0002: A cache\n\nText.\n' > "$dir/docs/decisions/0002-a-cache.md"
+# 9b. the shape of each record and the facts of the tree, one seeded breach per check. A
+#     record within the contract carries no flag, so a flag is always a breach.
+test_record_facts() {
+  local dir; dir=$(make_fixture); local t="$dir/docs/decisions"; mkdir -p "$t"
+  printf '# 0001: One store holds every order\n\nTransactions span rows.\n\nRejected: a store per service, because a refund spans two.\n' > "$t/0001-one-store.md"
+  printf '# One queue\n\nNo number in the heading.\n' > "$t/0002-one-queue.md"
+  printf '# 0009: The number of another file\n\nA body.\n' > "$t/0003-wrong-number.md"
+  { printf '# 0004: A record that is too long\n\n'; printf 'Line %s.\n' 1 2 3 4 5 6 7 8 9; } > "$t/0004-too-long.md"
+  printf '# 0005: A record in another format\n\n**Status**: accepted\n\nDate: 2020-01-01\n\n## Status\n\nThe status of the build decides it.\n' > "$t/0005-status.md"
+  printf '# 0006: The new store\n\nReplaces 0001: one store did not scale.\nReplaces 0042: that record is gone.\n' > "$t/0006-new-store.md"
+  printf '# 0006: The same number again\n\nA body.\n' > "$t/0006-same-number.md"
+  printf '# Index\n\nA list.\n' > "$t/README.md"
+  printf 'notes\n' > "$t/notes.txt"
   local out; out=$("$SCRIPT" "$dir")
-  assert_eq "duplicate-numbers: none on distinct numbers" "0" "$(json_val "$out" "d['summary']['duplicate_decision_numbers']")"
-  printf '# 0002: A queue\n\nText.\n' > "$dir/docs/decisions/0002-a-queue.md"
+  rec() { json_val "$out" "[f['record'] for f in d['files'] if f['path']=='docs/decisions/$1'][0]$2"; }
+  assert_eq "record: a record within the contract carries no flag" "[]" "$(rec 0001-one-store.md "['flags']")"
+  assert_eq "record: its number and the lines under its heading are counted, blank lines left out" "('0001', 2)" \
+    "$(rec 0001-one-store.md "" | python3 -c "import ast,sys; r=ast.literal_eval(sys.stdin.read()); print((r['number'], r['body_lines']))")"
+  assert_contains "record: a heading without the number is flagged" 'line 1 is not the heading `# 0002: <the decision>`' "$(rec 0002-one-queue.md "['flags']")"
+  assert_contains "record: a heading with another number than the file is flagged" "the heading carries 0009, the file name 0003" "$(rec 0003-wrong-number.md "['flags']")"
+  assert_contains "record: more lines than the contract allows are flagged with the count" "9 lines under the heading, the contract allows 8" "$(rec 0004-too-long.md "['flags']")"
+  assert_eq "record: a status line, a date line and a status heading are flagged, prose about a status is not" \
+    "['line 3 is a status or date line', 'line 5 is a status or date line', 'line 7 is a status or date line']" "$(rec 0005-status.md "['flags']")"
+  assert_eq "tree: a number two records share is listed with both files" \
+    "[{'number': '0006', 'paths': ['docs/decisions/0006-new-store.md', 'docs/decisions/0006-same-number.md']}]" \
+    "$(json_val "$out" "d['decisions']['duplicate_numbers']")"
+  assert_eq "tree: a replaced record that is still in the tree is listed, a replaced record that is gone is not" \
+    "[{'path': 'docs/decisions/0006-new-store.md', 'replaces': '0001', 'still_present': ['docs/decisions/0001-one-store.md']}]" \
+    "$(json_val "$out" "d['decisions']['replaced_still_present']")"
+  assert_eq "tree: every file in the tree that is no record is listed, whatever its type" \
+    "['docs/decisions/README.md', 'docs/decisions/notes.txt']" "$(json_val "$out" "d['decisions']['not_records']")"
+  assert_eq "tree: the flagged records are listed once for the stages that read no file entry" \
+    "['docs/decisions/0002-one-queue.md', 'docs/decisions/0003-wrong-number.md', 'docs/decisions/0004-too-long.md', 'docs/decisions/0005-status.md']" \
+    "$(json_val "$out" "[f['path'] for f in d['decisions']['flagged']]")"
+  assert_eq "tree: the summary counts the records and every fact against the contract" "(7, 10)" \
+    "$(json_val "$out" "(d['summary']['decision_records'], d['summary']['decision_record_facts'])")"
+  assert_eq "tree: --brief keeps the facts" "7" "$(json_val "$("$SCRIPT" "$dir" --brief)" "d['decisions']['records']")"
+  local text; text=$("$SCRIPT" "$dir" --format=text)
+  assert_contains "text: a flag shows on the line of its record" "ORPHAN, 9 lines under the heading, the contract allows 8]" "$text"
+  assert_contains "text: a tree fact has a line of its own" "DECISIONS: number 0006 is on" "$text"
+  rm -rf "$dir"
+  # A repo without the tree reports an empty one, not a missing key.
+  dir=$(make_fixture)
+  assert_eq "tree: a repo without docs/decisions reports no record and no fact" "(0, [], [])" \
+    "$(json_val "$("$SCRIPT" "$dir")" "(d['decisions']['records'], d['decisions']['flagged'], d['decisions']['not_records'])")"
+  rm -rf "$dir"
+  # What must stay unflagged, and the forms a Replaces line takes.
+  dir=$(make_fixture); t="$dir/docs/decisions"; mkdir -p "$t/img"
+  printf '\xef\xbb\xbf# 0001: A record saved with a byte-order mark\n\nA body.\n' > "$t/0001-bom.md"
+  printf '# 0002: Each order carries one state\n\nThe service reads the order and its\nstatus: the state of its payment.\n\n```\nStatus: ok\n```\n' > "$t/0002-prose.md"
+  printf '# 0003: Three stores became one\n\n- Replaces 0001 and 0002: two stores drifted.\n**Replaces 0004**: so did the third.\nReplaces 0003: a typo for its own number.\n' > "$t/0003-replaces.md"
+  printf '# 0004: The third store\n\nA body.\n' > "$t/0004-third.md"
+  printf 'x' > "$t/.DS_Store"
   out=$("$SCRIPT" "$dir")
-  assert_eq "duplicate-numbers: a shared number lists both records" \
-    "[('0002', ['docs/decisions/0002-a-cache.md', 'docs/decisions/0002-a-queue.md'])]" \
-    "$(json_val "$out" "[(x['number'], x['files']) for x in d['duplicate_decision_numbers']]")"
-  assert_contains "duplicate-numbers: the text format names the number and its records" \
-    "DECISION number 0002 on 2 records" "$("$SCRIPT" "$dir" --format=text)"
+  assert_eq "record: a byte-order mark before the heading is no breach" "[]" "$(rec 0001-bom.md "['flags']")"
+  assert_eq "record: a wrapped sentence and a fenced line that start with a status word are no status line" "[]" "$(rec 0002-prose.md "['flags']")"
+  assert_eq "record: a Replaces line gives every number on it, behind list or bold markup, and never its own" \
+    "['0001', '0002', '0004']" "$(rec 0003-replaces.md "['replaces']")"
+  assert_eq "tree: each replaced record that is still there is listed" "['0001', '0002', '0004']" \
+    "$(json_val "$out" "[r['replaces'] for r in d['decisions']['replaced_still_present']]")"
+  assert_eq "tree: a dot-file is left out, and a directory shows as one" "['docs/decisions/img/']" \
+    "$(json_val "$out" "d['decisions']['not_records']")"
   rm -rf "$dir"
 }
 
@@ -402,7 +450,7 @@ test_dead_link
 test_dir_link_ok
 test_reachability
 test_decision_records
-test_duplicate_decision_numbers
+test_record_facts
 test_claude_ok
 test_claude_bad
 test_claude_symlink
