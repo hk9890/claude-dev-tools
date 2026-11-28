@@ -24,6 +24,6 @@
 <optional: what the merge can break>
 ```
 
-Keep prose brief, in the project's own terms. `worktree-flow:worktree-review` adds the **Review** line to `## Evidence`.
+Keep prose brief, in the project's own terms. Write each command as the PR's readers run it: for a wrapper that only a private or gitignored file defines, write the command it runs. `worktree-flow:worktree-review` adds the **Review** line to `## Evidence`.
 
 A one-way door is a destructive or hard-to-reverse change. The blast radius is the widest thing the merge can break: `none` (docs or comments), `local` (the changed module and its callers here), `consumers` (anything that installs or calls this project), `data` (stored data, or anything a rollback does not restore).
