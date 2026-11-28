@@ -12,6 +12,8 @@ Local review rules. The review skills that apply them are `project-review:projec
 
 Each is a condition to check on the diff.
 
+- **A plugin sends a project only to what the install delivers.** A file under `plugins/` tells a project to use its own plugin's files, a plugin it declares or checks for ([CODING.md](CODING.md#portability)), and the project's own tree. Flag any instruction to a project that reaches past that: to run, read, copy, import or link a file of this repository outside an installed plugin (`scripts/`, `docs/`, `tests/`, `.github/`), or to clone, check out or fetch this repository. A comment for this repository's maintainers and the `homepage` and `repository` fields of `plugin.json` give a project no instruction.
+
 - **Skill and agent text.** A changed `SKILL.md`, a file it bundles or shares, or a file under a plugin's `agents/` meets the `instruction-writing:writing-skills` rubric. Call the Skill tool with `instruction-writing:writing-skills` and the changed paths, even where it loaded earlier in this session, and apply every rule of it and of the `writing-hygiene.md` it points to; reading the file is not loading the skill. Then run `plugin-dev:skill-reviewer` on each changed `SKILL.md`; each point it raises that the rubric backs is a finding:
 
   ```

@@ -8,7 +8,7 @@ argument-hint: "[change-to-make]"
 
 **Ship this change as a reviewed PR:** $ARGUMENTS
 
-With no argument, ship **the change the user stated or approved in this conversation**, else the change the checkout holds. A run can resume: skip each step whose result already stands for the current tree. The project's own change rules win over this skill. On a forge other than GitHub, run each `gh` step with the forge CLI the project documents; with none documented, or where that CLI cannot read the PR's state, stop and ask the user.
+With no argument, ship **the change the user stated or approved in this conversation**, else the change the checkout holds. A run can resume: skip each step whose result already stands for the current tree. A worktree-isolated session refuses a command it cannot verify, such as one with `$(...)`, a variable or a computed path: in a worktree, write each command with literal arguments; on a refusal, rewrite it as plain calls that do the same (`git -C <dir>` for a `cd`), and for a command this skill or its references say to run as one, stop and ask the user. The project's own change rules win over this skill. On a forge other than GitHub, run each `gh` step with the forge CLI the project documents; with none documented, or where that CLI cannot read the PR's state, stop and ask the user.
 
 ## 1. Read the project's change rules
 
@@ -40,7 +40,7 @@ Done when each gate and drive is green, skipped, or red on the base branch too w
 
 ## 5. Open the PR
 
-Commit in the project's style, and push with upstream tracking under the project's branch naming, or, where HEAD's upstream is an open PR's head branch, to that branch. Write the body in the shape of [the PR body template](references/pr-body.md) and open the PR against the base branch, or update the body of the PR step 2 looked up.
+Commit in the project's style, and push with upstream tracking under the project's branch naming, or, where HEAD's upstream is an open PR's head branch, to that branch. Write the body in the shape of [the PR body template](references/pr-body.md) and open the PR against the base branch, or update the body of the PR step 2 looked up; on a PR where `gh pr view <pr-number> --json author --jq .author.login` is not `gh api user --jq .login`, keep the author's text: add your body below a line `<!-- worktree-ship -->`, and in each later edit change only what is below that line in the body `gh pr view <pr-number> --json body` prints then.
 
 ## 6. Review
 
