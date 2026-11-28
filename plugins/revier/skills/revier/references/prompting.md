@@ -47,3 +47,28 @@
 ## An agent at attention
 
 An agent at `attention` shows a dialog, often a permission question, so the answer belongs to its user. Report the agent and its status to the user, and stop here: steps 4 to 6 need an agent that is past its dialog.
+
+## Resume a session
+
+To bring back a Claude Code conversation in a new agent tab, as a `kind:park` task asks, take its session `<id>`, its `<project>`, and its start `<dir>` where it names one. `find`, `test`, `jq` and `claude agents` are outside the tools this skill runs without a prompt, so steps 1 to 3 ask the user for permission.
+
+0. Where `<id>` equals `$CLAUDE_CODE_SESSION_ID`, the conversation is this one and it already runs: report that and stop here.
+1. The transcript: `find ~/.claude/projects -maxdepth 2 -name '<id>.jsonl'`. Where it prints nothing, the result is "conversation gone": report it and stop here.
+2. The directory, where `<dir>` is given: `test -d <dir>`. Where it fails, the result is "directory gone": report it and stop here.
+3. The conversation is not live. A live conversation resumed a second time runs twice, so each check must print `false`:
+
+   ```bash
+   revier list --json | jq --arg id <id> 'any(.[].agents[]?; .state.session == $id)'
+   claude agents --json | jq --arg id <id> 'any(.[]; .sessionId == $id)'
+   ```
+
+   Run `claude agents --json` as it is: `--all` adds sessions that are done. Where one prints `true`, report which agent holds it and stop here.
+4. `revier list --json <project>` has `.home`. Where it has none, give the user `revier open <project>` and stop here.
+5. Resume it, with `--no-focus` directly after `agent new`, and keep stdout, the `<agent>` address, apart from stderr:
+
+   ```bash
+   revier agent new --no-focus -p <project> --resume <id> [--dir <dir>]
+   ```
+
+6. A stderr line with "was not resumed" or "has written no transcript" is a failed resume, also with exit 0: the tab holds an empty agent. Report the line, and tell the user to close that tab: a hook of this plugin refuses `agent close`.
+7. Confirm the conversation: `revier agent wait <agent> --until idle --timeout 30 --json`. Where it fails because the harness has not started, run it again for up to one minute. The resume holds when its `.session` equals `<id>`. Where it names another session, report both ids and the address.

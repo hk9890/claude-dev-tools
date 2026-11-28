@@ -26,7 +26,7 @@ revier also places and raises windows, and the user is typing in one of them whi
 | `revier agent wait` | blocks until an agent reaches a status |
 | `revier agent prompt` | types one line into an agent and submits it |
 | `revier agent read` | prints the last message of an agent, or with `--screen` the text of its panel |
-| `revier agent new --no-focus` | adds an agent tab to the open home window and prints the address of the agent |
+| `revier agent new --no-focus` | adds an agent tab to the open home window and prints the address of the agent; with `--resume`, follow "Resume a session" |
 
 This skill needs revier 0.22.0 or later: where the "Installed" line above shows an older one, tell the user to update revier, and do nothing else with this skill.
 
@@ -79,4 +79,4 @@ For a question about the last days, such as which projects the user worked in, r
 
 ## Prompting another agent
 
-Before your first `revier agent` command of any kind (`wait`, `read`, `prompt` or `new`), read `<base directory for this skill>/references/prompting.md`. Follow all of it to prompt an agent. To add an agent without a prompt, stop after the `wait` of step 2. For any other command, use steps 1 and 2 only to find the agent, add none and send no prompt, then follow the steps of the commands you run. A prompt redirects work the user started in another window: send one only when the user asked you to reach that agent.
+Before your first `revier agent` command of any kind (`wait`, `read`, `prompt` or `new`), read `<base directory for this skill>/references/prompting.md`. Follow all of it to prompt an agent. To add an agent without a prompt, stop after the `wait` of step 2. For any other command, use steps 1 and 2 only to find the agent, add none and send no prompt, then follow the steps of the commands you run. To resume a conversation, follow its "Resume a session" step alone. A prompt redirects work the user started in another window: send one only when the user asked you to reach that agent.

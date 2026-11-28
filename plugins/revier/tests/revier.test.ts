@@ -115,6 +115,7 @@ const ALLOWED = [
   'address=$(revier agent new -p x --no-focus)',
   'timeout 30 revier agent new -p x --no-focus',
   'revier agent new -p "$(basename "$PWD")" --no-focus',
+  'revier agent new --no-focus -p x --resume 6c8b5a4e-239b-4721-af05-157e3161cd36 --dir /path',
 ]
 
 // The guard is best effort: these pass it. A change that closes a gap moves its command to DENIED.
