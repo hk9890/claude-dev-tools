@@ -1,13 +1,13 @@
 ---
 name: project-review-docs
-description: "Audit of a project's docs for gaps, misplaced content, contradictions, dead links, and whether agents can and do actually use them; judges the docs as documents and never opens the code; reports fixes, and edits only the decision lines the user approves."
+description: "Audit of a project's docs for gaps, misplaced content, contradictions, dead links, and whether agents can and do actually use them; judges the docs as documents and never opens the code; reports fixes, applies the ones the user approves, and records each finding the user keeps as a decision."
 user-invocable: true
 disable-model-invocation: true
 argument-hint: "[low|medium|high|ultra] [path]"
 ---
 
-Documentation audit, read-only up to the decision lines of step 5. Launch the review workflow — do **not** review the
-docs inline. The workflow returns a structured report; relay it.
+Documentation audit. Launch the review workflow — do **not** review the docs inline. The
+workflow returns a structured report; relay it, then apply what the user approves.
 
 ## Run the workflow
 
@@ -127,22 +127,31 @@ docs inline. The workflow returns a structured report; relay it.
      finding a recorded decision settles, and say how many you left out.
 
    Once relayed, follow `<SKILL_DIR>/../../references/decision-split.md`
-   over the open findings.
-   "the docs audit" is what was
-   reviewed.
+   over the open findings. "The docs audit" is what was reviewed.
 
-   After the user's reply, take each open item the user declined that is about where
-   content sits, how much of it a doc holds, or a gap. Show the line it gets among the
+   Done when every open item has been put to the user and the settled batch has been named.
+
+6. Apply what the user approved. After the user's reply, call the Skill tool with
+   `instruction-writing:writing-project-docs`, even where it loaded earlier in this session,
+   and make the fixes in the docs under the step-1 path: the settled batch and each
+   **Done on "go"** item, each except where the user stopped it, and the option the user
+   picked for each **Needs you** item. Where the reply does not show whether it takes an
+   item, ask.
+
+   Done when every fix the user approved is made.
+
+7. Record what the user kept. Take each open item about where content sits, how much
+   of it a doc holds, or a gap, that step 6 did not apply. Show the line it gets among the
    decisions of `docs/DOCUMENTING.md` under the step-1 path: the file, the content that
    stays or what stays undocumented, and why it stays. The why is the reason the user gave,
    else the tradeoff of the option the user picked; where neither exists, ask for it. It
    states why the content stays, never what the audit said. Ask a yes or no for each line.
-   Write each "yes" line into that file, and nothing for a "no". Any other declined item
-   gets no line, because no decision settles it. Say that each declined item without a line
-   comes back in the next audit.
+   Write each "yes" line under the file's Decisions heading. Where the file is missing,
+   create it with that heading, and add its route to `AGENTS.md` in the form of
+   `<STANDARD_DIR>/examples/AGENTS.md`. Each other open item that step 6 did not apply gets
+   no line, because no decision settles it: say that it comes back in the next audit.
 
-   Done when every open item has been put to the user, the settled batch has been named,
-   and each line the user said yes to is in the `docs/DOCUMENTING.md` under the step-1 path.
+   Done when each line the user said yes to is in that file, and `AGENTS.md` routes to it.
 
 If `python3` is missing or the workflow cannot launch, read every doc in full by
 hand against all three parts of the standard — `<STANDARD_DIR>/references/project-setup.md`
@@ -181,4 +190,4 @@ empirical test-suite strength →
 interactively → `challenge:kiss`. **Writing or fixing the docs** — the file set,
 where a piece of content belongs, the worked examples →
 `instruction-writing:writing-project-docs`; this skill audits what is there, and writes only
-the decision lines of step 5.
+what the user approves in steps 6 and 7.
