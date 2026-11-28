@@ -67,8 +67,9 @@ script deciding what counts as a claim, which is guessing.
    themselves, and the unresolved links the manifest lists. Each agent returns the files it
    reviewed, and a file no agent lists is named in the log and the report.
 
-   Where the repo has a `docs/DOCUMENTING.md`, every batch agent also reads it and is told to
-   drop the findings its recorded decisions already settle: a gap, and a declined finding about
+   Where the repo has a `docs/DOCUMENTING.md`, every batch agent also reads it, and returns
+   each finding its recorded decisions settle with `covered_by` quoting the decision, for
+   synthesis to drop and name. A decision settles a gap, and a declined finding about
    where content sits or how much of it a file holds, where a decision names that file and
    that content as staying. The suppression is scoped to those two by name: a false claim, a
    stale command, a dead link, or out-of-boundary content that no decision names stays at
