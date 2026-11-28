@@ -1,6 +1,6 @@
 ---
 name: project-review-docs
-description: "Read-only audit of a project's docs for gaps, misplaced content, contradictions, dead links, and whether agents can and do actually use them; judges the docs as documents and never opens the code; reports fixes, and edits only the decision lines the user approves."
+description: "Audit of a project's docs for gaps, misplaced content, contradictions, dead links, and whether agents can and do actually use them; judges the docs as documents and never opens the code; reports fixes, and edits only the decision lines the user approves."
 user-invocable: true
 disable-model-invocation: true
 argument-hint: "[low|medium|high|ultra] [path]"
@@ -123,22 +123,26 @@ docs inline. The workflow returns a structured report; relay it.
    - a null or absent `report` with no `error` — the synthesis stage died. Say so
      and offer to re-run; `raw.read_findings` holds one flat list of every review
      agent's findings, unmerged and each naming its own file, so relay it only as
-     raw material, never as the report.
+     raw material, never as the report. Leave out each entry with `covered_by`, a
+     finding a recorded decision settles, and say how many you left out.
 
    Once relayed, follow `<SKILL_DIR>/../../references/decision-split.md`
    over the open findings.
    "the docs audit" is what was
    reviewed.
 
-   After the user's reply, take each declined item about where content sits, how much of it
-   a doc holds, or a gap. Show the line it gets among the decisions of
-   `docs/DOCUMENTING.md`: the file, the content that stays or what stays undocumented, and
-   why. Ask a yes or no for each line. Write each "yes" line into that file, and nothing for
-   a "no". Any other declined item gets no line, because no decision settles it. Say that
-   each declined item without a line comes back in the next audit.
+   After the user's reply, take each open item the user declined that is about where
+   content sits, how much of it a doc holds, or a gap. Show the line it gets among the
+   decisions of `docs/DOCUMENTING.md` under the step-1 path: the file, the content that
+   stays or what stays undocumented, and why it stays. The why is the reason the user gave,
+   else the tradeoff of the option the user picked; where neither exists, ask for it. It
+   states why the content stays, never what the audit said. Ask a yes or no for each line.
+   Write each "yes" line into that file, and nothing for a "no". Any other declined item
+   gets no line, because no decision settles it. Say that each declined item without a line
+   comes back in the next audit.
 
    Done when every open item has been put to the user, the settled batch has been named,
-   and each line the user said yes to is in `docs/DOCUMENTING.md`.
+   and each line the user said yes to is in the `docs/DOCUMENTING.md` under the step-1 path.
 
 If `python3` is missing or the workflow cannot launch, read every doc in full by
 hand against all three parts of the standard — `<STANDARD_DIR>/references/project-setup.md`
@@ -176,4 +180,5 @@ empirical test-suite strength →
 `project-review-session`. Challenging a single design decision
 interactively → `challenge:kiss`. **Writing or fixing the docs** — the file set,
 where a piece of content belongs, the worked examples →
-`instruction-writing:writing-project-docs`; this skill only audits what is there.
+`instruction-writing:writing-project-docs`; this skill audits what is there, and writes only
+the decision lines of step 5.

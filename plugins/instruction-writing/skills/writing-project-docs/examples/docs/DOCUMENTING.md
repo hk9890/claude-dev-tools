@@ -30,5 +30,5 @@ Re-open one here rather than filling the gap somewhere else.
 - **The hotfix release path stays undocumented.** [RELEASING.md](RELEASING.md) covers the normal
   release. The hotfix path is rare, and on-call
   pages the maintainer for it.
-- **`docs/RUNNING.md` keeps the seed-and-read `curl` pair.** An audit read it as a copy of
-  `api/openapi.yaml`; the spec does not say which two requests prove that a launch works.
+- **`docs/RUNNING.md` keeps the seed-and-read `curl` pair.** It is not a copy of
+  `api/openapi.yaml`: the spec does not say which two requests prove that a launch works.
