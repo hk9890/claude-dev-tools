@@ -28,12 +28,7 @@ git tag v1.2.3
 git push origin v1.2.3
 ```
 
-This triggers the `release.yml` GitHub Actions workflow, which:
-
-1. Runs the full test suite
-2. Builds binaries for all platforms
-3. Builds and pushes the Docker image to `ghcr.io/acme/widget-service:v1.2.3`
-4. Creates a GitHub Release with the binaries attached
+The tag triggers `.github/workflows/release.yml`. It publishes `ghcr.io/acme/widget-service:<tag>` and a GitHub Release; check both before you deploy.
 
 Monitor the run at: `https://github.com/acme/widget-service/actions/workflows/release.yml`
 

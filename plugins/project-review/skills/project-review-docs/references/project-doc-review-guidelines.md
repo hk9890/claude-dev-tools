@@ -69,9 +69,12 @@ script deciding what counts as a claim, which is guessing.
    themselves, and the unresolved links the manifest lists. Each agent returns the files it
    reviewed, and a file no agent lists is named in the log and the report.
 
-   Where the repo has a `docs/DOCUMENTING.md`, every batch agent also reads it and is told to
-   drop gap findings its recorded decisions already settle. The suppression is scoped to gaps
-   by name: a false claim, a stale command, a dead link, or out-of-boundary content stays at
+   Where the repo has a `docs/DOCUMENTING.md`, every batch agent also reads it, and returns
+   each finding its recorded decisions settle with `covered_by` quoting the decision, for
+   synthesis to drop and name. A decision settles a gap, and a declined finding about
+   where content sits or how much of it a file holds, where a decision names that file and
+   that content as staying. The suppression is scoped to those two by name: a false claim, a
+   stale command, a dead link, or out-of-boundary content that no decision names stays at
    full severity whatever the decisions say, and a decision that contradicts the repo is
    itself a finding. Repos without the file are told none of those doc decisions.
 
@@ -97,7 +100,8 @@ script deciding what counts as a claim, which is guessing.
    agent covered, then verdict and report. A finding that sets a decision record against
    itself, another record or a doc is always `open` and stays at major or above: being a
    record does not make it the right side. It re-reads `docs/DOCUMENTING.md` where one exists and
-   drops any surviving finding those decisions settle, naming in `cross_file_notes` what it
+   drops each finding those decisions settle, the ones a batch agent marked `covered_by`
+   included, naming in `cross_file_notes` what it
    dropped and which decision covered it — so a suppression is visible rather than silent.
 
 ## Where the bars live
@@ -108,14 +112,14 @@ Change them at the authoritative site. This table is the index, not the source.
 |---|---|
 | The six authoring rules, the doc-set failure modes | `instruction-writing:writing-project-docs`, loaded by each doc-batch agent; the records agent does not read them |
 | Single source of truth, cache, relevance, sediment, no-ops, negation | `references/writing-hygiene.md` at the `instruction-writing` plugin root, loaded by each read-review agent; which files get the per-unit *Cache* question, and where its fix sends the unit, in `batchPrompt` in `review-docs.js` |
-| Per-file ownership contract | `project-setup.md`, read by each read-review agent; `contractLines` in `review-docs.js` names the block headed by the file's path |
+| Per-file ownership contract | `project-setup.md`, read by each read-review agent; `contractLines` in `review-docs.js` names the block headed by the file's path and, for a topic doc under `docs/`, the topic-doc exclusions above the blocks |
 | What a decision record is asked, the set, the route, and their severity | `recordsPrompt` in `review-docs.js`; the shape checks in `record_facts` and `tree_facts` in `manifest.py` |
 | Severity (`blocker` / `major` / `minor`) and the escalation rule | `batchPrompt` in `review-docs.js` |
 | What a batch agent reads, and how docs are packed | `batchPrompt`, `orderTargets`, `packBatches`, and `BATCH_BYTES` in `review-docs.js` |
 | Use case → doc, and the classifier's label vocabulary | `USE_CASES` in `review-docs.js` and `USE_CASE_DOCS` in `history.py` — two copies, because workflow scripts cannot import; pinned by `test-history.sh` |
 | What each level buys | `LEVEL_CONFIG` in `review-docs.js` |
 | History finding floor | `MIN_SEGMENTS_FOR_FINDING` in `review-docs.js` |
-| What a repo's recorded doc decisions may suppress | the decisions blocks in `batchPrompt` and in the synthesis prompt, `review-docs.js`; the *Recorded decisions* bullet of `docs/DOCUMENTING.md` in `project-setup.md` states the contract |
+| What a repo's recorded doc decisions may suppress | the decisions blocks in `batchPrompt` and in the synthesis prompt, `review-docs.js`; the *Recorded decisions* and *Declined findings* bullets of `docs/DOCUMENTING.md` in `project-setup.md` state the contract |
 | Overall verdict (`accurate` / `minor gaps` / `significant gaps` / `misleading`) | `REPORT_SCHEMA` and the synthesis prompt |
 
 ## The history stage
@@ -165,8 +169,10 @@ decided intent would quietly decide the findings too.
 
 ## Read-only contract
 
-The reviewer never edits: every finding carries a recommended fix, and applying it is the
-user's separate step. The contract is **not** uniform across stages, deliberately —
+The reviewer never edits: every finding carries a recommended fix. The workflow writes only into
+its scratch dir. The skill writes after the report, and only what the user approves: the fixes,
+and each decision line the user says yes to, which can create `docs/DOCUMENTING.md` and its
+`AGENTS.md` route (`SKILL.md`, steps 6 and 7). The contract is **not** uniform across stages, deliberately —
 `tests/project-review/script-tests/test-readonly-contract.sh` pins the codebase reviewer's
 wording and exempts this workflow on those grounds.
 

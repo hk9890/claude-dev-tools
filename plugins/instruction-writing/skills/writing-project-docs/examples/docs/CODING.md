@@ -5,11 +5,10 @@ What a change to this repository needs in order to work.
 ## Building from source
 
 ```bash
-git clone https://github.com/acme/widget-service.git
-cd widget-service
-make dev-db    # start Postgres via Docker Compose
-make run       # start server on :8080
+make build
 ```
+
+To start the service, follow [RUNNING.md](RUNNING.md).
 
 ## Layer boundaries
 
@@ -25,10 +24,14 @@ make run       # start server on :8080
 2. Register the route in `internal/api/router.go`.
 3. If DB access is needed, add a method to `internal/store/store.go`.
 
+## Changing the schema
+
+Add a new file under `migrations/`; never edit an applied one, because the service applies each file once.
+
 ## Code generation
 
 ```bash
-make generate   # regenerates mocks under internal/mocks/
+make generate
 ```
 
 Re-run after changing any interface in `internal/store/` or `internal/api/`.

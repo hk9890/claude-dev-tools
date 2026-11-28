@@ -15,16 +15,11 @@ docs/user/              user-facing documentation (published to https://docs.acm
 docs/runbooks/          operational runbooks for on-call
 ```
 
-## Key concepts
-
-- All mutations run inside a transaction; partial writes are not possible.
-- Schema migrations run automatically at startup via `store.Migrate()`.
-
 ## Finding things
 
 ```bash
-rg -n 'r\.(Get|Post|Put|Delete)\(' internal/api/router.go   # every endpoint the service serves
-rg -n 'func \(s \*Store\)' internal/store/store.go          # every database operation
+rg -n '\.(Get|Post|Put|Patch|Delete|Head|Options|Connect|Trace|Handle|HandleFunc)\("/|\.Method(Func)?\("[A-Z]+", "/' -g '!*_test.go' internal/api/   # every endpoint the service serves
+rg -n 'func \(s \*Store\)' internal/store/                   # every database operation
 rg -n 'type \w+ struct' internal/model/                     # the domain types
 rg -n '<column-name>' migrations/                           # when a column was added, and by which migration
 ```
