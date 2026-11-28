@@ -13,3 +13,5 @@ Call the Skill tool with `tasks:tasks-core`, even where it loaded earlier in thi
 Record this session's state in the tracker as a handover document: what was done, what is in
 flight, and what whoever picks it up next needs to know. $ARGUMENTS names what to cover — with no
 argument, the whole session.
+
+To continue this same session later instead, the user types `/tasks:tasks-park`.

@@ -26,7 +26,7 @@ revier also places and raises windows, and the user is typing in one of them whi
 | `revier agent wait` | blocks until an agent reaches a status |
 | `revier agent prompt` | types one line into an agent and submits it |
 | `revier agent read` | prints the last message of an agent, or with `--screen` the text of its panel |
-| `revier agent new --no-focus` | adds an agent tab to the open home window and prints the address of the agent |
+| `revier agent new --no-focus` | adds an agent tab to the open home window and prints the address of the agent; with `--resume`, follow "Resume a session" |
 
 This skill needs revier 0.22.0 or later: where the "Installed" line above shows an older one, tell the user to update revier, and do nothing else with this skill.
 
@@ -34,7 +34,7 @@ The rest of the CLI is outside this skill. Most of it opens, raises or closes a 
 
 ## Projects and agents
 
-`revier list` is the overview. Name the projects on every `--json` call: without a name it prints every project in full, thousands of lines. A `name@host` row is a link to a project on another machine, and its name is the part before the `@`.
+`revier list` is the overview. Name the projects on every `--json` call you read: without a name it prints every project in full, thousands of lines. A search across every project pipes the unnamed call into `jq`. A `name@host` row is a link to a project on another machine, and its name is the part before the `@`.
 
 One unknown name fails the whole `--json` call with `no project named`, so keep its stderr. Where the user names a project by a word that is not its name, such as its repository, its directory or the activity of an agent, find it with the script of this skill, unless the Scripts line above shows no python3:
 
@@ -79,4 +79,4 @@ For a question about the last days, such as which projects the user worked in, r
 
 ## Prompting another agent
 
-Before your first `revier agent` command of any kind (`wait`, `read`, `prompt` or `new`), read `<base directory for this skill>/references/prompting.md`. Follow all of it to prompt an agent. To add an agent without a prompt, stop after the `wait` of step 2. For any other command, use steps 1 and 2 only to find the agent, add none and send no prompt, then follow the steps of the commands you run. A prompt redirects work the user started in another window: send one only when the user asked you to reach that agent.
+Before your first `revier agent` command of any kind (`wait`, `read`, `prompt` or `new`), read `<base directory for this skill>/references/prompting.md`. Follow all of it to prompt an agent. To add an agent without a prompt, stop after the `wait` of step 2. For any other command, use steps 1 and 2 only to find the agent, add none and send no prompt, then follow the steps of the commands you run. To resume a conversation, follow its "Resume a session" step alone. A prompt redirects work the user started in another window: send one only when the user asked you to reach that agent.
