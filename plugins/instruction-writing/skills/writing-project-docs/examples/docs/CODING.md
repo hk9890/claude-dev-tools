@@ -5,7 +5,7 @@ What a change to this repository needs in order to work.
 ## Building from source
 
 ```bash
-make build     # binary in bin/
+make build
 ```
 
 To start the service, follow [RUNNING.md](RUNNING.md).

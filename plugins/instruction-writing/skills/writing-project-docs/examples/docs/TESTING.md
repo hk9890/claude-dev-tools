@@ -16,7 +16,7 @@ make dev-db             # start Postgres via Docker Compose
 make test-integration   # run integration tests against it
 ```
 
-Set `DATABASE_URL` to override the default `postgres://localhost:5432/widget_test`.
+Set `DATABASE_URL` to run them against another database.
 
 ## Minimum checks before opening a PR
 

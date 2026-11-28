@@ -22,15 +22,15 @@ Every route below is **mandatory, not advisory**. Load the document BEFORE the f
 
 ### Research, planning, analysis
 
-**MUST read [docs/OVERVIEW.md](docs/OVERVIEW.md) before searching this repository.** It is the map — package layout, where each layer lives, and the expressions that locate things fast. Go there first instead of grepping blind.
+**MUST read [docs/OVERVIEW.md](docs/OVERVIEW.md) before your first `grep`, `rg`, or `Glob` in this repository.** It is the map — package layout, where each layer lives, and the expressions that locate things fast. Go there first instead of grepping blind.
 
 ### Testing and verification
 
-**MUST read [docs/TESTING.md](docs/TESTING.md) before writing a test** or judging whether a change is verified. It owns the test layers, the integration-test setup, and the gates that must pass before you push.
+**MUST read [docs/TESTING.md](docs/TESTING.md) before writing a test or pushing a change.** It owns the test layers, the integration-test setup, and the gates that must pass before you push.
 
 ### Run the service to reproduce a bug or verify a change
 
-**MUST read [docs/RUNNING.md](docs/RUNNING.md) before starting the service locally** or driving it by hand. It owns the launch commands, the health wait, and the steps that reproduce a bug or verify a fix.
+**MUST read [docs/RUNNING.md](docs/RUNNING.md) before starting the service locally** or driving it by hand. It owns the launch commands and the steps that reproduce a bug or verify a fix.
 
 ### Commit, branch, PR workflow
 
