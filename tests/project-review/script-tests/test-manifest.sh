@@ -245,24 +245,20 @@ test_decision_records() {
   rm -rf "$dir"
 }
 
-# 9b. a number two records share, and a cited decisions/NNNN with no record, are listed;
-#     a citation of a record that exists, or one inside a fenced example, is not.
-test_decision_problems() {
+# 9b. a number two records share is listed with both records; distinct numbers are not.
+test_duplicate_decision_numbers() {
   local dir; dir=$(make_fixture); mkdir -p "$dir/docs/decisions"
   printf '# 0001: One store\n\nText.\n' > "$dir/docs/decisions/0001-one-store.md"
   printf '# 0002: A cache\n\nText.\n' > "$dir/docs/decisions/0002-a-cache.md"
   local out; out=$("$SCRIPT" "$dir")
-  assert_eq "decision-problems: none on a clean tree" "0" "$(json_val "$out" "d['summary']['decision_problems']")"
+  assert_eq "duplicate-numbers: none on distinct numbers" "0" "$(json_val "$out" "d['summary']['duplicate_decision_numbers']")"
   printf '# 0002: A queue\n\nText.\n' > "$dir/docs/decisions/0002-a-queue.md"
-  printf '\nSee decisions/0001 and decisions/0007.\n\n```text\ndecisions/0009\n```\n' >> "$dir/docs/CODING.md"
   out=$("$SCRIPT" "$dir")
-  assert_eq "decision-problems: a shared number lists both records" \
-    "['docs/decisions/0002-a-cache.md', 'docs/decisions/0002-a-queue.md']" \
-    "$(json_val "$out" "[p['files'] for p in d['decision_problems'] if p['kind']=='duplicate-number'][0]")"
-  assert_eq "decision-problems: a missing number is listed, one in a fenced example is not" "[('0007', 'docs/CODING.md', 5)]" \
-    "$(json_val "$out" "[(p['number'], p['file'], p['line']) for p in d['decision_problems'] if p['kind']=='missing-record']")"
-  assert_contains "decision-problems: the text format names the missing record" "DECISION 0007 cited at docs/CODING.md:5" \
-    "$("$SCRIPT" "$dir" --format=text)"
+  assert_eq "duplicate-numbers: a shared number lists both records" \
+    "[('0002', ['docs/decisions/0002-a-cache.md', 'docs/decisions/0002-a-queue.md'])]" \
+    "$(json_val "$out" "[(x['number'], x['files']) for x in d['duplicate_decision_numbers']]")"
+  assert_contains "duplicate-numbers: the text format names the number and its records" \
+    "DECISION number 0002 on 2 records" "$("$SCRIPT" "$dir" --format=text)"
   rm -rf "$dir"
 }
 
@@ -406,7 +402,7 @@ test_dead_link
 test_dir_link_ok
 test_reachability
 test_decision_records
-test_decision_problems
+test_duplicate_decision_numbers
 test_claude_ok
 test_claude_bad
 test_claude_symlink

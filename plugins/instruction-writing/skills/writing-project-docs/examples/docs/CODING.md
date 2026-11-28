@@ -17,7 +17,7 @@ make run       # start server on :8080
 |---|---|---|
 | `internal/api/` | HTTP handlers and the business logic they run | DB access; it goes in `internal/store/` |
 | `internal/store/` | All SQL | Business logic; it goes in the handler in `internal/api/` |
-| `internal/model/` | Shared types | Logic or DB imports; they go in `internal/api/` or `internal/store/` |
+| `internal/model/` | Shared types | Logic, which goes in `internal/api/`; DB imports, which go in `internal/store/` |
 
 ## Adding an endpoint
 

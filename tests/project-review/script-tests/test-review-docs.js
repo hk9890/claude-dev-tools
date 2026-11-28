@@ -361,6 +361,7 @@ async function main() {
       { path: '.claude.local.md', classification: 'personal-legacy', metrics },
     ],
     legacy_personal: [{ path: '.claude.local.md', rename_to: 'CLAUDE.local.md', rename_to_exists: true }],
+    duplicate_decision_numbers: [{ number: '0002', files: ['docs/decisions/0002-a.md', 'docs/decisions/0002-b.md'] }],
     agents_routes: [
       { kind: 'file', target: 'docs/CODING.md', text: '**MUST read [docs/CODING.md](docs/CODING.md) before editing ANY file.**' },
       { kind: 'file', target: 'docs/B.md', text: 'See [docs/B.md](docs/B.md) for details.' },
@@ -686,6 +687,11 @@ async function main() {
     synthesisPrompt.includes('adds rename_to to .gitignore'));
   truthy('synthesis: moving a personal file is an open finding',
     synthesisPrompt.includes('moves a personal file (the user edits those'));
+  // Two branches can each add record NNNN; the merge keeps both, and only the manifest sees it.
+  truthy('synthesis: a decision number two records share reaches the report as an open renumbering',
+    synthesisPrompt.includes('{"number":"0002","files":["docs/decisions/0002-a.md","docs/decisions/0002-b.md"]}') &&
+    synthesisPrompt.includes('one OPEN finding against its records') &&
+    synthesisPrompt.includes('the next above both the highest number git has seen and the highest in the folder'));
   truthy('read-review: a personal file under the old name is never read-reviewed',
     !deep.prompts.slice(0, -1).some((p) => p.includes('.claude.local.md')));
 
