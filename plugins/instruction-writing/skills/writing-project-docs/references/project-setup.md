@@ -50,7 +50,8 @@ it holds what an agent cannot get by looking, and points at the code, script or 
 rest (*Economy*). Two exclusions bind every `docs/` topic block below, `docs/decisions/` excepted:
 
 - **What the code does at run time** — sequence, timing, retries, constants, log text, what a
-  script, suite or helper checks — goes in the source comment beside it (*Code narration*).
+  script, suite or helper checks — is a pointer to that code; the doc keeps only the rule the
+  agent must act on (*Code narration*).
 - **What happened** — incidents, verification records, past experiments, project status — goes
   to git or the PR; a decision record holds only the choice an event forced (*Logbook*).
 

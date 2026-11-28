@@ -139,7 +139,8 @@ workflow returns a structured report; relay it, then apply what the user approve
    names, such as a source comment or `.gitignore`: the settled batch and each
    **Done on "go"** item, each except where the user stopped it, and the option the user
    picked for each **Needs you** item. Where the reply does not show whether it takes an
-   item, ask.
+   item, ask. For the private docs, write only under the step-1 path: report each fix that
+   names a file of the repository as not applied, because the user cannot commit there.
 
    Done when every fix the user approved is made.
 
