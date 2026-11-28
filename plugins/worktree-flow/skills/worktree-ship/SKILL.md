@@ -22,7 +22,7 @@ Done when each item above is recorded, and each named issue has a stated title a
 
 Where `git rev-parse --git-dir` and `git rev-parse --git-common-dir` print different paths, the session is in a worktree: stay. Look its PR up with `gh pr view <upstream-branch>`, the upstream without the remote name. With no upstream there is no PR yet. Where the PR is `MERGED` or `CLOSED`, stop: a new change needs a new worktree.
 
-From the main checkout, choose a kebab-case `<worktree-name>`. Where the **dirty check** `git --no-literal-pathspecs status --porcelain --untracked-files=all -- ':/' ':(top,exclude).claude/worktrees'` prints a line, or `git rev-list @{upstream}..HEAD` does where the branch has an upstream, or a `worktree-ship-stray/*` branch exists, read [the stray-work move](references/stray-work.md) and do its **Ask first** and **Move out**: work that belongs to the change leaves the main checkout before `EnterWorktree`. Call `EnterWorktree` with the name before you start any subagent: a subagent that runs while the session enters a worktree loses its Bash. Where the change goes to an open PR with `isCrossRepository` false, whose branch `git worktree list` shows in no checkout, and this run moved no stray work out, run `gh pr checkout <pr-number>` in the new worktree and look the PR up with `gh pr view <pr-number>`; for any other open PR, ask the user.
+From the main checkout, choose a kebab-case `<worktree-name>`. Where the **dirty check** `git --no-literal-pathspecs status --porcelain --untracked-files=all -- ':/' ':(top,exclude).claude/worktrees'` prints a line, or `git rev-list @{upstream}..HEAD` does where the branch has an upstream, or a `worktree-ship-stray/*` branch exists, read [the stray-work move](references/stray-work.md) and do its **Ask first** and **Move out**: work that belongs to the change leaves the main checkout before `EnterWorktree`. Call `EnterWorktree` with the name before you start any subagent: a subagent that runs while the session enters a worktree loses its Bash. Where the change goes to an open PR the user named, read `gh pr view <pr-number> --json isCrossRepository,headRefName,headRefOid`: where `isCrossRepository` is false, `git worktree list` shows `headRefName` in no checkout, and this run moved no stray work out, run `gh pr checkout <pr-number>` in the new worktree; else ask the user.
 
 In the worktree, where this run moved stray work out or continued a move, or where `git branch --list 'worktree-ship-stray/<worktree-name>'` prints a branch, with the last path segment of `git rev-parse --show-toplevel` as the name, do the **Bring in** of [the stray-work move](references/stray-work.md). Then run the setup.
 
@@ -40,7 +40,7 @@ Done when each gate and drive is green, skipped, or red on the base branch too w
 
 ## 5. Open the PR
 
-Commit in the project's style, and push with upstream tracking under the project's branch naming, or, on a branch step 2 checked out with `gh pr checkout`, to that PR's head branch. Write the body in the shape of [the PR body template](references/pr-body.md) and open the PR against the base branch, or update the body of the PR step 2 looked up.
+Commit in the project's style, and push with upstream tracking under the project's branch naming, or, where HEAD's upstream is an open PR's head branch, to that branch. Write the body in the shape of [the PR body template](references/pr-body.md) and open the PR against the base branch, or update the body of the PR step 2 looked up.
 
 ## 6. Review
 
