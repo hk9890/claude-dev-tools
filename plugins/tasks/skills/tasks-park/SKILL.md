@@ -12,14 +12,14 @@ Call the Skill tool with `tasks:tasks-core`, even where it loaded earlier in thi
 
 A park is a task with the label `kind:park`: an agent that picks it brings this same session back with revier. $ARGUMENTS says where the work stopped or what is next. With no argument, write that from this session.
 
-1. Where `revier:revier` is not in the available skills, stop: a park needs revier to resume. Offer the user `/tasks:tasks-handover`, which hands the work to a new agent. Otherwise call the Skill tool with `revier:revier`, even where it loaded earlier in this session.
+1. Where `revier:revier` is not in the available skills, stop: a park needs revier to resume. Offer the user `/tasks:tasks-handover`, which hands the work to a new agent. Otherwise call the Skill tool with `revier:revier`, even where it loaded earlier in this session. Where its Installed line says STOP or shows a revier older than 0.28.0, which its resume step needs, stop and offer `/tasks:tasks-handover` too.
 2. Run `taskmgr hook list`. The gate is its hook `pkg:task-writing:park-body`, which refuses a park body that cannot bring its session back. Where it lists no such hook, tell the user that this store does not check a park body, and write the body of step 5 all the same.
 3. The `<id>` is `${CLAUDE_SESSION_ID}`.
 4. Find the start directory and the project. Both commands need `jq`: where `command -v jq` prints nothing, say so and ask the user for `<dir>` and `<project>`.
    - `<dir>` is the directory that `claude --resume` finds the transcript from: the first `cwd` of the transcript whose name, with each character other than a letter or a digit made `-`, is the name of the folder that holds the transcript. A session that entered a worktree moved its transcript to the worktree's folder, so its first `cwd` is the wrong one, and so is `$PWD`, which moves with each `cd`:
 
      ```bash
-     f=$(find ~/.claude/projects -maxdepth 2 -name '${CLAUDE_SESSION_ID}.jsonl'); jq -r --arg s "$(basename "$(dirname "$f")")" 'select(.cwd) | .cwd | select(gsub("[^A-Za-z0-9]"; "-") == $s)' "$f" | head -1
+     f=$(find "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects" -maxdepth 2 -name '${CLAUDE_SESSION_ID}.jsonl'); jq -r --arg s "$(basename "$(dirname "$f")")" 'select(.cwd) | .cwd | select(gsub("[^A-Za-z0-9]"; "-") == $s)' "$f" | head -1
      ```
 
      Where it prints nothing, ask the user for the directory. Where `<dir>` is under `/tmp/`, stop: it is gone before the park resumes, so offer the user `/tasks:tasks-handover`. Where `<dir>` is under `.claude/worktrees/`, tell the user that the park can resume only while that worktree exists.
@@ -44,7 +44,8 @@ A park is a task with the label `kind:park`: an agent that picks it brings this 
    Next: <what comes next>
 
    ## Recommended action
-   Resume the session in a revier tab:
+   Resume the session in a revier tab, through the "Resume a session" step of the revier skill,
+   which first checks that the session does not run elsewhere:
 
        revier agent new --no-focus -p <project> --resume <id> [--dir <dir>]
 
@@ -52,10 +53,10 @@ A park is a task with the label `kind:park`: an agent that picks it brings this 
    session, then close this park with a reason that names your session.
 
    ## Acceptance criteria
-   - [ ] revier agent wait <address> --until idle --json prints "session":"<id>"
+   - [ ] revier agent wait <address> --until idle --json prints <id> as its session
    ```
 
-   Fill every placeholder but `<address>`, which only the resuming agent knows. The lines and the command above are a copy of "Filing a park" in `taskmgr guide filing`, from the task-writing package. A change to them in one is a change to both.
+   Fill every placeholder but `<address>`, which only the resuming agent knows. The lines that gate checks, the `Session:` line, the resume command with the same id, and no `/tmp/` path, are a copy of "Filing a park" in `taskmgr guide filing`, from the task-writing package. A change to them in one is a change to both.
 6. File it, with a title that names the work, and the body on standard input:
 
    ```bash
