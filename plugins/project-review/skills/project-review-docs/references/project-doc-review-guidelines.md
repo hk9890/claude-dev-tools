@@ -100,7 +100,8 @@ script deciding what counts as a claim, which is guessing.
    agent covered, then verdict and report. A finding that sets a decision record against
    itself, another record or a doc is always `open` and stays at major or above: being a
    record does not make it the right side. It re-reads `docs/DOCUMENTING.md` where one exists and
-   drops any surviving finding those decisions settle, naming in `cross_file_notes` what it
+   drops each finding those decisions settle, the ones a batch agent marked `covered_by`
+   included, naming in `cross_file_notes` what it
    dropped and which decision covered it — so a suppression is visible rather than silent.
 
 ## Where the bars live
@@ -169,7 +170,8 @@ decided intent would quietly decide the findings too.
 ## Read-only contract
 
 The reviewer never edits: every finding carries a recommended fix, and applying it is the
-user's separate step. The contract is **not** uniform across stages, deliberately —
+user's separate step. The one write is the skill's, after the report: each decision line the
+user says yes to, into `docs/DOCUMENTING.md` (`SKILL.md`, step 5). The contract is **not** uniform across stages, deliberately —
 `tests/project-review/script-tests/test-readonly-contract.sh` pins the codebase reviewer's
 wording and exempts this workflow on those grounds.
 

@@ -134,8 +134,8 @@ docs inline. The workflow returns a structured report; relay it.
    a doc holds, or a gap. Show the line it gets among the decisions of
    `docs/DOCUMENTING.md`: the file, the content that stays or what stays undocumented, and
    why. Ask a yes or no for each line. Write each "yes" line into that file, and nothing for
-   a "no": without its line the next audit raises the item again. Any other declined item
-   gets no line, because no decision settles it: say that the next audit raises it again.
+   a "no". Any other declined item gets no line, because no decision settles it. Say that
+   each declined item without a line comes back in the next audit.
 
    Done when every open item has been put to the user, the settled batch has been named,
    and each line the user said yes to is in `docs/DOCUMENTING.md`.
