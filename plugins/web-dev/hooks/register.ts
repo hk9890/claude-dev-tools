@@ -1,7 +1,7 @@
 import type { Register, ToolCheckResult } from 'claude-code'
 
 const OPENS_WINDOW =
-  "This command opens a browser window on the user's screen, and web-dev runs every browser headless. Where a sign-in needs a visible window, give the user the exact `cd <scratch> && playwright-cli -s=<session> open --headed <url>` to run in their own terminal; once they have signed in, `state-save` the state, `close`, and go on headless with `state-load`."
+  "This command opens a browser window on the user's screen, and web-dev runs every browser headless. Where a sign-in needs a visible window, give the user the exact `cd <scratch> && playwright-cli -s=<session> open --headed <url>` to run in their own terminal, and tell them to leave the window open until you have saved the state; once they have signed in, `state-save` the state, `close`, and go on headless with `state-load`."
 const DEVTOOLS_WINDOW =
   'This chrome-devtools command opens a visible Chrome on the user\'s screen, or attaches to one that runs. Start it as `chrome-devtools start --headless --isolated --performanceCrux=false`.'
 const BROWSER_WINDOW =
