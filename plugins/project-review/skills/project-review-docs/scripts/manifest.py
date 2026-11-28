@@ -12,7 +12,8 @@ What is a *fact* here (and therefore lives in this script, never in an agent):
 
   - which Markdown files exist (root + docs/ recursively)
   - which canonical/standard files are present or missing, and which are decision
-    records (docs/decisions/NNNN-*.md)
+    records (docs/decisions/NNNN-*.md); a number two records share, and a cited
+    decisions/NNNN that names no record
   - per-file metrics: line, byte, word, and non-heading-line counts
   - per-file link/reference resolution (file exists, anchor resolves) — a link to
     an existing directory with no anchor resolves OK (valid GitHub navigation)
@@ -362,6 +363,41 @@ def compare_import(abs_path, expected):
     return {"detail": f"extra content ({len(body.splitlines())} line(s))"}
 
 
+_DECISION_CITE_RE = re.compile(r"decisions/([0-9]{4})(?![0-9])")
+
+
+def decision_problems(repo_root, rels):
+    """Two record numbers no git merge catches: a number two records share, and a cited
+    `decisions/NNNN` that names no record. Citations inside fenced code are examples."""
+    records = {}
+    for rel in rels:
+        posix = rel.replace("\\", "/")
+        if DECISION_FILE_RE.match(posix):
+            records.setdefault(os.path.basename(posix)[:4], []).append(posix)
+    problems = [{"kind": "duplicate-number", "number": n, "files": fs}
+                for n, fs in sorted(records.items()) if len(fs) > 1]
+    for rel in rels:
+        if classify(rel)[0] in PERSONAL_CLASSES:
+            continue
+        try:
+            with open(os.path.join(repo_root, rel), encoding="utf-8", errors="replace") as fh:
+                lines = fh.read().splitlines()
+        except OSError:
+            continue
+        in_fence = False
+        for lineno, line in enumerate(lines, 1):
+            if line.strip().startswith(("```", "~~~")):
+                in_fence = not in_fence
+                continue
+            if in_fence:
+                continue
+            for n in sorted(set(_DECISION_CITE_RE.findall(line))):
+                if n not in records:
+                    problems.append({"kind": "missing-record", "number": n,
+                                     "file": rel.replace("\\", "/"), "line": lineno})
+    return problems
+
+
 def build(repo_root):
     vr = _load_validate_routes()
     rels = md_files(repo_root)
@@ -427,6 +463,7 @@ def build(repo_root):
                 injected.append(b)
 
     routes = agents_routes(vr, repo_root)
+    decisions = decision_problems(repo_root, rels)
 
     non_standard = [e for e in files if e["classification"] == "non-standard"]
     legacy_personal = []
@@ -456,6 +493,7 @@ def build(repo_root):
             "location_violations": len(location_violations),
             "injected_blocks": len(injected),
             "legacy_personal": len(legacy_personal),
+            "decision_problems": len(decisions),
             "claude_md_ok": claude["canonical"],
         },
         "claude_md": claude,
@@ -463,6 +501,7 @@ def build(repo_root):
         "location_violations": location_violations,
         "injected_blocks": injected,
         "legacy_personal": legacy_personal,
+        "decision_problems": decisions,
         "orphans": orphans,
         "agents_routes": routes,
         "files": files,
@@ -486,6 +525,11 @@ def format_text(data):
     for l in data["legacy_personal"]:
         move = f"merge into {l['rename_to']}, which exists" if l["rename_to_exists"] else f"rename to {l['rename_to']}"
         out.append(f"  LEGACY personal file: {l['path']} (Claude Code never loads it; {move})")
+    for p in data["decision_problems"]:
+        if p["kind"] == "duplicate-number":
+            out.append(f"  DECISION number {p['number']} on {len(p['files'])} records: {', '.join(p['files'])}")
+        else:
+            out.append(f"  DECISION {p['number']} cited at {p['file']}:{p['line']}: no record has that number")
     out.append("")
     out.append("--- files ---")
     orphan_set = set(data["orphans"])  # single source of truth, computed in build()
