@@ -40,7 +40,7 @@ Done when each gate and drive is green, skipped, or red on the base branch too w
 
 ## 5. Open the PR
 
-Commit in the project's style, and push with upstream tracking under the project's branch naming, or, where HEAD's upstream is an open PR's head branch, to that branch. Write the body in the shape of [the PR body template](references/pr-body.md) and open the PR against the base branch, or update the body of the PR step 2 looked up; on a PR that another account opened (`gh pr view <pr-number> --json author`), add your body below its text and keep that text.
+Commit in the project's style, and push with upstream tracking under the project's branch naming, or, where HEAD's upstream is an open PR's head branch, to that branch. Write the body in the shape of [the PR body template](references/pr-body.md) and open the PR against the base branch, or update the body of the PR step 2 looked up; on a PR whose `author.login` (`gh pr view <pr-number> --json author`) is not `gh api user --jq .login`, add your body below its text and keep that text, in each later edit too.
 
 ## 6. Review
 
