@@ -668,7 +668,7 @@ if (typeof agent === 'function') {
     `deliverable. Then tag every action \`settled\` or \`open\`, leaving none untagged. SETTLED is a plain bug, a typo, ` +
     `a dead exemption, a doc that contradicts code that is clearly right — one correct answer, nothing to weigh. OPEN acts on a finding marked ` +
     `"AGAINST A DECISION RECORD" (the code changes, or a new record replaces the old one: the user's call), changes a public ` +
-    `API or a name people type, picks one convention over another the repo also uses, trades one cost against another, ` +
+    `API or a name people type, builds a check the project does not have yet, picks one convention over another the repo also uses, trades one cost against another, ` +
     `or is large enough that "not now" is a real answer. A proven bug with one obvious fix is settled: asking about ` +
     `it wastes the developer's attention. An action is open where a finding it names is marked plausible, or where ` +
     `a competent person could answer it differently. For every OPEN action also fill \`question\` (what is being decided, in ` +
