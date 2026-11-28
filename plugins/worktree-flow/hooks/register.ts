@@ -1,7 +1,7 @@
 import type { Register } from 'claude-code'
 
 const DENY_REASON =
-  'Use the EnterWorktree tool for a persistent worktree, not `git worktree add`: it creates the worktree under .claude/worktrees/ and enters it in one step, and ExitWorktree can remove it later. A throwaway probe (`git worktree add --detach <dir> <ref>`) into /tmp or the scratchpad is allowed. For a repository other than the one this session runs in, give its absolute path: `git -C <repo> worktree add <dir> -b <branch>` is allowed. If EnterWorktree cannot express what you need, tell the user instead of creating the worktree by hand. Where the command only mentions `git worktree add` in text, such as a prompt or a commit message, write that text to a file with the Write tool and pass the file in its place (`git commit -F <file>`, `claude -p < <file>`). A script that runs the add still makes a persistent worktree.'
+  'Use the EnterWorktree tool for a persistent worktree, not `git worktree add`: it creates the worktree under .claude/worktrees/ and enters it in one step, and ExitWorktree can remove it later. A detached throwaway probe (`git worktree add --detach <dir> <ref>`) into /tmp or the scratchpad is allowed: an absolute <dir> outside this repository, with no `.` or `..` part. For a repository other than the one this session runs in, give its absolute path: `git -C <repo> worktree add <dir> -b <branch>` is allowed. If EnterWorktree cannot express what you need, tell the user instead of creating the worktree by hand. Where the command only mentions `git worktree add` in text, such as a prompt or a commit message, write that text to a file with the Write tool and pass the file in its place (`git commit -F <file>`, `claude -p < <file>`). A script that runs the add still makes a persistent worktree.'
 
 // A shell is a word of its own or the end of a path (`/bin/sh`), not a file name such as `run.sh`.
 const SHELL = /(?<![\w.-])(?:bash|sh|zsh)(?![\w.-])/
@@ -143,7 +143,16 @@ const DIRECTORY_CHANGE = /(?<![\w./$-])(?:cd|pushd|popd)(?![\w./-])/g
 const CD = new RegExp(String.raw`(?<=${AFTER})cd\s+([^\s;&|]+)(?=${BEFORE})`, 'dy')
 const VARIABLE = /\$(?:\{([A-Za-z_]\w*)\}|([A-Za-z_]\w*))/g
 
-const THROWAWAY_TARGET = /^(?:\/tmp\/|\$\{?TMPDIR\b|\$\(mktemp\b)|\/scratchpad\//
+// A throwaway probe is detached, and its target has no `.` or `..` part. A target under /tmp, or a
+// scratchpad, which can sit at any depth, is checked against the session's repository like a
+// directory the add runs in; a temp directory the shell computes is not.
+const COMPUTED_TMP_TARGET = /^(?:\$\{?TMPDIR\b|\$\(mktemp\b)/
+const SCRATCHPAD = '/scratchpad/'
+const ABSOLUTE = /^(?:\/|~\/|\$\{?HOME\}?\/)/
+const DOT_PART = /(?:^|\/)\.\.?(?:\/|$)/
+
+// A word whose next word is its value, or the target of a redirect.
+const TAKES_VALUE = /^(?:-[bB]|--reason|\d*[<>]+&?)$/
 
 // The <path> of `git worktree add [<option>...] <path> [<commit-ish>]`: its first word that is
 // not an option, the value of `-b`, `-B` or `--reason`, or a redirect.
@@ -151,7 +160,7 @@ function targetPath(args: string[]) {
   for (let at = 0; at < args.length; at++) {
     const word = args[at] ?? ''
 
-    if (word === '--' || /^(?:-[bB]|--reason|\d*[<>]+&?)$/.test(word)) {
+    if (word === '--' || TAKES_VALUE.test(word)) {
       at += word === '--' ? 0 : 1
     } else if (!/^(?:-|\d*[<>])/.test(word) || args[at - 1] === '--') {
       return word
@@ -162,7 +171,8 @@ function targetPath(args: string[]) {
 }
 
 // Each add of a persistent worktree yields the directory it runs in, where the command names one:
-// the add's last `git -C <dir>`, else its `cd <dir>`. `--git-dir` and `--work-tree` name none.
+// the add's last `git -C <dir>`, else its `cd <dir>`. `--git-dir` and `--work-tree` name none. A
+// throwaway probe yields its /tmp target, or its target up to the scratchpad, in its place.
 function persistentAdds(command: string) {
   // The scan is slow on a long command, and most commands never name a worktree.
   if (!command.includes('worktree')) {
@@ -191,10 +201,29 @@ function persistentAdds(command: string) {
 
       const [options = [0, 0], args = [0, 0]] = [add.indices?.groups?.options, add.indices?.groups?.args]
       const optionWords = words(options)
-      const path = targetPath(words(args))
+      const argWords = words(args)
+      const path = targetPath(argWords)
+      // git takes the last of `--detach`, `-d` and `--no-detach`.
+      const detach = argWords.filter(
+        (w, at) => /^(?:--detach|-d|--no-detach)$/.test(w) && !TAKES_VALUE.test(argWords[at - 1] ?? ''),
+      )
+      const detached = detach.length > 0 && detach.at(-1) !== '--no-detach'
 
-      if (path !== undefined && THROWAWAY_TARGET.test(path)) {
-        return []
+      if (detached && path !== undefined && !DOT_PART.test(path)) {
+        if (COMPUTED_TMP_TARGET.test(path)) {
+          return []
+        }
+
+        if (path.startsWith('/tmp/')) {
+          return [path]
+        }
+
+        // A computed part after the scratchpad stays inside it; else the whole target is checked.
+        if (ABSOLUTE.test(path) && path.includes(SCRATCHPAD)) {
+          const end = path.indexOf(SCRATCHPAD) + SCRATCHPAD.length
+
+          return [/[$`]/.test(path.slice(end)) ? path.slice(0, end - 1) : path]
+        }
       }
 
       const dashC = optionWords.lastIndexOf('-C')
@@ -224,6 +253,7 @@ function inSessionRepo(dir: string | undefined, root: string | undefined, home: 
   )
 }
 
+// The guard steers a model away from a mistake: a command written to get past it is out of scope.
 // Where the guard fails before the call runs, as where the repository or HOME cannot be read, a
 // command that may add a worktree is denied.
 export const register: Register = on => {

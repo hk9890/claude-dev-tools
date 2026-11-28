@@ -38,7 +38,10 @@ script deciding what counts as a claim, which is guessing.
 `workflows/review-docs.js`, in order. `meta.phases` names them; this is what they do.
 
 1. **Manifest** — `scripts/manifest.py` emits the deterministic facts: files, present and
-   missing canonical docs, the decision records (`docs/decisions/NNNN-*.md`), line/word/byte
+   missing canonical docs, the decision records (`docs/decisions/NNNN-*.md`) with each
+   record's breaches of the shape its contract gives it and the facts of the tree (a number
+   two records share, an entry that is no record, a replaced record that is still there;
+   the workflow rejects a relayed manifest that lost one of them), line/word/byte
    counts, link and anchor resolution, reachability from `AGENTS.md` (a link to `docs/decisions/`
    reaches its records), the `CLAUDE.md` invariant, hollow docs, location violations, injected
    tool-blocks, the personal files with each legacy name's move, and the route list. Scripts do facts; agents do judgment — nothing here
@@ -53,9 +56,8 @@ script deciding what counts as a claim, which is guessing.
      case whose doc is absent is not reviewed, because the standard makes topic docs
      optional and never reports one missing.
    - *The rest*: `README.md` and `CONTRIBUTING.md` serve humans, `AGENTS.md` is the router
-     itself and is judged for trigger edges, a decision record is judged against the
-     `docs/decisions/` contract, and a non-standard doc is judged for canonical-topic
-     placement. `CLAUDE.md` is excluded — the manifest checks its invariant
+     itself and is judged for trigger edges, and a non-standard doc is judged for
+     canonical-topic placement. `CLAUDE.md` is excluded — the manifest checks its invariant
      mechanically and synthesis raises it. So are the personal files: a `CLAUDE.local.md`
      is the user's own, and synthesis raises the move of a legacy `.claude.local.md`.
 
@@ -75,6 +77,19 @@ script deciding what counts as a claim, which is guessing.
    stale command, a dead link, or out-of-boundary content that no decision names stays at
    full severity whatever the decisions say, and a decision that contradicts the repo is
    itself a finding. Repos without the file are told none of those doc decisions.
+
+   The decision records are no part of a doc batch. One agent reads all of them with the
+   `docs/decisions/` contract, the hygiene rules and `AGENTS.md`, and no other doc of the repo: among the other docs of a
+   batch a record got one line of prompt, and two audits of four filed no finding on any
+   record. That agent reports the manifest's facts, asks each record the clauses of the
+   contract as numbered questions, asks the set whether two records conflict or decide the
+   same thing, and asks whether the `AGENTS.md` route names the paths the records govern.
+   A record in another format inside the tree gets one placement finding that sends it out
+   of the tree, never a list of cuts. Every doc batch also reads the records as context, so
+   a doc that states the opposite of a record is a finding whatever batch the doc sits in.
+   Over `RECORDS_CONTEXT_BYTES` of records the batches go without them, the records agent
+   still reads the whole set, and the report says that a doc against a record went
+   unchecked.
 3. **History** — the docs were used or they were not, and past sessions say which.
    `scripts/history.py` extracts the user messages of this repo's transcripts; a small model
    labels each with a use case; the script then filters, stratifies, and projects into one
@@ -82,7 +97,9 @@ script deciding what counts as a claim, which is guessing.
    whether the doc was opened, and opened before the first action of that kind. Details below.
 4. **Synthesis** — merge and dedupe, reconcile across files (sibling contradictions; a missing
    canonical doc whose content lives under another name), raise the mechanical facts no reading
-   agent covered, then verdict and report. It re-reads `docs/DOCUMENTING.md` where one exists and
+   agent covered, then verdict and report. A finding that sets a decision record against
+   itself, another record or a doc is always `open` and stays at major or above: being a
+   record does not make it the right side. It re-reads `docs/DOCUMENTING.md` where one exists and
    drops any surviving finding those decisions settle, naming in `cross_file_notes` what it
    dropped and which decision covered it — so a suppression is visible rather than silent.
 
@@ -92,9 +109,10 @@ Change them at the authoritative site. This table is the index, not the source.
 
 | Bar | Authoritative site |
 |---|---|
-| The six authoring rules, the doc-set failure modes | `instruction-writing:writing-project-docs`, loaded by each read-review agent |
+| The six authoring rules, the doc-set failure modes | `instruction-writing:writing-project-docs`, loaded by each doc-batch agent; the records agent does not read them |
 | Single source of truth, cache, relevance, sediment, no-ops, negation | `references/writing-hygiene.md` at the `instruction-writing` plugin root, loaded by each read-review agent; which files get the per-unit *Cache* question, and where its fix sends the unit, in `batchPrompt` in `review-docs.js` |
-| Per-file ownership contract | `project-setup.md`, read by each read-review agent; `contractLines` in `review-docs.js` names the block headed by the file's path and the topic-doc exclusions above the blocks (the `docs/decisions/` block once per batch) |
+| Per-file ownership contract | `project-setup.md`, read by each read-review agent; `contractLines` in `review-docs.js` names the block headed by the file's path and, for a topic doc under `docs/`, the topic-doc exclusions above the blocks |
+| What a decision record is asked, the set, the route, and their severity | `recordsPrompt` in `review-docs.js`; the shape checks in `record_facts` and `tree_facts` in `manifest.py` |
 | Severity (`blocker` / `major` / `minor`) and the escalation rule | `batchPrompt` in `review-docs.js` |
 | What a batch agent reads, and how docs are packed | `batchPrompt`, `orderTargets`, `packBatches`, and `BATCH_BYTES` in `review-docs.js` |
 | Use case → doc, and the classifier's label vocabulary | `USE_CASES` in `review-docs.js` and `USE_CASE_DOCS` in `history.py` — two copies, because workflow scripts cannot import; pinned by `test-history.sh` |
